@@ -192,7 +192,7 @@ try {
   writeFileSync(report, `Preface line added by the drafts check.\n\n${readFileSync(report, "utf8")}`);
   await reload();
   assert.ok(await waitFor("!!document.querySelector('[data-recovered-drafts]')"), "recovered card shown");
-  const recovered = await evalJs("(() => { const card = document.querySelector('[data-recovered-drafts]'); const item = card.querySelector('[data-recovered-draft]'); return { composer: !!document.querySelector('[data-composer]'), reason: item?.dataset.recoveredReason, text: item?.querySelector('[data-recovered-text]')?.textContent, where: item?.querySelector('div')?.textContent, changedBanner: !!document.querySelector('[data-changed-banner]') }; })()");
+  const recovered = await evalJs("(() => { const card = document.querySelector('[data-recovered-drafts]'); const item = card.querySelector('[data-recovered-draft]'); return { composer: !!document.querySelector('[data-composer]'), reason: item?.dataset.recoveredReason, text: item?.querySelector('[data-recovered-text]')?.textContent, where: item?.querySelector('div')?.textContent, latestBadge: !!document.querySelector('[data-latest-version-badge]') }; })()");
   const liveRevision = (await (await fetch(`${API}/api/documents/${docId}`)).json()).revision.id;
   log("REVISION_CHANGED_RECOVERED", { ...recovered, draft_revision: draft3.revision_id, live_revision: liveRevision });
   assert.equal(recovered.composer, false, "no composer: the anchor belongs to the earlier revision");

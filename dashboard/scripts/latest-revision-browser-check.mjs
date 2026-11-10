@@ -158,6 +158,24 @@ async function shot(name) {
     const s = await send("Page.captureScreenshot", { format: "png" });
     if (s.result?.data) writeFileSync(join(OUT, `${name}.png`), Buffer.from(s.result.data, "base64"));
 }
+/**
+ * Phone width (390x844, Robert's phone class), then back to desktop: the page as it stands, then the Review & decide
+ * drawer open. `page` and `drawer` run their checks in each state. The layout is responsive, so no reload is needed.
+ */
+async function phoneShots(name, page, drawer) {
+    await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+    await sleep(400);
+    await evalJs("window.scrollTo(0, 0)");
+    await page();
+    await shot(`${name}-phone`);
+    await click("[data-open-review]");
+    await waitFor(`!!${q("[data-review-drawer]")}`, "the phone review drawer");
+    await drawer();
+    await shot(`${name}-phone-drawer`);
+    await evalJs(`document.querySelector('[aria-label="Close review"]')?.click()`);
+    await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1400, deviceScaleFactor: 1, mobile: false });
+    await sleep(400);
+}
 /** The page is on the document and shows exactly the revision the API calls current. */
 async function expectLatest(marker) {
     const current = (await apiJson(`/api/documents/${DOC}`)).revision;
@@ -193,27 +211,49 @@ try {
     const rev2 = await registerRevision("Revision two: the requested summaries were added after the review.");
     check(rev2.id !== rev1.id, "a newer revision was registered");
 
-    // Entry point 1: the bridge's Ready for your review.
+    // Entry point 1: the bridge's Reviews button (the home Ready-for-review list moved to /documents), then the row.
     step = "03-ready-for-review";
+    const row = `[data-document-id=${JSON.stringify(DOC)}] [data-review-link]`;
     await send("Page.navigate", { url: `${BASE}/` });
-    await waitFor(`!!document.querySelector('[data-ready-for-review] [data-document-id=${JSON.stringify(DOC)}] [data-review-link]')`, "the document in Ready for your review", 45_000);
-    check((await evalJs(`document.querySelector('[data-ready-for-review] [data-document-id=${JSON.stringify(DOC)}] [data-review-link]').getAttribute('href')`)) === route, "the row links the stable document URL");
-    await evalJs(`document.querySelector('[data-ready-for-review] [data-document-id=${JSON.stringify(DOC)}] [data-review-link]').click()`);
+    await waitFor(`!!${q("[data-reviews-nav]")}`, "the bridge's Reviews button", 45_000);
+    await click("[data-reviews-nav]");
+    await waitFor(`!!${q(row)}`, "the document in the pending reviews list", 45_000);
+    check((await evalJs(`${q(row)}.getAttribute('href')`)) === route, "the row links the stable document URL");
+    await evalJs(`${q(row)}.click()`);
     await expectLatest("Revision two:");
-    const banner = await text("[data-changed-banner]");
-    check(banner?.includes(`viewing the latest revision (rev ${rev2.content_hash.slice(0, 8)})`) && banner.includes(`you reviewed rev ${rev1.content_hash.slice(0, 8)}`), "the banner names both revisions");
-    check((await text("[data-comment-list]"))?.includes("Synthetic comment on rev 1"), "the finished review's comment is still listed");
-    await shot(step);
+    // Task 381916df: the latest version carries a check-mark badge, no amber paragraph, and a clean comment slate.
+    check((await text("[data-latest-version-badge]"))?.trim() === "Latest version", "the Latest version badge is at the top of the document");
+    check(await evalJs(`!!${q("[data-latest-version-badge] svg")}`), "the badge carries a check mark");
+    check(!(await evalJs(`!!${q("[data-changed-banner]")}`)) && !(await text("main"))?.includes("A newer revision of this document was registered"), "no amber newer-revision banner");
+    check(!(await text("main"))?.includes("Synthetic comment on rev 1"), "the rev 1 comment is not shown on the latest version");
+    check((await text("[data-review-panel]"))?.includes("Comments (0)"), "the rail counts no comments on the latest version");
+    check(await evalJs(`!!${q("[data-view-earlier]")}`), "View earlier version is offered");
+    await shot(`${step}-desktop`);
+    await phoneShots(step, async () => {
+        check((await text("[data-open-review]"))?.includes("Review & decide (0)"), "phone: the review bar counts no earlier comments");
+        check((await text("[data-latest-version-badge]"))?.trim() === "Latest version", "phone: the badge is shown");
+    }, async () => {
+        check(!(await text("[data-review-drawer]"))?.includes("Synthetic comment on rev 1"), "phone: the drawer starts clean");
+    });
 
-    // Explicit history: the reviewed revision, read-only for decisions.
+    // Explicit history: the reviewed revision, read-only for decisions, labelled as not the latest.
     step = "04-reviewed-revision";
-    await clickButton("View reviewed revision");
+    await clickButton("View earlier version");
     await waitFor(`(document.querySelector('header')?.textContent || '').includes('rev ${rev1.content_hash.slice(0, 8)}')`, "the reviewed revision");
     check(!(await text("article"))?.includes("Revision two:"), "the reviewed bytes, without the later change");
+    check((await text('[data-version-marker="earlier"]'))?.includes("Earlier version, not the latest"), "the earlier version is labelled as not the latest");
+    check((await text("[data-comment-list]"))?.includes("Synthetic comment on rev 1"), "the rev 1 comment is back on its own revision");
     check(await evalJs(`!!${q("[data-decision-blocked]")}`), "no decision while the reviewed revision is on screen");
     check((await evalJs(`document.querySelector('a[href*="/raw?"]')?.getAttribute('href')`))?.includes(`revision=${rev1.id}`), "Download serves the reviewed revision");
-    await shot(step);
-    await clickButton("View current file");
+    await shot(`${step}-desktop`);
+    await phoneShots(step, async () => {
+        check((await text("[data-open-review]"))?.includes("Review & decide (1)"), "phone: the earlier version counts its own comment");
+    }, async () => {
+        check((await text("[data-review-drawer]"))?.includes("Synthetic comment on rev 1"), "phone: the drawer lists the earlier comment");
+    });
+    const stored = await apiJson(`/api/documents/reviews/${(await apiJson(`/api/documents/${DOC}`)).review.id}`);
+    check(stored.review?.comments?.some((c) => c.body === "Synthetic comment on rev 1: summarise instead of listing."), "the rev 1 comment is still stored, unchanged");
+    await clickButton("Back to latest version");
     await waitFor(`(document.querySelector('header')?.textContent || '').includes('rev ${rev2.content_hash.slice(0, 8)}')`, "back on the latest revision");
 
     // Unsaved decision note survives switching views; it is never submitted.
@@ -221,8 +261,8 @@ try {
     await click('[data-decision-button="approve"]');
     check((await text("[data-decision-confirm]"))?.includes(`Approve rev ${rev2.content_hash.slice(0, 8)} exactly as shown`), "Approve document names the revision on screen");
     await typeInto("textarea#decision-note", "Synthetic note, never submitted.");
-    await clickButton("View reviewed revision");
-    await clickButton("View current file");
+    await clickButton("View earlier version");
+    await clickButton("Back to latest version");
     check((await evalJs(`${q("textarea#decision-note")}?.value`)) === "Synthetic note, never submitted.", "the typed note is intact after switching views");
     await shot(step);
 

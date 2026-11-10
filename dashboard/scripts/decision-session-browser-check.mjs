@@ -124,7 +124,7 @@ async function open() {
 /** After a decision or a reload the reader may reopen on the revision the review is pinned to; decisions need the current file. */
 async function viewCurrentFile() {
     if (await exists("[data-decision-blocked]")) {
-        await clickButton("View current file");
+        await clickButton("Back to latest version");
         await waitFor(`(${q("[data-decision-card]")}?.textContent || '').includes('Records your decision on rev')`, "the current-file decision card");
     }
 }
@@ -253,7 +253,7 @@ try {
     step = "06-file-changed";
     appendFileSync(FILE, "\n\nAddendum: the producer changed the brief after the review started.\n");
     await reload();
-    await waitFor(`!!${q("[data-changed-banner]")}`, "the changed banner");
+    await waitFor(`!!${q("[data-version-marker]")}`, "the version marker (Latest version, or an earlier version labelled as not the latest)");
     await viewCurrentFile();
     await waitFor(`(${q("[data-decision-card]")}?.textContent || '').includes('Records your decision on rev')`, "the current-file decision card");
     const afterChange = await history();
