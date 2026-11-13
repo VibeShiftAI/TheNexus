@@ -8,6 +8,10 @@ The adjacent Praxis runtime owns scheduling, dispatch, and production process
 supervision; keep new orchestration there unless the change is specifically a
 cockpit surface.
 
+Fleet system map (generated, read-only): `/Volumes/Projects/shared-mind/system-map/SYSTEM-MAP.md`
+shows every component, route, scheduled job and cross-repo call; rebuild it with
+`npm run system-map` in Praxis, and keep TheNexus purpose lines in `system-map-notes.json`.
+
 ## Load-bearing map
 
 - `server/server.js` — Express + Socket.IO entry point; mounts API routes and
@@ -33,7 +37,8 @@ cockpit surface.
 - `dashboard/src/app/` — App Router pages; `dashboard/src/components/` is the
   UI; `dashboard/src/lib/` and `dashboard/src/hooks/` hold client data logic.
   `dashboard/next.config.ts` proxies `/api/*` to `NEXT_PUBLIC_API_URL` or
-  `http://localhost:4000`.
+  `http://127.0.0.1:4000` (legacy HTTP localhost overrides are normalized through
+  `@praxis/contract`; remote/TLS overrides are preserved).
 - `services/praxis-mind-mcp/stdio.js` — stdio MCP entry point spawned per MCP
   client. Tools are grouped in `tools/{identity,vault,memory,brain,nexus}.js`;
   `lib/config.js` holds its backend and local-state configuration.
