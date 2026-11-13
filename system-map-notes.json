@@ -57,6 +57,7 @@
   "nexus/routes/settings": "Reads and writes environment settings and lists or rotates per-project API keys for the dashboard settings page.",
   "nexus/routes/stakeholders": "Lists a project's stakeholders and stakeholder-gated requests, and records approve, reject, duplicate or defer decisions on gated tasks for every caller.",
   "nexus/routes/system": "Reports host CPU, memory and ports, database status, and token budget, and toggles the code Critic, for the dashboard.",
+  "nexus/routes/system-map": "Read-only, operator-authenticated route that serves the generated system map from the shared-mind vault to the dashboard's System Map page.",
   "nexus/routes/tabs": "Serves and updates the tab roster the Windows travel shell loads at launch, stored in a JSON file so tabs change without a rebuild.",
   "nexus/routes/token-usage": "Forwards /api/token-usage to the dashboard's daily token-throughput aggregation so remote viewers such as the travel shell can reach it.",
   "nexus/routes/tools": "Local tool endpoints for reading, writing and listing files, running shell commands, searching and creating tasks, guarded by write leases.",

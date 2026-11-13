@@ -214,6 +214,10 @@ app.use('/api/dispatch-insight', require('./routes/dispatch-insight')());
 app.use('/api/task-evidence', authenticate, require('./routes/task-evidence')());
 app.use('/api/task-progress', authenticate, require('./routes/task-progress')());
 app.use('/api/routing-economics', authenticate, require('./routes/routing-economics')());
+// The generated fleet map from the vault (system-map/system-map.json), for the
+// dashboard's System Map page. GET only, and only for a verified operator
+// session or credential: the map lists public hostnames and local ports.
+app.use('/api/system-map', authenticate, require('./routes/system-map')());
 // Slate lifecycle: drafted → approved → attempted → verified for the day's
 // slate, read from Praxis's schedule file so a stage that has stalled (the
 // 2026-08-24 never-approved slate) is visible on the board.
