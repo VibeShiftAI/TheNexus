@@ -88,6 +88,11 @@ const AUTHORED_TOPS = new Set(['memories', 'projects', 'workflows', 'incidents',
  *   klass  — the lock class to take ('authored' | 'skills' | 'projections')
  *   owner  — 'vault-watcher' | 'praxis-state-doc' | 'praxis-system-map' | 'praxis' | 'robert' | 'none'
  */
+/** A folder name folded the way a case-insensitive volume compares it (over-folding is the safe side). */
+function foldName(name) {
+  return String(name).normalize('NFKC').toUpperCase().toLowerCase();
+}
+
 function classifyVaultPath(rel) {
   // Lexically resolve "a/../b" so a dot-dot path classifies as where it lands.
   const norm = path.posix.normalize(String(rel).replace(/\\/g, '/')).replace(/^\/+/, '');
@@ -97,9 +102,9 @@ function classifyVaultPath(rel) {
   if (isRoot && norm === STATE_DOC_FILE) return { klass: 'projections', owner: OWNER_STATE_DOC };
   if (isRoot && STATIC_ROOT.has(norm)) return { klass: 'authored', owner: 'robert' };
   if (top === '.index') return { klass: 'projections', owner: OWNER_WATCHER };
-  // Case-insensitive: on the vault's APFS volume System-Map/ is the same folder, and
-  // system-map.json carries no header for the header check to catch.
-  if (top.toLowerCase() === SYSTEM_MAP_DIR) return { klass: 'projections', owner: OWNER_SYSTEM_MAP };
+  // Case-insensitive: on the vault's APFS volume System-Map/ (and a long-s \u017Fystem-map/)
+  // is the same folder, and system-map.json carries no header for the header check to catch.
+  if (foldName(top) === SYSTEM_MAP_DIR) return { klass: 'projections', owner: OWNER_SYSTEM_MAP };
   if (top === '_archive') return { klass: 'authored', owner: 'none' };
   if (top === 'skills') return { klass: 'skills', owner: 'praxis' };
   if (AUTHORED_TOPS.has(top)) return { klass: 'authored', owner: 'praxis' };

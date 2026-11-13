@@ -191,7 +191,7 @@ describe('system-map/: generated wholesale by Praxis (npm run system-map)', () =
   });
 
   test('a case variant or a dot-dot path classifies as system-map/ too (the vault volume is case-insensitive)', () => {
-    for (const rel of ['System-Map/system-map.json', 'SYSTEM-MAP/SYSTEM-MAP.md', 'memories/../system-map/system-map.json', 'memories/../System-Map/map/routes.md']) {
+    for (const rel of ['System-Map/system-map.json', 'SYSTEM-MAP/SYSTEM-MAP.md', 'memories/../system-map/system-map.json', 'memories/../System-Map/map/routes.md', '\u017Fystem-map/system-map.json']) {
       expect(classifyVaultPath(rel)).toEqual({ klass: 'projections', owner: OWNER_SYSTEM_MAP });
     }
     // system-map.json has no header, so the path is its only guard
@@ -236,6 +236,7 @@ describe('system-map/: generated wholesale by Praxis (npm run system-map)', () =
     expect(watcher.shouldIgnore(path.join(WATCHER_VAULT, 'system-map', 'SYSTEM-MAP.md'))).toBe(true);
     expect(watcher.shouldIgnore(path.join(WATCHER_VAULT, 'system-map', 'map', 'routes.md'))).toBe(true);
     expect(watcher.shouldIgnore(path.join(WATCHER_VAULT, 'System-Map', 'system-map.json'))).toBe(true);
+    expect(watcher.shouldIgnore(path.join(WATCHER_VAULT, '\u017Fystem-map', 'system-map.json'))).toBe(true);
     expect(watcher.shouldIgnore(path.join(WATCHER_VAULT, 'memories', 'note_x.md'))).toBe(false);
     expect(watcher.shouldIgnore(path.join(WATCHER_VAULT, 'projects', 'system-map.md'))).toBe(false);
   });
