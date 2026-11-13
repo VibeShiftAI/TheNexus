@@ -9,7 +9,8 @@ supervision; keep new orchestration there unless the change is specifically a
 cockpit surface.
 
 Fleet system map (generated, read-only): `/Volumes/Projects/shared-mind/system-map/SYSTEM-MAP.md`
-shows every component, route, scheduled job and cross-repo call; rebuild it with
+shows the components, routes, scheduled jobs and cross-repo calls found in source
+(its limits are listed in the map); rebuild it with
 `npm run system-map` in Praxis, and keep TheNexus purpose lines in `system-map-notes.json`.
 
 ## Load-bearing map

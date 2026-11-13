@@ -110,7 +110,7 @@ function shouldIgnore(filepath) {
   if (rel.startsWith('_archive')) return true;
   if (path.basename(rel).startsWith('._')) return true;
   // Folders a Praxis writer generates wholesale (system-map/): not authored, never projected
-  if (PRAXIS_GENERATED_DIRS.has(rel.split(/[\\/]/)[0])) return true;
+  if (PRAXIS_GENERATED_DIRS.has(rel.split(/[\\/]/)[0].toLowerCase())) return true;
   // Skip changes to our own generated files (prevent feedback loop)
   const base = path.basename(rel);
   if (GENERATED_BASENAMES.has(base) && !rel.includes('/')) return true;

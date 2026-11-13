@@ -89,14 +89,17 @@ const AUTHORED_TOPS = new Set(['memories', 'projects', 'workflows', 'incidents',
  *   owner  — 'vault-watcher' | 'praxis-state-doc' | 'praxis-system-map' | 'praxis' | 'robert' | 'none'
  */
 function classifyVaultPath(rel) {
-  const norm = String(rel).replace(/\\/g, '/').replace(/^\/+/, '');
+  // Lexically resolve "a/../b" so a dot-dot path classifies as where it lands.
+  const norm = path.posix.normalize(String(rel).replace(/\\/g, '/')).replace(/^\/+/, '');
   const top = norm.split('/')[0];
   const isRoot = !norm.includes('/');
   if (isRoot && WATCHER_PROJECTIONS.has(norm)) return { klass: 'projections', owner: OWNER_WATCHER };
   if (isRoot && norm === STATE_DOC_FILE) return { klass: 'projections', owner: OWNER_STATE_DOC };
   if (isRoot && STATIC_ROOT.has(norm)) return { klass: 'authored', owner: 'robert' };
   if (top === '.index') return { klass: 'projections', owner: OWNER_WATCHER };
-  if (top === SYSTEM_MAP_DIR) return { klass: 'projections', owner: OWNER_SYSTEM_MAP };
+  // Case-insensitive: on the vault's APFS volume System-Map/ is the same folder, and
+  // system-map.json carries no header for the header check to catch.
+  if (top.toLowerCase() === SYSTEM_MAP_DIR) return { klass: 'projections', owner: OWNER_SYSTEM_MAP };
   if (top === '_archive') return { klass: 'authored', owner: 'none' };
   if (top === 'skills') return { klass: 'skills', owner: 'praxis' };
   if (AUTHORED_TOPS.has(top)) return { klass: 'authored', owner: 'praxis' };
