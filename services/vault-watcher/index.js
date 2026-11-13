@@ -31,7 +31,7 @@
  */
 
 const path = require('path');
-const { VAULT, GENERATED_BASENAMES, log } = require('./lib/config');
+const { VAULT, GENERATED_BASENAMES, PRAXIS_GENERATED_DIRS, log } = require('./lib/config');
 const { collectDatedSeries, DATED_SERIES_RE, SERIES_MIN_MEMBERS, SERIES_RECENT_KEPT, seriesKey } = require('./lib/dated-series');
 const { readSupersession, collectMemoryEntries } = require('./lib/frontmatter');
 const {
@@ -109,6 +109,8 @@ function shouldIgnore(filepath) {
   if (rel.startsWith('.index')) return true;
   if (rel.startsWith('_archive')) return true;
   if (path.basename(rel).startsWith('._')) return true;
+  // Folders a Praxis writer generates wholesale (system-map/): not authored, never projected
+  if (PRAXIS_GENERATED_DIRS.has(rel.split(/[\\/]/)[0])) return true;
   // Skip changes to our own generated files (prevent feedback loop)
   const base = path.basename(rel);
   if (GENERATED_BASENAMES.has(base) && !rel.includes('/')) return true;
