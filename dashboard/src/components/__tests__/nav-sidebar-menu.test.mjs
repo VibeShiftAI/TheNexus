@@ -15,7 +15,7 @@ import { NavSidebar } from "../nav-sidebar.tsx";
 const DESTINATIONS = [
     "/documents", "/activity", "/task-board", "/ops", "/session",
     "/academy", "/council", "/codex", "/knowledge-ingestion", "/intake-reports", "/studio",
-    "/model-control", "/system-monitor", "http://192.168.86.205:7878",
+    "/model-control", "/system-monitor", "/system-map", "http://192.168.86.205:7878",
 ];
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });

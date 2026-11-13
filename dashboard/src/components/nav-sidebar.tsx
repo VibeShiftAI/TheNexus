@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useId, useRef } from "react";
-import { X, BookOpen, Gauge, Settings, Cpu, WifiOff, Route, BrainCircuit, BarChart3, KanbanSquare, Clapperboard, ClipboardList, Send, GraduationCap, Landmark, Smartphone, FileCheck2, ShieldCheck, ExternalLink, type LucideIcon } from "lucide-react";
+import { X, BookOpen, Gauge, Network, Settings, Cpu, WifiOff, Route, BrainCircuit, BarChart3, KanbanSquare, Clapperboard, ClipboardList, Send, GraduationCap, Landmark, Smartphone, FileCheck2, ShieldCheck, ExternalLink, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { getLocalOnlyMode, setLocalOnlyMode } from "@/lib/model-control";
 import { ModelAliasManager } from "@/components/model-alias-manager";
@@ -151,7 +151,8 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
       title: "Models and systems",
       items: [
         { href: "/model-control", label: "Model Control", icon: Route, color: "text-cyan-400 hover:text-cyan-300" },
-        { href: "/system-monitor", label: "System Monitor", icon: Gauge, color: "text-amber-400 hover:text-amber-300" },
+        { href: "/system-monitor", label: "System Monitor", hint: "Live health and usage", icon: Gauge, color: "text-amber-400 hover:text-amber-300" },
+        { href: "/system-map", label: "System Map", hint: "What runs and how it connects", icon: Network, color: "text-cyan-400 hover:text-cyan-300" },
         { href: larsDashboardHref, label: "LARS Dashboard", hint: "Opens in a new tab", icon: BarChart3, color: "text-emerald-400 hover:text-emerald-300", external: true },
       ],
     },
