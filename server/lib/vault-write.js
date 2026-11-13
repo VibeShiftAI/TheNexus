@@ -115,6 +115,91 @@ function relFromVault(abs, vault) {
   return path.relative(vault, abs).replace(/\\/g, '/');
 }
 
+// ── Where a target sits, by filesystem identity ─────────────────────────────
+
+/** True when a relative path climbs out of its base (or lands on another root). */
+function escapesBase(rel) {
+  return rel === '..' || rel.startsWith('../') || path.isAbsolute(rel);
+}
+
+function statOrNull(p) {
+  try { return fs.statSync(p); } catch { return null; }
+}
+
+/**
+ * `target` relative to its nearest ancestor directory that IS `root` (same
+ * device and inode), or null. Identity, not spelling: on the vault's
+ * case-insensitive APFS volume `/Volumes/Projects/SHARED-MIND` is the vault,
+ * and so is a symlink to it.
+ */
+function relBelowIdentity(target, root) {
+  for (let dir = path.dirname(target); ; dir = path.dirname(dir)) {
+    const s = statOrNull(dir);
+    if (s && s.dev === root.dev && s.ino === root.ino) return path.relative(dir, target).replace(/\\/g, '/');
+    if (path.dirname(dir) === dir) return null;
+  }
+}
+
+/**
+ * `target` with the symlinks in its existing parent directories resolved. The
+ * file itself is not followed: the atomic rename replaces a link, never the
+ * file it points at.
+ */
+function realLocation(target) {
+  let existing = path.dirname(target);
+  while (!fs.existsSync(existing) && path.dirname(existing) !== existing) existing = path.dirname(existing);
+  try {
+    return path.join(fs.realpathSync.native(existing), path.relative(existing, target));
+  } catch {
+    return target;
+  }
+}
+
+/**
+ * Locate `abs` against the vault before any ownership decision; the twin of
+ * Praxis src/vault-write.ts locateVaultTarget. A lexical "../" does not prove a
+ * target is outside: a differently cased root or a symlink to the root reaches
+ * the same files (QA 08cea8b8 overwrote a fixture system-map.json through
+ * `<root>/VAULT/system-map/`). A symlinked SUBdirectory stays outside for
+ * locking, as before, but `realRel` still gets the ownership refusal.
+ *
+ * @returns {{ rel: string, inside: boolean, realRel: string|null }}
+ *   rel     vault-relative when inside, else the lexical relative path
+ *   inside  in the vault by path or by the identity of the vault root
+ *   realRel where the write really lands, vault-relative, when that is in the vault
+ */
+function locateVaultTarget(abs, vault) {
+  const target = path.resolve(abs);
+  const root = statOrNull(vault);
+  const lexical = relFromVault(target, path.resolve(vault));
+  let rel = lexical;
+  let inside = !escapesBase(lexical);
+  if (!inside && root) {
+    const viaRoot = relBelowIdentity(target, root);
+    if (viaRoot !== null) {
+      rel = viaRoot;
+      inside = true;
+    }
+  }
+  let realRel = null;
+  const real = realLocation(target);
+  let realVault = path.resolve(vault);
+  try { realVault = fs.realpathSync.native(vault); } catch { /* a vault that does not exist yet has no aliases */ }
+  const fromRealVault = relFromVault(real, realVault);
+  if (!escapesBase(fromRealVault)) realRel = fromRealVault;
+  else if (root) realRel = relBelowIdentity(real, root);
+  return { rel, inside, realRel };
+}
+
+/** The ownership decision for one target, made on where it really is. */
+function guardTarget(abs, vault, verb) {
+  const t = locateVaultTarget(abs, vault);
+  const { klass, owner } = t.inside ? classifyVaultPath(t.rel) : { klass: 'authored', owner: 'praxis' };
+  if (t.inside) assertAuthored(t.rel, owner, verb);
+  if (t.realRel !== null && t.realRel !== t.rel) assertAuthored(t.realRel, classifyVaultPath(t.realRel).owner, verb);
+  return { rel: t.rel, outside: !t.inside, klass };
+}
+
 /** The ownership matrix, as a guard. Throws unless `rel` is authored content. */
 function assertAuthored(rel, owner, verb) {
   if (owner === OWNER_WATCHER || owner === OWNER_STATE_DOC || owner === OWNER_SYSTEM_MAP) {
@@ -179,12 +264,8 @@ function atomicWrite(target, content, { flag } = {}) {
  */
 function writeVaultFile(abs, content, opts = {}) {
   const vault = opts.vault || vaultRoot();
-  const rel = relFromVault(abs, vault);
   const mode = opts.mode || 'replace';
-
-  const outside = rel.startsWith('..');
-  const { klass, owner } = outside ? { klass: 'authored', owner: 'praxis' } : classifyVaultPath(rel);
-  if (!outside) assertAuthored(rel, owner, 'write');
+  const { rel, outside, klass } = guardTarget(abs, vault, 'write');
 
   const lockClass = opts.lockClass || klass;
   // A target outside the vault root is an env-overridden subdir (tests, a
@@ -221,10 +302,7 @@ function writeVaultFile(abs, content, opts = {}) {
  */
 function updateVaultFile(abs, mutate, opts = {}) {
   const vault = opts.vault || vaultRoot();
-  const rel = relFromVault(abs, vault);
-  const outside = rel.startsWith('..');
-  const { klass, owner } = outside ? { klass: 'authored', owner: 'praxis' } : classifyVaultPath(rel);
-  if (!outside) assertAuthored(rel, owner, 'update');
+  const { rel, outside, klass } = guardTarget(abs, vault, 'update');
 
   const run = () => {
     const exists = fs.existsSync(abs);
@@ -250,10 +328,16 @@ function updateVaultFile(abs, mutate, opts = {}) {
 function writeGeneratedFile(abs, content, opts = {}) {
   const owner = opts.owner || OWNER_WATCHER;
   const vault = opts.vault || vaultRoot();
-  const rel = relFromVault(abs, vault);
-  const { owner: expected } = classifyVaultPath(rel);
-  if (expected !== owner) {
-    throw refusal(`refusing to generate ${rel}: owned by ${expected}, not ${owner}`, 'EOWNER');
+  const target = locateVaultTarget(abs, vault);
+  const rel = target.rel;
+  // Outside the vault the lexical "../" path classifies as authored, so an
+  // outside generated write is refused, as it always was.
+  for (const where of [rel, target.realRel]) {
+    if (where === null) continue;
+    const { owner: expected } = classifyVaultPath(where);
+    if (expected !== owner) {
+      throw refusal(`refusing to generate ${where}: owned by ${expected}, not ${owner}`, 'EOWNER');
+    }
   }
   const final = stampGenerated(content, owner);
   const existing = fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : null;
@@ -278,6 +362,7 @@ module.exports = {
   generatedOwnerOf,
   stampGenerated,
   classifyVaultPath,
+  locateVaultTarget,
   assertAuthored,
   atomicWrite,
   writeVaultFile,

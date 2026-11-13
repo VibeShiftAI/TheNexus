@@ -204,6 +204,52 @@ describe('system-map/: generated wholesale by Praxis (npm run system-map)', () =
     expect(fs.readFileSync(json, 'utf8')).toBe('{}\n');
   });
 
+  test('a vault root reached under another spelling is the vault: write and update refuse system-map/ through every alias', () => {
+    // QA 08cea8b8: `<parent>/VAULT/system-map/system-map.json` is the same file on a
+    // case-insensitive volume, and a lexical relative path called it "outside".
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-vault-alias-'));
+    try {
+      const vault = path.join(parent, 'vault');
+      for (const sub of ['memories', 'skills', 'system-map']) fs.mkdirSync(path.join(vault, sub), { recursive: true });
+      const json = path.join(vault, 'system-map', 'system-map.json');
+      const seed = '{"_generated":"GENERATED: praxis-system-map; do not edit"}\n';
+      fs.writeFileSync(json, seed);
+      fs.symlinkSync(vault, path.join(parent, 'root-link'));
+      fs.symlinkSync(path.join(vault, 'system-map'), path.join(parent, 'map-link'));
+      fs.symlinkSync(path.join(vault, 'system-map'), path.join(vault, 'memories', 'inner-link'));
+      const upper = path.join(parent, 'VAULT', 'system-map', 'system-map.json');
+      const aliases = [
+        ['symlink to the root', path.join(parent, 'root-link', 'system-map', 'system-map.json')],
+        ['symlink to the folder', path.join(parent, 'map-link', 'system-map.json')],
+        ['symlink inside the vault', path.join(vault, 'memories', 'inner-link', 'system-map.json')],
+      ];
+      // Only where the tmpdir volume is case-insensitive does the cased root exist.
+      if (fs.existsSync(upper) && fs.statSync(upper).ino === fs.statSync(json).ino) aliases.push(['differently cased root', upper]);
+      for (const [kind, target] of aliases) {
+        expect([kind, refusalCode(() => writeVaultFile(target, '{"handEdited":true}\n', { vault }))]).toEqual([kind, 'EGENERATED']);
+        expect([kind, refusalCode(() => writeVaultFile(target, 'x', { vault, mode: 'append' }))]).toEqual([kind, 'EGENERATED']);
+        let entered = false;
+        expect([kind, refusalCode(() => updateVaultFile(target, () => { entered = true; return 'x'; }, { vault }))]).toEqual([kind, 'EGENERATED']);
+        expect([kind, entered]).toEqual([kind, false]);
+        expect(fs.readFileSync(json, 'utf8')).toBe(seed);
+      }
+      // The root alias is inside; a symlinked authored subdirectory stays outside for
+      // locking but is located for ownership, and still writes.
+      expect(vaultWrite.locateVaultTarget(path.join(parent, 'root-link', 'memories', 'a.md'), vault)).toEqual({ rel: 'memories/a.md', inside: true, realRel: 'memories/a.md' });
+      fs.symlinkSync(path.join(vault, 'skills'), path.join(parent, 'skills-link'));
+      const viaSkills = path.join(parent, 'skills-link', 's.md');
+      expect(vaultWrite.locateVaultTarget(viaSkills, vault)).toMatchObject({ inside: false, realRel: 'skills/s.md' });
+      writeVaultFile(viaSkills, 'skill body', { vault });
+      expect(fs.readFileSync(path.join(vault, 'skills', 's.md'), 'utf8')).toBe('skill body');
+      // The generated writer resolves the alias too.
+      expect(writeGeneratedFile(path.join(parent, 'root-link', 'system-map', 'SYSTEM-MAP.md'), 'map', { vault, owner: OWNER_SYSTEM_MAP }).changed).toBe(true);
+      expect(refusalCode(() => writeGeneratedFile(path.join(parent, 'map-link', 'x.md'), 'x', { vault }))).toBe('EOWNER');
+      expect(vaultWrite.locateVaultTarget(path.join(parent, 'elsewhere', 'x.md'), vault)).toEqual({ rel: '../elsewhere/x.md', inside: false, realRel: null });
+    } finally {
+      fs.rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
   test('the authored write path refuses it, with or without the header', () => {
     const vault = tmpVault();
     const file = path.join(vault, 'system-map', 'SYSTEM-MAP.md');
