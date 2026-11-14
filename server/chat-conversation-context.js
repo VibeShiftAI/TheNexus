@@ -20,8 +20,13 @@ const PAGE_ROWS = 50;
 async function readConversationContext(db, userMessage) {
     if (!userMessage?.conversation_id || !userMessage.created_at) return undefined;
     const currentMessage = userMessage.role === 'user' && typeof userMessage.id === 'string' && userMessage.id.trim()
-        ? { id: userMessage.id, role: 'user', createdAt: userMessage.created_at } : undefined;
-    const receipt = { conversationId: userMessage.conversation_id, ...(currentMessage ? { currentMessage } : {}), messages: [] };
+        ? { id: userMessage.id, role: 'user', createdAt: userMessage.created_at,
+            ...(typeof userMessage.content === 'string' ? { content: userMessage.content } : {}) } : undefined;
+    // Reserve the final reply's durable identity before Praxis returns it, so
+    // its conversation index and this store name the same message even when
+    // the caller did not supply a clientMessageId.
+    const receipt = { conversationId: userMessage.conversation_id,
+        ...(currentMessage ? { currentMessage, assistantMessageId: `${currentMessage.id}:reply` } : {}), messages: [] };
     if (!db.getChatMessages) return currentMessage ? receipt : undefined;
     try {
         const current = Date.parse(userMessage.created_at);

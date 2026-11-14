@@ -63,6 +63,20 @@ describe('AI chat Praxis relay', () => {
         return { status: res.status, body: await res.json() };
     }
 
+    test.each([undefined, 'legacy:turn'])('unkeyed and legacy sends reserve the same user and reply identities that Praxis indexes (%s)', async clientMessageId => {
+        global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ response: 'saved reply' }) }));
+        const db = createDb();
+        db.saveChatMessage = jest.fn(async message => ({ ...message, id: message.id || 'server-generated-user', created_at: '2026-11-14T12:00:00Z' }));
+        await mount(db);
+        const response = await post({ message: 'exact original text', mode: 'praxis', clientMessageId });
+        const expectedId = `${clientMessageId || 'server-generated-user'}:reply`;
+        const payload = JSON.parse(global.fetch.mock.calls[0][1].body);
+        expect(payload.conversationContext.currentMessage.content).toBe('exact original text');
+        expect(payload.conversationContext.assistantMessageId).toBe(expectedId);
+        expect(db.saveChatMessage.mock.calls.at(-1)[0].id).toBe(expectedId);
+        expect(response.body.assistantMessageId).toBe(expectedId);
+    });
+
     test('non-streaming responses preserve speech suppression in JSON and history', async () => {
         global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ response: 'Report started.', suppressVoice: true }) }));
         const db = createDb(); await mount(db);

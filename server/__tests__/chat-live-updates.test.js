@@ -80,7 +80,7 @@ describe('Praxis chat live updates', () => {
       body: JSON.stringify({ mode: 'praxis', message: 'hello praxis', history: [] }),
     }, originalFetch)).resolves.toMatchObject({
       status: 200,
-      body: expect.objectContaining({ assistantMessageId: 'msg-2' }),
+      body: expect.objectContaining({ assistantMessageId: 'msg-1:reply' }),
     });
 
     expect(io.emit).toHaveBeenCalledWith('chat-message', expect.objectContaining({
@@ -97,7 +97,7 @@ describe('Praxis chat live updates', () => {
       conversationId: 'conv-1',
       mode: 'praxis',
       message: expect.objectContaining({
-        id: 'msg-2',
+        id: 'msg-1:reply',
         conversation_id: 'conv-1',
         role: 'assistant',
         content: expect.stringContaining('Fresh Praxis response'),

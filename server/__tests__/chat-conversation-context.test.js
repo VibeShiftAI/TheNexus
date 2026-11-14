@@ -2,7 +2,7 @@ const { readConversationContext } = require('../chat-conversation-context');
 
 test('current operator message identity survives missing or unavailable history', async () => {
     const current = { id: 'user-1', role: 'user', conversation_id: 'conversation-1', created_at: '2026-11-01T00:00:00Z' };
-    const expected = { conversationId: 'conversation-1', currentMessage: { id: 'user-1', role: 'user', createdAt: current.created_at }, messages: [] };
+    const expected = { conversationId: 'conversation-1', currentMessage: { id: 'user-1', role: 'user', createdAt: current.created_at }, assistantMessageId: 'user-1:reply', messages: [] };
     expect(await readConversationContext({}, current)).toEqual(expected);
     const warning = jest.spyOn(console, 'warn').mockImplementation(() => {});
     try { expect(await readConversationContext({ getChatMessages: async () => { throw new Error('offline'); } }, current)).toEqual(expected); }

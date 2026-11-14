@@ -154,7 +154,7 @@ describe('AI chat Praxis token streaming', () => {
     }));
     expect(io.emit).toHaveBeenCalledWith('chat-message', expect.objectContaining({
       conversationId: 'conv-1',
-      message: expect.objectContaining({ id: 'msg-2', role: 'assistant' }),
+      message: expect.objectContaining({ id: 'msg-1:reply', role: 'assistant' }),
     }));
     const phases=io.emit.mock.calls.filter(([name])=>name==='chat-activity').map(([,s])=>s.turns[0].phase);
     expect(phases).toEqual(['received','working','replying','completed']);

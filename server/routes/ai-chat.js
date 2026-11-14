@@ -68,7 +68,9 @@ function displayContextOf(body, isOperatorTurn) {
 
 /** Same exact user turn, same archived reply across stream reconnects/restarts. */
 async function saveRelayReply(db, message, clientMessageId) {
-    if (!validTurnKey(clientMessageId)) return { row: await db.saveChatMessage(message), inserted: true };
+    // A saved message identity need not be a valid execution/idempotency key
+    // (older clients used colons). Use the reserved ID for every saved user row.
+    if (typeof clientMessageId !== 'string' || !clientMessageId) return { row: await db.saveChatMessage(message), inserted: true };
     const id = `${clientMessageId}:reply`;
     const matches = row => row?.role === 'assistant' && row.conversation_id === message.conversation_id && row.content === message.content;
     const existing = await db.getChatMessageById?.(id);
@@ -490,7 +492,7 @@ function createAIChatRouter({ db, io }) {
                         db,
                         io,
                         conversationId,
-                        clientMessageId,
+                        clientMessageId: conversationContext?.currentMessage?.id ?? clientMessageId,
                         onReply: () => activity.update(activityId,'replying',undefined,activityAttempt),
                     });
                     const failed = praxisTurnFailed(result);
@@ -522,7 +524,7 @@ function createAIChatRouter({ db, io }) {
 
                 if (conversationId) {
                     try {
-                        const { row: savedAssistantMessage, inserted } = await saveRelayReply(db, { conversation_id: conversationId, role: 'assistant', content: fullResponse, mode: 'praxis', metadata: buildPraxisAssistantMetadata(data) }, clientMessageId);
+                        const { row: savedAssistantMessage, inserted } = await saveRelayReply(db, { conversation_id: conversationId, role: 'assistant', content: fullResponse, mode: 'praxis', metadata: buildPraxisAssistantMetadata(data) }, conversationContext?.currentMessage?.id ?? clientMessageId);
                         assistantMessageId = savedAssistantMessage?.id || null;
                         if (savedAssistantMessage && io && inserted) {
                             io.emit('chat-message', buildChatMessageEvent(savedAssistantMessage));
