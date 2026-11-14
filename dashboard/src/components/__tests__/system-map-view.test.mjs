@@ -195,6 +195,49 @@ test("a table short enough to open whole states its total and offers no control"
     assert.equal(h.all('[data-sm-show-all="docs"]').length, 0);
 });
 
+test("what a list leaves out is named on the page: test folders, launch agents off the map, link kinds not counted, places the map does not keep", async (t) => {
+    const base = fixtureMap();
+    const places = Array.from({ length: 6 }, (_, i) => `Praxis/src/reports/paths.ts:${i + 1} TheNexus/server/routes/tasks.js`);
+    const h = await mount(t, () => json(fixtureMap({
+        nodes: [...base.nodes, { id: "praxis/+tests", name: "tests", kind: "tests", level: 2, parent: "praxis", path: "Praxis/tests", attrs: { files: 835 } }],
+        edges: [...base.edges, { from: "praxis/reports", to: "nexus/routes/tasks", kind: "file", count: 113, evidence: places }],
+        catalogs: { ...base.catalogs, launchAgents: [...base.catalogs.launchAgents, { label: "com.example.updater", node: null, projectDirs: [], startInterval: 3600 }] },
+    })));
+
+    // A test folder has no tile; the page says so by name, and the tab counts the tiles that are there.
+    assert.equal(h.all('.sm-tile[data-sm-id="praxis/+tests"]').length, 0);
+    assert.equal(h.q("[data-sm-untiled]").textContent, "Test folders are in the map with a file count only, so they have no tile: Praxis/tests (835 files).");
+    assert.equal(h.q('[data-sm-tab="map"] .sm-n').textContent, "3");
+
+    // A link found in more places than the map stores says how many it keeps.
+    await h.click('[data-sm-id="praxis/reports"]');
+    const kept = h.all('[data-sm-section="out"] [data-sm-evidence-kept]').map((el) => el.textContent);
+    assert.deepEqual(kept.sort(), ["the map keeps 1 of 3 places", "the map keeps 2 of 7 places", "the map keeps 6 of 113 places"]);
+    assert.match(h.q('[data-sm-section="out"]').textContent, /5 more places; the map keeps 6 of 113 places/);
+
+    await h.click('[data-sm-tab="connections"]');
+    assert.match(h.q("[role=tabpanel]").textContent, /not counted here or in the table below: code imports, and launchd starting a process/);
+
+    // A check's count is the number of items the map lists, which the generator may have trimmed.
+    await h.click('[data-sm-tab="drift"]');
+    assert.equal(h.q("[data-sm-check-counts]").textContent.replace(/\s+/g, " ").trim(),
+        "The number after a check's title counts the items the map lists for it. The generator keeps only the first part of a long list, so that number can be smaller than the total. Every living doc with missing or changed file references is in the table at the end of this view.");
+
+    await h.click('[data-sm-tab="boundary"]');
+    assert.match(h.q('[data-sm-boundary="launch-agents"] h3').textContent, /^Launch agents \(1\)$/);
+    assert.match(h.q("[data-sm-agents-not-listed]").textContent.replace(/\s+/g, " "), /Listed: the 1 of 2 launch agents on this machine that touch a project folder or start something on the map\. Not listed \(1\): com\.example\.updater\./);
+    assert.equal(h.all('[data-sm-boundary="launch-agents"] tbody tr').length, 1);
+});
+
+test("a map with nothing left out carries none of those lines", async (t) => {
+    const h = await mount(t);
+    assert.equal(h.all("[data-sm-untiled]").length, 0);
+    await h.click('[data-sm-id="praxis/quiet"]');
+    assert.equal(h.all("[data-sm-panel] [data-sm-evidence-kept]").length, 0, "a link with every place listed says nothing more");
+    await h.click('[data-sm-tab="boundary"]');
+    assert.equal(h.all("[data-sm-agents-not-listed]").length, 0);
+});
+
 test("keyboard: a tile opens its detail, focus moves to it, and Escape returns to the tile", async (t) => {
     const h = await mount(t);
     const tile = h.q('.sm-tile[data-sm-id="praxis/reports"]');

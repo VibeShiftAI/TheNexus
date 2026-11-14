@@ -459,6 +459,11 @@ export function DriftTab({ index, query }: TabProps) {
         <div>
             <h2>Where code, machine and docs disagree</h2>
             <p className="sm-lead">Recomputed every time the map is generated. Warnings are likely to matter; notes are for awareness. The scan reports what the code says, not whether it is a problem.</p>
+            {/* The generator trims a long item list before it writes the map and records no total, so the page cannot show one. */}
+            <p className="sm-small" data-sm-check-counts="">
+                The number after a check&apos;s title counts the items the map lists for it. The generator keeps only the first part of a long list, so that number can be smaller than the total.
+                {docs.length ? " Every living doc with missing or changed file references is in the table at the end of this view." : ""}
+            </p>
             <div className="sm-summary" data-sm-drift-summary="">
                 <span><b>{warningCount(all)}</b>warnings</span>
                 <span><b>{count("info")}</b>notes</span>

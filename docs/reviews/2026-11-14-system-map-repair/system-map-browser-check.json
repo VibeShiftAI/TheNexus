@@ -1,31 +1,31 @@
 {
   "task": "42df7682-9abe-4753-a07f-1b295d316852",
-  "ranAt": "2026-11-14T12:13:41.135Z",
+  "ranAt": "2026-11-14T12:49:36.745Z",
   "base": "http://localhost:3107",
   "vaultMap": {
     "file": "/Volumes/Projects/shared-mind/system-map/system-map.json",
-    "generatedAt": "2026-11-14T10:11:38.669Z",
-    "factsHash": "822b4d2f40439c1b",
+    "generatedAt": "2026-11-14T12:31:00.195Z",
+    "factsHash": "18c36fbc98f49edd",
     "nodes": 403,
     "edges": 1812,
-    "bytes": 1363713
+    "bytes": 1363807
   },
   "subject": {
     "id": "praxis/~runtime",
     "name": "runtime root"
   },
-  "passed": 73,
+  "passed": 89,
   "failed": 0,
   "results": [
     {
       "name": "stamp shows when the vault map was generated",
       "ok": true,
-      "detail": "Generated 2026-11-14 10:11 UTC (2 hours ago) · facts 822b4d2f40439c1b"
+      "detail": "Generated 2026-11-14 12:31 UTC (18 minutes ago) · facts 18c36fbc98f49edd"
     },
     {
       "name": "stamp shows the vault map's facts hash",
       "ok": true,
-      "detail": "822b4d2f40439c1b vs vault 822b4d2f40439c1b"
+      "detail": "18c36fbc98f49edd vs vault 18c36fbc98f49edd"
     },
     {
       "name": "the map opens in the dashboard's dark theme",
@@ -41,6 +41,11 @@
       "name": "every process, client and store in the vault map heads its own block, matched by id",
       "ok": true,
       "detail": "13 expected: contract/pkg, cortex/gateway, cortex/terminal, nexus/api, nexus/dashboard, nexus/desktop, nexus/mcp, nexus/store:nexus.db, nexus/vault-watcher, praxis/agent:com.praxis.voice, praxis/agent:com.praxis.watchdog, praxis/daemon, vault/store"
+    },
+    {
+      "name": "the Map tab counts the components that have a tile, and every test folder left without one is named on the page",
+      "ok": true,
+      "detail": "tab says 340 for 340 component tiles; the page says: Test folders are in the map with a file count only, so they have no tile: TheCortex/TheCortex/tests (102 files), Praxis/tests (835 files)."
     },
     {
       "name": "six views are offered",
@@ -98,6 +103,11 @@
       "detail": "HTTP routes (1)POST /callbackPraxis/src/webhook.ts:149"
     },
     {
+      "name": "detail: a link found in more places than the map keeps says how many it keeps",
+      "ok": true,
+      "detail": "46 of the subject's links have more places than the map stores; 46 say so, e.g. the map keeps 6 of 11 places"
+    },
+    {
       "name": "detail: every job description is shown whole",
       "ok": true,
       "detail": "praxis/memory, 1 jobs, longest state-doc-heartbeat at 515 characters"
@@ -105,7 +115,7 @@
     {
       "name": "view: connections renders the live map",
       "ok": true,
-      "detail": "21743 chars, ?tab=connections"
+      "detail": "21914 chars, ?tab=connections"
     },
     {
       "name": "view: connections has no sideways page scroll (desktop)",
@@ -121,6 +131,11 @@
       "name": "connections: strongest links: every row is on screen or one press away",
       "ok": true,
       "detail": "420 of 420 rows after Show all"
+    },
+    {
+      "name": "connections: the matrix adds up to every counted reference between systems, and the page names the kinds of link it does not count",
+      "ok": true,
+      "detail": "1,171 in the matrix, 1,171 in the map across 420 links; not counted: 8 links between systems (starts)"
     },
     {
       "name": "view: connections still has no sideways page scroll with everything shown (desktop)",
@@ -143,6 +158,16 @@
       "detail": "63 rows for 63 jobs"
     },
     {
+      "name": "schedule: the page does not scroll sideways at 1024, 1280, 1366 or 1440px wide, and from 1360px the jobs table stays inside its box",
+      "ok": true,
+      "detail": "1024px: page fits, table 684px in a 582px box (scrolls inside its box); 1280px: page fits, table 838px in a 838px box; 1366px: page fits, table 924px in a 924px box; 1440px: page fits, table 998px in a 998px box"
+    },
+    {
+      "name": "schedule: from 1360px wide no one-word owner name is broken across lines",
+      "ok": true,
+      "detail": "1366px: 54 one-word owner names, none broken; 1440px: 54 one-word owner names, none broken"
+    },
+    {
       "name": "view: schedule still has no sideways page scroll with everything shown (desktop)",
       "ok": true,
       "detail": "page 1440px and window 1440px in a 1440px viewport"
@@ -160,7 +185,7 @@
     {
       "name": "view: drift renders the live map",
       "ok": true,
-      "detail": "14418 chars, ?tab=drift"
+      "detail": "14689 chars, ?tab=drift"
     },
     {
       "name": "view: drift has no sideways page scroll (desktop)",
@@ -178,6 +203,11 @@
       "detail": "84 of 84 rows after Show all"
     },
     {
+      "name": "drift: the page says a check's count can be smaller than the total, and every doc the doc checks stand for is in the table",
+      "ok": true,
+      "detail": "docs with missing references: the check lists 25 of 29 in the map; docs behind their code: 25 of 41; 0 of them absent from the table"
+    },
+    {
       "name": "view: drift still has no sideways page scroll with everything shown (desktop)",
       "ok": true,
       "detail": "page 1440px and window 1440px in a 1440px viewport"
@@ -185,10 +215,20 @@
     {
       "name": "view: boundary renders the live map",
       "ok": true,
-      "detail": "5767 chars, ?tab=boundary"
+      "detail": "5977 chars, ?tab=boundary"
     },
     {
       "name": "view: boundary has no sideways page scroll (desktop)",
+      "ok": true,
+      "detail": "page 1440px and window 1440px in a 1440px viewport"
+    },
+    {
+      "name": "boundary: every launch agent in the map is a row in the table or is named beside it as not listed",
+      "ok": true,
+      "detail": "18 in the map: 15 listed, 3 named as not listed (com.epicgames.launcher, com.github.facebook.watchman, com.google.GoogleUpdater.wake)"
+    },
+    {
+      "name": "view: boundary still has no sideways page scroll with everything shown (desktop)",
       "ok": true,
       "detail": "page 1440px and window 1440px in a 1440px viewport"
     },
@@ -295,7 +335,7 @@
     {
       "name": "phone dark: the detail does not scroll sideways",
       "ok": true,
-      "detail": "page 390px and window 390px in a 390px viewport"
+      "detail": "sheet content 390px in a 390px sheet; page 390px and window 390px in a 390px viewport"
     },
     {
       "name": "phone dark: Close gives the page back",
@@ -304,6 +344,26 @@
     },
     {
       "name": "phone: connections view opens with no sideways page scroll",
+      "ok": true,
+      "detail": "page 390px and window 390px in a 390px viewport"
+    },
+    {
+      "name": "phone: connections, the control that shows every row is at least 44px to tap",
+      "ok": true,
+      "detail": "Show all 420: 113x44"
+    },
+    {
+      "name": "phone: connections: the page states how many rows are shown of the 420 in the map",
+      "ok": true,
+      "detail": "150 rows on screen of 420 in the map; the page says: Showing the 150 strongest of 420 links.Show all 420"
+    },
+    {
+      "name": "phone: connections: every row is on screen or one press away",
+      "ok": true,
+      "detail": "420 of 420 rows after Show all"
+    },
+    {
+      "name": "phone: connections still has no sideways page scroll with every row shown",
       "ok": true,
       "detail": "page 390px and window 390px in a 390px viewport"
     },
@@ -323,6 +383,26 @@
       "detail": "page 390px and window 390px in a 390px viewport"
     },
     {
+      "name": "phone: drift, the control that shows every row is at least 44px to tap",
+      "ok": true,
+      "detail": "Show all 84: 105x44"
+    },
+    {
+      "name": "phone: drift: the page states how many rows are shown of the 84 in the map",
+      "ok": true,
+      "detail": "40 rows on screen of 84 in the map; the page says: Showing the 40 stalest of 84 living docs that name missing or changed files.Show all 84"
+    },
+    {
+      "name": "phone: drift: every row is on screen or one press away",
+      "ok": true,
+      "detail": "84 of 84 rows after Show all"
+    },
+    {
+      "name": "phone: drift still has no sideways page scroll with every row shown",
+      "ok": true,
+      "detail": "page 390px and window 390px in a 390px viewport"
+    },
+    {
       "name": "phone: boundary view opens with no sideways page scroll",
       "ok": true,
       "detail": "page 390px and window 390px in a 390px viewport"
@@ -330,7 +410,7 @@
     {
       "name": "phone: the longest job description is shown whole and the sheet does not scroll sideways",
       "ok": true,
-      "detail": "state-doc-heartbeat, 515 characters; page 390px and window 390px in a 390px viewport"
+      "detail": "state-doc-heartbeat, 515 characters; sheet content 390px in a 390px sheet; page 390px and window 390px in a 390px viewport"
     },
     {
       "name": "phone light: theme applied",
@@ -355,7 +435,7 @@
     {
       "name": "phone light: the detail does not scroll sideways",
       "ok": true,
-      "detail": "page 390px and window 390px in a 390px viewport"
+      "detail": "sheet content 390px in a 390px sheet; page 390px and window 390px in a 390px viewport"
     },
     {
       "name": "phone light: Close gives the page back",
@@ -380,7 +460,7 @@
     {
       "name": "the vault map file is byte-identical after the run",
       "ok": true,
-      "detail": "1363713 bytes"
+      "detail": "1363807 bytes"
     }
   ],
   "mapReadsFromBrowser": 6,

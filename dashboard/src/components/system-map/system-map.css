@@ -205,11 +205,15 @@ svg[data-focus="true"] .sm-d-node:not([data-on="true"]):not([data-near="true"]) 
 .sm-rowcount { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 8px; }
 /*
  * A whole job description takes most of its table's width. Where the window is
- * wide enough to hold these floors beside the detail panel, the job's key, its
- * owner and its source location keep enough room to read on one or two lines;
- * below that they give way, so the table never grows wider than its box.
+ * wide enough to hold these floors beside the detail panel (measured on the
+ * map of 2026-11-14: the table needs 866px with them, and its box is 838px
+ * at a 1280px window and 924px at a 1366px one), the job's
+ * key, its owner and its source location keep enough room to read on one or
+ * two lines. Below that the floors are off, so they never push the table
+ * wider than its box; there the table scrolls inside its own box if its
+ * longest words need it, and the page itself never scrolls sideways.
  */
-@media (min-width: 1280px) {
+@media (min-width: 1360px) {
   .sm-table td.sm-key { min-width: 8rem; }
   .sm-table td.sm-owner { min-width: 6.5rem; }
   .sm-table td.sm-loc { min-width: 9rem; }

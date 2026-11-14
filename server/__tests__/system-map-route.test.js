@@ -1,3 +1,4 @@
+const { execFileSync } = require('child_process');
 const express = require('express');
 const fs = require('fs');
 const http = require('http');
@@ -89,6 +90,23 @@ describe('system map route', () => {
         const response = await fetch(url);
         expect(response.status).toBe(500);
         expect((await response.json()).code).toBe('system_map_unreadable');
+    });
+
+    // Windows has no mkfifo; the guard under test is the same stat.isFile() check on every platform.
+    (process.platform === 'win32' ? test.skip : test)('never opens a pipe: a named pipe where the map should be is answered at once, not waited on', async () => {
+        await start({ authorize });
+        const file = path.join(vault, 'system-map', 'system-map.json');
+        fs.rmSync(file);
+        execFileSync('mkfifo', [file]);
+        try {
+            // Reading a pipe nobody writes to never returns, so a route that opened it would leave this request hanging.
+            const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+            expect(response.status).toBe(500);
+            expect((await response.json()).code).toBe('system_map_unreadable');
+        } finally {
+            // Had the route opened the pipe, a writer lets that read end so the test process can exit.
+            try { fs.closeSync(fs.openSync(file, fs.constants.O_WRONLY | fs.constants.O_NONBLOCK)); } catch { /* no reader was waiting */ }
+        }
     });
 
     test('refuses a request with no operator proof, using the real authority, and leaks no map content', async () => {

@@ -179,7 +179,7 @@ export function SystemMapView() {
     // Only a detail that actually has something to show covers the page.
     const sheetOpen = narrow && panel !== null && (panel.type === "pair" || Boolean(index?.byId.has(panel.id)));
     const counts: Record<SystemMapTab, string | null> = map ? {
-        // The components that have a tile; test folders are named in a line under the tiles instead.
+        // The components that have a tile; test folders are named in a line above the tiles instead.
         map: formatCount(map.nodes.filter((n) => n.level === 2 && !isTestFolder(n)).length),
         connections: null,
         schedule: formatCount((map.catalogs.crons ?? []).length),

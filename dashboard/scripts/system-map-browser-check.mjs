@@ -18,7 +18,10 @@
  * the map lists has its own tile (matched by id, not counted), a component's
  * detail lists purpose, size, activity, routes, jobs and both directions with
  * source locations, job descriptions are shown whole, the two ranked tables
- * state how many rows they show of how many and hand over the rest, the page
+ * state how many rows they show of how many and hand over the rest (at phone
+ * width too), whatever a list leaves out is named on the page (test folders
+ * without a tile, launch agents off the map, link kinds the matrix does not
+ * count, places the map does not keep for a link), the page
  * works from the keyboard, at phone width and in both themes, and the page
  * reads the map once on load and once per Refresh with nothing in between and
  * nothing that writes. Width is measured against the viewport this script
@@ -89,11 +92,18 @@ const systemOf = (id) => (/^praxis(\/|$)/.test(id) ? "praxis" : /^nexus(\/|$)/.t
 const listedFlat = (n) => (n.level === 0 || n.level === 1) && ["siblings", "external"].includes(systemOf(n.id));
 const expectedTiles = vaultMap.nodes.filter((n) => (n.level === 2 && n.kind !== "tests") || listedFlat(n)).map((n) => n.id);
 const expectedHeads = vaultMap.nodes.filter((n) => n.level === 1 && !listedFlat(n)).map((n) => n.id);
-const testFolders = vaultMap.nodes.filter((n) => n.level === 2 && n.kind === "tests").map((n) => n.id);
+const componentTiles = vaultMap.nodes.filter((n) => n.level === 2 && n.kind !== "tests");
+const testFolderNodes = vaultMap.nodes.filter((n) => n.kind === "tests");
+const testFolders = testFolderNodes.map((n) => n.id);
 const crons = vaultMap.catalogs.crons || [];
 const jobText = (c) => c.description || c.label || "";
 const longestJob = crons.filter((c) => c.owner && expectedTiles.includes(c.owner)).sort((a, b) => jobText(b).length - jobText(a).length)[0];
 const crossLinks = vaultMap.edges.filter((e) => e.kind !== "imports" && e.kind !== "starts" && systemOf(e.from) !== systemOf(e.to));
+// Links between systems that the Connections view does not count, which it therefore has to name.
+const uncountedCross = vaultMap.edges.filter((e) => (e.kind === "imports" || e.kind === "starts") && systemOf(e.from) !== systemOf(e.to));
+// The generator stores the first few places it finds for a link; these are the subject's links found in more places than that.
+const subjectPartialLinks = vaultMap.edges.filter((e) => (e.from === subject.id || e.to === subject.id) && e.count > (e.evidence || []).length);
+const launchAgents = vaultMap.catalogs.launchAgents || [];
 const staleDocs = (vaultMap.catalogs.docs || []).filter((d) => (d.kind === undefined || d.kind === "living") && ((d.missingRefs || 0) > 0 || (d.refsChangedSince || 0) > 0));
 
 // ── Throwaway API: the real router, a recorded request log ──────────────────
@@ -309,6 +319,10 @@ async function rankedTable(label, name, heading, total) {
       return { heading: h?.textContent || '', rows: table ? table.tBodies[0].rows.length : 0, said: document.querySelector('[data-sm-shown="${name}"]')?.textContent || '', offer: Boolean(document.querySelector('[data-sm-show-all="${name}"]')) };
     })()`);
     const before = await read();
+    if (total === 0) {
+        check(`${label}: the map has no rows for this table and the page lists none`, before.rows === 0, `${before.rows} rows on screen`);
+        return;
+    }
     const stated = `${before.heading} ${before.said}`;
     check(`${label}: the page states how many rows are shown of the ${count(total)} in the map`,
         stated.includes(count(total)) && (before.rows === total || stated.includes(count(before.rows))),
@@ -317,6 +331,20 @@ async function rankedTable(label, name, heading, total) {
     const after = before.rows === total ? before : await read();
     check(`${label}: every row is on screen or one press away`, after.rows === total,
         before.rows === total ? `all ${total} rows are on screen` : `${after.rows} of ${total} rows after ${before.offer ? "Show all" : "looking for a way to show the rest (none offered)"}`);
+}
+/**
+ * The open detail is a fixed sheet with its own scroll at phone width, so the
+ * page's width says nothing about it: the sheet's content is held to the
+ * sheet's own width.
+ */
+async function sheetFits() {
+    const o = await evalJs(`(() => { const p = document.querySelector('[data-sm-panel]'); return { content: p.scrollWidth, box: p.clientWidth, width: Math.round(p.getBoundingClientRect().width) }; })()`);
+    return { ok: o.content <= o.box && o.width <= viewportWidth, detail: `sheet content ${o.content}px in a ${o.box}px sheet` };
+}
+const selectedId = () => evalJs(`document.querySelector('[data-sm-panel]').getAttribute('data-sm-selected')`);
+/** Open a component's detail from its tile; a tile that is already selected is left alone, since pressing it again would close it. */
+async function selectTile(id, press = clickAt) {
+    if ((await selectedId()) !== id) await press(`.sm-tile[data-sm-id="${id}"]`);
 }
 const mapReads = (log = browserLog) => log.filter((r) => r.path === "/api/system-map");
 const tile = `.sm-tile[data-sm-id="${subject.id}"]`;
@@ -363,6 +391,11 @@ check("every component, dependency and sibling in the vault map has its own tile
 const missingHeads = expectedHeads.filter((id) => !onMap.heads.includes(id));
 check("every process, client and store in the vault map heads its own block, matched by id", missingHeads.length === 0,
     `${expectedHeads.length} expected${missingHeads.length ? `; missing: ${missingHeads.join(", ")}` : `: ${expectedHeads.join(", ")}`}`);
+const mapTab = await evalJs(`({ badge: document.querySelector('[data-sm-tab="map"] .sm-n')?.textContent || '', untiled: document.querySelector('[data-sm-untiled]')?.textContent || '' })`);
+const unnamedFolders = testFolderNodes.filter((n) => !mapTab.untiled.includes(n.path || n.id));
+check("the Map tab counts the components that have a tile, and every test folder left without one is named on the page",
+    mapTab.badge === count(componentTiles.length) && unnamedFolders.length === 0,
+    `tab says ${mapTab.badge} for ${componentTiles.length} component tiles; ${testFolderNodes.length ? `the page says: ${mapTab.untiled.trim() || "nothing"}` : "the map has no test folders"}`);
 const tabs = await evalJs(`Array.from(document.querySelectorAll('[role=tab]')).map((t) => t.getAttribute('data-sm-tab'))`);
 check("six views are offered", JSON.stringify(tabs) === JSON.stringify(["map", "connections", "schedule", "routes", "drift", "boundary"]), tabs.join(", "));
 check("one read of the map on load", mapReads(browserLog.slice(loadStart)).length === 1, `${mapReads(browserLog.slice(loadStart)).length} GET /api/system-map`);
@@ -394,11 +427,16 @@ check("detail: connections out, with source locations", detail.out.length > 0 &&
 check("detail: connections in, with source locations", detail.incoming.length > 0 && detail.inLoc, detail.incoming.slice(0, 90));
 check("detail: scheduled jobs, with source locations", detail.jobs.length > 0 && detail.jobsLoc, detail.jobs.slice(0, 90));
 check("detail: routes, with source locations", detail.routes.length > 0 && detail.routesLoc, detail.routes.slice(0, 90));
+const keptNotes = await evalJs(`Array.from(document.querySelectorAll('[data-sm-panel] [data-sm-section="out"] [data-sm-evidence-kept], [data-sm-panel] [data-sm-section="in"] [data-sm-evidence-kept]'), (el) => el.textContent)`);
+const keptExpected = subjectPartialLinks.map((e) => `the map keeps ${e.evidence.length} of ${count(e.count)} places`);
+check("detail: a link found in more places than the map keeps says how many it keeps",
+    JSON.stringify([...keptNotes].sort()) === JSON.stringify([...keptExpected].sort()),
+    `${subjectPartialLinks.length} of the subject's links have more places than the map stores; ${keptNotes.length} say so, e.g. ${keptNotes[0] || "none"}`);
 await shot("desktop-dark-component-detail");
 
 // The component that owns the job with the longest description in the map: every one of its jobs is described whole.
 if (longestJob) {
-    await clickAt(`.sm-tile[data-sm-id="${longestJob.owner}"]`);
+    await selectTile(longestJob.owner);
     const shown = await evalJs(`Array.from(document.querySelectorAll('[data-sm-panel] [data-sm-section="jobs"] li'), (li) => [li.querySelector('b')?.textContent || '', li.querySelector('.sm-small')?.textContent || ''])`);
     const owned = crons.filter((c) => c.owner === longestJob.owner);
     const cut = owned.filter((c) => (shown.find(([k]) => k === c.key) || [])[1] !== jobText(c));
@@ -408,19 +446,74 @@ if (longestJob) {
     await evalJs(`document.querySelector('[data-sm-panel] [data-sm-section="jobs"]')?.scrollIntoView({ block: 'start' })`);
     await sleep(200);
     await shot("desktop-dark-job-descriptions");
+    // Back to the subject, read from the top, so the captures of the other views show the detail as it opens.
+    await selectTile(subject.id);
+    await evalJs(`document.querySelector('[data-sm-panel]').scrollTop = 0`);
 }
 
 // ── 3. The other five views ─────────────────────────────────────────────────
 const VIEW_TEXT = { connections: /Strongest links/i, schedule: /All jobs/i, routes: /Defined at/i, drift: /warning/i, boundary: /Tunnel|tunnel/ };
 // What a view must not leave out, checked after its capture so the capture shows the view as it opens.
 const VIEW_WHOLE = {
-    connections: () => rankedTable("connections: strongest links", "links", /Strongest links/, crossLinks.length),
-    drift: () => rankedTable("drift: stalest living docs", "docs", /Stalest living docs/, staleDocs.length),
+    async connections() {
+        await rankedTable("connections: strongest links", "links", /Strongest links/, crossLinks.length);
+        const m = await evalJs(`({ cells: Array.from(document.querySelectorAll('[data-sm-matrix] .sm-cell'), (el) => Number(el.textContent.replace(/,/g, ''))), lead: document.querySelector('[role=tabpanel] .sm-lead')?.textContent || '' })`);
+        const counted = crossLinks.reduce((n, e) => n + e.count, 0), shown = m.cells.reduce((n, c) => n + c, 0);
+        const kinds = [...new Set(uncountedCross.map((e) => e.kind))].join(", ");
+        check("connections: the matrix adds up to every counted reference between systems, and the page names the kinds of link it does not count",
+            shown === counted && /not counted here/.test(m.lead) && /imports/.test(m.lead) && /launchd/.test(m.lead),
+            `${count(shown)} in the matrix, ${count(counted)} in the map across ${crossLinks.length} links; not counted: ${uncountedCross.length} links between systems${kinds ? ` (${kinds})` : ""}`);
+    },
+    async drift() {
+        await rankedTable("drift: stalest living docs", "docs", /Stalest living docs/, staleDocs.length);
+        // The generator trims a long item list before it writes a check and records no total. Where the map's own
+        // catalog holds more docs than a doc check lists, the page has to say that a check's count is not the total,
+        // and every one of those docs has to be in the table (which is whole by now).
+        const d = await evalJs(`({ note: document.querySelector('[data-sm-check-counts]')?.textContent || '', docs: Array.from(document.querySelectorAll('[data-sm-docs] tbody tr'), (tr) => tr.cells[0].textContent) })`);
+        const living = (vaultMap.catalogs.docs || []).filter((x) => x.kind === "living");
+        const dead = living.filter((x) => (x.missingRefs || 0) > 0), behind = living.filter((x) => (x.refsChangedSince || 0) >= 3);
+        const listed = (id) => (vaultMap.checks.find((c) => c.id === id)?.items || []).length;
+        const absent = [...new Set([...dead, ...behind].map((x) => x.file))].filter((file) => !d.docs.includes(file));
+        check("drift: the page says a check's count can be smaller than the total, and every doc the doc checks stand for is in the table",
+            /smaller than the total/.test(d.note) && absent.length === 0,
+            `docs with missing references: the check lists ${listed("docs-dead-refs")} of ${dead.length} in the map; docs behind their code: ${listed("docs-behind-code")} of ${behind.length}; ${absent.length} of them absent from the table`);
+    },
     async schedule() {
         const rows = await evalJs(`Array.from(document.querySelectorAll('[data-sm-jobs] tbody tr'), (tr) => [tr.cells[0].textContent, tr.cells[5].textContent])`);
         const cut = crons.filter((c) => (rows.find(([k]) => k === c.key) || [])[1] !== jobText(c));
         check("schedule: every job in the map is listed with its whole description", rows.length === crons.length && cut.length === 0,
             `${rows.length} rows for ${crons.length} jobs${cut.length ? `; ${cut.length} cut, e.g. ${cut.slice(0, 3).map((c) => `${c.key} shows ${((rows.find(([k]) => k === c.key) || [])[1] || "").length} of ${jobText(c).length}`).join(", ")}` : ""}`);
+        // Whole descriptions must not make the page scroll sideways at any desktop width. From 1360px the
+        // key, owner and location columns hold a floor: there the table has to stay inside its box, and an
+        // owner whose name is one word is not broken inside that word (every such link is as tall as the
+        // shortest). Narrower than that the table may scroll inside its own box, as it did before the
+        // descriptions were whole. The last width is the one the rest of the desktop steps use.
+        const widths = [];
+        for (const width of [1024, 1280, 1366, 1440]) {
+            await viewport({ width, height: 900, mobile: false });
+            await sleep(300);
+            const cols = await evalJs(`(() => {
+              const table = document.querySelector('[data-sm-jobs]'), box = table.closest('.sm-tw');
+              const links = Array.from(table.querySelectorAll('td.sm-owner .sm-link')).filter((el) => /^[\\w.~]+$/.test(el.textContent.trim()));
+              const heights = links.map((el) => Math.round(el.getBoundingClientRect().height));
+              const least = Math.min(...heights);
+              return { content: box.scrollWidth, box: box.clientWidth, oneWord: links.length, broken: [...new Set(links.filter((el, i) => heights[i] > least + 2).map((el) => el.textContent.trim()))] };
+            })()`);
+            widths.push({ width, ...cols, page: await fitsViewport() });
+        }
+        const roomy = widths.filter((w) => w.width >= 1360);
+        check("schedule: the page does not scroll sideways at 1024, 1280, 1366 or 1440px wide, and from 1360px the jobs table stays inside its box",
+            widths.every((w) => w.page.ok) && roomy.every((w) => w.content <= w.box),
+            widths.map((w) => `${w.width}px: page ${w.page.ok ? "fits" : "scrolls"}, table ${w.content}px in a ${w.box}px box${w.content > w.box ? " (scrolls inside its box)" : ""}`).join("; "));
+        check("schedule: from 1360px wide no one-word owner name is broken across lines", roomy.every((w) => w.oneWord > 0 && w.broken.length === 0),
+            roomy.map((w) => `${w.width}px: ${w.oneWord} one-word owner names${w.broken.length ? `, broken: ${w.broken.join(", ")}` : ", none broken"}`).join("; "));
+    },
+    async boundary() {
+        const b = await evalJs(`({ rows: Array.from(document.querySelectorAll('[data-sm-boundary="launch-agents"] tbody tr'), (tr) => tr.cells[0].textContent), note: document.querySelector('[data-sm-agents-not-listed]')?.textContent || '' })`);
+        const named = launchAgents.filter((a) => !b.rows.includes(a.label) && b.note.includes(a.label));
+        const unaccounted = launchAgents.filter((a) => !b.rows.includes(a.label) && !b.note.includes(a.label));
+        check("boundary: every launch agent in the map is a row in the table or is named beside it as not listed", unaccounted.length === 0 && b.rows.length + named.length === launchAgents.length,
+            `${launchAgents.length} in the map: ${b.rows.length} listed, ${named.length} named as not listed${named.length ? ` (${named.map((a) => a.label).join(", ")})` : ""}${unaccounted.length ? `; unaccounted: ${unaccounted.map((a) => a.label).join(", ")}` : ""}`);
     },
 };
 for (const name of ["connections", "schedule", "routes", "drift", "boundary"]) {
@@ -527,7 +620,8 @@ for (const theme of ["dark", "light"]) {
     check(`phone ${theme}: tapping a component opens its detail over the page`, sheet.open === "true" && sheet.selected === subject.id && sheet.position === "fixed" && sheet.w === 390 && sheet.inert && sheet.inPanel, JSON.stringify(sheet));
     check(`phone ${theme}: the Close button is on screen and 44px`, sheet.close.h >= 44 && sheet.close.w >= 44 && sheet.close.top >= 0 && sheet.close.top < 200, JSON.stringify(sheet.close));
     fit = await fitsViewport();
-    check(`phone ${theme}: the detail does not scroll sideways`, fit.ok, fit.detail);
+    let sheetFit = await sheetFits();
+    check(`phone ${theme}: the detail does not scroll sideways`, fit.ok && sheetFit.ok, `${sheetFit.detail}; ${fit.detail}`);
     await shot(`phone-${theme}-component-detail`);
     await tapAt("[data-sm-close]");
     const closed = await evalJs(`({ open: document.querySelector('[data-sm-panel]').getAttribute('data-sm-open'), inert: document.querySelector('[role=tablist]').hasAttribute('inert') })`);
@@ -541,14 +635,25 @@ for (const theme of ["dark", "light"]) {
             await evalJs(`window.scrollTo(0, 0)`);
             await sleep(150);
             await shot(`phone-dark-${name}`);
+            // A ranked table hands over its remaining rows at phone width too: the control is big enough to tap, and the page still fits with every row on it.
+            const ranked = { connections: ["links", /Strongest links/, crossLinks.length], drift: ["docs", /Stalest living docs/, staleDocs.length] }[name];
+            if (ranked) {
+                const [rankedName, heading, total] = ranked;
+                const control = await evalJs(`(() => { const el = document.querySelector('[data-sm-show-all="${rankedName}"]'); if (!el) return null; const r = el.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), label: el.textContent.trim() }; })()`);
+                if (control) check(`phone: ${name}, the control that shows every row is at least 44px to tap`, control.w >= 44 && control.h >= 44, `${control.label}: ${control.w}x${control.h}`);
+                await rankedTable(`phone: ${name}`, rankedName, heading, total);
+                fit = await fitsViewport();
+                check(`phone: ${name} still has no sideways page scroll with every row shown`, fit.ok, fit.detail);
+            }
         }
         // The longest job description in the map, read whole in the phone sheet.
         if (longestJob) {
             await tapAt(`[data-sm-tab="map"]`);
-            await tapAt(`.sm-tile[data-sm-id="${longestJob.owner}"]`);
+            await selectTile(longestJob.owner, tapAt);
             const whole = await evalJs(`(document.querySelector('[data-sm-panel] [data-sm-section="jobs"]')?.textContent || '').includes(${JSON.stringify(jobText(longestJob))})`);
             fit = await fitsViewport();
-            check("phone: the longest job description is shown whole and the sheet does not scroll sideways", whole && fit.ok, `${longestJob.key}, ${jobText(longestJob).length} characters; ${fit.detail}`);
+            sheetFit = await sheetFits();
+            check("phone: the longest job description is shown whole and the sheet does not scroll sideways", whole && fit.ok && sheetFit.ok, `${longestJob.key}, ${jobText(longestJob).length} characters; ${sheetFit.detail}; ${fit.detail}`);
             await evalJs(`document.querySelector('[data-sm-panel] [data-sm-section="jobs"]')?.scrollIntoView({ block: 'start' })`);
             await sleep(200);
             await shot("phone-dark-job-descriptions");
