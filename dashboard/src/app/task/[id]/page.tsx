@@ -283,16 +283,16 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
             <section className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-5">
               <div className="min-w-0">
                 <h2 className="text-2xl font-semibold text-white">{title}</h2>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <CopyableId id={task.id} />
-                  <span className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-slate-400">
-                    P{task.priority ?? 0}
-                  </span>
-                  <span>Created {new Date(task.createdAt || task.created_at || Date.now()).toLocaleString()}</span>
-                  {(task.updatedAt || task.updated_at) && (
-                    <span>· Updated {new Date(task.updatedAt || task.updated_at!).toLocaleString()}</span>
-                  )}
-                </div>
+                <details className="mt-2 text-xs text-slate-500">
+                  <summary className="cursor-pointer">P{task.priority ?? 0} · Task details</summary>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <CopyableId id={task.id} />
+                    <span>Created {new Date(task.createdAt || task.created_at || Date.now()).toLocaleString()}</span>
+                    {(task.updatedAt || task.updated_at) && (
+                      <span>· Updated {new Date(task.updatedAt || task.updated_at!).toLocaleString()}</span>
+                    )}
+                  </div>
+                </details>
               </div>
               <div className="flex items-center gap-2">
                 {statusSaving && <Loader2 size={14} className="animate-spin text-slate-400" />}
@@ -316,8 +316,6 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
               </div>
             )}
 
-            <TaskProgressPanel key={task.id} task={task} />
-
             {/* Human-input tasks lead with the place to put the input: the
                 guided blind-labelling entry sits ahead of everything else. */}
             <LabelingEntryPanel taskId={task.id} onLinked={setLabelingLinked} />
@@ -325,6 +323,8 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
             {/* Deliverables sit under the title: what this task handed Robert
                 to read, with each document's own review status. */}
             <ReviewDocumentsPanel taskId={task.id} projectId={projectId} />
+
+            <TaskProgressPanel key={task.id} task={task} />
 
             {suspendedReason && (
               <div className="flex items-start gap-3 rounded-lg border border-purple-500/40 bg-purple-500/10 p-4">
@@ -373,9 +373,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
                       <FileText size={15} className="text-cyan-400" /> Description
                     </h3>
                   )}
-                  {labelingLinked && !descriptionOpen ? (
-                    <p className="text-xs text-slate-500">The full source inventory is folded away; the labeling form above is where the work happens.</p>
-                  ) : description ? (
+                  {labelingLinked && !descriptionOpen ? null : description ? (
                     <Markdown content={description} />
                   ) : (
                     <p className="text-sm italic text-slate-500">No description provided.</p>
@@ -387,7 +385,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
                 {walkthrough?.content && (
                   <details id="task-walkthrough" className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
                     <summary className="mb-1 flex cursor-pointer items-center gap-2 text-sm font-semibold text-emerald-200">
-                      <BookOpen size={15} /> Full worker report — expand to read
+                      <BookOpen size={15} /> Full worker report
                     </summary>
                     <p className="mb-3 text-[11px] text-emerald-200/60">
                       {walkthrough.generatedAt && `Captured ${new Date(walkthrough.generatedAt).toLocaleString()}`}

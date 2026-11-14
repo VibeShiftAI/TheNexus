@@ -124,9 +124,8 @@ function NodeDetail({ index, node, onSelect }: { index: MapIndex; node: MapNode;
     const hasCode = Boolean(a.files);
     return (
         <>
-            {node.path ? <div className="sm-mono sm-muted" data-sm-path="">{node.path}</div> : null}
             <p className="sm-purpose" data-sm-purpose="">{node.purpose || "No purpose line yet."}</p>
-            <div className="sm-small sm-muted" data-sm-purpose-source="">{purposeOrigin(node)}</div>
+            <StateMark node={node} />
 
             <div className="sm-facts" data-sm-facts="">
                 <Fact value={a.files} label="source files" />
@@ -146,9 +145,6 @@ function NodeDetail({ index, node, onSelect }: { index: MapIndex; node: MapNode;
                 <Fact value={a.references} label="references in code" />
                 <Fact value={a.count} label="projects" />
             </div>
-            <StateMark node={node} />
-
-            {a.why?.length ? <><h3>Why it is on the map</h3><ul className="sm-small">{a.why.map((w, i) => <li key={i}>{w}</li>)}</ul></> : null}
             {a.mounts?.length ? <div className="sm-small">Mounted at <span className="sm-mono">{a.mounts.map((m) => m || "/").join("  ")}</span></div> : null}
             {a.via?.length ? <><h3>Seen as</h3><div className="sm-mono">{a.via.join(", ")}</div></> : null}
             {a.projects?.length ? <><h3>Projects</h3><div className="sm-small">{a.projects.join(", ")}</div></> : null}
@@ -203,16 +199,23 @@ function NodeDetail({ index, node, onSelect }: { index: MapIndex; node: MapNode;
             ) : null}
             {tables.length ? <><h3>Tables used ({tables.length})</h3><div className="sm-mono">{tables.map((t) => t.name).join(", ")}</div></> : null}
             {a.rootFiles?.length ? <><h3>Files</h3><div className="sm-mono">{a.rootFiles.join(", ")}</div></> : null}
+            <details className="sm-where" data-sm-provenance="">
+                <summary>Source and inclusion</summary>
+                {node.path ? <div className="sm-mono sm-muted" data-sm-path="">{node.path}</div> : null}
+                <div className="sm-small sm-muted" data-sm-purpose-source="">{purposeOrigin(node)}</div>
+                {a.why?.length ? <ul className="sm-small">{a.why.map((w, i) => <li key={i}>{w}</li>)}</ul> : null}
+            </details>
         </>
     );
 }
 
-function HowToRead({ index }: { index: MapIndex }) {
+export function MapGuide({ index }: { index: MapIndex }) {
     const { map } = index;
     const repos = Object.values(map.repos ?? {}).filter((r): r is NonNullable<typeof r> => Boolean(r));
     return (
-        <>
-            <p className="sm-small">Everything here is extracted from the working trees and the running machine by the Praxis generator. Nothing is drawn by hand. Purpose lines come from each repo&apos;s system-map-notes.json, or from a header comment in code when no note exists. Select any component to see what it is, what it reaches and what reaches it.</p>
+        <details className="sm-guide" data-sm-guide="">
+            <summary>Map sources and limits</summary>
+            <p className="sm-small">Generated from working trees and running processes. Purposes: system-map-notes.json, then code headers.</p>
             {repos.length ? (
                 <>
                     <h3>Repos at generation time</h3>
@@ -224,10 +227,10 @@ function HowToRead({ index }: { index: MapIndex }) {
             {map.callResolution ? (
                 <>
                     <h3>Extraction confidence</h3>
-                    <p className="sm-small">{formatCount(map.callResolution.resolved ?? 0)} API call sites were matched to a route on another component; {formatCount(map.callResolution.unresolved ?? 0)} matched nothing and are listed under Drift. Call sites built from variables are not seen. Socket and event traffic is not mapped yet.</p>
+                    <p className="sm-small">API call sites: {formatCount(map.callResolution.resolved ?? 0)} matched; {formatCount(map.callResolution.unresolved ?? 0)} unmatched (Drift). Variable-built calls, sockets and event traffic are not mapped.</p>
                 </>
             ) : null}
-        </>
+        </details>
     );
 }
 
@@ -241,8 +244,9 @@ export function SystemMapPanel({ index, panel, onSelect, onClose, onShowOnMap, h
     headingRef: Ref<HTMLHeadingElement>;
 }) {
     const node = panel?.type === "node" ? index.byId.get(panel.id) ?? null : null;
-    const title = node ? node.name : panel?.type === "pair" ? panel.title : "How to read this";
+    const title = node ? node.name : panel?.type === "pair" ? panel.title : "";
     const open = Boolean(node || panel?.type === "pair");
+    if (!open) return null;
     return (
         <aside className="sm-panel" data-sm-panel="" data-sm-open={open ? "true" : "false"} data-sm-selected={node?.id ?? ""} aria-label="Detail"
             onKeyDown={(e) => { if (e.key === "Escape" && open) { e.stopPropagation(); onClose(); } }}>
@@ -260,7 +264,7 @@ export function SystemMapPanel({ index, panel, onSelect, onClose, onShowOnMap, h
                     <p className="sm-small">{panel.summary}</p>
                     <PairList index={index} edges={panel.edges} onSelect={onSelect} />
                 </>
-            ) : <HowToRead index={index} />}
+            ) : null}
         </aside>
     );
 }

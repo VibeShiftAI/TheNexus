@@ -29,6 +29,17 @@ const admissionInput = (status = 'todo', decision = 'needs_evidence') => ({
  progress: source({ taskId: 't', attempts: [], events: [], eventsAvailable: true }), live: source({ praxis: { reachable: true }, items: [] }), pending: source([]), recent: source([]), evidence: source(null),
 });
 const renderProgress = input => { const div = document.createElement('div'); div.innerHTML = renderToStaticMarkup(createElement(TaskProgressView, { input })); return div; };
+test('pending questions lead the task and history keeps its limits behind a disclosure', () => {
+ const input = admissionInput('in_progress');
+ input.pending.data = [{id:'decision',taskId:'t',question:'Which report should ship?',requestedAt:new Date(now).toISOString()}];
+ const div = renderProgress(input);
+ assert.ok(div.textContent.indexOf('Which report should ship?') < div.textContent.indexOf('Latest step'));
+ assert.equal(div.querySelector('[data-progress-history]').open, false);
+ assert.match(div.querySelector('[data-progress-history]').textContent, /200 system requests/);
+ assert.ok(div.querySelector('[data-progress-notes]'), 'source limitations remain available');
+ const idle = renderProgress(admissionInput('in_progress'));
+ assert.doesNotMatch(idle.textContent, /No action needed from you/);
+});
 test('routine overlap is advisory and does not replace runtime progress with an admission wait', () => {
  const div = renderProgress(admissionInput()); const hold = div.querySelector('[data-work-admission]');
  assert.ok(hold, 'routine overlap warning is visible');

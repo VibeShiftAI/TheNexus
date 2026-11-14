@@ -87,6 +87,10 @@
 
 /* ---- layout ---- */
 .sm-main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; align-items: start; }
+.sm-main[data-sm-detail="false"] { grid-template-columns: minmax(0, 1fr); }
+.sm-guide { margin-top: 20px; border-top: 1px solid var(--sm-hair); padding-top: 10px; }
+.sm-guide > summary { cursor: pointer; color: var(--sm-ink2); font-size: 12px; }
+.sm-guide > p { margin-top: 8px; }
 .sm-view { padding: 18px 20px 48px; min-width: 0; }
 .sm-view h2 { font-size: 16px; font-weight: 650; margin: 28px 0 8px; }
 .sm-view > h2:first-child, .sm-view > :first-child > h2:first-child { margin-top: 0; }

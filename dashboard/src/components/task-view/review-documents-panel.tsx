@@ -65,9 +65,6 @@ export function ReviewDocumentsPanel({ taskId, projectId }: { taskId: string; pr
                     </Link>
                 )}
             </div>
-            <p className="mb-3 text-[11px] text-cyan-100/60">
-                Documents this task delivered. The badge is your decision on each document; the task status and QA verdicts on this page are about the work, not the document.
-            </p>
             {error && (
                 <div role="alert" className="mb-3 flex items-start gap-2 rounded-md border border-rose-500/40 bg-rose-500/10 p-2 text-xs text-rose-200">
                     <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {error}

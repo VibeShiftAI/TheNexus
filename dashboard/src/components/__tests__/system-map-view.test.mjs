@@ -123,12 +123,14 @@ test("the six views are tabs, movable by arrow keys, and the view is kept in the
 
 test("selecting a component shows what it is, its size and activity, routes, jobs and both directions with locations", async (t) => {
     const h = await mount(t);
-    assert.match(h.q("[data-sm-panel]").textContent, /How to read this/);
+    assert.equal(h.q("[data-sm-panel]"), null, 'an idle map gives the full width to content');
+    assert.ok(h.q('[data-sm-guide] summary'), 'generation facts remain in a disclosure');
     await h.click('[data-sm-id="praxis/reports"]');
     const panel = h.q("[data-sm-panel]").textContent;
     assert.equal(h.q('.sm-tile[data-sm-id="praxis/reports"]').getAttribute("aria-pressed"), "true");
     assert.match(panel, /Builds the weekly reports\./);
     assert.match(panel, /Praxis\/system-map-notes\.json/);
+    assert.ok(h.q('[data-sm-purpose-source]').closest('details:not([open])'), 'provenance is accessible without taking space before the facts');
     assert.match(panel, /1,200/, "lines of code");
     assert.match(panel, /2026-11-01/, "last change");
     const out = h.q('[data-sm-section="out"]').textContent, incoming = h.q('[data-sm-section="in"]').textContent;
@@ -248,7 +250,7 @@ test("keyboard: a tile opens its detail, focus moves to it, and Escape returns t
     await flush();
     assert.ok(h.q("[data-sm-panel]").contains(document.activeElement), "focus is inside the detail");
     await h.key(document.activeElement, "Escape");
-    assert.match(h.q("[data-sm-panel]").textContent, /How to read this/);
+    assert.equal(h.q("[data-sm-panel]"), null);
     // Focus goes back on the next frame.
     await new Promise((r) => setTimeout(r, 50));
     await flush();
@@ -259,13 +261,13 @@ test("keyboard: a tile opens its detail, focus moves to it, and Escape returns t
 
 test("phone width: the detail opens as a sheet over an inert page, and Close gives the page back", async (t) => {
     const h = await mount(t, undefined, { narrow: true });
-    assert.equal(h.q("[data-sm-panel]").getAttribute("data-sm-open"), "false");
+    assert.equal(h.q("[data-sm-panel]"), null);
     await h.click('[data-sm-id="praxis/reports"]');
     assert.equal(h.q("[data-sm-panel]").getAttribute("data-sm-open"), "true");
     assert.ok(h.q("[role=tablist]").hasAttribute("inert"));
     assert.ok(h.q("[role=tabpanel]").hasAttribute("inert"));
     await h.click("[data-sm-close]");
-    assert.equal(h.q("[data-sm-panel]").getAttribute("data-sm-open"), "false");
+    assert.equal(h.q("[data-sm-panel]"), null);
     assert.ok(!h.q("[role=tablist]").hasAttribute("inert"));
 });
 

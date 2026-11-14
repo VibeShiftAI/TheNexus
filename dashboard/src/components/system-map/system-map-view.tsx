@@ -9,7 +9,7 @@ import {
     isSystemMapTab, isTestFolder, warningCount,
     type SystemMap, type SystemMapFailure, type SystemMapTab, type SystemMapTheme,
 } from "@/lib/system-map";
-import { SystemMapPanel, type PairDetail, type PanelState, type SelectNode } from "./system-map-panel";
+import { MapGuide, SystemMapPanel, type PairDetail, type PanelState, type SelectNode } from "./system-map-panel";
 import { BoundaryTab, ConnectionsTab, DriftTab, MapTab, RoutesTab, ScheduleTab } from "./system-map-tabs";
 
 const NARROW = "(max-width: 1023px)";
@@ -265,7 +265,7 @@ export function SystemMapView() {
                             </button>
                         ))}
                     </div>
-                    <div className="sm-main">
+                    <div className="sm-main" data-sm-detail={panel ? "true" : "false"}>
                         <div className="sm-view" role="tabpanel" id="sm-tabpanel" aria-labelledby={`sm-tab-${tab}`} data-sm-view={tab} inert={sheetOpen}>
                             {tab === "map" ? <MapTab {...tabProps} />
                                 : tab === "connections" ? <ConnectionsTab {...tabProps} />
@@ -273,6 +273,7 @@ export function SystemMapView() {
                                 : tab === "routes" ? <RoutesTab {...tabProps} />
                                 : tab === "drift" ? <DriftTab {...tabProps} />
                                 : <BoundaryTab {...tabProps} />}
+                            <MapGuide index={index} />
                         </div>
                         <SystemMapPanel index={index} panel={panel} onSelect={select} onClose={closePanel} headingRef={headingRef}
                             onShowOnMap={selectedId && tab !== "map" && !narrow ? showOnMap : null} />

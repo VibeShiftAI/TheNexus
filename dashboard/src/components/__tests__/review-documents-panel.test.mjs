@@ -51,7 +51,7 @@ test('lists the task deliverables with purpose, version, document status and a d
     assert.equal(row('doc-001').querySelector('a[href^="/task/"]'), null, 'no link back to the task it is already on');
     // The pending number is the server's count for the task: two need review (doc-001, doc-002).
     assert.equal(panel.querySelector('[data-deliverables-pending]').textContent.trim(), '2 awaiting your review');
-    assert.match(panel.textContent, /task status and QA verdicts on this page are about the work, not the document/);
+    assert.doesNotMatch(panel.textContent, /Documents this task delivered|task status and QA verdicts on this page/);
   } finally { t.cleanup(); }
 });
 
