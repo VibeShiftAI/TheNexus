@@ -116,6 +116,9 @@ try {
     projectIntake = createProjectIntakeStore(db, { deserialize: deserRow,
         refreshKnowledgeWork: (current, patch) => routeKnowledgeChangeWork({ db, current, patch, createTask, updateTask, allowCreate: false,
             readTask: id => deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id)) }),
+        // record_backlog files its proposals inside the intake transaction, under the board
+        // lease operateProjectIntake already holds: the unleased batch create, not the facade's.
+        batchCreateTasks,
     });
     // Priority is advertised by the canonical project API; older schemas
     // omitted the column, making an otherwise valid metadata update fail.

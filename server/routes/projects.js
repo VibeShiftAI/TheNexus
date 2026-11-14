@@ -267,7 +267,10 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         try { res.status(status).json(await handler(req)); }
         catch (error) {
             if (sendLeaseError(res, error)) return;
-            res.status(error.status || 500).json({ error: error.message, code: error.code || 'INTAKE_SAVE_FAILED' });
+            // `detail` is what a caller needs to recover from a refused backlog receipt: the current
+            // receipt, the unrecorded task ids, or the slot at fault (db/intake-backlog.js).
+            const detail = error.detail && typeof error.detail === 'object' && !Array.isArray(error.detail) ? error.detail : {};
+            res.status(error.status || 500).json({ ...detail, error: error.message, code: error.code || 'INTAKE_SAVE_FAILED' });
         }
     };
     router.post('/intake', intakeResponse(req => db.createProjectIntake(req.body), 201));

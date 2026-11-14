@@ -610,6 +610,423 @@ describe('durable record-only project intake', () => {
     expect(require('@praxis/contract').ProjectIntakeSchema.safeParse(legacy).success).toBe(true);
   });
 
+  // The step after accept (docs/project-intake.md, "The initial backlog receipt"). S-numbers are the
+  // scenarios of Praxis docs/investigations/intake-task-generation-gap-2026-11-04.md, section 6.
+  describe('the initial backlog receipt (record_backlog)', () => {
+    // Intake stamps run one millisecond ahead of each other, so wait before filing a task that has to count as later.
+    const settle = () => new Promise(resolve => setTimeout(resolve, 10));
+    const accept = async (p, rest = {}) => {
+      const result = await op(p, 'accept', { source_ref: 'chat:accept', next_step: 'Plan the pilot', brief_revision: p.intake.brief_revision, ...rest });
+      expect(result.status).toBe(200);
+      await settle();
+      return result.body;
+    };
+    const handedOff = async () => accept(await prepared());
+    const body = (slot, rest = {}) => ({ slot, name: `Stage ${slot}: pilot step ${slot}`, description: `What: deliver step ${slot} of the pilot. Why: the accepted next step needs it.`,
+      antigravity_payload: { prompt: `Deliver step ${slot} of the pilot`, acceptance_criteria: [`Step ${slot} is demonstrated`] }, ...rest });
+    const plan = (note = '') => [body(1), body(2, { dependencies: [1] }), body(3, { dependencies: [2] })].map(proposal => ({ ...proposal, description: proposal.description + note }));
+    const record = (snapshot, rest) => op(snapshot, 'record_backlog', rest);
+    const rows = id => raw.prepare('SELECT * FROM tasks WHERE project_id=? ORDER BY rowid').all(id);
+    const read = async id => (await request(`/${id}/intake`, null, 'GET')).body;
+    const file = async (projectId, names, extra = {}) => (await db.batchCreateTasks(names.map(name => ({ project_id: projectId, name, status: 'idea', source: 'praxis-chat',
+      description: `Filed with a plain batch create: ${name}`, ...extra })))).map(task => task.id);
+    const derived = (snapshot, slot) => `intake-backlog:${snapshot.project.id}:${snapshot.intake.acceptance.at}:${slot}`;
+    const identity = row => JSON.parse(row.metadata).work_identity?.proposal_id;
+    const count = table => raw.prepare(`SELECT count(*) AS n FROM ${table}`).get().n;
+    const elsewhere = () => ({ folders: fs.readdirSync(dir), scheduled: count('scheduled_tasks'), runs: count('runs'), calendar: count('calendar_events'), documents: count('review_documents') });
+    /** Everything a receipt may not change: the project, the brief, the review and the acceptance decision. */
+    const decision = snapshot => {
+      const { updated_at, intake, ...project } = snapshot.project;
+      const { revision, operations, acceptance, ...record } = intake;
+      const { backlog, backlog_history, ...accepted } = acceptance;
+      return { project, record, accepted };
+    };
+    /** A refused call wrote nothing: same intake revision, same receipt, same number of tasks. */
+    const untouched = async (snapshot, tasks) => {
+      expect(await read(snapshot.project.id)).toEqual(snapshot);
+      expect(rows(snapshot.project.id)).toHaveLength(tasks);
+    };
+
+    test('S1: accept reports no receipt, and one generated call files the proposals and records their ids', async () => {
+      const accepted = await handedOff(), id = accepted.project.id;
+      expect(accepted).toMatchObject({ open_task_count: 0, backlog: null });
+      expect(await read(id)).toEqual(accepted);
+      const before = elsewhere();
+      const proposals = [body(1, { metadata: { checkpoint_id: 'checkpoint-1', work_identity: { proposal_id: 'chosen-by-the-caller' } } }), body(2, { dependencies: [1] }), body(3, { dependencies: [1, 2] })];
+      const result = await record(accepted, { status: 'generated', proposals });
+      expect(result.status).toBe(200);
+      const receipt = result.body.backlog, stored = rows(id);
+      expect(stored).toHaveLength(3);
+      expect(receipt).toEqual({ status: 'generated', task_ids: stored.map(row => row.id), remaining: [], brief_revision: accepted.intake.brief_revision,
+        proposals: proposals.map((proposal, index) => ({ ...proposal, task_id: stored[index].id })), operation_id: expect.any(String), at: result.body.project.updated_at, replayed: false });
+      stored.forEach((row, index) => {
+        expect(row).toMatchObject({ name: proposals[index].name, description: proposals[index].description, status: 'idea', source: 'nexus-api', created_at: receipt.at });
+        expect(identity(row)).toBe(derived(accepted, index + 1));
+        expect(JSON.parse(row.antigravity_payload)).toEqual(proposals[index].antigravity_payload);
+      });
+      expect(JSON.parse(stored[0].metadata).checkpoint_id).toBe('checkpoint-1');
+      expect(stored.map(row => JSON.parse(row.dependencies || '[]'))).toEqual([[], [stored[0].id], [stored[0].id, stored[1].id]]);
+      // The response, the stored intake and a later read agree, and only the tasks and the receipt are new.
+      expect(result.body).toMatchObject({ open_task_count: 3, intake: { state: 'handed_off', revision: accepted.intake.revision + 1, acceptance: { backlog: receipt } } });
+      expect(result.body.intake.operations.at(-1)).toMatchObject({ operation_id: receipt.operation_id, action: 'record_backlog' });
+      expect(await read(id)).toEqual(result.body);
+      expect(decision(result.body)).toEqual(decision(accepted));
+      expect(result.body.project).toMatchObject({ phase: 'planning', path: '' });
+      expect(elsewhere()).toEqual(before);
+    });
+
+    test('S3 (a, c): a replayed envelope returns the stored receipt, and the same operation_id with recomposed proposals is refused', async () => {
+      const accepted = await handedOff(), id = accepted.project.id;
+      const envelope = { operation_id: crypto.randomUUID(), expected_revision: accepted.intake.revision, action: 'record_backlog', status: 'generated', proposals: plan() };
+      const first = await request(`/${id}/intake/operations`, envelope);
+      expect(first.status).toBe(200);
+      const ids = first.body.backlog.task_ids;
+      expect(rows(id).map(row => row.id)).toEqual(ids);
+      expect(ids).toHaveLength(3);
+      // (a) The response was lost and the caller sends the retained envelope again.
+      const replayed = await request(`/${id}/intake/operations`, envelope);
+      expect(replayed.status).toBe(200);
+      const expected = structuredClone(first.body);
+      for (const receipt of [expected.backlog, expected.intake.acceptance.backlog, expected.project.intake.acceptance.backlog]) receipt.replayed = true;
+      expect(replayed.body).toEqual(expected);
+      expect(replayed.body.backlog).toMatchObject({ task_ids: ids, replayed: true });
+      expect(rows(id).map(row => row.id)).toEqual(ids);
+      // Only the response to the retry says replayed; the record does not.
+      expect(await read(id)).toEqual(first.body);
+      // (c) The same operation_id with a recomposed plan is a different payload under that id.
+      const recomposed = await request(`/${id}/intake/operations`, { ...envelope, proposals: plan(' Recomposed for the retry.') });
+      expect(recomposed.status).toBe(409);
+      expect(recomposed.body.code).toBe('INTAKE_OPERATION_COLLISION');
+      await untouched(first.body, 3);
+    });
+
+    test('S3 (b): of two workers that read the same revision one files the backlog, and the other creates nothing and is handed the ids', async () => {
+      const accepted = await handedOff(), id = accepted.project.id;
+      const results = await Promise.all(['worker one', 'worker two'].map(worker => record(accepted, { status: 'generated', proposals: plan(` Planned by ${worker}.`) })));
+      expect(results.map(result => result.status).sort()).toEqual([200, 409]);
+      const won = results.find(result => result.status === 200), lost = results.find(result => result.status === 409);
+      expect(lost.body.code).toBe('INTAKE_REVISION_STALE');
+      expect(won.body.intake.revision).toBe(accepted.intake.revision + 1);
+      const ids = won.body.backlog.task_ids;
+      expect(rows(id).map(row => row.id)).toEqual(ids);
+      // The second worker reads again and finds the ids to report.
+      const reread = await read(id);
+      expect(reread.backlog.task_ids).toEqual(ids);
+      // A fresh call that does not name the receipt is stopped before any task, and is handed the receipt.
+      const again = await record(reread, { status: 'generated', proposals: plan(' Planned again.') });
+      expect(again.status).toBe(409);
+      expect(again.body).toMatchObject({ code: 'INTAKE_BACKLOG_EXISTS', backlog: reread.backlog });
+      expect(again.body.error).toContain(reread.backlog.operation_id);
+      // Naming some other operation does not replace it either, and a receipt that does not exist cannot be superseded.
+      expect((await record(reread, { status: 'generated', proposals: plan(' Third.'), supersedes: crypto.randomUUID() })).body).toMatchObject({ code: 'INTAKE_BACKLOG_EXISTS', backlog: reread.backlog });
+      await untouched(reread, 3);
+      const other = await handedOff();
+      expect((await record(other, { status: 'generated', proposals: plan(), supersedes: reread.backlog.operation_id })).body.code).toBe('INTAKE_BACKLOG_SUPERSEDES_UNKNOWN');
+      await untouched(other, 0);
+    });
+
+    test.each([
+      ['a1', 'slot 2 has an empty name', proposals => { proposals[1].name = ''; }, 2, /^proposals slot 2: name: /],
+      ['a2', 'slot 3 depends on slot 4, which is not in the call', proposals => { proposals[2].dependencies = [4]; }, 3, /^proposals slot 3: it depends on slot 4/],
+      ['extra', 'slots 1 and 2 depend on each other', proposals => { proposals[0].dependencies = [2]; }, 1, /^proposals slot 1: its dependencies lead back to its own slot/],
+      ['extra', 'two proposals claim slot 2', proposals => { proposals[2].slot = 2; proposals[2].dependencies = [1]; }, 2, /^proposals slot 2: the slot appears more than once/],
+      ['extra', 'slot 2 depends on a task the receipt does not name', proposals => { proposals[1].dependencies = ['00000000-0000-4000-8000-000000000000']; }, 2, /^proposals slot 2: it depends on task 00000000/],
+      ['extra', 'slot 3 carries knowledge metadata that is not valid', proposals => { proposals[2].metadata = { knowledge_need_ids: 'owner' }; }, 3, /^proposals slot 3: /],
+    ])('S4 (%s): %s, so the call is refused by slot with nothing written, and the corrected retry files all three', async (_case, _what, spoil, slot, message) => {
+      const accepted = await handedOff(), id = accepted.project.id;
+      const proposals = plan(); spoil(proposals);
+      const refused = await record(accepted, { status: 'generated', proposals });
+      expect(refused.status).toBe(400);
+      expect(refused.body).toMatchObject({ code: 'INTAKE_BACKLOG_PROPOSAL_INVALID', list: 'proposals', slot, error: expect.stringMatching(message) });
+      await untouched(accepted, 0);
+      const retried = await record(accepted, { status: 'generated', proposals: plan() });
+      expect(retried.status).toBe(200);
+      expect(retried.body.backlog.task_ids).toEqual(rows(id).map(row => row.id));
+      expect(rows(id)).toHaveLength(3);
+    });
+
+    test('S4 (a3): a create that fails on the third proposal rolls back the first two, reports the failure, and the retry files all three', async () => {
+      const accepted = await handedOff(), id = accepted.project.id;
+      const proposals = plan(), forced = `Stage 3: forced to fail ${crypto.randomUUID()}`;
+      proposals[2].name = forced;
+      raw.prepare(`CREATE TRIGGER forced_backlog_failure BEFORE INSERT ON tasks WHEN NEW.name = '${forced}' BEGIN SELECT RAISE(ABORT, 'forced insert failure'); END`).run();
+      const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+      let failed, logged;
+      try { failed = await record(accepted, { status: 'generated', proposals }); }
+      finally {
+        raw.prepare('DROP TRIGGER forced_backlog_failure').run();
+        logged = errors.mock.calls.map(call => call.join(' ')).join('\n');
+        errors.mockRestore();
+      }
+      // The board logged the insert it could not make, and the batch came back empty.
+      expect(logged).toMatch(/Error creating task: forced insert failure[\s\S]*Error batch-creating tasks/);
+      // The failure reaches the caller as an error, not as a success with an empty receipt.
+      expect(failed.status).toBe(422);
+      expect(failed.body).toMatchObject({ code: 'INTAKE_BACKLOG_CREATE_FAILED', error: expect.stringMatching(/the board created 0 of 3 tasks\. Nothing was written/) });
+      expect(failed.body.backlog).toBeUndefined();
+      await untouched(accepted, 0);
+      expect(raw.prepare('SELECT count(*) AS n FROM work_admissions WHERE task_id NOT IN (SELECT id FROM tasks)').get().n).toBe(0);
+      // The same proposals under a new operation_id start from the same state.
+      const retried = await record(accepted, { status: 'generated', proposals });
+      expect(retried.status).toBe(200);
+      expect(retried.body.backlog).toMatchObject({ status: 'generated', task_ids: rows(id).map(row => row.id) });
+      expect(rows(id).map(row => row.name)).toEqual(proposals.map(proposal => proposal.name));
+    });
+
+    test('S4 (c): two filed tasks and an unfiled slot make a partial receipt, and only a call that keeps all of it may replace it', async () => {
+      const accepted = await handedOff(), id = accepted.project.id;
+      const [t1, t2] = await file(id, ['Slot 1, filed with a plain batch', 'Slot 2, filed with a plain batch']);
+      const slot3 = body(3, { dependencies: [t2], metadata: { checkpoint_id: 'checkpoint-1' } });
+      const written = await record(await read(id), { status: 'generated', task_ids: [t1, t2], remaining: [slot3] });
+      expect(written.status).toBe(200);
+      const partial = written.body.backlog;
+      expect(partial).toMatchObject({ status: 'partial', task_ids: [t1, t2], proposals: [], remaining: [slot3], replayed: false });
+      expect(partial.supersedes).toBeUndefined();
+      expect(written.body.intake.acceptance.backlog_history).toBeUndefined();
+      expect(written.body.open_task_count).toBe(2);
+      // An unrelated task lands on the board afterwards (S12).
+      const [t4] = await file(id, ['Unrelated work filed later']);
+      const current = await read(id);
+      const supersede = rest => record(current, { status: 'generated', supersedes: partial.operation_id, ...rest });
+      const dropped = async (rest, ids, slots) => {
+        const refused = await supersede(rest);
+        expect(refused.status).toBe(409);
+        expect(refused.body).toMatchObject({ code: 'INTAKE_BACKLOG_PARTIAL_DROPPED', dropped_task_ids: ids, dropped_slots: slots, backlog: partial });
+        for (const named of [...ids, ...slots.map(slot => `Slot ${slot}`)]) expect(refused.body.error).toContain(named);
+        await untouched(current, 3);
+      };
+      await dropped({ task_ids: [t4] }, [t1, t2], [3]);                                    // S12 (c): names t1, t2 and slot 3
+      await dropped({ proposals: [slot3] }, [t1, t2], []);                                 // files slot 3 but omits the prior ids
+      await dropped({ task_ids: [t1, t2] }, [], [3]);                                      // keeps the ids but drops slot 3
+      await dropped({ task_ids: [t1, t2], remaining: [{ ...slot3, name: 'Slot 3, reworded' }] }, [], [3]);
+      await dropped({ task_ids: [t1, t2, t4], covers: [{ slot: 3, task_id: t4 }] }, [], [3]); // t4 was not filed for slot 3
+      // Recording the unrelated task keeps the slot: still partial, slot 3 body unchanged.
+      const recorded = await supersede({ task_ids: [t1, t2, t4], remaining: [slot3] });
+      expect(recorded.status).toBe(200);
+      expect(recorded.body.backlog).toMatchObject({ status: 'partial', task_ids: [t1, t2, t4], remaining: [slot3], supersedes: partial.operation_id });
+      expect(rows(id)).toHaveLength(3);
+      // Filing slot 3 from the stored body closes the receipt.
+      const closed = await record(recorded.body, { status: 'generated', supersedes: recorded.body.backlog.operation_id, task_ids: [t1, t2, t4], proposals: recorded.body.backlog.remaining });
+      expect(closed.status).toBe(200);
+      const filed = rows(id).at(-1);
+      expect(rows(id)).toHaveLength(4);
+      expect(closed.body.backlog).toMatchObject({ status: 'generated', task_ids: [t1, t2, t4, filed.id], remaining: [], proposals: [{ ...slot3, task_id: filed.id }], supersedes: recorded.body.backlog.operation_id });
+      expect(closed.body.intake.acceptance.backlog_history.map(receipt => receipt.status)).toEqual(['partial', 'partial']);
+      expect(closed.body.intake.acceptance.backlog_history).toEqual([partial, recorded.body.backlog]);
+      expect(identity(filed)).toBe(derived(accepted, 3));
+      expect(JSON.parse(filed.dependencies)).toEqual([t2]);
+      expect(JSON.parse(filed.metadata).checkpoint_id).toBe('checkpoint-1');
+      expect(closed.body.open_task_count).toBe(4);
+      expect(decision(closed.body)).toEqual(decision(accepted));
+    });
+
+    test('a slot filed outside the operation is accounted for with covers, by the identity Nexus derives for it', async () => {
+      const accepted = await handedOff(), id = accepted.project.id;
+      const [t1] = await file(id, ['Slot 1, filed with a plain batch']);
+      const slot2 = body(2, { dependencies: [1] });
+      // A remaining slot may depend on a slot no task was filed for through the receipt; it cannot be filed until that is settled.
+      expect((await record(await read(id), { status: 'generated', task_ids: [t1], remaining: [slot2] })).body).toMatchObject({ code: 'INTAKE_BACKLOG_PROPOSAL_INVALID', list: 'remaining', slot: 2 });
+      const held = body(2, { dependencies: [t1] });
+      const partial = (await record(await read(id), { status: 'generated', task_ids: [t1], remaining: [held] })).body;
+      expect(partial.backlog.status).toBe('partial');
+      const [covering] = await file(id, ['Slot 2, filed with a plain batch under its derived identity'], { metadata: { work_identity: { proposal_id: derived(accepted, 2) } } });
+      const [stray] = await file(id, ['Filed with some other identity'], { metadata: { work_identity: { proposal_id: 'some-other-plan:2' } } });
+      const current = await read(id);
+      const cover = task_id => record(current, { status: 'generated', supersedes: partial.backlog.operation_id, task_ids: [t1, stray], covers: [{ slot: 2, task_id }] });
+      expect((await cover(stray)).body).toMatchObject({ code: 'INTAKE_BACKLOG_PARTIAL_DROPPED', dropped_slots: [2] });
+      expect((await record(current, { status: 'generated', supersedes: partial.backlog.operation_id, task_ids: [t1], covers: [{ slot: 5, task_id: covering }], remaining: [held] })).body)
+        .toMatchObject({ code: 'INTAKE_BACKLOG_PROPOSAL_INVALID', list: 'covers', slot: 5 });
+      await untouched(current, 3);
+      const closed = await cover(covering);
+      expect(closed.status).toBe(200);
+      expect(closed.body.backlog).toMatchObject({ status: 'generated', task_ids: [t1, stray, covering], remaining: [], proposals: [{ ...held, task_id: covering }] });
+      expect(rows(id)).toHaveLength(3);
+    });
+
+    test('S5: the receipt keeps the brief revision it was planned against when the scope moves, and a stale brief revision is refused', async () => {
+      const accepted = await handedOff(), id = accepted.project.id, at = accepted.intake.brief_revision;
+      expect(at).toBeGreaterThan(0);
+      // Older than the accepted brief, so nothing is filed.
+      const older = await record(accepted, { status: 'generated', proposals: plan(), brief_revision: at - 1 });
+      expect(older.status).toBe(409);
+      expect(older.body).toMatchObject({ code: 'INTAKE_BACKLOG_BRIEF_STALE', brief_revision: at, accepted_brief_revision: at, error: expect.stringContaining('older than the accepted brief') });
+      await untouched(accepted, 0);
+      const written = await record(accepted, { status: 'generated', proposals: plan(), brief_revision: at });
+      expect(written.status).toBe(200);
+      const receipt = written.body.backlog;
+      expect(receipt.brief_revision).toBe(at);
+      const tasks = rows(id);
+      // Robert moves the scope after the handoff.
+      const revised = await op(written.body, 'revise', { brief: { scope: 'Tool lending pilot, two streets only' } });
+      expect(revised.status).toBe(200);
+      expect(revised.body.intake).toMatchObject({ state: 'handed_off', brief_revision: at + 1, brief: { scope: 'Tool lending pilot, two streets only' } });
+      // The acceptance and the receipt stay as they were written, beside the current brief, and no task was touched.
+      expect(revised.body.intake.acceptance).toEqual(written.body.intake.acceptance);
+      expect(revised.body.backlog).toEqual(receipt);
+      expect(revised.body.open_task_count).toBe(3);
+      expect(await read(id)).toEqual(revised.body);
+      expect(rows(id)).toEqual(tasks);
+      // A plan made against the brief that was current before the revision is refused; the current one is stamped.
+      const stale = await record(revised.body, { status: 'generated', supersedes: receipt.operation_id, task_ids: receipt.task_ids, proposals: [body(4)], brief_revision: at });
+      expect(stale.status).toBe(409);
+      expect(stale.body).toMatchObject({ code: 'INTAKE_BACKLOG_BRIEF_STALE', brief_revision: at + 1, accepted_brief_revision: at });
+      await untouched(revised.body, 3);
+      const extended = await record(revised.body, { status: 'generated', supersedes: receipt.operation_id, task_ids: receipt.task_ids, proposals: [body(4, { dependencies: [3] })] });
+      expect(extended.status).toBe(200);
+      expect(extended.body.backlog.brief_revision).toBe(at + 1);
+      expect(extended.body.intake.acceptance.backlog_history).toEqual([receipt]);
+      expect(JSON.parse(rows(id).at(-1).dependencies)).toEqual([receipt.task_ids[2]]);
+    });
+
+    test('S6: a deferral needs a reason and a reference, is recorded without a task, and a later generated receipt replaces it', async () => {
+      const accepted = await handedOff(), id = accepted.project.id;
+      const reason = 'Robert asked to hold tasks until he sends Chapter 1', source_ref = 'nexus://conversation/3abe0db4/message/c0b3b863';
+      for (const bare of [{}, { reason }, { source_ref }, { reason, source_ref: 'hold:' }, { reason, source_ref: 'hold: ' }, { reason, source_ref: 'hold:legal-review' }]) {
+        const refused = await record(accepted, { status: 'deferred', ...bare });
+        expect(refused.status).toBe(400);
+        expect(refused.body.code).toBe('INTAKE_BACKLOG_REASON_REQUIRED');
+      }
+      // A deferral files nothing and names no new work.
+      expect((await record(accepted, { status: 'deferred', reason, source_ref, proposals: plan() })).body.code).toBe('INVALID_INTAKE');
+      const [stray] = await file(id, ['Filed before the deferral']);
+      const before = await read(id);
+      expect((await record(before, { status: 'deferred', reason, source_ref, task_ids: [stray] })).body.code).toBe('INVALID_INTAKE');
+      await untouched(before, 1);
+      const deferred = await record(before, { status: 'deferred', reason, source_ref });
+      expect(deferred.status).toBe(200);
+      expect(deferred.body.backlog).toMatchObject({ status: 'deferred', task_ids: [], proposals: [], remaining: [], reason, source_ref, brief_revision: accepted.intake.brief_revision, replayed: false });
+      expect(rows(id)).toHaveLength(1);
+      expect(decision(deferred.body)).toEqual(decision(accepted));
+      // The deferral is a receipt: it is not overwritten by a call that has not read it.
+      expect((await record(deferred.body, { status: 'generated', task_ids: [stray], proposals: plan() })).body).toMatchObject({ code: 'INTAKE_BACKLOG_EXISTS', backlog: deferred.body.backlog });
+      // When the hold lifts, a generated receipt that names it takes its place.
+      const lifted = await record(deferred.body, { status: 'generated', supersedes: deferred.body.backlog.operation_id, task_ids: [stray], proposals: plan() });
+      expect(lifted.status).toBe(200);
+      expect(lifted.body.backlog).toMatchObject({ status: 'generated', supersedes: deferred.body.backlog.operation_id });
+      expect(lifted.body.backlog.task_ids).toEqual(rows(id).map(row => row.id));
+      expect(lifted.body.backlog.reason).toBeUndefined();
+      expect(lifted.body.intake.acceptance.backlog_history).toEqual([deferred.body.backlog]);
+      // Robert can also put the recorded work on hold: the deferral carries it and adds nothing.
+      const held = { status: 'deferred', supersedes: lifted.body.backlog.operation_id, reason: 'Paused under the legal-review hold', source_ref: 'hold:legal-review' };
+      expect((await record(lifted.body, held)).body).toMatchObject({ code: 'INTAKE_BACKLOG_PARTIAL_DROPPED', dropped_task_ids: lifted.body.backlog.task_ids });
+      const paused = await record(lifted.body, { ...held, task_ids: lifted.body.backlog.task_ids });
+      expect(paused.status).toBe(200);
+      expect(paused.body.backlog).toMatchObject({ status: 'deferred', task_ids: lifted.body.backlog.task_ids, source_ref: 'hold:legal-review', proposals: lifted.body.backlog.proposals });
+      expect(rows(id)).toHaveLength(4);
+    });
+
+    test.each(['stale', 'partial'])('S8: acceptance with a %s review still succeeds, and the receipt asks for no council and no second approval', async disposition => {
+      let p = await prepared();
+      p = (await op(p, 'request_review', { session_id: `council:${disposition}`, brief_revision: p.intake.brief_revision })).body;
+      p = (await op(p, 'record_review', { session_id: `council:${disposition}`, brief_revision: p.intake.brief_revision, source_ref: 'council:result',
+        findings: [{ summary: 'Confirm the pilot deadline', disposition: 'ask_robert' }], ...(disposition === 'partial' ? { status: 'partial' } : {}) })).body;
+      if (disposition === 'stale') p = (await op(p, 'revise', { brief: { scope: 'Smaller pilot' } })).body;
+      const accepted = await accept(p, { source_ref: 'chat:proceed-anyway', decision_note: 'Proceed without waiting for the council.' });
+      expect(accepted.intake.acceptance).toMatchObject({ review_disposition: disposition, decision_note: 'Proceed without waiting for the council.' });
+      expect(accepted.intake.acceptance.readiness_gaps).toEqual(expect.arrayContaining([expect.stringContaining(`(${disposition})`)]));
+      // The receipt is still owed, and writing it takes the plan and nothing else.
+      expect(accepted).toMatchObject({ open_task_count: 0, backlog: null });
+      const result = await record(accepted, { status: 'generated', proposals: [body(1)] });
+      expect(result.status).toBe(200);
+      expect(result.body.backlog).toMatchObject({ status: 'generated', task_ids: rows(accepted.project.id).map(row => row.id) });
+      expect(decision(result.body)).toEqual(decision(accepted));
+    });
+
+    test.each(preHandoffStates)('record_backlog is refused while the intake is %s', async state => {
+      const p = await atState(state);
+      const refused = await record(p, { status: 'generated', proposals: plan() });
+      expect(refused.status).toBe(409);
+      expect(refused.body).toMatchObject({ code: 'INTAKE_STATE_CONFLICT', error: `record_backlog is unavailable while intake is ${state}` });
+      await untouched(p, 0);
+    });
+
+    test('existing records open tasks that are already on the board and creates none; every named task has to be live on this project', async () => {
+      const p = await prepared(), id = p.project.id;
+      const [before1, before2] = await file(id, ['Define the pilot boundaries', 'Research lending rules']);
+      const accepted = await accept(p);
+      expect(accepted).toMatchObject({ open_task_count: 2, backlog: null });
+      const elsewhereProject = await handedOff();
+      const [foreign] = await file(elsewhereProject.project.id, ['A task on another project']);
+      const withdrawn = await file(id, ['Archived work', 'Cancelled work', 'Failed work', 'Completed work']);
+      ['archived', 'cancelled', 'failed', 'completed'].forEach((status, index) => raw.prepare('UPDATE tasks SET status=? WHERE id=?').run(status, withdrawn[index]));
+      const current = await read(id);
+      // Withdrawn and finished tasks are not open work.
+      expect(current.open_task_count).toBe(2);
+      const unknown = crypto.randomUUID();
+      const refused = await record(current, { status: 'existing', task_ids: [before1, unknown, foreign, ...withdrawn] });
+      expect(refused.status).toBe(400);
+      expect(refused.body).toMatchObject({ code: 'INTAKE_BACKLOG_TASK_UNKNOWN', task_ids: [unknown, foreign, ...withdrawn] });
+      expect(refused.body.problems.map(entry => entry.problem)).toEqual(['not a task on this project', 'not a task on this project',
+        'the task is archived, so it is not backlog', 'the task is cancelled, so it is not backlog', 'the task is failed, so it is not backlog', 'the task is completed, so it is not open work for the next step']);
+      for (const shape of [{ task_ids: [] }, {}, { task_ids: [before1], proposals: plan() }, { task_ids: [before1], remaining: [body(2)] }, { task_ids: [before1], covers: [{ slot: 1, task_id: before2 }] }]) {
+        const invalid = await record(current, { status: 'existing', ...shape });
+        expect(invalid.status).toBe(400);
+        expect(invalid.body.code).toBe('INVALID_INTAKE');
+      }
+      // A generated receipt cannot name them either, except finished work, which did deliver.
+      expect((await record(current, { status: 'generated', task_ids: [before1, withdrawn[1], withdrawn[2]] })).body).toMatchObject({ code: 'INTAKE_BACKLOG_TASK_UNKNOWN', task_ids: [withdrawn[1], withdrawn[2]] });
+      expect((await record(current, { status: 'generated' })).body.code).toBe('INVALID_INTAKE');
+      await untouched(current, 6);
+      const result = await record(current, { status: 'existing', task_ids: [before1, before2, before1] });
+      expect(result.status).toBe(200);
+      expect(result.body.backlog).toMatchObject({ status: 'existing', task_ids: [before1, before2], proposals: [], remaining: [] });
+      expect(rows(id)).toHaveLength(6);
+      expect(result.body.open_task_count).toBe(2);
+    });
+
+    test('tasks filed since acceptance that no receipt names stop a second backlog; older tasks never do', async () => {
+      const p = await prepared(), id = p.project.id;
+      const [older] = await file(id, ['Filed before acceptance']);
+      await settle(); // "at or after acceptance" is to the millisecond, so this one has to be clearly earlier
+      const accepted = await accept(p);
+      const filed = await file(id, ['Filed after acceptance 1', 'Filed after acceptance 2', 'Filed after acceptance 3']);
+      const [cancelled] = await file(id, ['Filed after acceptance, then cancelled']);
+      raw.prepare("UPDATE tasks SET status='cancelled' WHERE id=?").run(cancelled);
+      const current = await read(id);
+      const refused = await record(current, { status: 'generated', proposals: plan() });
+      expect(refused.status).toBe(409);
+      expect(refused.body).toMatchObject({ code: 'INTAKE_BACKLOG_UNRECORDED_TASKS', task_ids: filed });
+      await untouched(current, 5);
+      // Naming only some of them is not enough to file more beside the rest.
+      expect((await record(current, { status: 'generated', task_ids: filed.slice(0, 2), proposals: plan() })).body).toMatchObject({ code: 'INTAKE_BACKLOG_UNRECORDED_TASKS', task_ids: [filed[2]] });
+      // Recording them creates nothing.
+      const recorded = await record(current, { status: 'generated', task_ids: filed });
+      expect(recorded.status).toBe(200);
+      expect(recorded.body.backlog).toMatchObject({ status: 'generated', task_ids: filed, proposals: [] });
+      expect(rows(id)).toHaveLength(5);
+      // The task that predates acceptance and the cancelled one block nothing: more work can be filed beside the recorded ids.
+      const more = await record(recorded.body, { status: 'generated', supersedes: recorded.body.backlog.operation_id, task_ids: filed, proposals: [body(1, { dependencies: [filed[0]] })] });
+      expect(more.status).toBe(200);
+      expect(more.body.backlog.task_ids).toEqual([...filed, rows(id).at(-1).id]);
+      expect(more.body.backlog.task_ids).not.toContain(older);
+      expect(accepted.open_task_count).toBe(1);
+      expect(more.body.open_task_count).toBe(5);
+    });
+
+    test('created tasks carry the caller\'s source claim, capped below operator authorship', async () => {
+      const claimed = await handedOff(), capped = await handedOff();
+      expect((await record(claimed, { status: 'generated', proposals: [body(1)], source: 'goal-regression' })).status).toBe(200);
+      const warnings = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      let cappedResult, warned;
+      try { cappedResult = await record(capped, { status: 'generated', proposals: [body(1)], source: 'operator:chat' }); }
+      finally { warned = warnings.mock.calls.map(call => call.join(' ')).join('\n'); warnings.mockRestore(); }
+      expect(cappedResult.status).toBe(200);
+      expect(warned).toContain('Refused operator-authorship claim "operator:chat"');
+      expect(rows(claimed.project.id).map(row => row.source)).toEqual(['goal-regression']);
+      expect(rows(capped.project.id).map(row => row.source)).toEqual(['nexus-api']);
+    });
+
+    test('the shared contract types the receipt and the operation, and partial is never an input', () => {
+      const { ProjectIntakeOperationSchema, IntakeBacklogReceiptSchema, IntakeHandoffSummarySchema } = require('@praxis/contract');
+      const envelope = { operation_id: 'op-1', expected_revision: 3, action: 'record_backlog' };
+      expect(ProjectIntakeOperationSchema.safeParse({ ...envelope, status: 'generated', proposals: plan() }).success).toBe(true);
+      expect(ProjectIntakeOperationSchema.safeParse({ ...envelope, status: 'partial', proposals: plan() }).success).toBe(false);
+      expect(ProjectIntakeOperationSchema.safeParse({ ...envelope, status: 'generated', proposals: plan(), dispatch: true }).success).toBe(false);
+      expect(Object.keys(IntakeBacklogReceiptSchema.shape).sort()).toEqual(['at', 'brief_revision', 'operation_id', 'proposals', 'reason', 'remaining', 'replayed', 'source_ref', 'status', 'supersedes', 'task_ids']);
+      expect(Object.keys(IntakeHandoffSummarySchema.shape).sort()).toEqual(['backlog', 'open_task_count']);
+    });
+  });
+
   test('preparation councils persist provenance and findings without satisfying final review', async () => {
     const p = (await create()).body;
     const requested = await op(p, 'request_review', { mode: 'preparation', source_ref: 'chat:explicit-council', session_id: 'council:prepare', brief_revision: p.intake.brief_revision });

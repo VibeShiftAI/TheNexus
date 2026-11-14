@@ -1,10 +1,14 @@
-/** Record-only intake. All mutations and immutable replay receipts share one SQLite transaction. */
+/**
+ * Record-only intake. All mutations and immutable replay receipts share one SQLite transaction.
+ * One operation also files tasks, in that same transaction: record_backlog (./intake-backlog.js).
+ */
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { isDeepStrictEqual: equal } = require('util');
 const { CreateProjectIntakeSchema, ProjectIntakeOperationSchema, ProjectIntakeSchema } = require('@praxis/contract');
 const { prepareProjectPatch, invalid, timestamp } = require('./project-data');
+const { recordBacklog, openTaskCount, backlogProposalIssue, markBacklogReplayed } = require('./intake-backlog');
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const fail = (message, code = 'INTAKE_CONFLICT', status = 409) => Object.assign(invalid(message, status), { code });
 function parse(schema, input) {
@@ -123,8 +127,12 @@ function readinessGaps(needs, intake, disposition) {
     }
     return gaps;
 }
-function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () => {} }) {
+function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () => {}, batchCreateTasks }) {
     const read = id => deserialize(db.prepare('SELECT * FROM projects WHERE id=?').get(id));
+    // After handoff every intake response also says what the board holds and which backlog receipt
+    // is recorded, so the step after accept is visible wherever the acceptance is.
+    const handoff = project => (project.intake?.state === 'handed_off'
+        ? { open_task_count: openTaskCount(db, project.id), backlog: project.intake.acceptance?.backlog || null } : {});
     function save(id, patch) {
         const entries = Object.entries(patch).filter(([key]) => key !== 'id');
         db.prepare(`UPDATE projects SET ${entries.map(([key]) => `${key}=?`).join(',')} WHERE id=?`).run(...entries.map(([, value]) => value && typeof value === 'object' ? JSON.stringify(value) : value ?? null), id);
@@ -137,7 +145,7 @@ function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () =
         return JSON.parse(record.result);
     }
     function receipt(input, project, projectId) {
-        const result = { project, intake: project.intake };
+        const result = { project, intake: project.intake, ...handoff(project) };
         db.prepare('INSERT INTO project_intake_operations(operation_id,project_id,fingerprint,result,created_at) VALUES (?,?,?,?,?)')
             .run(input.operation_id, project.id, fingerprint({ project_id: projectId || null, input }), JSON.stringify(result), project.updated_at);
         return result;
@@ -165,12 +173,16 @@ function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () =
         assertWorkspaceUnclaimed(candidate, current?.id);
         return candidate;
     }
-    function get(projectId) {
+    function load(projectId) {
         const project = read(projectId);
         if (!project) throw fail('Project not found', 'PROJECT_NOT_FOUND', 404);
         if (!project.intake) throw fail('Project has no intake', 'INTAKE_NOT_FOUND', 404);
         parse(ProjectIntakeSchema, project.intake);
         return { project, intake: project.intake };
+    }
+    function get(projectId) {
+        const { project, intake } = load(projectId);
+        return { project, intake, ...handoff(project) };
     }
     function create(raw) {
         const input = parse(CreateProjectIntakeSchema, raw);
@@ -195,14 +207,21 @@ function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () =
             return receipt(input, read(id));
         }).immediate();
     }
+    function parseOperation(raw) {
+        const result = ProjectIntakeOperationSchema.safeParse(raw);
+        if (result.success) return result.data;
+        // A bad backlog proposal is refused by its slot, not by its position in the array.
+        throw backlogProposalIssue(raw, result.error.issues)
+            || fail(result.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; '), 'INVALID_INTAKE', 400);
+    }
     function operate(projectId, raw) {
-        const input = parse(ProjectIntakeOperationSchema, raw);
+        const input = parseOperation(raw);
         return db.transaction(() => {
-            const prior = replay(input, projectId); if (prior) return prior;
-            let { project, intake } = get(projectId);
+            const prior = replay(input, projectId); if (prior) return input.action === 'record_backlog' ? markBacklogReplayed(prior, input.operation_id) : prior;
+            let { project, intake } = load(projectId);
             const currentProject = project;
             if (intake.revision !== input.expected_revision) throw fail('Intake revision changed; reload before saving', 'INTAKE_REVISION_STALE');
-            if (intake.state === 'handed_off' && !['attach_workspace', 'answer', 'revise'].includes(input.action)) throw fail('Intake was already handed off to planning. Use answer or revise to update its knowledge and brief, or continue the planning conversation.', 'INTAKE_HANDED_OFF');
+            if (intake.state === 'handed_off' && !['attach_workspace', 'answer', 'revise', 'record_backlog'].includes(input.action)) throw fail('Intake was already handed off to planning. Use answer or revise to update its knowledge and brief, record_backlog to record the initial backlog, or continue the planning conversation.', 'INTAKE_HANDED_OFF');
             if (!Array.isArray(project.needs ?? [])) throw fail('Stored needs are invalid', 'INVALID_STORED_NEEDS', 500);
             intake = structuredClone(intake);
             const at = timestamp(project.updated_at);
@@ -350,6 +369,13 @@ function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () =
                     }
                     intake.state = 'handed_off'; break;
                 }
+                case 'record_backlog':
+                    // The step after accept. It files proposals as tasks and records which tasks are the
+                    // backlog, in this transaction. It never changes the acceptance decision, the brief
+                    // or the phase, and it schedules, dispatches and publishes nothing.
+                    allowed(['handed_off']);
+                    intake.acceptance = recordBacklog({ db, batchCreateTasks, input, intake, project, at });
+                    break;
             }
             if (material) { rememberBrief(frozenBrief, frozenNeeds, at); intake.brief_history = frozenBrief.brief_history; intake.brief_revision++; invalidateReview(intake); }
             if (own(input, 'pending_need_id')) intake.pending_need_id = input.pending_need_id;

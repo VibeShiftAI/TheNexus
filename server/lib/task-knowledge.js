@@ -27,15 +27,24 @@ const TaskKnowledgeMetadataSchema = z.object({
     knowledge_unresolved_need_ids: z.array(NonblankTextSchema).optional(),
 }).passthrough();
 
-function requireValidKnowledgeMetadata(res, metadata) {
-    if (metadata === undefined) return true;
+/**
+ * Why task metadata fails the knowledge check, or null when it passes. No
+ * response object, so a write path that does not go through a task route (the
+ * intake backlog receipt, db/intake-backlog.js) applies the same check.
+ */
+function knowledgeMetadataError(metadata) {
+    if (metadata === undefined) return null;
     const parsed = TaskKnowledgeMetadataSchema.safeParse(metadata);
-    if (parsed.success) return true;
-    res.status(400).json({
-        error: 'Invalid task knowledge metadata: ' + parsed.error.issues
-            .map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; '),
-    });
+    if (parsed.success) return null;
+    return 'Invalid task knowledge metadata: ' + parsed.error.issues
+        .map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ');
+}
+
+function requireValidKnowledgeMetadata(res, metadata) {
+    const error = knowledgeMetadataError(metadata);
+    if (!error) return true;
+    res.status(400).json({ error });
     return false;
 }
 
-module.exports = { requireValidKnowledgeMetadata };
+module.exports = { requireValidKnowledgeMetadata, knowledgeMetadataError };
