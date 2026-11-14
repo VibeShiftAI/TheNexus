@@ -8,7 +8,8 @@ import assert from 'node:assert/strict';
 import {
   SystemMapError, buildDiagram, buildIndex, buildTimeline, cronHour, cronState, driftChecks, fetchSystemMap, filterRoutes,
   formatGeneratedAt, generatedAgo, isSystemMapTab, matchesNode, nodeConnections, parseSystemMap, processOf, purposeOrigin,
-  stalestDocs, strongestLinks, systemMatrix, systemOf, systemSections, warningCount, EXTERNAL_APIS_ID, SYSTEM_MAP_TABS,
+  stalestDocs, strongestLinks, systemMatrix, systemOf, systemSections, warningCount, EXTERNAL_APIS_ID, RANKED_TABLE_OPENS_WITH,
+  SYSTEM_MAP_TABS,
 } from '../system-map.ts';
 // @ts-expect-error plain .mjs fixture shared with the component test
 import { fixtureMap } from './system-map-fixture.mjs';
@@ -145,6 +146,14 @@ test('connections between systems: the matrix and the strongest links', () => {
   const index = buildIndex(map);
   assert.deepEqual(strongestLinks(index, '').map((e) => e.count), [7, 4, 3, 2, 1]);
   assert.deepEqual(strongestLinks(index, 'openrouter').map((e) => e.to), ['ext/openrouter']);
+
+  // The model cuts nothing: a table may open with fewer rows, but every link is handed to it.
+  const many = buildIndex(fixtureMap({
+    edges: Array.from({ length: 400 }, (_, i) => ({ from: 'praxis/reports', to: 'nexus/routes/tasks', kind: 'http', count: i + 1, evidence: [`Praxis/src/reports/x.ts:${i + 1}`] })),
+  }));
+  const all = strongestLinks(many, '');
+  assert.ok(all.length > RANKED_TABLE_OPENS_WITH.links);
+  assert.deepEqual([all.length, all[0].count, all[399].count], [400, 400, 1]);
 });
 
 test('schedule: once-a-day jobs get a place on the timeline, repeating ones do not', () => {
@@ -171,6 +180,11 @@ test('routes, drift and stale docs', () => {
   assert.deepEqual(driftChecks(map.checks, '').map((c) => c.severity), ['warn', 'info', 'ok'], 'warnings first');
   assert.deepEqual(driftChecks(map.checks, 'trading').map((c) => c.id), ['jobs-paused']);
   assert.deepEqual(stalestDocs(map.catalogs.docs).map((d) => d.file), ['Praxis/docs/client-workflow.md'], 'only living docs that are actually behind');
+
+  const behind = Array.from({ length: 90 }, (_, i) => ({ file: `Praxis/docs/d${i}.md`, kind: 'living', refs: 5, missingRefs: i + 1, refsChangedSince: 0 }));
+  const stale = stalestDocs(behind);
+  assert.ok(stale.length > RANKED_TABLE_OPENS_WITH.docs);
+  assert.deepEqual([stale.length, stale[0].file, stale[89].file], [90, 'Praxis/docs/d89.md', 'Praxis/docs/d0.md'], 'every doc that is behind, stalest first');
 });
 
 test('stamp, age and tab names', () => {

@@ -14,13 +14,18 @@
  *   - headless Chrome over CDP.
  *
  * It then proves, in a real browser against the live map: the stamp and
- * facts hash equal the vault file's, the six views render, a component's
+ * facts hash equal the vault file's, the six views render, every component
+ * the map lists has its own tile (matched by id, not counted), a component's
  * detail lists purpose, size, activity, routes, jobs and both directions with
- * source locations, the page works from the keyboard, at phone width and in
- * both themes, and the page reads the map once on load and once per Refresh
- * with nothing in between and nothing that writes. The browser cannot reach
- * the live API on :4000 directly; the throwaway API passes the shell's own
- * reads (health, counts) through to it and forwards nothing that writes.
+ * source locations, job descriptions are shown whole, the two ranked tables
+ * state how many rows they show of how many and hand over the rest, the page
+ * works from the keyboard, at phone width and in both themes, and the page
+ * reads the map once on load and once per Refresh with nothing in between and
+ * nothing that writes. Width is measured against the viewport this script
+ * configures, because a phone browser widens its own window to fit content
+ * that overflows. The browser cannot reach the live API on :4000 directly;
+ * the throwaway API passes the shell's own reads (health, counts) through to
+ * it and forwards nothing that writes.
  *
  *   CHECK_OUT=/path/out node scripts/system-map-browser-check.mjs
  *
@@ -75,6 +80,21 @@ function pickSubject(map) {
 }
 const subject = pickSubject(vaultMap);
 if (!subject) { console.error("The vault map has no component with routes, jobs and links both ways."); process.exit(2); }
+
+// What the page has to show, worked out from the vault file alone so the page is not checked against itself.
+const count = (n) => n.toLocaleString("en-US");
+const systemOf = (id) => (/^praxis(\/|$)/.test(id) ? "praxis" : /^nexus(\/|$)/.test(id) ? "nexus" : /^cortex(\/|$)/.test(id) ? "cortex"
+    : /^(contract|vault)(\/|$)/.test(id) ? "shared" : id.startsWith("sat/") || id === "workspaces" ? "siblings" : "external");
+// Siblings and dependencies are listed flat, one tile each; inside the core systems a process heads a block of component tiles.
+const listedFlat = (n) => (n.level === 0 || n.level === 1) && ["siblings", "external"].includes(systemOf(n.id));
+const expectedTiles = vaultMap.nodes.filter((n) => (n.level === 2 && n.kind !== "tests") || listedFlat(n)).map((n) => n.id);
+const expectedHeads = vaultMap.nodes.filter((n) => n.level === 1 && !listedFlat(n)).map((n) => n.id);
+const testFolders = vaultMap.nodes.filter((n) => n.level === 2 && n.kind === "tests").map((n) => n.id);
+const crons = vaultMap.catalogs.crons || [];
+const jobText = (c) => c.description || c.label || "";
+const longestJob = crons.filter((c) => c.owner && expectedTiles.includes(c.owner)).sort((a, b) => jobText(b).length - jobText(a).length)[0];
+const crossLinks = vaultMap.edges.filter((e) => e.kind !== "imports" && e.kind !== "starts" && systemOf(e.from) !== systemOf(e.to));
+const staleDocs = (vaultMap.catalogs.docs || []).filter((d) => (d.kind === undefined || d.kind === "living") && ((d.missingRefs || 0) > 0 || (d.refsChangedSince || 0) > 0));
 
 // ── Throwaway API: the real router, a recorded request log ──────────────────
 const express = requireRepo("express");
@@ -199,8 +219,51 @@ async function shot(name, { full = false } = {}) {
     writeFileSync(file, Buffer.from(r.result.data, "base64"));
     shots.push(`${name}.png`);
 }
+let viewportWidth = 0;
 async function viewport({ width, height, mobile }) {
+    viewportWidth = width;
     await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: mobile ? 2 : 1, mobile });
+}
+/**
+ * Does the page fit the configured viewport width? A phone browser widens its
+ * layout viewport to fit content that overflows, so window.innerWidth grows
+ * with the overflow and is no yardstick: both the page and the window are held
+ * to the width this script set. On a miss, the elements that reach past the
+ * edge are named (found with the page held to that width, so wrappers that
+ * merely stretched with the window are not blamed).
+ */
+async function fitsViewport() {
+    const o = await evalJs(`(() => {
+      const limit = ${viewportWidth}, html = document.documentElement;
+      const doc = html.scrollWidth, win = window.innerWidth, past = [];
+      if (doc > limit || win > limit) {
+        const keep = html.style.width;
+        html.style.width = limit + 'px';
+        const clipped = (el) => {
+          let escapes = getComputedStyle(el).position === 'absolute';
+          for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+            const s = getComputedStyle(p);
+            if (s.position === 'fixed') return true;
+            if (escapes && s.position === 'static') continue;
+            escapes = s.position === 'absolute';
+            if (s.overflowX !== 'visible' && p.getBoundingClientRect().right <= limit + 0.5) return true;
+          }
+          return false;
+        };
+        for (const el of document.querySelectorAll('body *')) {
+          const r = el.getBoundingClientRect();
+          if (!r.width || r.right <= limit + 0.5 || getComputedStyle(el).position === 'fixed' || clipped(el)) continue;
+          past.push(el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(/\\s+/).join('.') : '') + ' reaches ' + Math.round(r.right) + 'px');
+          if (past.length === 4) break;
+        }
+        html.style.width = keep;
+      }
+      return { doc, win, past };
+    })()`);
+    return {
+        ok: o.doc <= viewportWidth && o.win <= viewportWidth,
+        detail: `page ${o.doc}px and window ${o.win}px in a ${viewportWidth}px viewport${o.past.length ? `; past the edge: ${o.past.join(" | ")}` : ""}`,
+    };
 }
 async function waitFor(expression, what, ms = 30000) {
     const until = Date.now() + ms;
@@ -233,7 +296,28 @@ const clickAt = async (selector) => {
 };
 // Phone steps use the same pointer path: a tap lands on the page as a click.
 const tapAt = clickAt;
-const OVERFLOW = `(() => ({ doc: document.documentElement.scrollWidth, win: window.innerWidth }))()`;
+/**
+ * A ranked table may open with its first rows, but then the page has to say
+ * how many of how many are on screen and hand over the rest. The table is
+ * found by its heading; the expected total comes from the vault file.
+ */
+async function rankedTable(label, name, heading, total) {
+    const read = () => evalJs(`(() => {
+      const h = Array.from(document.querySelectorAll('[role=tabpanel] h2')).find((el) => ${heading}.test(el.textContent));
+      let table = null;
+      for (let el = h?.nextElementSibling; el && el.tagName !== 'H2' && !table; el = el.nextElementSibling) table = el.matches('table') ? el : el.querySelector('table');
+      return { heading: h?.textContent || '', rows: table ? table.tBodies[0].rows.length : 0, said: document.querySelector('[data-sm-shown="${name}"]')?.textContent || '', offer: Boolean(document.querySelector('[data-sm-show-all="${name}"]')) };
+    })()`);
+    const before = await read();
+    const stated = `${before.heading} ${before.said}`;
+    check(`${label}: the page states how many rows are shown of the ${count(total)} in the map`,
+        stated.includes(count(total)) && (before.rows === total || stated.includes(count(before.rows))),
+        `${before.rows} rows on screen of ${total} in the map; the page says: ${before.said.trim() || "nothing"}`);
+    if (before.rows !== total && before.offer) await clickAt(`[data-sm-show-all="${name}"]`);
+    const after = before.rows === total ? before : await read();
+    check(`${label}: every row is on screen or one press away`, after.rows === total,
+        before.rows === total ? `all ${total} rows are on screen` : `${after.rows} of ${total} rows after ${before.offer ? "Show all" : "looking for a way to show the rest (none offered)"}`);
+}
 const mapReads = (log = browserLog) => log.filter((r) => r.path === "/api/system-map");
 const tile = `.sm-tile[data-sm-id="${subject.id}"]`;
 // WCAG contrast of the map's body text against its own background.
@@ -263,14 +347,27 @@ const stamp = await evalJs(`({ generated: document.querySelector('[data-sm-gener
 check("stamp shows when the vault map was generated", stamp.generated === vaultMap.generatedAt, `${stamp.shown}`);
 check("stamp shows the vault map's facts hash", stamp.hash === vaultMap.factsHash, `${stamp.hash} vs vault ${vaultMap.factsHash}`);
 check("the map opens in the dashboard's dark theme", stamp.theme === "dark");
-const tiles = await evalJs(`document.querySelectorAll('.sm-tile[data-sm-id]').length`);
-const level2 = vaultMap.nodes.filter((n) => n.level === 2).length;
-check("every component in the vault map has a tile", tiles >= level2, `${tiles} tiles, ${level2} components, ${vaultMap.nodes.length} nodes`);
+const onMap = await evalJs(`({
+  tiles: Array.from(document.querySelectorAll('.sm-tile[data-sm-id]'), (el) => el.getAttribute('data-sm-id')),
+  heads: Array.from(document.querySelectorAll('[data-sm-components] .sm-proc-h [data-sm-open]'), (el) => el.getAttribute('data-sm-open')),
+})`);
+const tileIds = new Set(onMap.tiles);
+const missingTiles = expectedTiles.filter((id) => !tileIds.has(id));
+const strayTiles = onMap.tiles.filter((id) => !expectedTiles.includes(id));
+check("every component, dependency and sibling in the vault map has its own tile, matched by id",
+    missingTiles.length === 0 && strayTiles.length === 0 && onMap.tiles.length === tileIds.size,
+    `${expectedTiles.length} ids expected, ${tileIds.size} found on ${onMap.tiles.length} tiles`
+    + (missingTiles.length ? `; no tile for: ${missingTiles.slice(0, 6).join(", ")}` : "")
+    + (strayTiles.length ? `; tiles the map does not list: ${strayTiles.slice(0, 6).join(", ")}` : "")
+    + (testFolders.length ? `; test folders are not tiled: ${testFolders.join(", ")}` : ""));
+const missingHeads = expectedHeads.filter((id) => !onMap.heads.includes(id));
+check("every process, client and store in the vault map heads its own block, matched by id", missingHeads.length === 0,
+    `${expectedHeads.length} expected${missingHeads.length ? `; missing: ${missingHeads.join(", ")}` : `: ${expectedHeads.join(", ")}`}`);
 const tabs = await evalJs(`Array.from(document.querySelectorAll('[role=tab]')).map((t) => t.getAttribute('data-sm-tab'))`);
 check("six views are offered", JSON.stringify(tabs) === JSON.stringify(["map", "connections", "schedule", "routes", "drift", "boundary"]), tabs.join(", "));
 check("one read of the map on load", mapReads(browserLog.slice(loadStart)).length === 1, `${mapReads(browserLog.slice(loadStart)).length} GET /api/system-map`);
-let o = await evalJs(OVERFLOW);
-check("desktop: no sideways page scroll", o.doc <= o.win, `${o.doc} of ${o.win}`);
+let fit = await fitsViewport();
+check("desktop: no sideways page scroll", fit.ok, fit.detail);
 let contrast = await evalJs(CONTRAST);
 check("dark theme: text contrast at least 4.5:1", contrast.text >= 4.5 && contrast.muted >= 4.5 && contrast.tab >= 4.5, JSON.stringify(contrast));
 await shot("desktop-dark-map");
@@ -299,16 +396,46 @@ check("detail: scheduled jobs, with source locations", detail.jobs.length > 0 &&
 check("detail: routes, with source locations", detail.routes.length > 0 && detail.routesLoc, detail.routes.slice(0, 90));
 await shot("desktop-dark-component-detail");
 
+// The component that owns the job with the longest description in the map: every one of its jobs is described whole.
+if (longestJob) {
+    await clickAt(`.sm-tile[data-sm-id="${longestJob.owner}"]`);
+    const shown = await evalJs(`Array.from(document.querySelectorAll('[data-sm-panel] [data-sm-section="jobs"] li'), (li) => [li.querySelector('b')?.textContent || '', li.querySelector('.sm-small')?.textContent || ''])`);
+    const owned = crons.filter((c) => c.owner === longestJob.owner);
+    const cut = owned.filter((c) => (shown.find(([k]) => k === c.key) || [])[1] !== jobText(c));
+    check("detail: every job description is shown whole", shown.length === owned.length && cut.length === 0,
+        `${longestJob.owner}, ${owned.length} jobs, longest ${longestJob.key} at ${jobText(longestJob).length} characters`
+        + (cut.length ? `; cut: ${cut.map((c) => `${c.key} shows ${((shown.find(([k]) => k === c.key) || [])[1] || "").length} of ${jobText(c).length}`).join(", ")}` : ""));
+    await evalJs(`document.querySelector('[data-sm-panel] [data-sm-section="jobs"]')?.scrollIntoView({ block: 'start' })`);
+    await sleep(200);
+    await shot("desktop-dark-job-descriptions");
+}
+
 // ── 3. The other five views ─────────────────────────────────────────────────
 const VIEW_TEXT = { connections: /Strongest links/i, schedule: /All jobs/i, routes: /Defined at/i, drift: /warning/i, boundary: /Tunnel|tunnel/ };
+// What a view must not leave out, checked after its capture so the capture shows the view as it opens.
+const VIEW_WHOLE = {
+    connections: () => rankedTable("connections: strongest links", "links", /Strongest links/, crossLinks.length),
+    drift: () => rankedTable("drift: stalest living docs", "docs", /Stalest living docs/, staleDocs.length),
+    async schedule() {
+        const rows = await evalJs(`Array.from(document.querySelectorAll('[data-sm-jobs] tbody tr'), (tr) => [tr.cells[0].textContent, tr.cells[5].textContent])`);
+        const cut = crons.filter((c) => (rows.find(([k]) => k === c.key) || [])[1] !== jobText(c));
+        check("schedule: every job in the map is listed with its whole description", rows.length === crons.length && cut.length === 0,
+            `${rows.length} rows for ${crons.length} jobs${cut.length ? `; ${cut.length} cut, e.g. ${cut.slice(0, 3).map((c) => `${c.key} shows ${((rows.find(([k]) => k === c.key) || [])[1] || "").length} of ${jobText(c).length}`).join(", ")}` : ""}`);
+    },
+};
 for (const name of ["connections", "schedule", "routes", "drift", "boundary"]) {
     await clickAt(`[data-sm-tab="${name}"]`);
     const v = await evalJs(`({ view: document.querySelector('[role=tabpanel]').getAttribute('data-sm-view'), text: document.querySelector('[role=tabpanel]').textContent.slice(0, 6000), length: document.querySelector('[role=tabpanel]').textContent.length, search: location.search })`);
     check(`view: ${name} renders the live map`, v.view === name && VIEW_TEXT[name].test(v.text) && v.length > 400, `${v.length} chars, ${v.search}`);
-    o = await evalJs(OVERFLOW);
-    check(`view: ${name} has no sideways page scroll (desktop)`, o.doc <= o.win, `${o.doc} of ${o.win}`);
+    fit = await fitsViewport();
+    check(`view: ${name} has no sideways page scroll (desktop)`, fit.ok, fit.detail);
     await evalJs(`window.scrollTo(0, 0)`);
     await shot(`desktop-dark-${name}`);
+    if (VIEW_WHOLE[name]) {
+        await VIEW_WHOLE[name]();
+        fit = await fitsViewport();
+        check(`view: ${name} still has no sideways page scroll with everything shown (desktop)`, fit.ok, fit.detail);
+    }
 }
 check("moving between views and selecting read nothing more", mapReads(browserLog.slice(loadStart)).length === 1, `${mapReads(browserLog.slice(loadStart)).length} GET /api/system-map`);
 
@@ -388,8 +515,8 @@ for (const theme of ["dark", "light"]) {
     await waitFor(`Boolean(document.querySelector('[data-sm-loaded="true"]'))`, "the map to load (phone)");
     const t = await evalJs(`document.querySelector('[data-sm-root]').getAttribute('data-sm-theme')`);
     check(`phone ${theme}: theme applied`, t === theme);
-    o = await evalJs(OVERFLOW);
-    check(`phone ${theme}: no sideways page scroll`, o.doc <= o.win, `${o.doc} of ${o.win}`);
+    fit = await fitsViewport();
+    check(`phone ${theme}: no sideways page scroll`, fit.ok, fit.detail);
     if (theme === "dark") {
         const small = await evalJs(`Array.from(document.querySelectorAll('[data-sm-root] .sm-tab, [data-sm-root] .sm-btn, [data-sm-root] .sm-chip, [data-sm-root] .sm-tile')).filter((el) => el.getClientRects().length).map((el) => { const r = el.getBoundingClientRect(); return { label: el.textContent.trim().slice(0, 20), w: Math.round(r.width), h: Math.round(r.height) }; }).filter((r) => r.h < 44 || r.w < 44)`);
         check("phone: tabs, buttons, filters and tiles are at least 44px to tap", small.length === 0, small.slice(0, 5).map((s) => `${s.label} ${s.w}x${s.h}`).join("; "));
@@ -399,8 +526,8 @@ for (const theme of ["dark", "light"]) {
     const sheet = await evalJs(`(() => { const p = document.querySelector('[data-sm-panel]'); const r = p.getBoundingClientRect(); return { open: p.getAttribute('data-sm-open'), selected: p.getAttribute('data-sm-selected'), position: getComputedStyle(p).position, w: Math.round(r.width), top: Math.round(r.top), inert: document.querySelector('[role=tablist]').hasAttribute('inert'), inPanel: Boolean(document.activeElement.closest('[data-sm-panel]')), close: (() => { const c = document.querySelector('[data-sm-close]').getBoundingClientRect(); return { w: Math.round(c.width), h: Math.round(c.height), top: Math.round(c.top) }; })() }; })()`);
     check(`phone ${theme}: tapping a component opens its detail over the page`, sheet.open === "true" && sheet.selected === subject.id && sheet.position === "fixed" && sheet.w === 390 && sheet.inert && sheet.inPanel, JSON.stringify(sheet));
     check(`phone ${theme}: the Close button is on screen and 44px`, sheet.close.h >= 44 && sheet.close.w >= 44 && sheet.close.top >= 0 && sheet.close.top < 200, JSON.stringify(sheet.close));
-    o = await evalJs(OVERFLOW);
-    check(`phone ${theme}: the detail does not scroll sideways`, o.doc <= o.win, `${o.doc} of ${o.win}`);
+    fit = await fitsViewport();
+    check(`phone ${theme}: the detail does not scroll sideways`, fit.ok, fit.detail);
     await shot(`phone-${theme}-component-detail`);
     await tapAt("[data-sm-close]");
     const closed = await evalJs(`({ open: document.querySelector('[data-sm-panel]').getAttribute('data-sm-open'), inert: document.querySelector('[role=tablist]').hasAttribute('inert') })`);
@@ -409,11 +536,23 @@ for (const theme of ["dark", "light"]) {
         for (const name of ["connections", "schedule", "routes", "drift", "boundary"]) {
             await tapAt(`[data-sm-tab="${name}"]`);
             const v = await evalJs(`document.querySelector('[role=tabpanel]').getAttribute('data-sm-view')`);
-            o = await evalJs(OVERFLOW);
-            check(`phone: ${name} view opens with no sideways page scroll`, v === name && o.doc <= o.win, `${o.doc} of ${o.win}`);
+            fit = await fitsViewport();
+            check(`phone: ${name} view opens with no sideways page scroll`, v === name && fit.ok, fit.detail);
             await evalJs(`window.scrollTo(0, 0)`);
             await sleep(150);
             await shot(`phone-dark-${name}`);
+        }
+        // The longest job description in the map, read whole in the phone sheet.
+        if (longestJob) {
+            await tapAt(`[data-sm-tab="map"]`);
+            await tapAt(`.sm-tile[data-sm-id="${longestJob.owner}"]`);
+            const whole = await evalJs(`(document.querySelector('[data-sm-panel] [data-sm-section="jobs"]')?.textContent || '').includes(${JSON.stringify(jobText(longestJob))})`);
+            fit = await fitsViewport();
+            check("phone: the longest job description is shown whole and the sheet does not scroll sideways", whole && fit.ok, `${longestJob.key}, ${jobText(longestJob).length} characters; ${fit.detail}`);
+            await evalJs(`document.querySelector('[data-sm-panel] [data-sm-section="jobs"]')?.scrollIntoView({ block: 'start' })`);
+            await sleep(200);
+            await shot("phone-dark-job-descriptions");
+            await tapAt("[data-sm-close]");
         }
     }
 }

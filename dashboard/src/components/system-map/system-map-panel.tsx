@@ -35,19 +35,25 @@ export function StateMark({ node }: { node: MapNode }) {
     return null;
 }
 
-/** Source locations behind a claim: the first is always on screen, the rest one tap away. */
-export function Evidence({ items }: { items: string[] }) {
+/**
+ * Source locations behind a claim: the first is always on screen, the rest one tap away.
+ * The generator records the first few places it finds for a link, not every one,
+ * so a link counted more often than it has places listed says how many the map keeps.
+ */
+export function Evidence({ items, count }: { items: string[]; count?: number }) {
     if (!items.length) return null;
     const [first, ...rest] = items;
+    const kept = count !== undefined && count > items.length
+        ? <span data-sm-evidence-kept="">the map keeps {items.length} of {formatCount(count)} places</span> : null;
     return (
         <>
             <div className="sm-at" data-sm-evidence="">{first}</div>
             {rest.length ? (
                 <details className="sm-where">
-                    <summary>{rest.length} more place{rest.length === 1 ? "" : "s"}</summary>
+                    <summary>{rest.length} more place{rest.length === 1 ? "" : "s"}{kept ? <>; {kept}</> : null}</summary>
                     {rest.map((x, i) => <div key={i} data-sm-evidence="">{x}</div>)}
                 </details>
-            ) : null}
+            ) : kept ? <div className="sm-small">{kept}</div> : null}
         </>
     );
 }
@@ -79,7 +85,7 @@ function ConnectionList({ index, edges, direction, onSelect }: { index: MapIndex
                         <NodeLink index={index} id={other} onSelect={onSelect} reveal />
                         <span className="sm-k">{(direction === "out" ? EDGE_OUT : EDGE_IN)[e.kind] ?? e.kind} · {formatCount(e.count)}</span>
                     </div>
-                    <Evidence items={e.evidence ?? []} />
+                    <Evidence items={e.evidence ?? []} count={e.count} />
                 </li>
             );
         }} />
@@ -96,7 +102,7 @@ export function PairList({ index, edges, onSelect }: { index: MapIndex; edges: M
                     <NodeLink index={index} id={e.to} onSelect={onSelect} reveal />
                     <span className="sm-k">{EDGE_OUT[e.kind] ?? e.kind} · {formatCount(e.count)}</span>
                 </div>
-                <Evidence items={e.evidence ?? []} />
+                <Evidence items={e.evidence ?? []} count={e.count} />
             </li>
         )} />
     );
@@ -170,7 +176,7 @@ function NodeDetail({ index, node, onSelect }: { index: MapIndex; node: MapNode;
                     <ul className="sm-rel">{jobs.map((c) => (
                         <li key={c.key}>
                             <div className="sm-row"><b className="sm-mono">{c.key}</b><span className="sm-k">{c.registeredLive === false ? "not registered" : c.paused ? "paused" : c.cadence || c.schedule || ""}</span></div>
-                            <div className="sm-small">{(c.description || c.label || "").slice(0, 240)}</div>
+                            <div className="sm-small">{c.description || c.label || ""}</div>
                             {cronWhere(c) ? <div className="sm-at" data-sm-evidence="">{cronWhere(c)}</div> : null}
                         </li>
                     ))}</ul>

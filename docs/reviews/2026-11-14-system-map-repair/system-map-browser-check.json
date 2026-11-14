@@ -1,0 +1,430 @@
+{
+  "task": "42df7682-9abe-4753-a07f-1b295d316852",
+  "ranAt": "2026-11-14T12:13:41.135Z",
+  "base": "http://localhost:3107",
+  "vaultMap": {
+    "file": "/Volumes/Projects/shared-mind/system-map/system-map.json",
+    "generatedAt": "2026-11-14T10:11:38.669Z",
+    "factsHash": "822b4d2f40439c1b",
+    "nodes": 403,
+    "edges": 1812,
+    "bytes": 1363713
+  },
+  "subject": {
+    "id": "praxis/~runtime",
+    "name": "runtime root"
+  },
+  "passed": 73,
+  "failed": 0,
+  "results": [
+    {
+      "name": "stamp shows when the vault map was generated",
+      "ok": true,
+      "detail": "Generated 2026-11-14 10:11 UTC (2 hours ago) · facts 822b4d2f40439c1b"
+    },
+    {
+      "name": "stamp shows the vault map's facts hash",
+      "ok": true,
+      "detail": "822b4d2f40439c1b vs vault 822b4d2f40439c1b"
+    },
+    {
+      "name": "the map opens in the dashboard's dark theme",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "every component, dependency and sibling in the vault map has its own tile, matched by id",
+      "ok": true,
+      "detail": "383 ids expected, 383 found on 383 tiles; test folders are not tiled: cortex/+tests, praxis/+tests"
+    },
+    {
+      "name": "every process, client and store in the vault map heads its own block, matched by id",
+      "ok": true,
+      "detail": "13 expected: contract/pkg, cortex/gateway, cortex/terminal, nexus/api, nexus/dashboard, nexus/desktop, nexus/mcp, nexus/store:nexus.db, nexus/vault-watcher, praxis/agent:com.praxis.voice, praxis/agent:com.praxis.watchdog, praxis/daemon, vault/store"
+    },
+    {
+      "name": "six views are offered",
+      "ok": true,
+      "detail": "map, connections, schedule, routes, drift, boundary"
+    },
+    {
+      "name": "one read of the map on load",
+      "ok": true,
+      "detail": "1 GET /api/system-map"
+    },
+    {
+      "name": "desktop: no sideways page scroll",
+      "ok": true,
+      "detail": "page 1440px and window 1440px in a 1440px viewport"
+    },
+    {
+      "name": "dark theme: text contrast at least 4.5:1",
+      "ok": true,
+      "detail": "{\"theme\":\"dark\",\"background\":\"rgb(2, 6, 23)\",\"text\":15.04,\"muted\":9.28,\"tab\":16.36}"
+    },
+    {
+      "name": "selecting a component opens its detail",
+      "ok": true,
+      "detail": "praxis/~runtime"
+    },
+    {
+      "name": "detail: purpose, with where it came from",
+      "ok": true,
+      "detail": "Boot and plumbing: index.ts (composition root), webhook.ts (HTTP on :5"
+    },
+    {
+      "name": "detail: size and activity",
+      "ok": true,
+      "detail": "24source files7,492lines125commits, 90 days2026-11-13last commit1HTTP routes2scheduled jobs6state stores181env vars read"
+    },
+    {
+      "name": "detail: connections out, with source locations",
+      "ok": true,
+      "detail": "Reaches out to (59)nexus-shared (@praxis/contract)imports the contract · 11Praxis/src/conf"
+    },
+    {
+      "name": "detail: connections in, with source locations",
+      "ok": true,
+      "detail": "Reached from (66)orchestratoris imported by · 97Praxis/src/orchestrator.ts:5 -> Praxis/src"
+    },
+    {
+      "name": "detail: scheduled jobs, with source locations",
+      "ok": true,
+      "detail": "Scheduled jobs (2)morning-prepDaily · 6:00 AM ETSilent 6 AM prep: self-assessment + briefi"
+    },
+    {
+      "name": "detail: routes, with source locations",
+      "ok": true,
+      "detail": "HTTP routes (1)POST /callbackPraxis/src/webhook.ts:149"
+    },
+    {
+      "name": "detail: every job description is shown whole",
+      "ok": true,
+      "detail": "praxis/memory, 1 jobs, longest state-doc-heartbeat at 515 characters"
+    },
+    {
+      "name": "view: connections renders the live map",
+      "ok": true,
+      "detail": "21743 chars, ?tab=connections"
+    },
+    {
+      "name": "view: connections has no sideways page scroll (desktop)",
+      "ok": true,
+      "detail": "page 1440px and window 1440px in a 1440px viewport"
+    },
+    {
+      "name": "connections: strongest links: the page states how many rows are shown of the 420 in the map",
+      "ok": true,
+      "detail": "150 rows on screen of 420 in the map; the page says: Showing the 150 strongest of 420 links.Show all 420"
+    },
+    {
+      "name": "connections: strongest links: every row is on screen or one press away",
+      "ok": true,
+      "detail": "420 of 420 rows after Show all"
+    },
+    {
+      "name": "view: connections still has no sideways page scroll with everything shown (desktop)",
+      "ok": true,
+      "detail": "page 1440px and window 1440px in a 1440px viewport"
+    },
+    {
+      "name": "view: schedule renders the live map",
+      "ok": true,
+      "detail": "17945 chars, ?tab=schedule"
+    },
+    {
+      "name": "view: schedule has no sideways page scroll (desktop)",
+      "ok": true,
+      "detail": "page 1440px and window 1440px in a 1440px viewport"
+    },
+    {
+      "name": "schedule: every job in the map is listed with its whole description",
+      "ok": true,
+      "detail": "63 rows for 63 jobs"
+    },
+    {
+      "name": "view: schedule still has no sideways page scroll with everything shown (desktop)",
+      "ok": true,
+      "detail": "page 1440px and window 1440px in a 1440px viewport"
+    },
+    {
+      "name": "view: routes renders the live map",
+      "ok": true,
+      "detail": "73033 chars, ?tab=routes"
+    },
+    {
+      "name": "view: routes has no sideways page scroll (desktop)",
+      "ok": true,
+      "detail": "page 1440px and window 1440px in a 1440px viewport"
+    },
+    {
+      "name": "view: drift renders the live map",
+      "ok": true,
+      "detail": "14418 chars, ?tab=drift"
+    },
+    {
+      "name": "view: drift has no sideways page scroll (desktop)",
+      "ok": true,
+      "detail": "page 1440px and window 1440px in a 1440px viewport"
+    },
+    {
+      "name": "drift: stalest living docs: the page states how many rows are shown of the 84 in the map",
+      "ok": true,
+      "detail": "40 rows on screen of 84 in the map; the page says: Showing the 40 stalest of 84 living docs that name missing or changed files.Show all 84"
+    },
+    {
+      "name": "drift: stalest living docs: every row is on screen or one press away",
+      "ok": true,
+      "detail": "84 of 84 rows after Show all"
+    },
+    {
+      "name": "view: drift still has no sideways page scroll with everything shown (desktop)",
+      "ok": true,
+      "detail": "page 1440px and window 1440px in a 1440px viewport"
+    },
+    {
+      "name": "view: boundary renders the live map",
+      "ok": true,
+      "detail": "5767 chars, ?tab=boundary"
+    },
+    {
+      "name": "view: boundary has no sideways page scroll (desktop)",
+      "ok": true,
+      "detail": "page 1440px and window 1440px in a 1440px viewport"
+    },
+    {
+      "name": "moving between views and selecting read nothing more",
+      "ok": true,
+      "detail": "1 GET /api/system-map"
+    },
+    {
+      "name": "keyboard: Right arrow moves to the next view and takes focus with it",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "keyboard: End moves to the last view",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "keyboard: a focused tile shows a focus ring",
+      "ok": true,
+      "detail": "solid 2px"
+    },
+    {
+      "name": "keyboard: Enter on a tile opens its detail and moves focus into it",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "keyboard: Escape closes the detail and returns focus to the tile",
+      "ok": true,
+      "detail": "{\"selected\":\"\",\"focus\":\"praxis/~runtime\",\"on\":\"BUTTON.sm-tile\"}"
+    },
+    {
+      "name": "keyboard: Enter on a diagram box opens its detail and moves focus into it",
+      "ok": true,
+      "detail": "{\"selected\":\"nexus/api\",\"inPanel\":true}"
+    },
+    {
+      "name": "keyboard: Escape returns focus to the diagram box",
+      "ok": true,
+      "detail": "{\"selected\":\"\",\"focus\":\"nexus/api\"}"
+    },
+    {
+      "name": "diagram: links in opposite directions are drawn apart",
+      "ok": true,
+      "detail": "{\"paths\":106,\"lines\":53,\"stacked\":0}"
+    },
+    {
+      "name": "keyboard: Tab reaches the map's controls and every stop is visible",
+      "ok": true,
+      "detail": "24 of 24 stops in the map: nexus.db (SQLite, WAL). Show d | praxis-mind MCP server. Show d | Vault watcher. Show detail. | Praxis daemon, :54322. Show de | com.praxis.watchdog, interval  | com.praxis.voice, :54323. Show | Cloudflare tunnel. Show detail | Cortex gateway, :8100. Show de"
+    },
+    {
+      "name": "light theme: the map switches and is remembered",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "light theme: text contrast at least 4.5:1",
+      "ok": true,
+      "detail": "{\"theme\":\"light\",\"background\":\"rgb(246, 247, 249)\",\"text\":17.85,\"muted\":7.45,\"tab\":16.65}"
+    },
+    {
+      "name": "no read of the map while the page sits open for 20s",
+      "ok": true,
+      "detail": "0 from the browser, 0 at the API"
+    },
+    {
+      "name": "Refresh reads the map exactly once more",
+      "ok": true,
+      "detail": "2 then 3"
+    },
+    {
+      "name": "the API saw only GET for the map",
+      "ok": true,
+      "detail": "GET"
+    },
+    {
+      "name": "phone dark: theme applied",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone dark: no sideways page scroll",
+      "ok": true,
+      "detail": "page 390px and window 390px in a 390px viewport"
+    },
+    {
+      "name": "phone: tabs, buttons, filters and tiles are at least 44px to tap",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone dark: tapping a component opens its detail over the page",
+      "ok": true,
+      "detail": "{\"open\":\"true\",\"selected\":\"praxis/~runtime\",\"position\":\"fixed\",\"w\":390,\"top\":0,\"inert\":true,\"inPanel\":true,\"close\":{\"w\":62,\"h\":44,\"top\":14}}"
+    },
+    {
+      "name": "phone dark: the Close button is on screen and 44px",
+      "ok": true,
+      "detail": "{\"w\":62,\"h\":44,\"top\":14}"
+    },
+    {
+      "name": "phone dark: the detail does not scroll sideways",
+      "ok": true,
+      "detail": "page 390px and window 390px in a 390px viewport"
+    },
+    {
+      "name": "phone dark: Close gives the page back",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: connections view opens with no sideways page scroll",
+      "ok": true,
+      "detail": "page 390px and window 390px in a 390px viewport"
+    },
+    {
+      "name": "phone: schedule view opens with no sideways page scroll",
+      "ok": true,
+      "detail": "page 390px and window 390px in a 390px viewport"
+    },
+    {
+      "name": "phone: routes view opens with no sideways page scroll",
+      "ok": true,
+      "detail": "page 390px and window 390px in a 390px viewport"
+    },
+    {
+      "name": "phone: drift view opens with no sideways page scroll",
+      "ok": true,
+      "detail": "page 390px and window 390px in a 390px viewport"
+    },
+    {
+      "name": "phone: boundary view opens with no sideways page scroll",
+      "ok": true,
+      "detail": "page 390px and window 390px in a 390px viewport"
+    },
+    {
+      "name": "phone: the longest job description is shown whole and the sheet does not scroll sideways",
+      "ok": true,
+      "detail": "state-doc-heartbeat, 515 characters; page 390px and window 390px in a 390px viewport"
+    },
+    {
+      "name": "phone light: theme applied",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone light: no sideways page scroll",
+      "ok": true,
+      "detail": "page 390px and window 390px in a 390px viewport"
+    },
+    {
+      "name": "phone light: tapping a component opens its detail over the page",
+      "ok": true,
+      "detail": "{\"open\":\"true\",\"selected\":\"praxis/~runtime\",\"position\":\"fixed\",\"w\":390,\"top\":0,\"inert\":true,\"inPanel\":true,\"close\":{\"w\":62,\"h\":44,\"top\":14}}"
+    },
+    {
+      "name": "phone light: the Close button is on screen and 44px",
+      "ok": true,
+      "detail": "{\"w\":62,\"h\":44,\"top\":14}"
+    },
+    {
+      "name": "phone light: the detail does not scroll sideways",
+      "ok": true,
+      "detail": "page 390px and window 390px in a 390px viewport"
+    },
+    {
+      "name": "phone light: Close gives the page back",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "the route refuses a request with no sign-in",
+      "ok": true,
+      "detail": "401 {\"error\":\"Sign in to Nexus as Robert to see the system map.\",\"code\":\"sign_in_req"
+    },
+    {
+      "name": "signed out, the page shows the sign-in state and no map",
+      "ok": true,
+      "detail": "Sign-in neededThe system map is shown only to a signed-in operator session. The map lists public hostnames and local por"
+    },
+    {
+      "name": "no request other than GET reached the map route from the page",
+      "ok": true,
+      "detail": "0"
+    },
+    {
+      "name": "the vault map file is byte-identical after the run",
+      "ok": true,
+      "detail": "1363713 bytes"
+    }
+  ],
+  "mapReadsFromBrowser": 6,
+  "apiRequests": [
+    "12 x GET /api/praxis/stream/snapshot",
+    "12 x GET /api/praxis/stream",
+    "7 x GET /api/system-map",
+    "7 x GET /api/praxis/dispatch-state",
+    "7 x GET /api/health",
+    "6 x GET /api/praxis/hitl/pending",
+    "6 x GET /api/board-state",
+    "5 x GET /api/praxis/voice-status",
+    "5 x POST /api/presence/client-activity",
+    "3 x GET /api/knowledge-activity"
+  ],
+  "nonGetRequestsAtApi": [
+    "POST /api/presence/client-activity",
+    "POST /api/presence/client-activity",
+    "POST /api/presence/client-activity",
+    "POST /api/presence/client-activity",
+    "POST /api/presence/client-activity"
+  ],
+  "screenshots": [
+    "desktop-dark-map.png",
+    "desktop-dark-component-detail.png",
+    "desktop-dark-job-descriptions.png",
+    "desktop-dark-connections.png",
+    "desktop-dark-schedule.png",
+    "desktop-dark-routes.png",
+    "desktop-dark-drift.png",
+    "desktop-dark-boundary.png",
+    "desktop-dark-keyboard-detail.png",
+    "desktop-light-map.png",
+    "desktop-light-component-detail.png",
+    "phone-dark-map.png",
+    "phone-dark-component-detail.png",
+    "phone-dark-connections.png",
+    "phone-dark-schedule.png",
+    "phone-dark-routes.png",
+    "phone-dark-drift.png",
+    "phone-dark-boundary.png",
+    "phone-dark-job-descriptions.png",
+    "phone-light-map.png",
+    "phone-light-component-detail.png",
+    "desktop-signed-out.png"
+  ]
+}

@@ -334,6 +334,14 @@ export interface SystemSection { system: SystemGroup; flat: MapNode[] | null; bl
 
 const bySize = (a: MapNode, b: MapNode) => (b.attrs?.lines ?? 0) - (a.attrs?.lines ?? 0) || a.name.localeCompare(b.name);
 
+/**
+ * A test folder is in the map as a node with a file count and nothing else: no
+ * size in lines, no activity, no links. It gets no tile; the Components list
+ * names each one in a line of its own (`testFolders`) so none goes unmentioned.
+ */
+export const isTestFolder = (n: MapNode): boolean => n.kind === "tests";
+export const testFolders = (map: SystemMap): MapNode[] => map.nodes.filter(isTestFolder);
+
 /** The Components list: every system, its processes, and the components inside each. */
 export function systemSections(index: MapIndex): SystemSection[] {
     const { map } = index;
@@ -347,9 +355,9 @@ export function systemSections(index: MapIndex): SystemSection[] {
         const maxLines = Math.max(1, ...all.filter((n) => n.level === 2).map((n) => n.attrs?.lines ?? 0));
         const blocks: ProcessBlock[] = all.filter((n) => n.level === 1).map((process) => ({
             process, title: process.name,
-            components: (index.children.get(process.id) ?? []).filter((n) => n.kind !== "tests").sort(bySize),
+            components: (index.children.get(process.id) ?? []).filter((n) => !isTestFolder(n)).sort(bySize),
         }));
-        const loose = all.filter((n) => n.level === 2 && n.parent === system.key && n.kind !== "tests").sort(bySize);
+        const loose = all.filter((n) => n.level === 2 && n.parent === system.key && !isTestFolder(n)).sort(bySize);
         if (loose.length) blocks.push({ process: null, title: "Beside the runtime", components: loose });
         return { system, flat: null, blocks, maxLines };
     });
@@ -490,12 +498,19 @@ export function systemMatrix(map: SystemMap): Map<string, MatrixCell> {
     return cells;
 }
 
-export function strongestLinks(index: MapIndex, query: string, limit = 150): MapEdge[] {
+/** Every link that crosses from one system to another, strongest first. Nothing is cut here. */
+export function strongestLinks(index: MapIndex, query: string): MapEdge[] {
     return index.map.edges
         .filter((e) => crossesSystems(e) && (!query || `${nodeName(index, e.from)} ${nodeName(index, e.to)} ${e.kind}`.toLowerCase().includes(query)))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, limit);
+        .sort((a, b) => b.count - a.count);
 }
+
+/**
+ * Rows the two ranked tables open with (strongest links, stalest docs). These
+ * are opening sizes, not limits on the data: the line above each table states
+ * how many of how many are on screen and offers every row.
+ */
+export const RANKED_TABLE_OPENS_WITH = { links: 150, docs: 40 } as const;
 
 // ───────────────────────────────────────────────────────────── schedule view
 
@@ -570,13 +585,12 @@ export function driftChecks(checks: MapCheck[], query: string): MapCheck[] {
 
 export const warningCount = (checks: MapCheck[]): number => checks.filter((c) => c.severity === "warn").length;
 
-/** Living docs that name missing files or files changed since: the 40 stalest, worst first. */
-export function stalestDocs(docs: MapDoc[] | undefined, limit = 40): MapDoc[] {
+/** Every living doc that names missing files or files changed since, stalest first. Nothing is cut here. */
+export function stalestDocs(docs: MapDoc[] | undefined): MapDoc[] {
     const score = (d: MapDoc) => (d.missingRefs ?? 0) * 5 + (d.refsChangedSince ?? 0);
     return (docs ?? [])
         .filter((d) => (d.kind === undefined || d.kind === "living") && ((d.missingRefs ?? 0) > 0 || (d.refsChangedSince ?? 0) > 0))
-        .sort((a, b) => score(b) - score(a))
-        .slice(0, limit);
+        .sort((a, b) => score(b) - score(a));
 }
 
 // ───────────────────────────────────────────────────────────── boundary view

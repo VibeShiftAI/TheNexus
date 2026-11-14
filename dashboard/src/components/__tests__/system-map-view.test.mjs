@@ -151,6 +151,50 @@ test("selecting a component shows what it is, its size and activity, routes, job
     assert.match(tasks, /code comment/);
 });
 
+test("nothing is cut without saying so: job descriptions are whole, and a long table states its total and hands over the rest", async (t) => {
+    const description = `Clusters consumed episodes into lessons. ${"Each cluster is summarised once. ".repeat(12)}Never deletes; dry-run by default.`;
+    assert.ok(description.length > 400);
+    const base = fixtureMap();
+    const h = await mount(t, () => json(fixtureMap({
+        edges: [...base.edges, ...Array.from({ length: 170 }, (_, i) => ({ from: "praxis/reports", to: "nexus/routes/tasks", kind: "file", count: 1, evidence: [`Praxis/src/reports/extra.ts:${i + 1}`] }))],
+        catalogs: {
+            ...base.catalogs,
+            crons: base.catalogs.crons.map((c) => (c.key === "attention-economics" ? { ...c, description } : c)),
+            docs: [...base.catalogs.docs, ...Array.from({ length: 45 }, (_, i) => ({ file: `Praxis/docs/behind-${i + 1}.md`, kind: "living", lastCommit: "2026-07-01", refs: 6, missingRefs: 1, refsChangedSince: i }))],
+        },
+    })));
+
+    await h.click('[data-sm-id="praxis/reports"]');
+    assert.equal(h.q('[data-sm-section="jobs"]').textContent.includes(description), true, "the detail shows the whole description");
+    await h.click('[data-sm-tab="schedule"]');
+    assert.equal(h.q("[data-sm-jobs]").textContent.includes(description), true, "the schedule shows the whole description");
+
+    await h.click('[data-sm-tab="connections"]');
+    assert.equal(h.all("[data-sm-links] tbody tr").length, 150);
+    assert.match(h.q('[data-sm-shown="links"]').textContent, /Showing the 150 strongest of 175 links\./);
+    await h.click('[data-sm-show-all="links"]');
+    assert.equal(h.all("[data-sm-links] tbody tr").length, 175);
+    assert.match(h.q('[data-sm-shown="links"]').textContent, /All 175 links shown, strongest first\./);
+    assert.equal(h.q('[data-sm-show-all="links"]').getAttribute("aria-pressed"), "true");
+
+    await h.click('[data-sm-tab="drift"]');
+    assert.equal(h.all("[data-sm-docs] tbody tr").length, 40);
+    assert.match(h.q('[data-sm-shown="docs"]').textContent, /Showing the 40 stalest of 46 living docs that name missing or changed files\./);
+    await h.click('[data-sm-show-all="docs"]');
+    assert.equal(h.all("[data-sm-docs] tbody tr").length, 46);
+    assert.equal(h.mapCalls().length, 1, "showing the rest reads nothing more");
+});
+
+test("a table short enough to open whole states its total and offers no control", async (t) => {
+    const h = await mount(t);
+    await h.click('[data-sm-tab="connections"]');
+    assert.equal(h.q('[data-sm-shown="links"]').textContent, "5 links, strongest first.");
+    assert.equal(h.all('[data-sm-show-all="links"]').length, 0);
+    await h.click('[data-sm-tab="drift"]');
+    assert.equal(h.q('[data-sm-shown="docs"]').textContent, "1 living doc that names missing or changed files, stalest first.");
+    assert.equal(h.all('[data-sm-show-all="docs"]').length, 0);
+});
+
 test("keyboard: a tile opens its detail, focus moves to it, and Escape returns to the tile", async (t) => {
     const h = await mount(t);
     const tile = h.q('.sm-tile[data-sm-id="praxis/reports"]');

@@ -2,10 +2,10 @@
 
 import { useMemo, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
 import {
-    COMPONENT_FILTERS, EDGE_OUT, EXTERNAL_APIS_ID, ROUTE_SERVICES, SEVERITY_LABEL, SIBLING_CLASSES, SYSTEMS,
+    COMPONENT_FILTERS, EDGE_OUT, EXTERNAL_APIS_ID, RANKED_TABLE_OPENS_WITH, ROUTE_SERVICES, SEVERITY_LABEL, SIBLING_CLASSES, SYSTEMS,
     buildDiagram, buildTimeline, compactCount, cronState, cronWhere, driftChecks, filterCrons, filterRoutes, formatCount,
     matchesNode, nodeName, siblingEvidence, sortCrons, stalestDocs, strongestLinks, systemMatrix, systemOf, systemSections,
-    tunnelServedBy, warningCount,
+    testFolders, tunnelServedBy, warningCount,
     type ComponentFilter, type MapIndex, type MapNode,
 } from "@/lib/system-map";
 import { NodeLink, StateMark, Swatch, type PairDetail, type SelectNode } from "./system-map-panel";
@@ -29,6 +29,30 @@ function Tooltip({ tip }: { tip: Tip }) {
         <div className="sm-tip" role="tooltip" style={{ left: tip.x, top: tip.y }}>
             <b>{tip.title}</b>
             {tip.lines.map((line, i) => <div key={i}>{line}</div>)}
+        </div>
+    );
+}
+
+/**
+ * The line above a ranked table: how many rows are on screen of how many the
+ * map holds, and one control that puts every row on screen. A table short
+ * enough to open whole just states its total.
+ */
+function RowCount({ name, opensWith, total, what, ranked, all, onToggle }: {
+    name: string; opensWith: number; total: number; what: [singular: string, plural: string]; ranked: string; all: boolean; onToggle: () => void;
+}) {
+    const partial = total > opensWith;
+    const noun = total === 1 ? what[0] : what[1];
+    return (
+        <div className="sm-rowcount" data-sm-shown={name}>
+            <span className="sm-small" role="status">
+                {!partial ? `${formatCount(total)} ${noun}, ${ranked} first.`
+                    : all ? `All ${formatCount(total)} ${noun} shown, ${ranked} first.`
+                    : `Showing the ${formatCount(opensWith)} ${ranked} of ${formatCount(total)} ${noun}.`}
+            </span>
+            {partial ? (
+                <button type="button" className="sm-chip" data-sm-show-all={name} aria-pressed={all} onClick={onToggle}>Show all {formatCount(total)}</button>
+            ) : null}
         </div>
     );
 }
@@ -99,6 +123,8 @@ function ServiceDiagram({ index, selectedId, onSelect, onPair }: Omit<TabProps, 
                                     onFocus={() => setFocusId(n.id)} onBlur={() => setFocusId(null)}
                                     onClick={(ev) => activate(n.id, ev.detail === 0)}
                                     onKeyDown={(ev) => { if (isActivation(ev.key)) { ev.preventDefault(); activate(n.id, true); } }}>
+                                    {/* A name too long for its box ends in an ellipsis; pointing at the box gives the whole name. */}
+                                    {n.label !== n.name ? <title>{n.name}</title> : null}
                                     <rect className="sm-box" width={diagram.boxWidth} height={diagram.boxHeight} rx={6} />
                                     <rect width={4} height={diagram.boxHeight} rx={2} style={{ fill: `var(--sm-c-${n.system})` }} />
                                     <text x={12} y={n.sub ? 16 : 23}>{n.label}</text>
@@ -154,6 +180,7 @@ function Tile({ node, maxLines, selected, near, hidden, onSelect }: {
 export function MapTab({ index, query, selectedId, onSelect, onPair }: TabProps) {
     const [filter, setFilter] = useState<ComponentFilter>("all");
     const sections = useMemo(() => systemSections(index), [index]);
+    const untiled = useMemo(() => testFolders(index.map), [index]);
     const { outs, ins } = useMemo(() => ({
         outs: new Set((selectedId ? index.outgoing.get(selectedId) ?? [] : []).map((e) => e.to)),
         ins: new Set((selectedId ? index.incoming.get(selectedId) ?? [] : []).map((e) => e.from)),
@@ -214,6 +241,11 @@ export function MapTab({ index, query, selectedId, onSelect, onPair }: TabProps)
 
             <h2>Components</h2>
             <p className="sm-lead">Every subsystem, route module, service, page and dependency. The bar under a tile is its size in lines relative to the largest in its system. Select a tile to see what it reaches (solid outline) and what reaches it (dashed outline).</p>
+            {untiled.length ? (
+                <p className="sm-small" data-sm-untiled="">
+                    Test folders are in the map with a file count only, so they have no tile: {untiled.map((n) => `${n.path || n.id} (${formatCount(n.attrs?.files ?? 0)} files)`).join(", ")}.
+                </p>
+            ) : null}
             <div className="sm-chips" role="group" aria-label="Filter components">
                 {COMPONENT_FILTERS.map(([key, label]) => (
                     <button type="button" key={key} className="sm-chip" aria-pressed={filter === key} onClick={() => setFilter(key)}>{label}</button>
@@ -232,12 +264,14 @@ export function MapTab({ index, query, selectedId, onSelect, onPair }: TabProps)
 export function ConnectionsTab({ index, query, onSelect, onPair }: TabProps) {
     const matrix = useMemo(() => systemMatrix(index.map), [index]);
     const links = useMemo(() => strongestLinks(index, query), [index, query]);
+    const [allLinks, setAllLinks] = useState(false);
+    const shownLinks = allLinks ? links : links.slice(0, RANKED_TABLE_OPENS_WITH.links);
     const catalogs = index.map.catalogs;
     const sharedEnv = (catalogs.env ?? []).filter((x) => (x.systems ?? []).length > 1);
     return (
         <div>
             <h2>Who depends on whom</h2>
-            <p className="sm-lead">Rows reach out to columns. Each number is a count of call sites or references in code that cross from one system to another. Select a number to list them.</p>
+            <p className="sm-lead">Rows reach out to columns. Each number is a count of call sites or references in code that cross from one system to another. Select a number to list them. Two kinds of link are not counted here or in the table below: code imports, and launchd starting a process. Both are listed in the detail of the component they belong to.</p>
             <div className="sm-tw">
                 <table className="sm-table" data-sm-matrix="">
                     <thead>
@@ -268,11 +302,15 @@ export function ConnectionsTab({ index, query, onSelect, onPair }: TabProps) {
 
             <h2>Strongest links between components</h2>
             {links.length ? (
+                <RowCount name="links" opensWith={RANKED_TABLE_OPENS_WITH.links} total={links.length} what={["link", "links"]} ranked="strongest"
+                    all={allLinks} onToggle={() => setAllLinks((v) => !v)} />
+            ) : null}
+            {links.length ? (
                 <div className="sm-tw">
-                    <table className="sm-table sm-stack">
+                    <table className="sm-table sm-stack" data-sm-links="">
                         <thead><tr><th scope="col">From</th><th scope="col">To</th><th scope="col">How</th><th scope="col" className="sm-num">Count</th><th scope="col">Example</th></tr></thead>
                         <tbody>
-                            {links.map((e, i) => (
+                            {shownLinks.map((e, i) => (
                                 <tr key={`${e.from}|${e.to}|${e.kind}|${i}`}>
                                     <td data-label="From"><Swatch id={e.from} /><NodeLink index={index} id={e.from} onSelect={onSelect} /></td>
                                     <td data-label="To"><Swatch id={e.to} /><NodeLink index={index} id={e.to} onSelect={onSelect} /></td>
@@ -350,13 +388,13 @@ export function ScheduleTab({ index, query, onSelect }: TabProps) {
                                 const state = cronState(c);
                                 return (
                                     <tr key={c.key}>
-                                        <td data-label="Job" className="sm-mono">{c.key}</td>
+                                        <td data-label="Job" className="sm-mono sm-key">{c.key}</td>
                                         <td data-label="When">{c.cadence || c.schedule || ""}</td>
                                         <td data-label="Category">{c.category || ""}</td>
-                                        <td data-label="Owner">{c.owner ? <NodeLink index={index} id={c.owner} onSelect={onSelect} /> : null}</td>
+                                        <td data-label="Owner" className="sm-owner">{c.owner ? <NodeLink index={index} id={c.owner} onSelect={onSelect} /> : null}</td>
                                         <td data-label="State"><span className="sm-sev" data-tone={state.tone}>{state.label}</span></td>
-                                        <td data-label="What it does" className="sm-small">{(c.description || c.label || "").slice(0, 260)}</td>
-                                        <td data-label="Registered at" className="sm-mono">{cronWhere(c)}</td>
+                                        <td data-label="What it does" className="sm-small">{c.description || c.label || ""}</td>
+                                        <td data-label="Registered at" className="sm-mono sm-loc">{cronWhere(c)}</td>
                                     </tr>
                                 );
                             })}
@@ -414,6 +452,8 @@ export function DriftTab({ index, query }: TabProps) {
     const all = index.map.checks;
     const checks = useMemo(() => driftChecks(all, query), [all, query]);
     const docs = useMemo(() => stalestDocs(index.map.catalogs.docs), [index]);
+    const [allDocs, setAllDocs] = useState(false);
+    const shownDocs = allDocs ? docs : docs.slice(0, RANKED_TABLE_OPENS_WITH.docs);
     const count = (severity: string) => all.filter((c) => c.severity === severity).length;
     return (
         <div>
@@ -442,11 +482,14 @@ export function DriftTab({ index, query }: TabProps) {
             {docs.length ? (
                 <>
                     <h2>Stalest living docs</h2>
+                    <RowCount name="docs" opensWith={RANKED_TABLE_OPENS_WITH.docs} total={docs.length} ranked="stalest"
+                        what={["living doc that names missing or changed files", "living docs that name missing or changed files"]}
+                        all={allDocs} onToggle={() => setAllDocs((v) => !v)} />
                     <div className="sm-tw">
-                        <table className="sm-table sm-stack">
+                        <table className="sm-table sm-stack" data-sm-docs="">
                             <thead><tr><th scope="col">Doc</th><th scope="col">Last commit</th><th scope="col" className="sm-num">File references</th><th scope="col" className="sm-num">Missing</th><th scope="col" className="sm-num">Changed since</th></tr></thead>
                             <tbody>
-                                {docs.map((d) => (
+                                {shownDocs.map((d) => (
                                     <tr key={d.file}>
                                         <td data-label="Doc" className="sm-mono">{d.file}</td>
                                         <td data-label="Last commit">{d.lastCommit || "untracked"}</td>
@@ -470,7 +513,10 @@ export function BoundaryTab({ index, query, onSelect }: TabProps) {
     const catalogs = index.map.catalogs;
     const siblings = catalogs.siblings ?? [];
     const tunnel = catalogs.tunnelIngress ?? [];
-    const agents = (catalogs.launchAgents ?? []).filter((a) => (a.projectDirs ?? []).length || a.node);
+    const everyAgent = catalogs.launchAgents ?? [];
+    // The table lists the launch agents that have to do with the map; the rest are named under it, not dropped.
+    const agents = everyAgent.filter((a) => (a.projectDirs ?? []).length || a.node);
+    const otherAgents = everyAgent.filter((a) => !((a.projectDirs ?? []).length || a.node));
     return (
         <div>
             <h2>What is on the map, and why</h2>
@@ -532,6 +578,12 @@ export function BoundaryTab({ index, query, onSelect }: TabProps) {
 
             <section data-sm-boundary="launch-agents">
                 <h3>Launch agents ({agents.length})</h3>
+                {otherAgents.length ? (
+                    <p className="sm-small" data-sm-agents-not-listed="">
+                        Listed: the {agents.length} of {everyAgent.length} launch agents on this machine that touch a project folder or start something on the map.
+                        Not listed ({otherAgents.length}): <span className="sm-mono">{otherAgents.map((a) => a.label).join(", ")}</span>.
+                    </p>
+                ) : null}
                 <div className="sm-tw">
                     <table className="sm-table sm-stack">
                         <thead><tr><th scope="col">Label</th><th scope="col">On the map as</th><th scope="col">Keep alive</th><th scope="col">Folders it touches</th></tr></thead>

@@ -6,6 +6,16 @@
  * the map that is in the vault now. Nothing here writes, to the vault or
  * anywhere else, and every method other than GET is refused.
  *
+ * The route sets no size limit of its own: the map is written by our own
+ * generator and is served whole. Each request reads the file into memory and
+ * parses it before sending, so what a request costs grows with the file
+ * (about 1.4 MB when this was written). What is guarded is the cause a limit
+ * would stand in for: the path must be a regular file (a pipe or device is
+ * never opened, so a request cannot hang on one), and the bytes must parse as
+ * a map before any of them are sent. A file too large for Node to read or to
+ * hold as one string fails inside those same two steps and is answered 500
+ * like any other unreadable or invalid map.
+ *
  * The map lists public hostnames and local ports, so the legacy `local_user`
  * stub is not enough to read it. A request needs one of the operator proofs
  * the rest of Nexus already trusts (document-decision-authority.js): a
@@ -25,7 +35,6 @@ const { createDocumentDecisionAuthority } = require('../services/document-decisi
 
 const OPERATORS = new Set(['access_user', 'access_device', 'operator_credential']);
 const MAP_FILE = path.join('system-map', 'system-map.json');
-const MAX_BYTES = 32 * 1024 * 1024;
 
 module.exports = function createSystemMapRouter({
     // Resolved per request so a vault root changed in the environment is honoured.
@@ -64,7 +73,7 @@ module.exports = function createSystemMapRouter({
         let bytes;
         try {
             const stat = await fs.promises.stat(file);
-            if (!stat.isFile() || stat.size > MAX_BYTES) throw Object.assign(new Error('not a readable map file'), { code: 'EINVAL' });
+            if (!stat.isFile()) throw Object.assign(new Error('the map path is not a regular file'), { code: 'EINVAL' });
             bytes = await fs.promises.readFile(file);
         } catch (err) {
             if (err.code === 'ENOENT' || err.code === 'ENOTDIR') {

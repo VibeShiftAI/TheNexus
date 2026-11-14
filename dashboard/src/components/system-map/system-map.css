@@ -151,7 +151,8 @@
 .sm-tip b { display: block; }
 
 /* ---- service diagram and timeline ---- */
-.sm-scroll { background: var(--sm-surface); border: 1px solid var(--sm-hair); border-radius: 8px; overflow-x: auto; }
+/* Positioned, like .sm-tw below, so that screen-reader-only text inside (.sm-sr, absolutely placed) scrolls with the box instead of widening the page. */
+.sm-scroll { position: relative; background: var(--sm-surface); border: 1px solid var(--sm-hair); border-radius: 8px; overflow-x: auto; }
 .sm-diagram svg { display: block; min-width: 980px; width: 100%; height: auto; }
 .sm-timeline svg { display: block; min-width: 860px; width: 100%; height: auto; }
 .sm-d-col { fill: var(--sm-ink2); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
@@ -200,7 +201,21 @@ svg[data-focus="true"] .sm-d-node:not([data-on="true"]):not([data-near="true"]) 
 @media (max-width: 480px) { .sm-tiles { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
 
 /* ---- tables ---- */
-.sm-tw { overflow-x: auto; border: 1px solid var(--sm-hair); border-radius: 8px; background: var(--sm-surface); }
+.sm-tw { position: relative; overflow-x: auto; border: 1px solid var(--sm-hair); border-radius: 8px; background: var(--sm-surface); }
+.sm-rowcount { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 8px; }
+/*
+ * A whole job description takes most of its table's width. Where the window is
+ * wide enough to hold these floors beside the detail panel, the job's key, its
+ * owner and its source location keep enough room to read on one or two lines;
+ * below that they give way, so the table never grows wider than its box.
+ */
+@media (min-width: 1280px) {
+  .sm-table td.sm-key { min-width: 8rem; }
+  .sm-table td.sm-owner { min-width: 6.5rem; }
+  .sm-table td.sm-loc { min-width: 9rem; }
+}
+/* A state label may wrap inside its cell rather than hold the column at its full length. */
+.sm-table .sm-sev { white-space: normal; }
 .sm-table { border-collapse: collapse; width: 100%; }
 .sm-table th, .sm-table td { text-align: left; padding: 7px 10px; border-top: 1px solid var(--sm-hair); vertical-align: top; font-size: 12.5px; }
 .sm-table thead th { border-top: 0; color: var(--sm-ink2); font-weight: 600; font-size: 11.5px; white-space: nowrap; }

@@ -69,6 +69,28 @@ describe('system map route', () => {
         expect(plain.body.equals(fs.readFileSync(path.join(vault, 'system-map', 'system-map.json')))).toBe(true);
     });
 
+    test('serves a large map whole: the route sets no size limit of its own', async () => {
+        await start({ authorize });
+        // 40 MB of map, far past the 1.4 MB the generator writes today.
+        const big = JSON.stringify({ ...MAP, nodes: [{ ...MAP.nodes[0], purpose: 'x'.repeat(40 * 1024 * 1024) }] });
+        fs.writeFileSync(path.join(vault, 'system-map', 'system-map.json'), big);
+        const served = await new Promise((resolve, reject) => http.get(url, { headers: { 'Accept-Encoding': 'identity' } }, res => {
+            let bytes = 0; res.on('data', c => { bytes += c.length; }); res.on('end', () => resolve({ status: res.statusCode, bytes }));
+        }).on('error', reject));
+        expect(served.status).toBe(200);
+        expect(served.bytes).toBe(Buffer.byteLength(big));
+    });
+
+    test('reads only a regular file: a directory where the map should be is reported, not served', async () => {
+        await start({ authorize });
+        const file = path.join(vault, 'system-map', 'system-map.json');
+        fs.rmSync(file);
+        fs.mkdirSync(file);
+        const response = await fetch(url);
+        expect(response.status).toBe(500);
+        expect((await response.json()).code).toBe('system_map_unreadable');
+    });
+
     test('refuses a request with no operator proof, using the real authority, and leaks no map content', async () => {
         await start(); // default authorize: the real document-decision authority
         for (const headers of [

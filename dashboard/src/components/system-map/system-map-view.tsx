@@ -6,7 +6,7 @@ import { Moon, RefreshCw, Sun } from "lucide-react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
     SYSTEM_MAP_TABS, SYSTEM_MAP_THEME_KEY, SystemMapError, buildIndex, fetchSystemMap, formatCount, formatGeneratedAt, generatedAgo,
-    isSystemMapTab, warningCount,
+    isSystemMapTab, isTestFolder, warningCount,
     type SystemMap, type SystemMapFailure, type SystemMapTab, type SystemMapTheme,
 } from "@/lib/system-map";
 import { SystemMapPanel, type PairDetail, type PanelState, type SelectNode } from "./system-map-panel";
@@ -179,7 +179,8 @@ export function SystemMapView() {
     // Only a detail that actually has something to show covers the page.
     const sheetOpen = narrow && panel !== null && (panel.type === "pair" || Boolean(index?.byId.has(panel.id)));
     const counts: Record<SystemMapTab, string | null> = map ? {
-        map: formatCount(map.nodes.filter((n) => n.level === 2).length),
+        // The components that have a tile; test folders are named in a line under the tiles instead.
+        map: formatCount(map.nodes.filter((n) => n.level === 2 && !isTestFolder(n)).length),
         connections: null,
         schedule: formatCount((map.catalogs.crons ?? []).length),
         routes: formatCount((map.catalogs.routes ?? []).length),
