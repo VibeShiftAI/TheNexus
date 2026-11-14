@@ -1,7 +1,7 @@
 "use client";
 
 import type { Project } from '@/lib/nexus';
-import type { ProjectIntake } from '@praxis/contract';
+import type { IntakeAcceptance, ProjectIntake } from '@praxis/contract';
 
 const stateLabels: Record<ProjectIntake['state'], string> = {
   preparing: 'Preparing intake', awaiting_choice: 'Ready to talk', deferred: 'Waiting for you',
@@ -23,6 +23,16 @@ function Reference({ value }: { value: string }) {
     : <span className="font-mono text-xs text-slate-400 break-all">{value}</span>;
 }
 
+/** The initial backlog receipt of an acceptance, in words. An acceptance with no receipt is the state to notice. */
+function backlogState(acceptance: IntakeAcceptance): { label: string; recorded: boolean } {
+  const receipt = acceptance.backlog;
+  if (!receipt) return { label: 'backlog: not recorded', recorded: false };
+  const filed = receipt.task_ids.length;
+  if (receipt.status === 'deferred') return { label: `backlog: deferred (${receipt.reason ?? 'no reason recorded'})`, recorded: true };
+  if (receipt.status === 'partial') return { label: `backlog: partial, ${filed} of ${filed + receipt.remaining.length}`, recorded: true };
+  return { label: `backlog: ${filed} ${filed === 1 ? 'task' : 'tasks'}`, recorded: true };
+}
+
 /** Intake remains a conversation. This view reads the same project/needs and
  * opens an editable chat draft; it never fabricates a second questionnaire. */
 export function ProjectIntakePanel({ project, onDiscuss }: { project: Project; onDiscuss: (text: string) => void }) {
@@ -33,10 +43,12 @@ export function ProjectIntakePanel({ project, onDiscuss }: { project: Project; o
   const open = needs.filter(need => need.status === 'open');
   const discuss = (request: string) => onDiscuss(`${request} for project ${JSON.stringify(project.id)} (${project.name}). First read the saved intake and authoritative knowledge needs using project_intake action=read. Preserve the project identity and history; keep the current folder unless I request a change.`);
   const review = intake.review;
+  const receipt = intake.acceptance?.backlog ?? null;
+  const backlog = intake.state === 'handed_off' && intake.acceptance ? backlogState(intake.acceptance) : null;
   return <section aria-label="Project intake" className="rounded-xl border border-cyan-500/30 bg-slate-900/70 p-5 space-y-6">
     <header className="flex flex-wrap items-start justify-between gap-3">
-      <div><h2 className="text-lg font-semibold text-white">Project intake</h2>
-        <p className="text-sm text-cyan-300">{stateLabels[intake.state]}</p>
+      <div className="min-w-0"><h2 className="text-lg font-semibold text-white">Project intake</h2>
+        <p className="text-sm text-cyan-300 break-words">{stateLabels[intake.state]}{backlog && <> · <span data-intake-backlog={backlog.recorded ? 'recorded' : 'not-recorded'} className={backlog.recorded ? undefined : 'font-semibold text-amber-300'}>{backlog.label}</span></>}</p>
         <p className="mt-1 text-xs text-slate-400">Brief version {intake.brief_revision} · {open.length} open questions of {needs.length}</p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -78,6 +90,13 @@ export function ProjectIntakePanel({ project, onDiscuss }: { project: Project; o
     </div>}
     {intake.acceptance && <div className="rounded-lg bg-emerald-950/30 p-3 text-sm text-emerald-200">
       <p>Accepted brief version {intake.acceptance.brief_revision}. Next step: {intake.acceptance.next_step}</p>
+      {backlog && !receipt && <p className="mt-2 text-amber-200">Initial backlog not recorded: no tasks have been filed or named for this acceptance, and no deferral is recorded.</p>}
+      {backlog && receipt && <div className="mt-2">
+        <p>Initial {backlog.label}, recorded against brief version {receipt.brief_revision}.</p>
+        {receipt.status === 'deferred' && receipt.source_ref && <p className="mt-1">Deferral reference: <Reference value={receipt.source_ref} /></p>}
+        {receipt.status === 'deferred' && !!receipt.task_ids.length && <p className="mt-1">Recorded before the deferral: {receipt.task_ids.length} {receipt.task_ids.length === 1 ? 'task' : 'tasks'}.</p>}
+        {!!receipt.remaining.length && <div className="mt-1"><p>Planned and not filed yet:</p><ul className="mt-1 list-disc pl-5">{receipt.remaining.map(body => <li key={body.slot}>Slot {body.slot}: {body.name}</li>)}</ul></div>}
+      </div>}
       {intake.brief_revision > intake.acceptance.brief_revision && <p className="mt-2 text-amber-200">Current brief version {intake.brief_revision} is newer than accepted version {intake.acceptance.brief_revision}. Acceptance remains historical; these changes do not automatically change the adopted goal.</p>}
       {intake.acceptance.decision_note && <p className="mt-2">{intake.acceptance.decision_note}</p>}
       {intake.acceptance.review_disposition && <p className="mt-2">Council review: {intake.acceptance.review_disposition.replaceAll('_', ' ')}</p>}

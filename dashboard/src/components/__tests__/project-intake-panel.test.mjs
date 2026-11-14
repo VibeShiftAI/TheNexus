@@ -60,6 +60,74 @@ test('a newer brief labels acceptance as historical and keeps the adopted versio
     assert.match(ui.container.textContent, /Updated planning idea/);
   } finally { ui.close(); }
 });
+const accepted = backlog => {
+  const value = structuredClone(project);
+  value.phase = 'planning'; value.intake.state = 'handed_off';
+  value.intake.acceptance = { brief_revision: 1, source_ref: 'chat:proceed', next_step: 'Plan the garden', at: '2026-11-01T00:00:00Z', ...(backlog === undefined ? {} : { backlog }) };
+  return value;
+};
+const slot = (number, name) => ({ slot: number, name, description: `What: ${name}.`, antigravity_payload: { prompt: name } });
+const receipt = rest => ({ status: 'generated', task_ids: [], proposals: [], remaining: [], brief_revision: 1, operation_id: 'op-backlog', at: '2026-11-01T00:05:00.000Z', replayed: false, ...rest });
+/** The backlog state beside the intake state, as plain values (an element in a failing assert exhausts memory). */
+const backlogLabel = ui => {
+  const labels = [...ui.container.querySelectorAll('[data-intake-backlog]')];
+  return { count: labels.length, text: labels[0]?.textContent ?? null, state: labels[0]?.getAttribute('data-intake-backlog') ?? null, classes: labels[0]?.className ?? '' };
+};
+for (const [name, backlog] of [['an acceptance recorded before receipts existed', undefined], ['an acceptance whose receipt is null', null]]) {
+  test(`${name} shows the backlog as not recorded, in the warning colour`, async () => {
+    const ui = await mount(accepted(backlog));
+    try {
+      const label = backlogLabel(ui);
+      assert.deepEqual({ count: label.count, text: label.text, state: label.state }, { count: 1, text: 'backlog: not recorded', state: 'not-recorded' });
+      assert.match(label.classes, /\btext-amber-300\b/);
+      assert.match(ui.container.textContent, /Accepted for planning · backlog: not recorded/);
+      assert.match(ui.container.textContent, /Initial backlog not recorded: no tasks have been filed or named for this acceptance, and no deferral is recorded\./);
+    } finally { ui.close(); }
+  });
+}
+for (const [status, ids, expected] of [['generated', ['t1', 't2', 't3'], 'backlog: 3 tasks'], ['existing', ['t1', 't2'], 'backlog: 2 tasks'], ['generated', ['t1'], 'backlog: 1 task']]) {
+  test(`a receipt of status ${status} naming ${ids.length} shows "${expected}" without the warning colour`, async () => {
+    const ui = await mount(accepted(receipt({ status, task_ids: ids, proposals: status === 'generated' ? ids.map((id, i) => ({ ...slot(i + 1, `Stage ${i + 1}`), task_id: id })) : [] })));
+    try {
+      const label = backlogLabel(ui);
+      assert.deepEqual({ count: label.count, text: label.text, state: label.state }, { count: 1, text: expected, state: 'recorded' });
+      assert.doesNotMatch(label.classes, /amber/);
+      assert.match(ui.container.textContent, new RegExp(`Initial ${expected}, recorded against brief version 1\\.`));
+      assert.doesNotMatch(ui.container.textContent, /not recorded|Planned and not filed yet/);
+    } finally { ui.close(); }
+  });
+}
+test('a partial receipt shows filed of planned and names every slot still to file', async () => {
+  const remaining = [slot(3, 'Wire the planting calendar'), slot(4, 'Publish the seasonal guide')];
+  const ui = await mount(accepted(receipt({ status: 'partial', task_ids: ['t1', 't2'], proposals: [{ ...slot(1, 'Model the beds'), task_id: 't1' }, { ...slot(2, 'Import the seed list'), task_id: 't2' }], remaining })));
+  try {
+    const label = backlogLabel(ui);
+    assert.deepEqual({ count: label.count, text: label.text, state: label.state }, { count: 1, text: 'backlog: partial, 2 of 4', state: 'recorded' });
+    assert.match(ui.container.textContent, /Planned and not filed yet:Slot 3: Wire the planting calendarSlot 4: Publish the seasonal guide/);
+    assert.doesNotMatch(ui.container.textContent, /not recorded/);
+  } finally { ui.close(); }
+});
+test('a deferred receipt shows its whole reason, its reference and any work recorded before it', async () => {
+  const reason = `Robert asked to hold the backlog until the legal review of the seed catalogue licence is finished. ${'The supplier terms need a second reading before any task depends on them. '.repeat(6)}End of reason.`;
+  const ui = await mount(accepted(receipt({ status: 'deferred', reason, source_ref: 'javascript:alert(1)', task_ids: ['t1', 't2'], remaining: [slot(3, 'Wire the planting calendar')] })));
+  try {
+    const label = backlogLabel(ui);
+    assert.equal(label.text, `backlog: deferred (${reason})`);
+    assert.equal(label.state, 'recorded');
+    assert.ok(reason.length > 500 && ui.container.textContent.includes(`Initial backlog: deferred (${reason}), recorded against brief version 1.`));
+    assert.match(ui.container.textContent, /Deferral reference: javascript:alert\(1\)/);
+    assert.equal(ui.container.querySelectorAll('a[href^="javascript:"]').length, 0);
+    assert.match(ui.container.textContent, /Recorded before the deferral: 2 tasks\./);
+    assert.match(ui.container.textContent, /Slot 3: Wire the planting calendar/);
+  } finally { ui.close(); }
+});
+test('no backlog state is shown before intake is handed off', async () => {
+  const ui = await mount(project);
+  try {
+    assert.equal(backlogLabel(ui).count, 0);
+    assert.doesNotMatch(ui.container.textContent, /backlog/i);
+  } finally { ui.close(); }
+});
 test('resume and corrections include exact project identity and ask to read saved state', async () => {
   const calls = []; const ui = await mount(project, text => calls.push(text));
   try {
