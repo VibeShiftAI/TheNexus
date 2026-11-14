@@ -316,3 +316,14 @@ knowledge and admission suites exercise compatibility outside intake.
 `server/__tests__/project-workspace-readers.test.js` uses temporary repositories
 and real HTTP readers to verify canonical identity, pulse-cache invalidation,
 unavailable folders, and preservation of task activity.
+
+The project page's intake panel (`dashboard/src/components/project-intake/panel.tsx`)
+shows the receipt beside the intake state once an intake is accepted:
+`backlog: not recorded` in the warning colour when the acceptance has no receipt,
+the task count for a generated or existing receipt, filed of planned for a partial
+one with every unfiled slot listed, and the reason and reference of a deferral.
+`dashboard/src/components/__tests__/project-intake-panel.test.mjs` covers each
+state. `dashboard/scripts/intake-backlog-panel-browser-check.mjs` opens the page
+for each state in a real browser, at desktop and phone width, against this API on a
+temporary database (the two commands are in its header); the run recorded on
+2026-11-14 is in `docs/reviews/2026-11-14-intake-backlog-receipt/`.

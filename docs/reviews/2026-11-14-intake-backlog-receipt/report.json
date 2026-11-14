@@ -1,0 +1,1031 @@
+{
+  "task": "3adfd298-e3ab-40da-b3ec-11ab448c220f",
+  "script": "dashboard/scripts/intake-backlog-panel-browser-check.mjs",
+  "ran_at": "2026-11-14T17:34:16.293Z",
+  "stack": {
+    "api": "server/server.js on http://127.0.0.1:4299 with a temporary database",
+    "dashboard": "next start of .next-intake-backlog on http://127.0.0.1:3299",
+    "browser": "Chrome/157.0.8103.52",
+    "viewports": [
+      {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1400,
+        "deviceScaleFactor": 1,
+        "mobile": false
+      },
+      {
+        "name": "phone",
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "mobile": true
+      }
+    ]
+  },
+  "passed": 134,
+  "failed": 0,
+  "failures": [],
+  "passes": [
+    "seed: API: the accepted intake with no receipt reads backlog null and open_task_count 0",
+    "seed: API: its stored acceptance has no backlog key, as every acceptance recorded before receipts existed",
+    "seed: API: generated receipt names the two tasks it created",
+    "seed: API: existing receipt names the one task already on the board",
+    "seed: API: a receipt with unfiled slots is stored as partial (1 filed, 2 remaining)",
+    "seed: API: the deferral is stored with its reason and source",
+    "seed: API: an intake that is not accepted carries no backlog field",
+    "01-not-recorded-desktop: the panel's state line is on screen when the page opens",
+    "01-not-recorded-desktop: the state line reads \"Accepted for planning · backlog: not recorded\"",
+    "01-not-recorded-desktop: data-intake-backlog=\"not-recorded\" with the text \"backlog: not recorded\"",
+    "01-not-recorded-desktop: \"not recorded\" is in the warning colour (lab(86.4156 6.13147 78.3961)), not the line's colour (lab(85.3886 -36.7636 -21.5716))",
+    "01-not-recorded-desktop: \"not recorded\" is semibold (font-weight 600)",
+    "01-not-recorded-desktop: the acceptance box states it in amber (lab(91.7203 -0.505269 49.9084)), not the box colour (lab(90.2247 -31.039 9.47084))",
+    "01-not-recorded-desktop: the acceptance box opens with \"Accepted brief version 1. Next step: Plan the pilot\"",
+    "01-not-recorded-desktop: the acceptance box says \"Initial backlog not recorded: no tasks have been filed or named for this acceptance, and no deferral is recorded.\"",
+    "01-not-recorded-desktop: the page does not scroll sideways (document width 1440px in a 1440px viewport)",
+    "01-not-recorded-desktop: nothing in the panel reaches past the 1440px viewport (widest right edge 1315px)",
+    "01-not-recorded-desktop: no text in the panel is clipped",
+    "01-not-recorded-phone: the panel's state line is on screen when the page opens",
+    "01-not-recorded-phone: the state line reads \"Accepted for planning · backlog: not recorded\"",
+    "01-not-recorded-phone: data-intake-backlog=\"not-recorded\" with the text \"backlog: not recorded\"",
+    "01-not-recorded-phone: \"not recorded\" is in the warning colour (lab(86.4156 6.13147 78.3961)), not the line's colour (lab(85.3886 -36.7636 -21.5716))",
+    "01-not-recorded-phone: \"not recorded\" is semibold (font-weight 600)",
+    "01-not-recorded-phone: the acceptance box states it in amber (lab(91.7203 -0.505269 49.9084)), not the box colour (lab(90.2247 -31.039 9.47084))",
+    "01-not-recorded-phone: the acceptance box opens with \"Accepted brief version 1. Next step: Plan the pilot\"",
+    "01-not-recorded-phone: the acceptance box says \"Initial backlog not recorded: no tasks have been filed or named for this acceptance, and no deferral is recorded.\"",
+    "01-not-recorded-phone: the page does not scroll sideways (document width 390px in a 390px viewport)",
+    "01-not-recorded-phone: nothing in the panel reaches past the 390px viewport (widest right edge 345px)",
+    "01-not-recorded-phone: no text in the panel is clipped",
+    "02-generated-desktop: the panel's state line is on screen when the page opens",
+    "02-generated-desktop: the state line reads \"Accepted for planning · backlog: 2 tasks\"",
+    "02-generated-desktop: data-intake-backlog=\"recorded\" with the text \"backlog: 2 tasks\"",
+    "02-generated-desktop: a recorded receipt keeps the line's colour (lab(85.3886 -36.7636 -21.5716))",
+    "02-generated-desktop: the acceptance box opens with \"Accepted brief version 1. Next step: Plan the pilot\"",
+    "02-generated-desktop: the acceptance box says \"Initial backlog: 2 tasks, recorded against brief version 1.\"",
+    "02-generated-desktop: no not-recorded warning beside a recorded receipt",
+    "02-generated-desktop: the page does not scroll sideways (document width 1440px in a 1440px viewport)",
+    "02-generated-desktop: nothing in the panel reaches past the 1440px viewport (widest right edge 1315px)",
+    "02-generated-desktop: no text in the panel is clipped",
+    "02-generated-phone: the panel's state line is on screen when the page opens",
+    "02-generated-phone: the state line reads \"Accepted for planning · backlog: 2 tasks\"",
+    "02-generated-phone: data-intake-backlog=\"recorded\" with the text \"backlog: 2 tasks\"",
+    "02-generated-phone: a recorded receipt keeps the line's colour (lab(85.3886 -36.7636 -21.5716))",
+    "02-generated-phone: the acceptance box opens with \"Accepted brief version 1. Next step: Plan the pilot\"",
+    "02-generated-phone: the acceptance box says \"Initial backlog: 2 tasks, recorded against brief version 1.\"",
+    "02-generated-phone: no not-recorded warning beside a recorded receipt",
+    "02-generated-phone: the page does not scroll sideways (document width 390px in a 390px viewport)",
+    "02-generated-phone: nothing in the panel reaches past the 390px viewport (widest right edge 345px)",
+    "02-generated-phone: no text in the panel is clipped",
+    "03-existing-desktop: the panel's state line is on screen when the page opens",
+    "03-existing-desktop: the state line reads \"Accepted for planning · backlog: 1 task\"",
+    "03-existing-desktop: data-intake-backlog=\"recorded\" with the text \"backlog: 1 task\"",
+    "03-existing-desktop: a recorded receipt keeps the line's colour (lab(85.3886 -36.7636 -21.5716))",
+    "03-existing-desktop: the acceptance box opens with \"Accepted brief version 1. Next step: Plan the pilot\"",
+    "03-existing-desktop: the acceptance box says \"Initial backlog: 1 task, recorded against brief version 1.\"",
+    "03-existing-desktop: no not-recorded warning beside a recorded receipt",
+    "03-existing-desktop: the page does not scroll sideways (document width 1440px in a 1440px viewport)",
+    "03-existing-desktop: nothing in the panel reaches past the 1440px viewport (widest right edge 1315px)",
+    "03-existing-desktop: no text in the panel is clipped",
+    "03-existing-phone: the panel's state line is on screen when the page opens",
+    "03-existing-phone: the state line reads \"Accepted for planning · backlog: 1 task\"",
+    "03-existing-phone: data-intake-backlog=\"recorded\" with the text \"backlog: 1 task\"",
+    "03-existing-phone: a recorded receipt keeps the line's colour (lab(85.3886 -36.7636 -21.5716))",
+    "03-existing-phone: the acceptance box opens with \"Accepted brief version 1. Next step: Plan the pilot\"",
+    "03-existing-phone: the acceptance box says \"Initial backlog: 1 task, recorded against brief version 1.\"",
+    "03-existing-phone: no not-recorded warning beside a recorded receipt",
+    "03-existing-phone: the page does not scroll sideways (document width 390px in a 390px viewport)",
+    "03-existing-phone: nothing in the panel reaches past the 390px viewport (widest right edge 345px)",
+    "03-existing-phone: no text in the panel is clipped",
+    "04-partial-desktop: the panel's state line is on screen when the page opens",
+    "04-partial-desktop: the state line reads \"Accepted for planning · backlog: partial, 1 of 3\"",
+    "04-partial-desktop: data-intake-backlog=\"recorded\" with the text \"backlog: partial, 1 of 3\"",
+    "04-partial-desktop: a recorded receipt keeps the line's colour (lab(85.3886 -36.7636 -21.5716))",
+    "04-partial-desktop: the acceptance box opens with \"Accepted brief version 1. Next step: Plan the pilot\"",
+    "04-partial-desktop: the acceptance box says \"Initial backlog: partial, 1 of 3, recorded against brief version 1.\"",
+    "04-partial-desktop: the acceptance box says \"Planned and not filed yet:\"",
+    "04-partial-desktop: the acceptance box says \"Slot 2: Stage 2: pilot step 2\"",
+    "04-partial-desktop: the acceptance box says \"Slot 3: Stage 3: pilot step 3\"",
+    "04-partial-desktop: no not-recorded warning beside a recorded receipt",
+    "04-partial-desktop: the page does not scroll sideways (document width 1440px in a 1440px viewport)",
+    "04-partial-desktop: nothing in the panel reaches past the 1440px viewport (widest right edge 1315px)",
+    "04-partial-desktop: no text in the panel is clipped",
+    "04-partial-phone: the panel's state line is on screen when the page opens",
+    "04-partial-phone: the state line reads \"Accepted for planning · backlog: partial, 1 of 3\"",
+    "04-partial-phone: data-intake-backlog=\"recorded\" with the text \"backlog: partial, 1 of 3\"",
+    "04-partial-phone: a recorded receipt keeps the line's colour (lab(85.3886 -36.7636 -21.5716))",
+    "04-partial-phone: the acceptance box opens with \"Accepted brief version 1. Next step: Plan the pilot\"",
+    "04-partial-phone: the acceptance box says \"Initial backlog: partial, 1 of 3, recorded against brief version 1.\"",
+    "04-partial-phone: the acceptance box says \"Planned and not filed yet:\"",
+    "04-partial-phone: the acceptance box says \"Slot 2: Stage 2: pilot step 2\"",
+    "04-partial-phone: the acceptance box says \"Slot 3: Stage 3: pilot step 3\"",
+    "04-partial-phone: no not-recorded warning beside a recorded receipt",
+    "04-partial-phone: the page does not scroll sideways (document width 390px in a 390px viewport)",
+    "04-partial-phone: nothing in the panel reaches past the 390px viewport (widest right edge 345px)",
+    "04-partial-phone: no text in the panel is clipped",
+    "05-deferred-desktop: the panel's state line is on screen when the page opens",
+    "05-deferred-desktop: the state line reads \"Accepted for planning · backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered)\"",
+    "05-deferred-desktop: data-intake-backlog=\"recorded\" with the text \"backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered)\"",
+    "05-deferred-desktop: a recorded receipt keeps the line's colour (lab(85.3886 -36.7636 -21.5716))",
+    "05-deferred-desktop: the acceptance box opens with \"Accepted brief version 1. Next step: Plan the pilot\"",
+    "05-deferred-desktop: the acceptance box says \"Initial backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered), recorded against brief version 1.\"",
+    "05-deferred-desktop: the acceptance box says \"Deferral reference: nexus://conversation/receipt-check/message/hold-until-the-venue-is-confirmed\"",
+    "05-deferred-desktop: no not-recorded warning beside a recorded receipt",
+    "05-deferred-desktop: the page does not scroll sideways (document width 1440px in a 1440px viewport)",
+    "05-deferred-desktop: nothing in the panel reaches past the 1440px viewport (widest right edge 1315px)",
+    "05-deferred-desktop: no text in the panel is clipped",
+    "05-deferred-phone: the panel's state line is on screen when the page opens",
+    "05-deferred-phone: the state line reads \"Accepted for planning · backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered)\"",
+    "05-deferred-phone: data-intake-backlog=\"recorded\" with the text \"backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered)\"",
+    "05-deferred-phone: a recorded receipt keeps the line's colour (lab(85.3886 -36.7636 -21.5716))",
+    "05-deferred-phone: the acceptance box opens with \"Accepted brief version 1. Next step: Plan the pilot\"",
+    "05-deferred-phone: the acceptance box says \"Initial backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered), recorded against brief version 1.\"",
+    "05-deferred-phone: the acceptance box says \"Deferral reference: nexus://conversation/receipt-check/message/hold-until-the-venue-is-confirmed\"",
+    "05-deferred-phone: no not-recorded warning beside a recorded receipt",
+    "05-deferred-phone: the page does not scroll sideways (document width 390px in a 390px viewport)",
+    "05-deferred-phone: nothing in the panel reaches past the 390px viewport (widest right edge 345px)",
+    "05-deferred-phone: no text in the panel is clipped",
+    "06-interviewing-desktop: the panel's state line is on screen when the page opens",
+    "06-interviewing-desktop: no backlog state before acceptance: the line reads \"Conversation in progress\"",
+    "06-interviewing-desktop: no acceptance box before acceptance",
+    "06-interviewing-desktop: the page does not scroll sideways (document width 1440px in a 1440px viewport)",
+    "06-interviewing-desktop: nothing in the panel reaches past the 1440px viewport (widest right edge 1315px)",
+    "06-interviewing-desktop: no text in the panel is clipped",
+    "06-interviewing-phone: the panel's state line is on screen when the page opens",
+    "06-interviewing-phone: no backlog state before acceptance: the line reads \"Conversation in progress\"",
+    "06-interviewing-phone: no acceptance box before acceptance",
+    "06-interviewing-phone: the page does not scroll sideways (document width 390px in a 390px viewport)",
+    "06-interviewing-phone: nothing in the panel reaches past the 390px viewport (widest right edge 345px)",
+    "06-interviewing-phone: no text in the panel is clipped",
+    "traffic: each page read its project through the dashboard's own /api proxy",
+    "traffic: the browser never reached the live API: 24 attempts on :4000, all blocked",
+    "traffic: opening the pages sent no intake operation",
+    "traffic: no uncaught page error",
+    "traffic: every intake reads the same after the pages were opened as before"
+  ],
+  "cases": [
+    {
+      "case": "not-recorded",
+      "project_id": "209cea4a-9ae2-49a5-a16f-ee8ee8c1d039",
+      "intake_state": "handed_off",
+      "api": {
+        "open_task_count": 0,
+        "backlog": null
+      },
+      "expected_on_page": {
+        "state": "not-recorded",
+        "label": "backlog: not recorded",
+        "accepted": "Accepted brief version 1. Next step: Plan the pilot",
+        "box": [
+          "Initial backlog not recorded: no tasks have been filed or named for this acceptance, and no deferral is recorded."
+        ]
+      }
+    },
+    {
+      "case": "generated",
+      "project_id": "875820c2-d6e8-4947-8983-c96ef5a14778",
+      "intake_state": "handed_off",
+      "api": {
+        "open_task_count": 2,
+        "backlog": {
+          "status": "generated",
+          "task_ids": [
+            "45bb3cbb-a5cf-472b-b6bc-fb9dfb0e012e",
+            "a180824c-276d-44ec-8ca5-3ac62482b0f0"
+          ],
+          "proposals": [
+            {
+              "slot": 1,
+              "name": "Stage 1: pilot step 1",
+              "description": "What: deliver step 1 of the pilot. Why: the accepted next step needs it.",
+              "antigravity_payload": {
+                "prompt": "Deliver step 1 of the pilot",
+                "acceptance_criteria": [
+                  "Step 1 is demonstrated"
+                ]
+              },
+              "task_id": "45bb3cbb-a5cf-472b-b6bc-fb9dfb0e012e"
+            },
+            {
+              "slot": 2,
+              "name": "Stage 2: pilot step 2",
+              "description": "What: deliver step 2 of the pilot. Why: the accepted next step needs it.",
+              "antigravity_payload": {
+                "prompt": "Deliver step 2 of the pilot",
+                "acceptance_criteria": [
+                  "Step 2 is demonstrated"
+                ]
+              },
+              "dependencies": [
+                1
+              ],
+              "task_id": "a180824c-276d-44ec-8ca5-3ac62482b0f0"
+            }
+          ],
+          "remaining": [],
+          "brief_revision": 1,
+          "operation_id": "9c8212a6-1812-4f42-8486-6069438c2c3a",
+          "at": "2026-11-14T17:34:00.826Z",
+          "replayed": false
+        }
+      },
+      "expected_on_page": {
+        "state": "recorded",
+        "label": "backlog: 2 tasks",
+        "accepted": "Accepted brief version 1. Next step: Plan the pilot",
+        "box": [
+          "Initial backlog: 2 tasks, recorded against brief version 1."
+        ]
+      }
+    },
+    {
+      "case": "existing",
+      "project_id": "2b7f6890-88c3-4116-bd2b-78148b39043c",
+      "intake_state": "handed_off",
+      "api": {
+        "open_task_count": 1,
+        "backlog": {
+          "status": "existing",
+          "task_ids": [
+            "3500cd6d-2aad-426b-a351-ff92b6f50e0f"
+          ],
+          "proposals": [],
+          "remaining": [],
+          "brief_revision": 1,
+          "operation_id": "892d9b76-5c9d-4e74-8a80-f75786e9fb96",
+          "at": "2026-11-14T17:34:00.855Z",
+          "replayed": false
+        }
+      },
+      "expected_on_page": {
+        "state": "recorded",
+        "label": "backlog: 1 task",
+        "accepted": "Accepted brief version 1. Next step: Plan the pilot",
+        "box": [
+          "Initial backlog: 1 task, recorded against brief version 1."
+        ]
+      }
+    },
+    {
+      "case": "partial",
+      "project_id": "02299557-c795-4ce4-a1c3-31c300060d2e",
+      "intake_state": "handed_off",
+      "api": {
+        "open_task_count": 1,
+        "backlog": {
+          "status": "partial",
+          "task_ids": [
+            "c00b1ce6-dbaf-479c-944c-bb3e8e8cf14e"
+          ],
+          "proposals": [
+            {
+              "slot": 1,
+              "name": "Stage 1: pilot step 1",
+              "description": "What: deliver step 1 of the pilot. Why: the accepted next step needs it.",
+              "antigravity_payload": {
+                "prompt": "Deliver step 1 of the pilot",
+                "acceptance_criteria": [
+                  "Step 1 is demonstrated"
+                ]
+              },
+              "task_id": "c00b1ce6-dbaf-479c-944c-bb3e8e8cf14e"
+            }
+          ],
+          "remaining": [
+            {
+              "slot": 2,
+              "name": "Stage 2: pilot step 2",
+              "description": "What: deliver step 2 of the pilot. Why: the accepted next step needs it.",
+              "antigravity_payload": {
+                "prompt": "Deliver step 2 of the pilot",
+                "acceptance_criteria": [
+                  "Step 2 is demonstrated"
+                ]
+              },
+              "dependencies": [
+                1
+              ]
+            },
+            {
+              "slot": 3,
+              "name": "Stage 3: pilot step 3",
+              "description": "What: deliver step 3 of the pilot. Why: the accepted next step needs it.",
+              "antigravity_payload": {
+                "prompt": "Deliver step 3 of the pilot",
+                "acceptance_criteria": [
+                  "Step 3 is demonstrated"
+                ]
+              },
+              "dependencies": [
+                2
+              ]
+            }
+          ],
+          "brief_revision": 1,
+          "operation_id": "ff803646-3ce2-48e5-bde9-7eda18c7606a",
+          "at": "2026-11-14T17:34:00.878Z",
+          "replayed": false
+        }
+      },
+      "expected_on_page": {
+        "state": "recorded",
+        "label": "backlog: partial, 1 of 3",
+        "accepted": "Accepted brief version 1. Next step: Plan the pilot",
+        "box": [
+          "Initial backlog: partial, 1 of 3, recorded against brief version 1.",
+          "Planned and not filed yet:",
+          "Slot 2: Stage 2: pilot step 2",
+          "Slot 3: Stage 3: pilot step 3"
+        ]
+      }
+    },
+    {
+      "case": "deferred",
+      "project_id": "38da0730-0cf8-4901-bcc9-c5c3e46a9fe4",
+      "intake_state": "handed_off",
+      "api": {
+        "open_task_count": 0,
+        "backlog": {
+          "status": "deferred",
+          "task_ids": [],
+          "proposals": [],
+          "remaining": [],
+          "reason": "Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered",
+          "source_ref": "nexus://conversation/receipt-check/message/hold-until-the-venue-is-confirmed",
+          "brief_revision": 1,
+          "operation_id": "82c87bb1-a199-43b0-8924-920edf034176",
+          "at": "2026-11-14T17:34:00.900Z",
+          "replayed": false
+        }
+      },
+      "expected_on_page": {
+        "state": "recorded",
+        "label": "backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered)",
+        "accepted": "Accepted brief version 1. Next step: Plan the pilot",
+        "box": [
+          "Initial backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered), recorded against brief version 1.",
+          "Deferral reference: nexus://conversation/receipt-check/message/hold-until-the-venue-is-confirmed"
+        ]
+      }
+    },
+    {
+      "case": "interviewing",
+      "project_id": "329e7cfa-7933-4fac-8c7c-2aae51688afd",
+      "intake_state": "interviewing",
+      "api": {
+        "open_task_count": null,
+        "backlog": null
+      },
+      "expected_on_page": null
+    }
+  ],
+  "observed": [
+    {
+      "case": "not-recorded",
+      "viewport": "desktop",
+      "project_id": "209cea4a-9ae2-49a5-a16f-ee8ee8c1d039",
+      "screenshots": [
+        "01-not-recorded-desktop.png"
+      ],
+      "page": {
+        "line": "Accepted for planning · backlog: not recorded",
+        "lineColor": "lab(85.3886 -36.7636 -21.5716)",
+        "lineClipped": false,
+        "span": {
+          "state": "not-recorded",
+          "text": "backlog: not recorded",
+          "color": "lab(86.4156 6.13147 78.3961)",
+          "weight": 600,
+          "rect": {
+            "left": 279,
+            "right": 427,
+            "top": 139,
+            "bottom": 156
+          }
+        },
+        "amber300": "lab(86.4156 6.13147 78.3961)",
+        "amber200": "lab(91.7203 -0.505269 49.9084)",
+        "box": {
+          "lines": [
+            "Accepted brief version 1. Next step: Plan the pilot",
+            "Initial backlog not recorded: no tasks have been filed or named for this acceptance, and no deferral is recorded.",
+            "Council review: not requested",
+            "Current post-interview review is incomplete (not_requested)."
+          ],
+          "color": "lab(90.2247 -31.039 9.47084)",
+          "rect": {
+            "left": 125,
+            "right": 1315,
+            "top": 838,
+            "bottom": 994
+          }
+        },
+        "warningColor": "lab(91.7203 -0.505269 49.9084)",
+        "panel": {
+          "left": 104,
+          "right": 1336,
+          "top": 89,
+          "bottom": 1059
+        },
+        "widestRight": 1315,
+        "widestElement": "header: Project intakeAccepted for planning · backlog: not recordedBrief version 1 · 1 open questions of 1Discuss next stepCorrect an answerAdd a sourceChange folder",
+        "clipped": [],
+        "documentScrollWidth": 1440,
+        "innerWidth": 1440
+      }
+    },
+    {
+      "case": "not-recorded",
+      "viewport": "phone",
+      "project_id": "209cea4a-9ae2-49a5-a16f-ee8ee8c1d039",
+      "screenshots": [
+        "01-not-recorded-phone.png",
+        "01-not-recorded-phone-acceptance.png"
+      ],
+      "page": {
+        "line": "Accepted for planning · backlog: not recorded",
+        "lineColor": "lab(85.3886 -36.7636 -21.5716)",
+        "lineClipped": false,
+        "span": {
+          "state": "not-recorded",
+          "text": "backlog: not recorded",
+          "color": "lab(86.4156 6.13147 78.3961)",
+          "weight": 600,
+          "rect": {
+            "left": 45,
+            "right": 283,
+            "top": 218,
+            "bottom": 255
+          }
+        },
+        "amber300": "lab(86.4156 6.13147 78.3961)",
+        "amber200": "lab(91.7203 -0.505269 49.9084)",
+        "box": {
+          "lines": [
+            "Accepted brief version 1. Next step: Plan the pilot",
+            "Initial backlog not recorded: no tasks have been filed or named for this acceptance, and no deferral is recorded.",
+            "Council review: not requested",
+            "Current post-interview review is incomplete (not_requested)."
+          ],
+          "color": "lab(90.2247 -31.039 9.47084)",
+          "rect": {
+            "left": 45,
+            "right": 345,
+            "top": 1193,
+            "bottom": 1429
+          }
+        },
+        "warningColor": "lab(91.7203 -0.505269 49.9084)",
+        "panel": {
+          "left": 24,
+          "right": 366,
+          "top": 168,
+          "bottom": 1494
+        },
+        "widestRight": 345,
+        "widestElement": "header: Project intakeAccepted for planning · backlog: not recordedBrief version 1 · 1 open questions of 1Discuss next stepCorrect an answerAdd a sourceChange folder",
+        "clipped": [],
+        "documentScrollWidth": 390,
+        "innerWidth": 390
+      }
+    },
+    {
+      "case": "generated",
+      "viewport": "desktop",
+      "project_id": "875820c2-d6e8-4947-8983-c96ef5a14778",
+      "screenshots": [
+        "02-generated-desktop.png"
+      ],
+      "page": {
+        "line": "Accepted for planning · backlog: 2 tasks",
+        "lineColor": "lab(85.3886 -36.7636 -21.5716)",
+        "lineClipped": false,
+        "span": {
+          "state": "recorded",
+          "text": "backlog: 2 tasks",
+          "color": "lab(85.3886 -36.7636 -21.5716)",
+          "weight": 400,
+          "rect": {
+            "left": 279,
+            "right": 384,
+            "top": 139,
+            "bottom": 156
+          }
+        },
+        "amber300": "lab(86.4156 6.13147 78.3961)",
+        "amber200": "lab(91.7203 -0.505269 49.9084)",
+        "box": {
+          "lines": [
+            "Accepted brief version 1. Next step: Plan the pilot",
+            "Initial backlog: 2 tasks, recorded against brief version 1.",
+            "Council review: not requested",
+            "Current post-interview review is incomplete (not_requested)."
+          ],
+          "color": "lab(90.2247 -31.039 9.47084)",
+          "rect": {
+            "left": 125,
+            "right": 1315,
+            "top": 838,
+            "bottom": 994
+          }
+        },
+        "warningColor": null,
+        "panel": {
+          "left": 104,
+          "right": 1336,
+          "top": 89,
+          "bottom": 1059
+        },
+        "widestRight": 1315,
+        "widestElement": "header: Project intakeAccepted for planning · backlog: 2 tasksBrief version 1 · 1 open questions of 1Discuss next stepCorrect an answerAdd a sourceChange folder",
+        "clipped": [],
+        "documentScrollWidth": 1440,
+        "innerWidth": 1440
+      }
+    },
+    {
+      "case": "generated",
+      "viewport": "phone",
+      "project_id": "875820c2-d6e8-4947-8983-c96ef5a14778",
+      "screenshots": [
+        "02-generated-phone.png",
+        "02-generated-phone-acceptance.png"
+      ],
+      "page": {
+        "line": "Accepted for planning · backlog: 2 tasks",
+        "lineColor": "lab(85.3886 -36.7636 -21.5716)",
+        "lineClipped": false,
+        "span": {
+          "state": "recorded",
+          "text": "backlog: 2 tasks",
+          "color": "lab(85.3886 -36.7636 -21.5716)",
+          "weight": 400,
+          "rect": {
+            "left": 199,
+            "right": 304,
+            "top": 218,
+            "bottom": 235
+          }
+        },
+        "amber300": "lab(86.4156 6.13147 78.3961)",
+        "amber200": "lab(91.7203 -0.505269 49.9084)",
+        "box": {
+          "lines": [
+            "Accepted brief version 1. Next step: Plan the pilot",
+            "Initial backlog: 2 tasks, recorded against brief version 1.",
+            "Council review: not requested",
+            "Current post-interview review is incomplete (not_requested)."
+          ],
+          "color": "lab(90.2247 -31.039 9.47084)",
+          "rect": {
+            "left": 45,
+            "right": 345,
+            "top": 1173,
+            "bottom": 1389
+          }
+        },
+        "warningColor": null,
+        "panel": {
+          "left": 24,
+          "right": 366,
+          "top": 168,
+          "bottom": 1454
+        },
+        "widestRight": 345,
+        "widestElement": "header: Project intakeAccepted for planning · backlog: 2 tasksBrief version 1 · 1 open questions of 1Discuss next stepCorrect an answerAdd a sourceChange folder",
+        "clipped": [],
+        "documentScrollWidth": 390,
+        "innerWidth": 390
+      }
+    },
+    {
+      "case": "existing",
+      "viewport": "desktop",
+      "project_id": "2b7f6890-88c3-4116-bd2b-78148b39043c",
+      "screenshots": [
+        "03-existing-desktop.png"
+      ],
+      "page": {
+        "line": "Accepted for planning · backlog: 1 task",
+        "lineColor": "lab(85.3886 -36.7636 -21.5716)",
+        "lineClipped": false,
+        "span": {
+          "state": "recorded",
+          "text": "backlog: 1 task",
+          "color": "lab(85.3886 -36.7636 -21.5716)",
+          "weight": 400,
+          "rect": {
+            "left": 279,
+            "right": 375,
+            "top": 139,
+            "bottom": 156
+          }
+        },
+        "amber300": "lab(86.4156 6.13147 78.3961)",
+        "amber200": "lab(91.7203 -0.505269 49.9084)",
+        "box": {
+          "lines": [
+            "Accepted brief version 1. Next step: Plan the pilot",
+            "Initial backlog: 1 task, recorded against brief version 1.",
+            "Council review: not requested",
+            "Current post-interview review is incomplete (not_requested)."
+          ],
+          "color": "lab(90.2247 -31.039 9.47084)",
+          "rect": {
+            "left": 125,
+            "right": 1315,
+            "top": 838,
+            "bottom": 994
+          }
+        },
+        "warningColor": null,
+        "panel": {
+          "left": 104,
+          "right": 1336,
+          "top": 89,
+          "bottom": 1059
+        },
+        "widestRight": 1315,
+        "widestElement": "header: Project intakeAccepted for planning · backlog: 1 taskBrief version 1 · 1 open questions of 1Discuss next stepCorrect an answerAdd a sourceChange folder",
+        "clipped": [],
+        "documentScrollWidth": 1440,
+        "innerWidth": 1440
+      }
+    },
+    {
+      "case": "existing",
+      "viewport": "phone",
+      "project_id": "2b7f6890-88c3-4116-bd2b-78148b39043c",
+      "screenshots": [
+        "03-existing-phone.png",
+        "03-existing-phone-acceptance.png"
+      ],
+      "page": {
+        "line": "Accepted for planning · backlog: 1 task",
+        "lineColor": "lab(85.3886 -36.7636 -21.5716)",
+        "lineClipped": false,
+        "span": {
+          "state": "recorded",
+          "text": "backlog: 1 task",
+          "color": "lab(85.3886 -36.7636 -21.5716)",
+          "weight": 400,
+          "rect": {
+            "left": 199,
+            "right": 295,
+            "top": 218,
+            "bottom": 235
+          }
+        },
+        "amber300": "lab(86.4156 6.13147 78.3961)",
+        "amber200": "lab(91.7203 -0.505269 49.9084)",
+        "box": {
+          "lines": [
+            "Accepted brief version 1. Next step: Plan the pilot",
+            "Initial backlog: 1 task, recorded against brief version 1.",
+            "Council review: not requested",
+            "Current post-interview review is incomplete (not_requested)."
+          ],
+          "color": "lab(90.2247 -31.039 9.47084)",
+          "rect": {
+            "left": 45,
+            "right": 345,
+            "top": 1173,
+            "bottom": 1389
+          }
+        },
+        "warningColor": null,
+        "panel": {
+          "left": 24,
+          "right": 366,
+          "top": 168,
+          "bottom": 1454
+        },
+        "widestRight": 345,
+        "widestElement": "header: Project intakeAccepted for planning · backlog: 1 taskBrief version 1 · 1 open questions of 1Discuss next stepCorrect an answerAdd a sourceChange folder",
+        "clipped": [],
+        "documentScrollWidth": 390,
+        "innerWidth": 390
+      }
+    },
+    {
+      "case": "partial",
+      "viewport": "desktop",
+      "project_id": "02299557-c795-4ce4-a1c3-31c300060d2e",
+      "screenshots": [
+        "04-partial-desktop.png"
+      ],
+      "page": {
+        "line": "Accepted for planning · backlog: partial, 1 of 3",
+        "lineColor": "lab(85.3886 -36.7636 -21.5716)",
+        "lineClipped": false,
+        "span": {
+          "state": "recorded",
+          "text": "backlog: partial, 1 of 3",
+          "color": "lab(85.3886 -36.7636 -21.5716)",
+          "weight": 400,
+          "rect": {
+            "left": 279,
+            "right": 422,
+            "top": 139,
+            "bottom": 156
+          }
+        },
+        "amber300": "lab(86.4156 6.13147 78.3961)",
+        "amber200": "lab(91.7203 -0.505269 49.9084)",
+        "box": {
+          "lines": [
+            "Accepted brief version 1. Next step: Plan the pilot",
+            "Initial backlog: partial, 1 of 3, recorded against brief version 1.",
+            "Planned and not filed yet:",
+            "Slot 2: Stage 2: pilot step 2",
+            "Slot 3: Stage 3: pilot step 3",
+            "Council review: not requested",
+            "Current post-interview review is incomplete (not_requested)."
+          ],
+          "color": "lab(90.2247 -31.039 9.47084)",
+          "rect": {
+            "left": 125,
+            "right": 1315,
+            "top": 838,
+            "bottom": 1062
+          }
+        },
+        "warningColor": null,
+        "panel": {
+          "left": 104,
+          "right": 1336,
+          "top": 89,
+          "bottom": 1127
+        },
+        "widestRight": 1315,
+        "widestElement": "header: Project intakeAccepted for planning · backlog: partial, 1 of 3Brief version 1 · 1 open questions of 1Discuss next stepCorrect an answerAdd a sourceChange folder",
+        "clipped": [],
+        "documentScrollWidth": 1440,
+        "innerWidth": 1440
+      }
+    },
+    {
+      "case": "partial",
+      "viewport": "phone",
+      "project_id": "02299557-c795-4ce4-a1c3-31c300060d2e",
+      "screenshots": [
+        "04-partial-phone.png",
+        "04-partial-phone-acceptance.png"
+      ],
+      "page": {
+        "line": "Accepted for planning · backlog: partial, 1 of 3",
+        "lineColor": "lab(85.3886 -36.7636 -21.5716)",
+        "lineClipped": false,
+        "span": {
+          "state": "recorded",
+          "text": "backlog: partial, 1 of 3",
+          "color": "lab(85.3886 -36.7636 -21.5716)",
+          "weight": 400,
+          "rect": {
+            "left": 199,
+            "right": 342,
+            "top": 218,
+            "bottom": 235
+          }
+        },
+        "amber300": "lab(86.4156 6.13147 78.3961)",
+        "amber200": "lab(91.7203 -0.505269 49.9084)",
+        "box": {
+          "lines": [
+            "Accepted brief version 1. Next step: Plan the pilot",
+            "Initial backlog: partial, 1 of 3, recorded against brief version 1.",
+            "Planned and not filed yet:",
+            "Slot 2: Stage 2: pilot step 2",
+            "Slot 3: Stage 3: pilot step 3",
+            "Council review: not requested",
+            "Current post-interview review is incomplete (not_requested)."
+          ],
+          "color": "lab(90.2247 -31.039 9.47084)",
+          "rect": {
+            "left": 45,
+            "right": 345,
+            "top": 1173,
+            "bottom": 1457
+          }
+        },
+        "warningColor": null,
+        "panel": {
+          "left": 24,
+          "right": 366,
+          "top": 168,
+          "bottom": 1522
+        },
+        "widestRight": 345,
+        "widestElement": "header: Project intakeAccepted for planning · backlog: partial, 1 of 3Brief version 1 · 1 open questions of 1Discuss next stepCorrect an answerAdd a sourceChange folder",
+        "clipped": [],
+        "documentScrollWidth": 390,
+        "innerWidth": 390
+      }
+    },
+    {
+      "case": "deferred",
+      "viewport": "desktop",
+      "project_id": "38da0730-0cf8-4901-bcc9-c5c3e46a9fe4",
+      "screenshots": [
+        "05-deferred-desktop.png"
+      ],
+      "page": {
+        "line": "Accepted for planning · backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered)",
+        "lineColor": "lab(85.3886 -36.7636 -21.5716)",
+        "lineClipped": false,
+        "span": {
+          "state": "recorded",
+          "text": "backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered)",
+          "color": "lab(85.3886 -36.7636 -21.5716)",
+          "weight": 400,
+          "rect": {
+            "left": 279,
+            "right": 1152,
+            "top": 139,
+            "bottom": 156
+          }
+        },
+        "amber300": "lab(86.4156 6.13147 78.3961)",
+        "amber200": "lab(91.7203 -0.505269 49.9084)",
+        "box": {
+          "lines": [
+            "Accepted brief version 1. Next step: Plan the pilot",
+            "Initial backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered), recorded against brief version 1.",
+            "Deferral reference: nexus://conversation/receipt-check/message/hold-until-the-venue-is-confirmed",
+            "Council review: not requested",
+            "Current post-interview review is incomplete (not_requested)."
+          ],
+          "color": "lab(90.2247 -31.039 9.47084)",
+          "rect": {
+            "left": 125,
+            "right": 1315,
+            "top": 888,
+            "bottom": 1068
+          }
+        },
+        "warningColor": null,
+        "panel": {
+          "left": 104,
+          "right": 1336,
+          "top": 89,
+          "bottom": 1133
+        },
+        "widestRight": 1315,
+        "widestElement": "header: Project intakeAccepted for planning · backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered)Brief version 1 · 1 open questions of 1Discuss next stepCorrect an answerAdd a sourceChange folder",
+        "clipped": [],
+        "documentScrollWidth": 1440,
+        "innerWidth": 1440
+      }
+    },
+    {
+      "case": "deferred",
+      "viewport": "phone",
+      "project_id": "38da0730-0cf8-4901-bcc9-c5c3e46a9fe4",
+      "screenshots": [
+        "05-deferred-phone.png",
+        "05-deferred-phone-acceptance.png"
+      ],
+      "page": {
+        "line": "Accepted for planning · backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered)",
+        "lineColor": "lab(85.3886 -36.7636 -21.5716)",
+        "lineClipped": false,
+        "span": {
+          "state": "recorded",
+          "text": "backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered)",
+          "color": "lab(85.3886 -36.7636 -21.5716)",
+          "weight": 400,
+          "rect": {
+            "left": 45,
+            "right": 332,
+            "top": 218,
+            "bottom": 295
+          }
+        },
+        "amber300": "lab(86.4156 6.13147 78.3961)",
+        "amber200": "lab(91.7203 -0.505269 49.9084)",
+        "box": {
+          "lines": [
+            "Accepted brief version 1. Next step: Plan the pilot",
+            "Initial backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered), recorded against brief version 1.",
+            "Deferral reference: nexus://conversation/receipt-check/message/hold-until-the-venue-is-confirmed",
+            "Council review: not requested",
+            "Current post-interview review is incomplete (not_requested)."
+          ],
+          "color": "lab(90.2247 -31.039 9.47084)",
+          "rect": {
+            "left": 45,
+            "right": 345,
+            "top": 1233,
+            "bottom": 1573
+          }
+        },
+        "warningColor": null,
+        "panel": {
+          "left": 24,
+          "right": 366,
+          "top": 168,
+          "bottom": 1638
+        },
+        "widestRight": 345,
+        "widestElement": "header: Project intakeAccepted for planning · backlog: deferred (Robert asked to hold the first tasks until the venue for the pilot is confirmed and the insurance question is answered)Brief version 1 · 1 open questions of 1Discuss next stepCorrect an answerAdd a sourceChange folder",
+        "clipped": [],
+        "documentScrollWidth": 390,
+        "innerWidth": 390
+      }
+    },
+    {
+      "case": "interviewing",
+      "viewport": "desktop",
+      "project_id": "329e7cfa-7933-4fac-8c7c-2aae51688afd",
+      "screenshots": [
+        "06-interviewing-desktop.png"
+      ],
+      "page": {
+        "line": "Conversation in progress",
+        "lineColor": "lab(85.3886 -36.7636 -21.5716)",
+        "lineClipped": false,
+        "span": null,
+        "amber300": "lab(86.4156 6.13147 78.3961)",
+        "amber200": "lab(91.7203 -0.505269 49.9084)",
+        "box": null,
+        "warningColor": null,
+        "panel": {
+          "left": 104,
+          "right": 1336,
+          "top": 89,
+          "bottom": 879
+        },
+        "widestRight": 1315,
+        "widestElement": "header: Project intakeConversation in progressBrief version 1 · 1 open questions of 1Resume intakeCorrect an answerAdd a sourceChange folder",
+        "clipped": [],
+        "documentScrollWidth": 1440,
+        "innerWidth": 1440
+      }
+    },
+    {
+      "case": "interviewing",
+      "viewport": "phone",
+      "project_id": "329e7cfa-7933-4fac-8c7c-2aae51688afd",
+      "screenshots": [
+        "06-interviewing-phone.png"
+      ],
+      "page": {
+        "line": "Conversation in progress",
+        "lineColor": "lab(85.3886 -36.7636 -21.5716)",
+        "lineClipped": false,
+        "span": null,
+        "amber300": "lab(86.4156 6.13147 78.3961)",
+        "amber200": "lab(91.7203 -0.505269 49.9084)",
+        "box": null,
+        "warningColor": null,
+        "panel": {
+          "left": 24,
+          "right": 366,
+          "top": 168,
+          "bottom": 1214
+        },
+        "widestRight": 345,
+        "widestElement": "header: Project intakeConversation in progressBrief version 1 · 1 open questions of 1Resume intakeCorrect an answerAdd a sourceChange folder",
+        "clipped": [],
+        "documentScrollWidth": 390,
+        "innerWidth": 390
+      }
+    }
+  ],
+  "traffic": {
+    "requests": 1041,
+    "to_the_dashboard_origin": 1017,
+    "attempts_on_live_4000_all_blocked": 24,
+    "to_any_other_origin": [],
+    "writes_from_the_page": [],
+    "api_routes_read": [
+      "GET /api/board-state",
+      "GET /api/calendar",
+      "GET /api/contacts",
+      "GET /api/dashboard/stats",
+      "GET /api/documents",
+      "GET /api/documents/counts",
+      "GET /api/health",
+      "GET /api/knowledge-activity",
+      "GET /api/praxis/dispatch-state",
+      "GET /api/praxis/hitl/pending",
+      "GET /api/praxis/stakeholder-reports",
+      "GET /api/praxis/stream",
+      "GET /api/praxis/stream/snapshot",
+      "GET /api/praxis/voice-status",
+      "GET /api/projects/:id",
+      "GET /api/projects/:id/client-access",
+      "GET /api/projects/:id/commits",
+      "GET /api/projects/:id/notes",
+      "GET /api/projects/:id/pulse",
+      "GET /api/projects/:id/readme",
+      "GET /api/projects/:id/requests",
+      "GET /api/projects/:id/stakeholder-policy",
+      "GET /api/projects/:id/tasks"
+    ]
+  },
+  "notes": [
+    "Praxis is not part of this stack and the live API is barred, so the shell shows 'no signal' and 'Request status unavailable'.",
+    "The API's vault root, praxis-mind ledger and Cortex gateway point at an empty directory, a missing file and a closed port."
+  ],
+  "page_errors": []
+}
