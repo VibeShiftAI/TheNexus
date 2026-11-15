@@ -17,7 +17,7 @@ test('completed parent shows waiting improvement separately with full suggestion
  assert.match(div.textContent,/Verified completion/);
  assert.match(panel.textContent,/Waiting — not started/); assert.ok(panel.querySelector('a[href="/calendar"]')); assert.match(panel.textContent,/thirty continuous idle minutes/);
  assert.doesNotMatch(panel.textContent,/including tasks held for checks/);
- assert.match(panel.textContent,/Parent task QA does not verify/);
+ assert.doesNotMatch(panel.textContent,/Optional suggestions have their own execution|Parent task QA does not verify/);
  assert.match(panel.querySelector('details').textContent,/Keep the edge case/);
  assert.equal(panel.querySelector('time').getAttribute('datetime'),item.updatedAt);
 });
@@ -54,4 +54,30 @@ test('review-only completion shows decision rationale and evidence without claim
  assert.match(panel.textContent,/Already addressed/);
  assert.match(panel.textContent,/Existing test passes/);
  assert.match(panel.textContent,/Priority 2/);
+});
+
+// Shape of task f93e5ba5 (2026-11-13): the follow-up review reason is copied into
+// the item reason and into its only decision, so the same paragraph used to show three times.
+const occurrences = (text, paragraph) => text.split(paragraph).length - 1;
+const retained = 'The critic\'s objections may matter, but I cannot read enough to decide.\nTwo facts are missing.';
+test('a repeated follow-up reason renders once and keeps every decision, evidence line and suggestion', () => {
+ const panel=render({available:true,items:[{...item,status:'retained',reason:retained,followupReview:{status:'retained',reviewedAt:'2026-11-13T11:01:01.800Z',reason:retained,priority:40,decisions:[{index:0,disposition:'retain',reason:retained,evidence:['evidence-9a751a']}]},suggestions:[{source:'adversarial-critic',text:'Resolve the two objections.'}]}]}).querySelector('[aria-label="QA improvements"]');
+ assert.equal(occurrences(panel.textContent,retained),1,panel.textContent);
+ assert.match(panel.textContent,/Finding 1 · Retained/);
+ assert.match(panel.textContent,/evidence-9a751a/);
+ assert.match(panel.textContent,/Priority 40/);
+ assert.match(panel.querySelector('details').textContent,/adversarial-critic.*Resolve the two objections\./s);
+ assert.doesNotMatch(panel.textContent,/Optional suggestions have their own execution|Parent task QA does not verify/);
+});
+test('a suggestion whose text repeats keeps its entry and source but not a second copy of the paragraph', () => {
+ const text='Add a regression test for the empty schedule.\nKeep the edge case.';
+ const panel=render({available:true,items:[{...item,suggestions:[{source:'QA reviewer',text},{source:'adversarial-critic',text:text.replace('\n','\n  ')}],review:{assessment:'pass',notes:item.reason,evidence:'Focused tests: 7 passed.',reviewer:'claude-code'}}]}).querySelector('[aria-label="QA improvements"]');
+ const list=panel.querySelector('details ol');
+ assert.equal(list.querySelectorAll('li').length,2);
+ assert.match(panel.querySelector('details summary').textContent,/\(2\)/);
+ assert.equal(occurrences(panel.textContent,'Add a regression test for the empty schedule.'),1,panel.textContent);
+ assert.match(list.querySelectorAll('li')[1].textContent,/adversarial-critic.*Same text as suggestion 1\./s);
+ // Review notes that repeat the reason point at it instead of repeating it.
+ assert.equal(occurrences(panel.textContent,item.reason),1,panel.textContent);
+ assert.match(panel.querySelectorAll('details')[1].textContent,/Same text as above\..*Focused tests: 7 passed/s);
 });
