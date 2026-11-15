@@ -81,3 +81,37 @@ test('a suggestion whose text repeats keeps its entry and source but not a secon
  assert.equal(occurrences(panel.textContent,item.reason),1,panel.textContent);
  assert.match(panel.querySelectorAll('details')[1].textContent,/Same text as above\..*Focused tests: 7 passed/s);
 });
+// Paragraphs are blank-line blocks, so a repeat inside a longer field is caught too (QA repair, 2026-11-15).
+const P='Add a regression test for the empty schedule.';
+const Q='Keep the existing schedule coverage.';
+test('a paragraph repeated inside one suggestion renders once and the entry stays', () => {
+ const panel=render({available:true,items:[{...item,suggestions:[{source:'QA reviewer',text:`${P}\n\n${P}`}]}]}).querySelector('[aria-label="QA improvements"]');
+ const entries=panel.querySelectorAll('details ol li');
+ assert.equal(entries.length,1);
+ assert.equal(occurrences(panel.textContent,P),1,panel.textContent);
+ assert.match(entries[0].textContent,/QA reviewer.*Add a regression test.*Same text as above\./s);
+});
+test('a paragraph shared by distinct suggestions renders once and keeps the rest of each', () => {
+ const panel=render({available:true,items:[{...item,suggestions:[{source:'QA reviewer',text:P},{source:'adversarial-critic',text:`${P}\n\n${Q}`}]}]}).querySelector('[aria-label="QA improvements"]');
+ const entries=panel.querySelectorAll('details ol li');
+ assert.equal(entries.length,2);
+ assert.match(panel.querySelector('details summary').textContent,/\(2\)/);
+ assert.equal(occurrences(panel.textContent,P),1,panel.textContent);
+ assert.match(entries[1].textContent,/adversarial-critic.*Same text as suggestion 1\..*Keep the existing schedule coverage\./s);
+ assert.equal(occurrences(panel.textContent,Q),1);
+});
+test('a decision reason that repeats one paragraph of the follow-up reason shows only its new paragraph', () => {
+ const shared='Two facts are missing.';
+ const panel=render({available:true,items:[{...item,status:'retained',reason:shared,followupReview:{status:'retained',priority:7,reason:`${shared}\n\nThe checkpoint is unread.`,decisions:[{index:0,disposition:'retain',reason:`${shared}\n\nAsk for the baseline.`,evidence:['evidence-1']}]}}]}).querySelector('[aria-label="QA improvements"]');
+ assert.equal(occurrences(panel.textContent,shared),1,panel.textContent);
+ assert.match(panel.textContent,/The checkpoint is unread\./);
+ assert.match(panel.textContent,/Finding 1 · Retained.*Ask for the baseline\..*evidence-1/s);
+});
+test('a field with no repeated paragraph renders exactly as recorded', () => {
+ const text=`${P}\n\n\n  ${Q}`;
+ const panel=render({available:true,items:[{...item,suggestions:[{source:'QA reviewer',text}]}]}).querySelector('[aria-label="QA improvements"]');
+ const paragraphs=panel.querySelectorAll('details ol li p');
+ assert.equal(paragraphs.length,2);
+ assert.equal(paragraphs[1].textContent,text);
+ assert.doesNotMatch(panel.textContent,/Same text as/);
+});
