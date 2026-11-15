@@ -38,6 +38,14 @@ export interface ProgressInput {
   evidence: ProgressSource<EvidenceDossier>;
 }
 export const emptyProgressSource = <T>(): ProgressSource<T> => ({ data: null, at: null, error: null });
+/** Structured progress state and required action. Callers branch on these keys, never on the wording below. */
+export type TaskProgressStateKey = 'waiting_for_you' | 'background_held' | 'background_waiting' | 'active' | 'qa' | 'retry_queued' | 'queued' | 'waiting' | 'completed' | 'reported_complete' | 'stopped' | 'unknown';
+export type TaskProgressActionKey = 'unconfirmed' | 'respond' | 'background' | 'stopped' | 'status_unknown' | 'none';
+/** Display wording for each key. Rewording an entry changes the text only, never what the panel shows or hides. */
+export const TASK_PROGRESS_COPY: { state: Record<TaskProgressStateKey, string>; action: Record<TaskProgressActionKey, string> } = {
+  state: { waiting_for_you: 'Waiting for you', background_held: 'Held for background evidence', background_waiting: 'Waiting for background evidence', active: 'Active', qa: 'QA in progress', retry_queued: 'Retrying — queued', queued: 'Waiting in queue', waiting: 'Waiting', completed: 'Completed', reported_complete: 'Reported complete', stopped: 'Stopped', unknown: 'Unknown' },
+  action: { unconfirmed: 'Cannot confirm whether you need to act; pending requests are unavailable or stale.', respond: 'Your response is needed.', background: 'No pending recovery request is recorded.', stopped: 'Stopped; recovery action is not recorded. Review task controls below.', status_unknown: 'No pending task question is recorded; current work status is unknown.', none: 'No action needed from you.' },
+};
 export function buildTaskProgress(input: ProgressInput) {
   const { task, now } = input; const gaps: string[] = [];
   const fresh = <T>(name: string, source: ProgressSource<T>) => {
@@ -65,17 +73,18 @@ export function buildTaskProgress(input: ProgressInput) {
     && ['needs_evidence', 'partial_overlap', 'covered_by_open', 'already_delivered'].includes(receipt.decision) ? receipt : null;
   const background = live?.backgroundObligation;
   const statusReason = background?.detail ?? null;
-  let state = 'Unknown'; let stateAt: string | null = null;
-  if (questions.length) { state = 'Waiting for you'; stateAt = questions[0].requestedAt ?? null; }
-  else if (background) { state = background.state === 'held' ? 'Held for background evidence' : 'Waiting for background evidence'; stateAt = live?.updatedAt ?? null; }
-  else if (live?.lane === 'running') { state = 'Active'; stateAt = live.startedAt ?? null; }
-  else if (live?.lane === 'qa') { state = 'QA in progress'; stateAt = live.qa?.startedAt ?? live.finishedAt ?? null; }
-  else if (live?.lane === 'queued') { state = live.correction ? 'Retrying — queued' : 'Waiting in queue'; stateAt = live.enqueuedAt ?? null; }
-  else if (live?.lane === 'waiting') { state = 'Waiting'; stateAt = live.updatedAt ?? null; }
+  let stateKey: TaskProgressStateKey = 'unknown'; let stateAt: string | null = null;
+  if (questions.length) { stateKey = 'waiting_for_you'; stateAt = questions[0].requestedAt ?? null; }
+  else if (background) { stateKey = background.state === 'held' ? 'background_held' : 'background_waiting'; stateAt = live?.updatedAt ?? null; }
+  else if (live?.lane === 'running') { stateKey = 'active'; stateAt = live.startedAt ?? null; }
+  else if (live?.lane === 'qa') { stateKey = 'qa'; stateAt = live.qa?.startedAt ?? live.finishedAt ?? null; }
+  else if (live?.lane === 'queued') { stateKey = live.correction ? 'retry_queued' : 'queued'; stateAt = live.enqueuedAt ?? null; }
+  else if (live?.lane === 'waiting') { stateKey = 'waiting'; stateAt = live.updatedAt ?? null; }
   else if (liveFresh && progressFresh) {
-    state = ['completed', 'done'].includes(task.status) ? 'Completed' : latest?.outcome === 'success' ? 'Reported complete' : (task.status === 'blocked' || task.status === 'failed' || latest && ['failure', 'timeout', 'cancelled'].includes(latest.outcome)) ? 'Stopped' : 'Waiting';
+    stateKey = ['completed', 'done'].includes(task.status) ? 'completed' : latest?.outcome === 'success' ? 'reported_complete' : (task.status === 'blocked' || task.status === 'failed' || latest && ['failure', 'timeout', 'cancelled'].includes(latest.outcome)) ? 'stopped' : 'waiting';
     stateAt = latest?.completedAt ?? null;
   }
+  const actionKey: TaskProgressActionKey = !pendingFresh ? 'unconfirmed' : questions.length ? 'respond' : background ? 'background' : stateKey === 'stopped' ? 'stopped' : stateKey === 'unknown' ? 'status_unknown' : 'none';
   const newerExecution = live?.lane === 'running' && latest?.completedAt && live.startedAt && Date.parse(live.startedAt) > Date.parse(latest.completedAt);
   if (newerExecution) gaps.push('The runtime has a newer execution than the recorded dispatch; its commentary is not available yet.');
   const currentStep = !newerExecution && progressFresh && latest?.commentary.available ? latest.commentary.messages.at(-1)?.text ?? 'No public progress message has been recorded for this attempt.' : 'Current step unavailable. See source details below.';
@@ -99,8 +108,8 @@ export function buildTaskProgress(input: ProgressInput) {
     if (q.resolution) history.push({ id: `answer-${q.id}`, title: 'Response recorded', text: [q.resolution.choice, q.resolution.freeText].filter(Boolean).join('\n') || 'Closed without a recorded answer.', at: q.resolution.resolvedAt ?? '', href });
   }
   history.sort((a, b) => (Date.parse(a.at) || 0) - (Date.parse(b.at) || 0));
-  return { state, stateAt, statusReason, admission, currentStep, currentStepAt, latest, attempts, questions, history, verification, remaining, gaps, dossier,
-    action: !pendingFresh ? 'Cannot confirm whether you need to act; pending requests are unavailable or stale.' : questions.length ? 'Your response is needed.' : background ? 'No pending recovery request is recorded.' : state === 'Stopped' ? 'Stopped; recovery action is not recorded. Review task controls below.' : state === 'Unknown' ? 'No pending task question is recorded; current work status is unknown.' : 'No action needed from you.' };
+  return { stateKey, state: TASK_PROGRESS_COPY.state[stateKey], stateAt, statusReason, admission, currentStep, currentStepAt, latest, attempts, questions, history, verification, remaining, gaps, dossier,
+    actionKey, action: TASK_PROGRESS_COPY.action[actionKey] };
 }
 
 /** A short prose preview only; callers retain the complete source in disclosure. */

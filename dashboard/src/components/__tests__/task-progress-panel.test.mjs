@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { TaskProgressView } from '../task-view/task-progress-panel.tsx';
+import { TASK_PROGRESS_COPY } from '../../lib/task-progress.ts';
 const now = Date.now(); const source = data => ({ data, at: now, error: null });
 test('summary separates reported text from evidence and renders chronological questions between attempts', () => {
  const input = { task: { id: 't', status: 'completed' }, now,
@@ -98,4 +99,35 @@ test('overlap warning preserves confirmed queue state and contract holds remain 
  const input=admissionInput(); input.live.data.items=[{taskId:'t',lane:'queued',enqueuedAt:'2026-10-10T16:05:00Z'}];
  const div=renderProgress(input);assert.match(div.textContent,/Waiting in queue/);assert.match(div.textContent,/Scope overlap warning/);assert.doesNotMatch(div.textContent,/Waiting for admission/);
  input.task.metadata.work_admission.hold_kind='contract_drift';input.task.metadata.work_admission.contract_hold={since:'now'};assert.equal(renderProgress(input).querySelector('[data-work-admission]'),null);
+});
+
+test('rewording every state and action message changes only the words, never what renders', () => {
+ const attempt = outcome => ({ id: 'd', executor: 'codex', kind: 'dispatch', outcome, startedAt: '2026-10-10T15:00:00Z', completedAt: outcome === 'running' ? null : '2026-10-10T16:00:00Z', commentary: { available: true, messages: [{ text: 'Checked the links.', at: '2026-10-10T15:30:00Z', sequence: 1 }] } });
+ const scenario = (status, outcome, items = [], pending = source([])) => ({ task: { id: 't', status }, now, progress: source({ taskId: 't', attempts: [attempt(outcome)], events: [], eventsAvailable: true }), live: source({ praxis: { reachable: true }, items }), pending, recent: source([]), evidence: source(null) });
+ const scenarios = {
+  active: scenario('in_progress', 'running', [{ taskId: 't', lane: 'running', startedAt: '2026-10-10T15:00:00Z' }]),
+  completed: scenario('completed', 'success'),
+  reported: scenario('in_progress', 'success'),
+  stopped: scenario('failed', 'failure'),
+  question: scenario('in_progress', 'running', [], source([{ id: 'q', taskId: 't', question: 'Which fixture?', requestedAt: new Date(now).toISOString() }])),
+  unconfirmed: scenario('in_progress', 'running', [], { data: [], at: now - 61_000, error: 'offline' }),
+ };
+ const renderAll = () => Object.fromEntries(Object.entries(scenarios).map(([name, input]) => [name, renderToStaticMarkup(createElement(TaskProgressView, { input }))]));
+ const before = renderAll();
+ const original = structuredClone(TASK_PROGRESS_COPY);
+ const reworded = [];
+ for (const group of ['state', 'action']) for (const key of Object.keys(TASK_PROGRESS_COPY[group])) {
+  TASK_PROGRESS_COPY[group][key] = `{{${group}.${key}}}`; reworded.push([`{{${group}.${key}}}`, original[group][key]]);
+ }
+ let after;
+ try { after = renderAll(); } finally { for (const group of ['state', 'action']) Object.assign(TASK_PROGRESS_COPY[group], original[group]); }
+ for (const name of Object.keys(scenarios)) {
+  assert.notEqual(after[name], before[name], `${name} renders the reworded copy`);
+  // Put the original words back: everything else must be byte-identical.
+  assert.equal(reworded.reduce((markup, [word, text]) => markup.split(word).join(text), after[name]), before[name], name);
+ }
+ const div = document.createElement('div');
+ div.innerHTML = after.active; assert.equal(div.querySelector('[data-task-action]'), null); assert.match(div.textContent, /\{\{state\.active\}\}Started/);
+ div.innerHTML = after.completed; assert.match(div.textContent, /Latest result · worker-reported/);
+ div.innerHTML = after.stopped; assert.match(div.querySelector('[data-task-action]').textContent, /\{\{action\.stopped\}\}/);
 });

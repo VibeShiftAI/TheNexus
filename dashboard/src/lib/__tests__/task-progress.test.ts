@@ -7,14 +7,16 @@ const attempt = (id: string, outcome: string, startedAt: string) => ({ id, outco
 const base = () => ({ task: { id: 't1', status: 'in_progress' }, now, progress: source({ taskId: 't1', attempts: [attempt('new', 'running', '2026-10-09T11:50:00Z'), attempt('old', 'failure', '2026-10-09T10:00:00Z')], events: [], eventsAvailable: true }), live: source({ at: new Date(now).toISOString(), praxis: { reachable: true }, items: [{ taskId: 't1', lane: 'running', startedAt: '2026-10-09T11:50:00Z' }] }), pending: source([]), recent: source([]), evidence: source(null) });
 test('latest attempt supplies commentary while earlier failures stay historical', () => {
  const view = buildTaskProgress(base() as any); assert.equal(view.state, 'Active'); assert.equal(view.currentStep, 'Checking the integration tests.'); assert.equal(view.latest?.id, 'new'); assert.equal(view.action, 'No action needed from you.'); assert.deepEqual(view.attempts.map((a: any) => a.id), ['old', 'new']);
+ assert.equal(view.stateKey, 'active'); assert.equal(view.actionKey, 'none');
 });
 test('unavailable or stale sources never assert no action or currently active', () => {
  const input = base(); input.pending = { data: [], at: now - 61000, error: 'offline' }; input.live.at = now - 61000;
  const view = buildTaskProgress(input as any); assert.equal(view.state, 'Unknown'); assert.match(view.action, /cannot confirm/i); assert.ok(view.gaps.some((g: string) => /stale/i.test(g)));
+ assert.equal(view.stateKey, 'unknown'); assert.equal(view.actionKey, 'unconfirmed');
 });
 test('pending exact question wins while expired and unrelated questions are ignored', () => {
  const input = base(); input.pending.data = [{ id: 'q1', taskId: 't1', question: 'Which fixture should be kept?', requestedAt: new Date(now).toISOString() }, { id: 'q2', taskId: 'other', question: 'other' }, { id: 'q3', taskId: 't1', question: 'expired', requestedAt: '2026-10-09T10:00:00Z', ttlSeconds: 5 }];
- const view = buildTaskProgress(input as any); assert.equal(view.state, 'Waiting for you'); assert.deepEqual(view.questions.map((q: any) => q.id), ['q1']); assert.equal(view.questions[0].question, 'Which fixture should be kept?');
+ const view = buildTaskProgress(input as any); assert.equal(view.state, 'Waiting for you'); assert.equal(view.actionKey, 'respond'); assert.deepEqual(view.questions.map((q: any) => q.id), ['q1']); assert.equal(view.questions[0].question, 'Which fixture should be kept?');
 });
 test('success stays reported until evidence confirms verification', () => {
  const input = base(); input.task.status = 'completed'; input.live.data.items = []; input.progress.data.attempts[0].outcome = 'success';
@@ -32,7 +34,7 @@ test('old verified dossier never verifies a new active attempt', () => {
 });
 test('stopped work without a pending request names the missing recovery action', () => {
  const input = base(); input.live.data.items = []; input.task.status = 'blocked'; input.progress.data.attempts[0].outcome = 'failure';
- const view = buildTaskProgress(input as any); assert.equal(view.state, 'Stopped'); assert.match(view.action, /recovery action.*not recorded/i);
+ const view = buildTaskProgress(input as any); assert.equal(view.state, 'Stopped'); assert.match(view.action, /recovery action.*not recorded/i); assert.equal(view.stateKey, 'stopped'); assert.equal(view.actionKey, 'stopped');
 });
 test('a newly running execution never inherits the older dispatch commentary', () => {
  const input = base(); input.progress.data.attempts[0].outcome = 'success'; input.progress.data.attempts[0].completedAt = '2026-10-09T11:55:00Z'; input.live.data.items[0].startedAt = '2026-10-09T11:59:00Z';
