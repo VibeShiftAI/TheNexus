@@ -71,6 +71,7 @@ const media = require('../services/review-media');
 const fmt = require('../services/document-review-format');
 const { createDocumentDecisionAuthority } = require('../services/document-decision-authority');
 const { parseExecutorProvenance, resolveSourceReview, buildProvenance, DELEGATING_AUTHORITIES } = require('../services/document-decision-provenance');
+const decisionItems = require('../services/document-decision-items');
 const { LIST_STATUSES, REPLACEMENT_STATES, REPLACEMENT_OPEN_STATES } = require('../../db/document-reviews');
 
 const KINDS = new Set(['document', 'report', 'spec', 'plan', 'research', 'walkthrough', 'other', 'design', 'image', 'video', 'audio', 'prototype', 'pdf', 'data']);
@@ -189,6 +190,9 @@ function parseDeclaration(body) {
         if (!KINDS.has(kind)) return badRequest(`kind must be one of ${[...KINDS].join(', ')}`);
     }
     if (body.metadata !== undefined && !validMetadata(body.metadata)) return badRequest('metadata must be a small JSON object');
+    // Decisions Praxis would refuse are refused here too, so a producer never gets a receipt for questions the viewer cannot show.
+    const items = body.metadata?.decision_items === undefined ? null : decisionItems.parseDecisionItems(body.metadata.decision_items);
+    if (items && !items.ok) return badRequest(`metadata.decision_items: ${items.error}`, 'invalid_decision_items');
     let expectedHash = null;
     if (body.expected_content_hash !== undefined) {
         if (typeof body.expected_content_hash !== 'string' || !HASH_PATTERN.test(body.expected_content_hash)) {
@@ -201,7 +205,8 @@ function parseDeclaration(body) {
         value: {
             key, purpose, title, projectId, taskId, kind, source, expectedHash, blockingTaskIds,
             requiresReview: declared.requires_review, intendedAction: declared.intended_action,
-            metadata: body.metadata || null,
+            // The decision-items revision stamp is Nexus's own record, never taken from a producer.
+            metadata: decisionItems.withoutRevisionStamp(body.metadata) || null,
         },
     };
 }
@@ -473,6 +478,16 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         return authorityRevision(doc, revision).closedBy || store().latestReplacement(doc.id);
     }
 
+    // Binary and design revisions are always identified by their exact bytes (contract §1).
+    function exactIdentity(doc, read) {
+        return Boolean(doc.deliverable_key) || read.binary || read.mediaType === 'design';
+    }
+
+    /** The hash recordRevision files these bytes under for this document. */
+    function revisionHash(doc, read) {
+        return exactIdentity(doc, read) ? read.exactHash : read.contentHash;
+    }
+
     /**
      * Find or record the revision for bytes just read. A declared deliverable
      * is identified by its exact file bytes, so a BOM or line-ending change is
@@ -481,9 +496,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
      * legacy document keeps the line-normalized identity it always had.
      */
     function recordRevision(doc, read, mtime, { source = 'capture', editedBy = null } = {}) {
-        // Binary and design revisions are always identified by their exact bytes (contract §1).
-        const exact = Boolean(doc.deliverable_key) || read.binary || read.mediaType === 'design';
-        const hash = exact ? read.exactHash : read.contentHash;
+        const exact = exactIdentity(doc, read);
+        const hash = revisionHash(doc, read);
         const existing = store().findRevisionByHash(doc.id, hash);
         if (existing) return { revision: existing, created: false };
         // Copy bytes a decision may be recorded against before the row exists, so a crash leaves a blob, never a dangling row.
@@ -658,11 +672,27 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             replacement_id: review.replacement_id || null,
             is_current_revision: !documentChanged,
             comments,
+            // Answers to the document's decision_items on this round; frozen with the round once it is finished (task 50aa5747).
+            decision_answers: decisionItems.storedAnswers(review),
+            // The draft answers Finish would refuse, with the reason, so the viewer can offer to clear them even when the decision is gone.
+            stale_answers: staleDraftAnswers(review, documentChanged),
             pinned_revision: revisionMeta(pinned),
             document_changed: documentChanged,
             ...(documentChanged ? { pinned_content: pinned.content } : {}),
             submission: submissionView(store().getSubmissionForReview(review.id)),
         };
+    }
+
+    /**
+     * The draft's saved answers that cannot be sent: all of them once the
+     * document moved past the round's revision (`revision_changed`), otherwise
+     * those the decisions bound to that revision no longer accept.
+     */
+    function staleDraftAnswers(review, documentChanged) {
+        const stored = decisionItems.storedAnswers(review);
+        if (review.status !== 'draft' || !stored.length) return [];
+        if (documentChanged) return stored.map(({ decision_id, answer }) => ({ decision_id, answer, reason: 'revision_changed' }));
+        return decisionItems.unsendableAnswers(stored, decisionItems.decisionItemsFor(store().getDocument(review.document_id), review.revision_id));
     }
 
     function currentFor(doc) {
@@ -773,6 +803,49 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
     }
 
     /**
+     * A registration that declares decision_items binds them to the revision it
+     * recorded (task 50aa5747). Metadata is merged across registrations, so
+     * without the stamp a later revision would inherit the earlier questions.
+     */
+    function bindDecisionItems(doc, incomingMetadata, revisionId) {
+        if (!decisionItems.declaresDecisionItems(incomingMetadata)) return;
+        if (revisionId) store().recordDecisionDefinitions(revisionId, decisionItems.parseDecisionItems(incomingMetadata.decision_items).items);
+        const fresh = store().getDocument(doc.id);
+        const { [decisionItems.REVISION_KEY]: boundTo, ...rest } = fresh.metadata || {};
+        if ((boundTo ?? null) === (revisionId ?? null)) return;
+        // No revision (the capture failed): drop the stamp so the new items are bound to nothing rather than to older bytes.
+        store().updateDocument(doc.id, { metadata: revisionId ? { ...rest, [decisionItems.REVISION_KEY]: revisionId } : rest });
+    }
+
+    /**
+     * Decision definitions are immutable for a revision (task 50aa5747 QA
+     * repair), as Praxis's registerDocumentDecisions keeps them: a registration
+     * whose bytes land on any previously registered revision may
+     * repeat those items unchanged, but may not change or clear them. Robert's
+     * saved answers meant the questions and actions he read; new definitions
+     * need new bytes. Returns the 409 to throw, or null. `hash` is the identity
+     * recordRevision will file the registered bytes under.
+     */
+    function decisionItemsChangeRefusal(doc, incomingMetadata, hash) {
+        if (!doc || !decisionItems.declaresDecisionItems(incomingMetadata)) return null;
+        const landsOn = store().findRevisionByHash(doc.id, hash);
+        if (!landsOn) return null;
+        const definitions = store().getDecisionDefinitions(landsOn.id);
+        if (definitions === undefined) return null; // A new capture may receive its first declaration after a viewer read.
+        const recorded = decisionItems.parseDecisionItems(definitions);
+        const incoming = decisionItems.parseDecisionItems(incomingMetadata.decision_items);
+        if (recorded.ok && incoming.ok && decisionItems.sameDefinitions(incoming.items, recorded.items)) return null;
+        return conflict('decision_items_changed', `The decisions for revision ${landsOn.id} cannot be changed or cleared on the same bytes${recorded.ok ? '' : ' because its original definitions were not retained'}; hand off a new revision to ask different questions. Nothing was registered`);
+    }
+
+    /** The viewer's decisions: the declared items, whether they bind to `revisionId`, and what finished reviews already sent for them. */
+    function decisionItemsView(doc, revisionId) {
+        const view = decisionItems.decisionItemsFor(doc, revisionId);
+        if (!view) return null;
+        return { ...view, sent_answers: view.revision_id ? decisionItems.latestSentAnswers(store().listReviews(doc.id), view.revision_id) : [] };
+    }
+
+    /**
      * Find or create the document for a validated declaration and record the
      * exact bytes that were read as its current revision, all in one
      * transaction. Identity: the declared key (or `path:<canonical path>`),
@@ -805,6 +878,9 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             };
             let documentCreated = false;
             if (doc) {
+                // A declared deliverable is identified by its exact bytes, which is the identity recordRevision uses below.
+                const refusal = decisionItemsChangeRefusal(doc, v.metadata, revisionHash({ ...doc, deliverable_key: key }, read));
+                if (refusal) throw refusal;
                 const taskId = doc.task_id || v.taskId;
                 if (doc.path !== resolved.canonicalPath || taskId !== doc.task_id) {
                     const occupant = store().findDocumentByPath(resolved.canonicalPath, taskId);
@@ -825,6 +901,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             }
             const { revision, created: revisionCreated } = recordRevision(doc, read, resolved.mtime);
             if (doc.current_revision_id !== revision.id) store().setCurrentRevision(doc.id, revision.id);
+            bindDecisionItems(doc, v.metadata, revision.id);
             // A registration under the open replacement's task is that work's result (implemented, not yet ready).
             linkReplacementResult(doc, revision, v.taskId);
             const declaration = {
@@ -920,34 +997,47 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (body.metadata !== undefined && (body.metadata === null || typeof body.metadata !== 'object' || Array.isArray(body.metadata) || JSON.stringify(body.metadata).length > LIMITS.metadataJson)) {
                 return res.status(400).json({ error: 'metadata must be a small JSON object' });
             }
+            const items = body.metadata?.decision_items === undefined ? null : decisionItems.parseDecisionItems(body.metadata.decision_items);
+            if (items && !items.ok) return res.status(400).json({ error: `metadata.decision_items: ${items.error}`, code: 'invalid_decision_items' });
+            const metadata = decisionItems.withoutRevisionStamp(body.metadata);
             const title = body.title === undefined ? null : text(String(body.title), LIMITS.title);
             if (body.title !== undefined && !title) return res.status(400).json({ error: `title must be 1-${LIMITS.title} characters` });
 
-            const existing = store().findDocumentByPath(resolved.canonicalPath, taskId);
-            let doc;
-            if (existing) {
-                doc = store().updateDocument(existing.id, {
-                    ...(title ? { title } : {}),
-                    ...(body.project_id ? { project_id: projectId } : {}),
-                    ...(body.kind ? { kind } : {}),
-                    ...(body.metadata ? { metadata: { ...(existing.metadata || {}), ...body.metadata } } : {}),
-                    root_project_id: resolved.root.projectId,
-                });
-            } else {
-                doc = store().insertDocument({
-                    title: title || (read.manifest?.title) || path.basename(resolved.canonicalPath, path.extname(resolved.canonicalPath)),
-                    path: resolved.canonicalPath, root_project_id: resolved.root.projectId, project_id: projectId,
-                    task_id: taskId, kind, metadata: body.metadata || {}, registered_by: req.user.id,
-                    media_type: read.mediaType, mime_type: read.mimeType,
-                });
-            }
-            const captured = await captureRevision(doc);
-            doc = store().getDocument(doc.id);
-            return res.status(existing ? 200 : 201).json({
-                document: doc, revision: revisionMeta(captured.revision), review_url: fmt.reviewUrlFor(doc.id),
-                review_path: fmt.reviewPathFor(doc.id), created: !existing,
+            const registered = store().transaction(() => {
+                const existing = store().findDocumentByPath(resolved.canonicalPath, taskId);
+                const refusal = decisionItemsChangeRefusal(existing, metadata, existing ? revisionHash(existing, read) : null);
+                if (refusal) throw refusal;
+                let doc;
+                if (existing) {
+                    doc = store().updateDocument(existing.id, {
+                        ...(title ? { title } : {}),
+                        ...(body.project_id ? { project_id: projectId } : {}),
+                        ...(body.kind ? { kind } : {}),
+                        ...(metadata ? { metadata: { ...(existing.metadata || {}), ...metadata } } : {}),
+                        root_project_id: resolved.root.projectId,
+                    });
+                } else {
+                    doc = store().insertDocument({
+                        title: title || (read.manifest?.title) || path.basename(resolved.canonicalPath, path.extname(resolved.canonicalPath)),
+                        path: resolved.canonicalPath, root_project_id: resolved.root.projectId, project_id: projectId,
+                        task_id: taskId, kind, metadata: metadata || {}, registered_by: req.user.id,
+                        media_type: read.mediaType, mime_type: read.mimeType,
+                    });
+                }
+                // Check and bind the same bytes, atomically, as on the declared path.
+                // Recapturing after an await could bind unchecked historical bytes.
+                const { revision } = recordRevision(doc, read, resolved.mtime);
+                store().updateDocument(doc.id, { current_revision_id: revision.id, media_type: read.mediaType, mime_type: read.mimeType });
+                bindDecisionItems(doc, metadata, revision.id);
+                return { doc: store().getDocument(doc.id), revision, created: !existing };
+            });
+            const { doc, revision, created } = registered;
+            return res.status(created ? 201 : 200).json({
+                document: doc, revision: revisionMeta(revision), review_url: fmt.reviewUrlFor(doc.id),
+                review_path: fmt.reviewPathFor(doc.id), created,
             });
         } catch (err) {
+            if (err.status === 409) return res.status(409).json({ error: err.message, code: err.code });
             console.error('[Documents] register failed:', err);
             return res.status(500).json({ error: 'Failed to register document' });
         }
@@ -1034,6 +1124,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 source,
                 outgoing: store().getOutgoing(doc.id),
                 review: review ? reviewView(review, { revision: captured.revision }) : null,
+                // Structured decisions Robert answers in the viewer (task 50aa5747): answerable only on the revision they were declared for.
+                decision_items: decisionItemsView(fresh, captured.revision?.id),
                 inline_comments: captured.revision ? inlineComments(db, doc.id, captured.revision) : [],
                 review_status: store().getReviewStatus(doc.id),
                 current_decision: latest ? { ...latest, applies_to_current_revision: latest.revision_id === fresh.current_revision_id } : null,
@@ -2057,6 +2149,150 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         return res.json({ success: true, deleted: comment.id });
     });
 
+    // ── Decision answers (task 50aa5747) ──────────────────────────────────
+    // Robert answers the document's structured decision_items one at a time on
+    // his draft round; Finish review sends them as feedback.decision_answers.
+    // An answer records no revision and no editorial decision, and never
+    // approves, publishes or sends the document.
+
+    /** Robert's own operator proof on this request; the shared local_user and the executor credential are refused. */
+    async function operatorActor(req, res, what) {
+        if (req.get('sec-fetch-site') === 'cross-site') { res.status(403).json({ error: 'Same-origin requests only', code: 'cross_site' }); return null; }
+        const authority = await authorizeDecision(req);
+        if (!authority.ok) {
+            res.status(authority.status).json({ error: authority.error, code: authority.code, ...(authority.reason ? { reason: authority.reason } : {}) });
+            return null;
+        }
+        if (!DELEGATING_AUTHORITIES.has(authority.actor.authority)) {
+            res.status(403).json({ error: `${what} is Robert's own act: it needs his verified session or operator credential, not the document executor credential`, code: 'operator_required' });
+            return null;
+        }
+        return authority.actor;
+    }
+
+    function staleAnswers(res, { answeredRevisionId, review, currentRevisionId, nothing }) {
+        return res.status(409).json({
+            error: `These decision answers are for revision ${answeredRevisionId}, but the current revision is ${currentRevisionId || 'unknown'}; ${nothing}. Answer the decisions on the current version`,
+            code: 'stale_revision', answered_revision_id: answeredRevisionId, review_revision_id: review.revision_id, current_revision_id: currentRevisionId || null,
+        });
+    }
+
+    /**
+     * Applies `change` to the draft's answers as they stand at write time, in one transaction that re-reads the round, so
+     * two decisions saved at once each keep their own answer. `check` (optional) re-validates the document inside the same
+     * transaction and returns a refusal, or null to write.
+     */
+    function writeAnswers(reviewId, change, check = null) {
+        return store().transaction(() => {
+            const again = store().getReview(reviewId);
+            if (!again || again.status !== 'draft') return { closed: again };
+            const refusal = check ? check() : null;
+            if (refusal) return { refusal };
+            const current = decisionItems.storedAnswers(again);
+            const next = change(current);
+            if (next === current) return { review: again };
+            return { review: store().updateReview(reviewId, { decision_answers: next.length ? next : null }) };
+        });
+    }
+
+    router.put('/reviews/:reviewId/decision-answers/:decisionId', async (req, res) => {
+        try {
+            const review = ownReview(req, res);
+            if (!review || !requireDraft(review, res)) return;
+            const actor = await operatorActor(req, res, 'Answering a document decision');
+            if (!actor) return;
+            const body = isPlainObject(req.body) ? req.body : {};
+            const revisionId = text(body.revision_id, 120);
+            if (!revisionId) return res.status(400).json({ error: 'revision_id is required: an answer is pinned to the exact revision you read', code: 'revision_required' });
+            if (body.content_hash !== undefined && (typeof body.content_hash !== 'string' || !HASH_PATTERN.test(body.content_hash))) {
+                return res.status(400).json({ error: 'content_hash must be a lowercase hex SHA-256', code: 'invalid_answer' });
+            }
+            const doc = store().getDocument(review.document_id);
+            // Like a decision, an answer rests on bytes Nexus can confirm now: a file changed on disk is captured first and makes this stale.
+            const captured = await captureRevision(doc);
+            if (captured.fileState !== 'ok') {
+                return res.status(409).json({ error: `The document file cannot be confirmed right now (${captured.fileState}); nothing was saved`, code: 'file_unavailable', file_state: captured.fileState });
+            }
+            await reconcileReplacement(doc);
+            const fresh = store().getDocument(doc.id);
+            if (revisionId !== review.revision_id || review.revision_id !== fresh.current_revision_id) {
+                // Name whichever revision is not current: the one the answer cites, or the one this draft round is pinned to.
+                const answeredRevisionId = revisionId === fresh.current_revision_id ? review.revision_id : revisionId;
+                return staleAnswers(res, { answeredRevisionId, review, currentRevisionId: fresh.current_revision_id, nothing: 'nothing was saved' });
+            }
+            const revision = store().getRevisionMeta(review.revision_id);
+            if (body.content_hash !== undefined && body.content_hash !== revision?.content_hash) {
+                return res.status(409).json({ error: 'content_hash does not match the revision under review; nothing was saved', code: 'content_mismatch' });
+            }
+            const gate = reviewability(fresh, revision);
+            if (!gate.ok) return notReviewable(res, gate);
+            const decisions = decisionItems.decisionItemsFor(fresh, review.revision_id);
+            if (!decisions) return res.status(404).json({ error: 'This document declares no decisions to answer', code: 'no_decisions' });
+            if (!decisions.answerable) {
+                return res.status(409).json({
+                    error: decisions.revision_id
+                        ? `These decisions were listed for revision ${decisions.revision_id}, not the revision under review; nothing was saved`
+                        : 'These decisions were recorded without the revision they belong to, so they cannot be answered here; ask Praxis to deliver the document again or answer in chat. Nothing was saved',
+                    code: 'decisions_not_current', decisions_revision_id: decisions.revision_id,
+                });
+            }
+            const item = decisions.items.find(i => i.id === req.params.decisionId);
+            if (!item) return res.status(404).json({ error: 'This document has no decision with that id', code: 'unknown_decision', decision_ids: decisions.items.map(i => i.id) });
+            const normalized = decisionItems.normalizeAnswer(item, body.answer);
+            if (!normalized.ok) return res.status(400).json({ error: normalized.error, code: normalized.code, ...(normalized.options ? { options: normalized.options } : {}) });
+
+            let entry = null;
+            let replayed = null;
+            // The definition Robert answered: finish sends the answer only while the decision still has exactly this definition.
+            const definition = decisionItems.definitionHash(item);
+            const written = writeAnswers(review.id, current => {
+                const prior = current.find(a => a.decision_id === item.id);
+                // Saving the same answer to the same definition again is a replay: the first save stands.
+                if (prior && prior.answer === normalized.answer && prior.definition_hash === definition) { replayed = prior; return current; }
+                entry = { decision_id: item.id, answer: normalized.answer, definition_hash: definition, answered_at: new Date().toISOString(), answered_by: actor.id, authority: actor.authority };
+                return [...current.filter(a => a.decision_id !== item.id), entry];
+            }, () => {
+                // A registration that landed during the awaits above wins over the answer.
+                const now = store().getDocument(doc.id);
+                if (now.current_revision_id !== review.revision_id) return { stale: now.current_revision_id };
+                const decisionsNow = decisionItems.decisionItemsFor(now, review.revision_id);
+                const itemNow = decisionsNow?.answerable ? decisionsNow.items.find(i => i.id === item.id) : null;
+                return itemNow && JSON.stringify(itemNow) === JSON.stringify(item) ? null : { changed: true };
+            });
+            if (written.closed !== undefined) { requireDraft(written.closed || review, res); return; }
+            if (written.refusal?.stale !== undefined) {
+                return staleAnswers(res, { answeredRevisionId: review.revision_id, review, currentRevisionId: written.refusal.stale, nothing: 'nothing was saved' });
+            }
+            if (written.refusal) return res.status(409).json({ error: 'The decisions for this revision changed while the answer was being saved; reload and answer again. Nothing was saved', code: 'decisions_changed' });
+            const answers = decisionItems.storedAnswers(written.review);
+            return replayed ? res.json({ answer: replayed, decision_answers: answers, duplicate: true }) : res.json({ answer: entry, decision_answers: answers });
+        } catch (err) {
+            console.error('[Documents] save decision answer failed:', err);
+            return res.status(500).json({ error: 'Failed to save the answer' });
+        }
+    });
+
+    // Clearing works on any draft round, including one pinned to an earlier revision, so its comments can still be sent.
+    router.delete('/reviews/:reviewId/decision-answers/:decisionId', async (req, res) => {
+        try {
+            const review = ownReview(req, res);
+            if (!review || !requireDraft(review, res)) return;
+            const actor = await operatorActor(req, res, 'Clearing a document decision answer');
+            if (!actor) return;
+            let cleared = false;
+            const written = writeAnswers(review.id, current => {
+                if (!current.some(a => a.decision_id === req.params.decisionId)) return current;
+                cleared = true;
+                return current.filter(a => a.decision_id !== req.params.decisionId);
+            });
+            if (written.closed !== undefined) { requireDraft(written.closed || review, res); return; }
+            return res.json({ cleared, decision_answers: decisionItems.storedAnswers(written.review) });
+        } catch (err) {
+            console.error('[Documents] clear decision answer failed:', err);
+            return res.status(500).json({ error: 'Failed to clear the answer' });
+        }
+    });
+
     // ── Finish and delivery ───────────────────────────────────────────────
     router.post('/reviews/:reviewId/finish', async (req, res) => {
         try {
@@ -2088,20 +2324,35 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 return res.status(400).json({ error: 'approve_after_changes must be true or false', code: 'invalid_grant' });
             }
             const delegated = body.approve_after_changes === true;
+            // Decision answers (task 50aa5747) go out only with Robert's own proof, like the grant, and only for the current revision.
+            const storedAnswers = decisionItems.storedAnswers(review);
             let submittedAuthority = null;
-            if (delegated) {
-                if (req.get('sec-fetch-site') === 'cross-site') return res.status(403).json({ error: 'Same-origin requests only', code: 'cross_site' });
-                const authority = await authorizeDecision(req);
-                if (!authority.ok) {
-                    return res.status(authority.status).json({ error: authority.error, code: authority.code, ...(authority.reason ? { reason: authority.reason } : {}) });
+            if (delegated || storedAnswers.length) {
+                const actor = await operatorActor(req, res, delegated ? 'Delegating approval' : 'Sending decision answers');
+                if (!actor) return;
+                submittedAuthority = actor.authority;
+            }
+            let decisionAnswers = [];
+            let answeredItems = [];
+            if (storedAnswers.length) {
+                const captured = await captureRevision(doc);
+                if (captured.fileState !== 'ok') {
+                    return res.status(409).json({ error: `The document file cannot be confirmed right now (${captured.fileState}); nothing was sent and your draft keeps its answers`, code: 'file_unavailable', file_state: captured.fileState });
                 }
-                if (!DELEGATING_AUTHORITIES.has(authority.actor.authority)) {
-                    return res.status(403).json({
-                        error: "Delegating approval is Robert's own act: it needs his verified session or operator credential, not the document executor credential",
-                        code: 'operator_required',
-                    });
+                await reconcileReplacement(doc);
+                const fresh = store().getDocument(doc.id);
+                if (review.revision_id !== fresh.current_revision_id) {
+                    return staleAnswers(res, { answeredRevisionId: review.revision_id, review, currentRevisionId: fresh.current_revision_id, nothing: 'nothing was sent and your draft keeps its answers and comments. Clear the answers to send the comments alone' });
                 }
-                submittedAuthority = authority.actor.authority;
+                const gate = reviewability(fresh, store().getRevisionMeta(review.revision_id));
+                if (!gate.ok) return notReviewable(res, gate);
+                const decisions = decisionItems.decisionItemsFor(fresh, review.revision_id);
+                const resolved = decisionItems.resolveAnswers(storedAnswers, decisions);
+                if (!resolved.ok) {
+                    return res.status(409).json({ error: 'The decisions listed for this revision changed after you answered; review your answers and send again. Nothing was sent', code: 'decisions_changed', decision_id: resolved.decision_id ?? null, stale_answers: resolved.unsendable });
+                }
+                decisionAnswers = resolved.answers.map(({ decision_id, answer }) => ({ decision_id, answer }));
+                answeredItems = decisions.items.filter(item => decisionAnswers.some(a => a.decision_id === item.id));
             }
             const revision = store().getRevisionMeta(review.revision_id);
             const comments = store().listComments(review.id);
@@ -2115,7 +2366,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             // change requests for this exact revision so neither input channel is lost.
             const changeRequests = store().listDecisions(doc.id).filter(decision =>
                 decision.decision === 'request_changes' && decision.revision_id === review.revision_id && decision.note?.trim());
-            const payload = fmt.buildSubmissionPayload({ submissionId, review: finished, comments, document: doc, revision, source, submittedAt, selectedDirection, changeRequests });
+            const payload = fmt.buildSubmissionPayload({ submissionId, review: finished, comments, document: doc, revision, source, submittedAt, selectedDirection, changeRequests, decisionAnswers, decisionItems: answeredItems });
             payload.decisions = store().listDecisions(doc.id).filter(d => d.revision_id === review.revision_id);
             payload.agent_reviews = db.agentReviews?.list(doc.id).filter(r => r.base_revision_id === review.revision_id) || [];
             const messageText = fmt.formatSubmissionMessage(payload);
@@ -2125,6 +2376,17 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                     // Re-read inside the transaction: an acceptance that superseded this draft meanwhile wins over the finish.
                     const again = store().getReview(review.id);
                     if (!again || again.status !== 'draft') return null;
+                    // Answers changed in another tab after this finish read them: send nothing rather than a stale set.
+                    if (JSON.stringify(decisionItems.storedAnswers(again)) !== JSON.stringify(storedAnswers)) return { answersChanged: true };
+                    if (decisionAnswers.length) {
+                        // A registration during the awaits above (a new revision, or new items on this one) wins over the answers.
+                        const now = store().getDocument(doc.id);
+                        if (now.current_revision_id !== review.revision_id) return { staleRevision: now.current_revision_id };
+                        const decisionsNow = decisionItems.decisionItemsFor(now, review.revision_id);
+                        const resolvedNow = decisionItems.resolveAnswers(storedAnswers, decisionsNow);
+                        const itemsNow = resolvedNow.ok ? decisionsNow.items.filter(item => decisionAnswers.some(a => a.decision_id === item.id)) : null;
+                        if (!resolvedNow.ok || JSON.stringify(itemsNow) !== JSON.stringify(answeredItems)) return { decisionsChanged: true, staleAnswers: resolvedNow.unsendable ?? [] };
+                    }
                     store().updateReview(review.id, { status: 'submitted', summary, submitted_at: submittedAt, approval_delegated: delegated, submitted_authority: submittedAuthority });
                     return store().insertSubmission({ id: submissionId, review_id: review.id, document_id: doc.id, revision_id: review.revision_id, payload, message_text: messageText });
                 });
@@ -2132,6 +2394,15 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 const raced = store().getSubmissionForReview(review.id);
                 if (!raced) throw err;
                 return res.status(200).json({ review: reviewView(store().getReview(review.id), currentFor(doc)), submission: submissionView(raced), duplicate: true });
+            }
+            if (submission?.answersChanged) {
+                return res.status(409).json({ error: 'Your decision answers changed in another tab while this review was being sent; reload and send again. Nothing was sent', code: 'answers_changed' });
+            }
+            if (submission?.staleRevision !== undefined) {
+                return staleAnswers(res, { answeredRevisionId: review.revision_id, review, currentRevisionId: submission.staleRevision, nothing: 'nothing was sent and your draft keeps its answers and comments. Clear the answers to send the comments alone' });
+            }
+            if (submission?.decisionsChanged) {
+                return res.status(409).json({ error: 'The decisions listed for this revision changed after you answered; review your answers and send again. Nothing was sent', code: 'decisions_changed', stale_answers: submission.staleAnswers });
             }
             if (!submission) {
                 const now = store().getReview(review.id);

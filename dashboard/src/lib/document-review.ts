@@ -272,6 +272,66 @@ export interface ReviewView {
     closed_reason?: string | null;
     replacement_id?: string | null;
     is_current_revision?: boolean;
+    /** Robert's answers to the document's decision_items on this round; absent on an API that predates them. */
+    decision_answers?: DecisionAnswer[];
+    /** The draft's answers Finish would refuse, with the reason, as of this read; absent on an API that predates them. */
+    stale_answers?: StaleDecisionAnswer[];
+}
+
+/** One answer a structured decision offers, and what Praxis does if Robert picks it. */
+export interface DecisionOption {
+    id: string;
+    label: string;
+    action: string;
+}
+
+/**
+ * A structured decision the producer declared with the document (contract:
+ * Praxis/docs/document-decisions.md). It has options, or a free-text answer
+ * used as `action` describes.
+ */
+export interface DecisionItem {
+    id: string;
+    question: string;
+    recommendation: string;
+    options?: DecisionOption[];
+    action?: string;
+}
+
+/** The document's declared decisions and the revision they belong to; `answerable` only on that revision. */
+export interface DecisionItems {
+    revision_id: string | null;
+    answerable: boolean;
+    items: DecisionItem[];
+    /** The latest answer per decision that finished reviews on that revision already sent to Praxis. */
+    sent_answers?: SentDecisionAnswer[];
+}
+
+/** A saved answer: the option id, or the free text. Never an edit, approval, publication or send. */
+export interface DecisionAnswer {
+    decision_id: string;
+    answer: string;
+    /** Fingerprint of the decision as it was answered; Finish sends the answer only while the decision is unchanged. */
+    definition_hash?: string;
+    answered_at?: string;
+    answered_by?: string;
+    authority?: string;
+}
+
+/** Why a saved draft answer cannot be sent. */
+export type StaleAnswerReason = 'revision_changed' | 'decisions_unavailable' | 'decision_removed' | 'definition_changed' | 'answer_invalid';
+
+/** A saved draft answer that Finish would refuse, kept until Robert clears it or answers again. */
+export interface StaleDecisionAnswer {
+    decision_id: string;
+    answer: string;
+    reason: StaleAnswerReason;
+}
+
+/** An answer a finished review sent, with the round that sent it. */
+export interface SentDecisionAnswer extends DecisionAnswer {
+    review_id?: string;
+    submitted_at?: string | null;
 }
 
 export interface DocumentSource {
@@ -318,6 +378,8 @@ export interface DocumentResponse {
     file_error: string | null;
     source: DocumentSource;
     review: ReviewView | null;
+    /** Structured decisions to answer in the viewer; null when none were declared, absent on an API that predates them. */
+    decision_items?: DecisionItems | null;
     review_status?: DocumentReviewStatus;
     outgoing?: DocumentOutgoing | null;
     current_decision?: (DocumentDecision & { applies_to_current_revision: boolean }) | null;
@@ -719,6 +781,21 @@ export async function finishReview(reviewId: string, summary: string, options: {
     const body: { summary: string; approve_after_changes?: true } = { summary };
     if (options.approveAfterChanges) body.approve_after_changes = true;
     return request(`${BASE}/reviews/${encodeURIComponent(reviewId)}/finish`, { method: 'POST', body: JSON.stringify(body) });
+}
+
+/**
+ * Save Robert's answer to one structured decision on his draft round, pinned to
+ * the revision he read. The server refuses a revision that is no longer
+ * current (409 stale_revision) and any caller without his operator proof.
+ * Finish review sends the saved answers to Praxis.
+ */
+export async function saveDecisionAnswer(reviewId: string, decisionId: string, input: { answer: string; revision_id: string; content_hash?: string }): Promise<{ answer: DecisionAnswer; decision_answers: DecisionAnswer[]; duplicate?: boolean }> {
+    return request(`${BASE}/reviews/${encodeURIComponent(reviewId)}/decision-answers/${encodeURIComponent(decisionId)}`, { method: 'PUT', body: JSON.stringify(input) });
+}
+
+/** Remove one saved answer from the draft round. */
+export async function clearDecisionAnswer(reviewId: string, decisionId: string): Promise<{ cleared: boolean; decision_answers: DecisionAnswer[] }> {
+    return request(`${BASE}/reviews/${encodeURIComponent(reviewId)}/decision-answers/${encodeURIComponent(decisionId)}`, { method: 'DELETE' });
 }
 
 export async function getSubmission(reviewId: string): Promise<SubmissionView> {

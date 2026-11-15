@@ -217,8 +217,14 @@ function publicComment(comment) {
     };
 }
 
-function buildSubmissionPayload({ submissionId, review, comments, document, revision, source, submittedAt, selectedDirection = null, changeRequests = [] }) {
+function buildSubmissionPayload({ submissionId, review, comments, document, revision, source, submittedAt, selectedDirection = null, changeRequests = [], decisionAnswers = [], decisionItems = [] }) {
     return {
+        // Robert's answers to the document's structured decisions (task 50aa5747; Praxis/docs/document-decisions.md),
+        // with the definitions they answer. Absent when none were given, so legacy consumers see the payload unchanged.
+        ...(decisionAnswers.length ? {
+            decision_answers: decisionAnswers.map(({ decision_id, answer }) => ({ decision_id, answer })),
+            decision_items: decisionItems,
+        } : {}),
         media_type: document.media_type || revision.media_type || 'markdown',
         selected_direction: selectedDirection,
         submission_id: submissionId,
@@ -292,6 +298,25 @@ function formatSubmissionMessage(payload) {
         for (const request of payload.change_requests) {
             lines.push(request.note, '');
         }
+    }
+
+    if (payload.decision_answers?.length) {
+        const items = new Map((payload.decision_items || []).map(item => [item.id, item]));
+        lines.push(`**Decision answers (${payload.decision_answers.length})**`);
+        lines.push(`Robert answered these decisions on revision ${shortHash}. Carry out each chosen action within its scope. An answer is not a document edit, approval, publication or send.`);
+        payload.decision_answers.forEach((entry, index) => {
+            const item = items.get(entry.decision_id);
+            const option = item?.options?.find(o => o.id === entry.answer);
+            lines.push(`${index + 1}. ${item ? item.question : entry.decision_id} [${entry.decision_id}]`);
+            if (option) {
+                lines.push(`   Answer: ${option.label} (${option.id}). Action: ${option.action}`);
+            } else {
+                // Robert's own words, quoted like a comment's passage so a line of them can never read as a section of this turn.
+                lines.push('   Answer:', quoteBlock(entry.answer));
+                if (item?.action) lines.push(`   Action: ${item.action}`);
+            }
+        });
+        lines.push('');
     }
 
     if (payload.approval_delegated) {

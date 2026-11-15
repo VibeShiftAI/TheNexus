@@ -57,6 +57,7 @@ import {
 import {
     addComment,
     assetUrl,
+    clearDecisionAnswer,
     deleteComment,
     finishReview,
     formatSeconds,
@@ -71,6 +72,7 @@ import {
     replacementStateLabel,
     rawDocumentUrl,
     retryDelivery,
+    saveDecisionAnswer,
     saveEdit,
     saveSummary,
     setCommentResolved,
@@ -78,6 +80,7 @@ import {
     DocumentApiError,
     MEDIA_COMMENT_KINDS,
     type CommentKind,
+    type DecisionAnswer,
     type DocumentResponse,
     type MediaAnchor,
     type MediaType,
@@ -96,6 +99,8 @@ import { useDraftWriter } from "@/hooks/use-draft-writer";
 import { useInlineSuggestions, InlineSuggestionControls, InlineSuggestionApplications, InlineCommentConversion } from "./inline-suggestions";
 import { DocumentMarkdown, type BlockRef } from "./document-markdown";
 import { DecisionCard, ReplacementDetail } from "./decision-card";
+import { DocumentChoices, StaleAnswersNotice } from "./document-choices";
+import { choicesView, unsendableDraftAnswers } from "@/lib/document-choices";
 import { OutgoingCard } from "./outgoing-card";
 import { DocumentStatusBadge } from "./deliverable-row";
 import { HumanBriefBlock } from "@/components/human-brief";
@@ -515,6 +520,17 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     // replace, and while its unaccepted bytes are the current revision (the version is then closed until a recovery delivers).
     const closedByFailure = data?.reviewable?.reason === "replacement_failed";
     const showReplacement = Boolean(replacement && (replacement.open || closedByFailure || ((replacement.state === "failed" || replacement.state === "cancelled") && (replacement.base_revision_id === data?.revision?.id || replacement.result_revision_id === data?.revision?.id))));
+    // The decisions card (task 50aa5747): answerable on the latest version, on a draft round pinned to it.
+    const choices = choicesView({ decisions: data?.decision_items, review, currentRevisionId: data?.revision?.id ?? null, showingEarlier, reviewable });
+    const draftAnswers = review?.status === "draft" ? review.decision_answers ?? [] : [];
+    // Saved answers Finish would refuse (QA repair): an earlier version's, or ones whose decision changed or went.
+    const unsendable = unsendableDraftAnswers(review, data?.decision_items, data?.revision?.id ?? null);
+    const sendableCount = draftAnswers.length - unsendable.length;
+    const onEarlierVersion = unsendable.length > 0 && unsendable.every((s) => s.reason === "revision_changed");
+    // The open card shows its own decisions' stale answers inline (answer again or clear); the rest need a notice of their own.
+    const listedInCard = (decisionId: string) => choices?.state === "open" && choices.showItems && Boolean(data?.decision_items?.items.some((item) => item.id === decisionId));
+    const answerAgain = unsendable.some((s) => listedInCard(s.decision_id));
+    const staleOutsideCard = onEarlierVersion ? [] : unsendable.filter((s) => !listedInCard(s.decision_id));
     const textual = ["markdown", "text", "code", "json", "html", "svg", "design"].includes(mediaType);
     const assets: RevisionAsset[] = useMemo(() => {
         const list = data?.assets ?? [];
@@ -721,6 +737,61 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             if (!prev) return prev;
             const exists = prev.comments.some((c) => c.id === comment.id);
             return { ...prev, comments: exists ? prev.comments.map((c) => (c.id === comment.id ? { ...c, ...comment, anchor: comment.anchor ?? c.anchor } : c)) : [...prev.comments, comment] };
+        });
+    };
+
+    // Decision answers (task 50aa5747): saved on the draft round, pinned to the revision on screen, sent with Finish review.
+    // Two decisions answered before any round exists share one request that opens it.
+    const openingRound = useRef<Promise<ReviewView> | null>(null);
+    const draftForAnswers = () => {
+        if (!openingRound.current) openingRound.current = ensureReview().finally(() => { openingRound.current = null; });
+        return openingRound.current;
+    };
+    // `touched` was just saved against the decision on screen, or cleared: it no longer counts among the read's stale answers.
+    const applyAnswers = (reviewId: string, answers: DecisionAnswer[], touched: string) => {
+        writeSequence.current += 1;
+        const apply = (prev: ReviewView): ReviewView => ({ ...prev, decision_answers: answers, stale_answers: prev.stale_answers?.filter((s) => s.decision_id !== touched) });
+        if (reviewRef.current?.id === reviewId) reviewRef.current = apply(reviewRef.current);
+        setReview((prev) => (prev && prev.id === reviewId ? apply(prev) : prev));
+    };
+    const saveAnswer = async (decisionId: string, answer: string) => {
+        const revision = dataRef.current?.revision;
+        if (!revision) throw new Error("This document has no revision to answer on.");
+        try {
+            const draft = await draftForAnswers();
+            const result = await saveDecisionAnswer(draft.id, decisionId, { answer, revision_id: revision.id, content_hash: revision.content_hash });
+            applyAnswers(draft.id, result.decision_answers, decisionId);
+        } catch (err) {
+            // A newer version or replacement work: reload so the card shows what this version takes; nothing was saved.
+            if (closedByVersion(err)) void load();
+            throw err;
+        }
+    };
+    const clearAnswer = async (decisionId: string) => {
+        const current = reviewRef.current;
+        if (!current) return;
+        const result = await clearDecisionAnswer(current.id, decisionId);
+        applyAnswers(current.id, result.decision_answers, decisionId);
+    };
+    /** Clear answers Finish would refuse (an earlier version's, or a decision that changed or went); the comments stay. */
+    const clearAnswers = async (decisionIds: string[]) => {
+        for (const decisionId of decisionIds) await clearAnswer(decisionId);
+    };
+    const clearUnsendableAnswers = async (decisionIds: string[]) => {
+        setFinishError(null);
+        try {
+            await clearAnswers(decisionIds);
+        } catch (err) {
+            setFinishError(messageOf(err));
+        }
+    };
+    /** Send answers: open Finish review where it is on screen (the rail, or the review drawer on a phone). */
+    const openFinishForAnswers = () => {
+        setFinishOpen(true);
+        if (typeof window.matchMedia === "function" && !window.matchMedia("(min-width: 1024px)").matches) setReviewOpen(true);
+        window.requestAnimationFrame(() => {
+            const panels = [...window.document.querySelectorAll<HTMLElement>("[data-finish-panel]")].filter((panel) => panel.getClientRects().length > 0);
+            panels.at(-1)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
         });
     };
 
@@ -988,6 +1059,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                     void load();
                     return;
                 }
+                // The version or its decisions moved under the draft: reload so the decisions card shows what can be answered now.
+                if (err instanceof DocumentApiError && ["decisions_changed", "stale_revision", "answers_changed"].includes(err.code ?? "")) void load();
                 setFinishError(`${message} — nothing was sent; your draft is intact.`);
             } catch {
                 setFinishError(`${message} — could not confirm whether the review was sent; reload this page before sending again.`);
@@ -1289,6 +1362,20 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                     ? "Approval is delegated: once the executor makes the change you ask for, it records your approval of that corrected revision only, citing this review. Nothing goes to anyone else or gets published."
                     : "This is feedback only: it does not approve the document, and nothing goes to anyone else or gets published."}
             </p>
+            {unsendable.length > 0 && (
+                <p className="mt-1 text-[11px] text-amber-100" data-finish-answers="stale">
+                    {onEarlierVersion
+                        ? `Your ${unsendable.length === 1 ? "decision answer is" : `${unsendable.length} decision answers are`} for an earlier version and cannot be sent.`
+                        : `${unsendable.length === 1 ? "One decision answer" : `${unsendable.length} decision answers`} cannot be sent: the decisions changed or were withdrawn after you answered.`}{" "}
+                    <button type="button" onClick={() => void clearUnsendableAnswers(unsendable.map((s) => s.decision_id))} className="underline" data-clear-stale-answers="">Clear {unsendable.length === 1 ? "it" : "them"}</button>
+                    {` to send your comments${sendableCount > 0 ? " and your other answers" : " alone"}${answerAgain ? ", or answer again in the decisions card" : ""}.`}
+                </p>
+            )}
+            {sendableCount > 0 && (
+                <p className="mt-1 text-[11px] text-emerald-100/90" data-finish-answers="">
+                    {sendableCount === 1 ? "Your decision answer goes" : `Your ${sendableCount} decision answers go`} with it. Praxis carries out each chosen action; an answer does not approve, edit, publish or send the document.
+                </p>
+            )}
             <label className="mt-2 flex items-start gap-2 text-[11px] text-emerald-100/90 max-lg:min-h-11 max-lg:items-center" data-delegate-approval="">
                 <input type="checkbox" checked={delegateApproval} onChange={(e) => setDelegateApproval(e.target.checked)} className="mt-0.5 accent-emerald-400" />
                 <span>Approve once this change is made. Needs your verified session; the executor can record only this approval.</span>
@@ -1628,6 +1715,11 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                         <section className="mb-4 max-w-3xl" aria-label="Brief" data-review-brief="">
                             <HumanBriefBlock brief={brief} compact collapsible="always" />
                         </section>
+                    )}
+                    {/* Decisions first (task 50aa5747): what Robert is asked to decide, answered here, sent with Finish review. */}
+                    {staleOutsideCard.length > 0 && <StaleAnswersNotice stale={staleOutsideCard} decisions={data?.decision_items} onClear={clearAnswers} />}
+                    {data?.decision_items && choices && (
+                        <DocumentChoices decisions={data.decision_items} view={choices} stale={unsendable} onSave={saveAnswer} onClear={clearAnswer} onSend={openFinishForAnswers} onNewRound={() => void startNewReview()} />
                     )}
                     {loadError && (
                         <div role="alert" className="mb-4 flex items-start gap-2 rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-200">

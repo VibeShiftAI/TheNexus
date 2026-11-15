@@ -172,10 +172,21 @@ const DECISION_COLUMNS = [
  * an unsigned finish; `approval_delegated` is Robert's explicit
  * approve-after-changes grant, set only together with that proof. Legacy
  * reviews read as not delegated, so no executor can act on them.
+ *
+ * `decision_answers` (task 50aa5747) holds Robert's answers to the document's
+ * structured decision_items while the round is a draft, as a JSON array of
+ * { decision_id, answer, definition_hash, answered_at, answered_by, authority },
+ * where definition_hash fingerprints the decision as it was answered. The
+ * finish copies { decision_id, answer } into the submission payload as
+ * feedback.decision_answers, only while every definition is unchanged. NULL
+ * on legacy and unanswered reviews. A finish that carries answers needs the
+ * same operator proof, so `submitted_authority` is set on it too; that alone
+ * grants nothing, because executors act only on `approval_delegated`.
  */
 const REVIEW_COLUMNS = [
     ['submitted_authority', 'TEXT'],
     ['approval_delegated', 'INTEGER NOT NULL DEFAULT 0'],
+    ['decision_answers', 'TEXT'],
 ];
 
 /**
@@ -466,6 +477,35 @@ function initializeDocumentReviews(db) {
     migrateDecisionColumns(db);
     migrateReviewColumns(db);
     migrateMediaColumns(db);
+    // Keep definitions independently of the document's latest metadata binding.
+    // Older installations retained only that binding; preserve it before any
+    // registration can replace it. Historical definitions already lost by the
+    // old implementation remain unknown and cannot be redefined on reused bytes;
+    // documents that never declared decisions lost nothing and stay unmarked.
+    db.transaction(() => {
+        const migrated = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'review_document_decision_definitions'").get();
+        db.exec(`CREATE TABLE IF NOT EXISTS review_document_decision_definitions (
+        revision_id TEXT PRIMARY KEY REFERENCES review_document_revisions(id) ON DELETE CASCADE,
+        decision_items TEXT NOT NULL
+    );
+    CREATE TRIGGER IF NOT EXISTS review_document_decision_definitions_immutable
+        BEFORE UPDATE ON review_document_decision_definitions
+        BEGIN SELECT RAISE(ABORT, 'decision definitions are immutable'); END;`);
+        if (migrated) return;
+        db.exec(`INSERT OR IGNORE INTO review_document_decision_definitions (revision_id, decision_items)
+        SELECT r.id, json_extract(d.metadata, '$.decision_items')
+        FROM review_documents d JOIN review_document_revisions r
+          ON r.document_id = d.id AND r.id = json_extract(d.metadata, '$.decision_items_revision_id')
+        WHERE json_type(d.metadata, '$.decision_items') = 'array';
+    -- JSON null marks unrecoverable pre-ledger history, only on documents whose
+    -- metadata carries decision_items: registrations merge metadata, so the key
+    -- stays once set, and a document without it never declared decisions. No
+    -- row means a revision that never declared decisions, even across restarts.
+    INSERT OR IGNORE INTO review_document_decision_definitions (revision_id, decision_items)
+        SELECT r.id, 'null'
+        FROM review_document_revisions r JOIN review_documents d ON d.id = r.document_id
+        WHERE json_type(d.metadata, '$.decision_items') IS NOT NULL;`);
+    })();
     db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_comment_operator_proposal_source
       ON document_review_comments(review_id, json_extract(provenance,'$.source_comment_id'))
       WHERE json_extract(provenance,'$.kind')='operator_suggestion'`);
@@ -473,9 +513,9 @@ function initializeDocumentReviews(db) {
     initializeDocumentOutgoing(db);
 }
 
-const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration', 'provenance', 'blocking_task_ids', 'anchor', 'selection_json', 'manifest', 'superseded_review_ids', 'author', 'suggestion']);
+const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration', 'provenance', 'blocking_task_ids', 'anchor', 'selection_json', 'manifest', 'superseded_review_ids', 'author', 'suggestion', 'decision_answers']);
 /** JSON columns whose absence reads as null rather than an empty object. */
-const NULLABLE_JSON_COLUMNS = new Set(['receipt', 'provenance', 'anchor', 'selection_json', 'manifest', 'author', 'suggestion']);
+const NULLABLE_JSON_COLUMNS = new Set(['receipt', 'provenance', 'anchor', 'selection_json', 'manifest', 'author', 'suggestion', 'decision_answers']);
 const BOOLEAN_COLUMNS = new Set(['requires_review', 'document_created', 'revision_created', 'approval_delegated', 'reviewable']);
 
 function parseJson(value, fallback) {
@@ -653,6 +693,15 @@ function createDocumentReviewStore(db) {
         },
         findRevisionByHash(documentId, hash) {
             return one('SELECT * FROM review_document_revisions WHERE document_id = ? AND content_hash = ?', documentId, hash);
+        },
+        getDecisionDefinitions(revisionId) {
+            const row = db.prepare('SELECT decision_items FROM review_document_decision_definitions WHERE revision_id = ?').get(revisionId);
+            // undefined: never declared; null: pre-ledger definitions are unknown.
+            return row ? parseJson(row.decision_items, null) : undefined;
+        },
+        recordDecisionDefinitions(revisionId, items) {
+            db.prepare('INSERT OR IGNORE INTO review_document_decision_definitions (revision_id, decision_items) VALUES (?, ?)')
+                .run(revisionId, JSON.stringify(items));
         },
         insertRevision(rev) {
             const row = { id: rev.id || randomUUID(), captured_at: now(), media_type: 'markdown', mime_type: 'text/markdown', source: 'capture', asset_count: 1, ...rev };
