@@ -79,8 +79,8 @@ export function ModelLadderSettings() {
     }
     return <section aria-label="Model ladder settings" className="rounded-xl border border-slate-800 bg-slate-950/50 p-5 space-y-4">
         <div><h2 className="text-lg font-semibold text-white">Model ladder</h2>
-            <p className="mt-1 text-sm text-slate-400">Choose who handles each level of work. Each tier runs its first choice; when that CLI is suspended, out of quota or cooling down (or Fable is out of credits), the tier switches to its fallback on the other CLI, and if both are limited the work waits for a reset.</p>
-            <p className="mt-1 text-sm text-slate-400">The lists offer the newest version of every flagship Claude Code and Codex model (Opus, Fable, GPT Sol, GPT Astra and any new flagship line), refreshed every morning. Automatic follows the newest GPT Astra, Opus or Fable. Opus is the minimum. Changes apply to new routing decisions immediately.</p></div>
+            <p className="mt-1 text-sm text-slate-400">Choose who handles each level of work. Each tier runs its first choice; when that CLI is suspended, out of quota or cooling down, the tier switches to its fallback on the other CLI, and if both are limited the work waits for a reset.</p>
+            <p className="mt-1 text-sm text-slate-400">The lists offer the newest version of every flagship Claude Code and Codex model (Opus, GPT Sol, GPT Astra and any new flagship line), refreshed every morning. Automatic follows the newest GPT Astra or Opus. Opus is the minimum. Fable is never on the ladder: it runs only when you pick it for a task. Changes apply to new routing decisions immediately.</p></div>
         {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
         {!settings && !error && <p className="text-sm text-slate-400">Loading ladder…</p>}
         {settings && <><div className="grid gap-4 md:grid-cols-3">{roles.map(([role, label]) => {
