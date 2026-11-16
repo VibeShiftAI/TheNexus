@@ -1,0 +1,14 @@
+--- /Volumes/Projects/Praxis/src/ops-events-routing.ts	2026-11-14 20:27:37
++++ src/ops-events-routing.ts	2026-11-15 20:02:51
+@@ -726,7 +726,10 @@
+   // remains on the task and Activity; it is not replaced by the short opening.
+   // Whether the brief already states it is the producer's recorded claim
+   // (operational-brief.ts), never a reading of the situation's wording.
+-  if (qaState && event.metadata?.[BRIEF_STATES_QA_KEY] !== qaState) lines.push(COMPLETION_QA_LINE[qaState]);
++  const statesQaOutcome = event.eventType === 'task_qa_passed' ? /passed its independent quality review\.$/.test(current.situation)
++    : event.eventType === 'task_qa_exempt' ? /finished with an exemption from independent quality review\.$/.test(current.situation)
++    : /has no confirmed independent quality pass\.$/.test(current.situation);
++  if (qaState && !statesQaOutcome) lines.push(COMPLETION_QA_LINE[qaState]);
+   if (closed) lines.push(`This request is ${request.state}.`);
+   else if (request?.state === 'unknown') lines.push('The current request status could not be checked.');
+   if (request?.state === 'pending' && request.kind !== 'red-alert') {

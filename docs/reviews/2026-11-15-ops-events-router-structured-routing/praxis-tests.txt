@@ -1,0 +1,128 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts operational_brief ops_events_routing ops_events_routing_precedence ops_events human_brief red_alert_human_brief qa_completion_announcement
+
+Running 7 of 839 suite(s): tests/human_brief.test.ts tests/operational_brief.test.ts tests/ops_events.test.ts tests/ops_events_routing.test.ts tests/ops_events_routing_precedence.test.ts tests/qa_completion_announcement.test.ts tests/red_alert_human_brief.test.ts
+
+✔ malformed persisted ask cannot throw while validating options (1.401917ms)
+[2026-11-16T01:02:25.610Z] [DEBUG] [HumanBrief] attempt 1 rejected: situation mentions a file path; situation mentions a file name
+[2026-11-16T01:02:25.611Z] [DEBUG] [HumanBrief] attempt 1 rejected: project is missing; situation is missing; problem is missing; ask is missing
+[2026-11-16T01:02:25.611Z] [DEBUG] [HumanBrief] attempt 2 rejected: project is missing; situation is missing; problem is missing; ask is missing
+[HumanBrief] model pass failed (email: Hello): offline
+[2026-11-16T01:02:25.611Z] [WARN] [HumanBrief] model pass failed (email: Hello): offline
+✔ the composition budget includes stalled project lookup without granting a fresh model budget (18.344375ms)
+✔ a status-only supplied draft can use the model to explain the actual outcome (0.656042ms)
+✔ a well-formed brief validates and renders with stable labels (0.378375ms)
+✔ the validator rejects engineering jargon, run-on fields and missing parts (0.285041ms)
+✔ the fallback never leaks the raw card and always validates (0.20675ms)
+✔ composeHumanBrief keeps supplied fields that pass and derives the rest without a model (0.159125ms)
+✔ composeHumanBrief uses the model answer when it validates and re-asks with the complaints when it does not (1.195625ms)
+✔ a model that keeps failing or throwing degrades to the fallback, never to an error (0.60325ms)
+✔ briefFromMetadata returns only a brief that still validates (0.254167ms)
+✔ informational briefs preserve facts without fabricating a problem or request (0.131125ms)
+✔ measured filler is rejected even when it contains no technical identifiers (0.092375ms)
+[HumanBrief] model pass failed (report: Review finished): Human brief composition timed out
+[2026-11-16T01:02:25.622Z] [WARN] [HumanBrief] model pass failed (report: Review finished): Human brief composition timed out
+✔ bounded composition falls back to recorded facts when the model stalls (10.829625ms)
+✔ completion leads with the result and retains decision, QA, release and document facts without wrapper labels (2.47675ms)
+✔ mentioning the QA feature in a finding never substitutes for the actual review outcome (0.102375ms)
+✔ operational copy reuses an existing brief and preserves original diagnostics (0.248666ms)
+✔ known evaluation failure stays understandable even with no model (0.188875ms)
+✔ informational updates have no invented request and archived prompts are untouched (0.222083ms)
+✔ current Inbox brief is used and a closed request cannot inherit an old ask (0.105583ms)
+✔ frozen keyed announcements are not recomposed or mutated on a replay (7.995458ms)
+✔ a brief keeps exact pending questions and choices, but never advertises a closed decision (0.28775ms)
+✔ unknown event failures never invent a report approval or sending gate (0.2585ms)
+✔ a quality pass preserves delivery failures and distinguishes publication from deployment without a model (0.611167ms)
+✔ producer-only evidence links survive and inactive requests lose stale obligations in Activity metadata too (0.520958ms)
+✔ a completion with no readable result states its QA outcome exactly once and records that claim (0.445584ms)
+✔ rewording the producer QA sentence still renders exactly one QA statement (0.138125ms)
+✔ the router reads the recorded QA claim, not the situation wording (0.084917ms)
+✔ a model rewrite of the QA sentence carries no claim, so the QA line is still shown (0.114667ms)
+✔ formats operational events in the existing Nexus system-message style (0.732042ms)
+✔ an event with no footer metadata ends without a dangling blank line (0.062583ms)
+✔ maps task.blocked stream events into chat-worthy operational events (0.099292ms)
+✔ QA lifecycle events (qa-- ids) are kept out of the ops feed (0.059875ms)
+✔ the pipeline narrating itself stays out of the chat (0.47525ms)
+✔ an event type override beats severity AND requiresAction (0.084584ms)
+✔ routine approval cards stay in Inbox and Activity (0.43975ms)
+✔ hand-authored chat copy with no inbox item is still a deliberate card (0.045459ms)
+✔ inverted default (2026-09-02): an unregistered event type is always silent, whatever its severity or requiresAction claim (0.041875ms)
+✔ routine approval gates have an explicit Activity-only override (0.036375ms)
+✔ a red-alert-class critical event (chatContent, no OVERRIDES entry) still reaches chat as a card under the inverted default (0.084917ms)
+✔ REGRESSION GATE: every warning/critical eventType published under src/ has an explicit OVERRIDES entry (233.02825ms)
+✔ client decisions reach chat linked to their card; routine client replies and receipts stay in Activity (0.236ms)
+✔ the gate's scanner reads one-line publishers without mistaking the severity for an event type (0.280791ms)
+✔ producer-written notice copy is used verbatim — formatted, linked, never truncated (0.060833ms)
+✔ a producer notice on an inbox-OPENING event always carries the inbox link (0.048583ms)
+✔ a producer notice on an event that only CITES a resolved hitlId gets no link (0.033959ms)
+✔ a derived notice is the headline plus a short prose lede — details are omitted, not chopped (0.169334ms)
+✔ a table-shaped or long lede is left to the activity log instead of being jammed into a line (0.051167ms)
+✔ a message that only restates the title is not repeated (0.046458ms)
+✔ inboxLink escapes ids and has a bare-inbox fallback (0.021167ms)
+✔ notice task references use readable linked titles, never a bare identifier (0.092125ms)
+✔ background evidence holds have one explicit inbox notice and no red-alert escalation (15.590583ms)
+✔ degraded fleet transitions use one compact yellow chat notice (1.570791ms)
+✔ fleet notice names the worker and gives its retry time in Eastern time (9.437959ms)
+✔ calendar intervention routes a notice with its explicit task action (0.849709ms)
+✔ a silent override beats a hitlId the event did not open (0.054959ms)
+✔ a silent override beats hand-authored chatContent too (0.124042ms)
+✔ every silent-override type stays silent no matter what metadata it carries (0.153042ms)
+✔ an event that OPENS an inbox item still routes as a notice (0.108583ms)
+✔ a publisher outside the table can opt in with hitlOpened (0.036917ms)
+✔ a resolution outcome citing a resolved hitlId routes by its own entry (0.1055ms)
+✔ an unrouted event type is still silent by default (0.032875ms)
+✔ every event type in the override table formats to a single-line notice (0.6325ms)
+✔ a notice omits a lede it cannot fit rather than truncating it (0.223ms)
+✔ only an inbox-OPENING event is allowed the two-line inbox shape (0.079917ms)
+✔ E-2: task_criterion_deadlock routes as a one-notice inbox link when it opened the card (0.074833ms)
+✔ E-2: task_spec_defect_needs_input routes as a one-notice inbox link when it opened the card (0.0375ms)
+✔ E-2: qa_empty_diff_escalated routes as a one-notice inbox link when it opened the card (0.040958ms)
+✔ E-2: task_stale_exit routes as a one-notice inbox link when it opened the card (0.032958ms)
+✔ E-2: task_correction_exhausted routes as a one-notice inbox link when it opened the card (0.071042ms)
+✔ E-2: qa_baseline_defect_bounced routes as a one-notice inbox link when it opened the card (0.041333ms)
+✔ E-2: the same events without a card (emit failed) still route by the table, with no inbox link (0.061708ms)
+✔ only an explicit QA pass announces success and includes enhancements (0.648083ms)
+✔ missing, deferred, failed and exempt reviews never claim QA passed (0.121167ms)
+✔ a QA pass retains an independently incomplete document handoff (0.051ms)
+✔ QA acceptance carries a failed release without claiming deployment (0.121792ms)
+✔ completion metadata retains the complete long-task walkthrough (0.0515ms)
+[RedAlert] 🚨 FIRING — NexusDashboard unresponsive for 3 minute(s) (source: praxis:supervisor)
+[2026-11-16T01:02:25.654Z] [WARN] [RedAlert] 🚨 FIRING — NexusDashboard unresponsive for 3 minute(s) (source: praxis:supervisor)
+[RedAlert] 🚨 FIRING — NexusDashboard unresponsive for 3 minute(s) (source: praxis:supervisor)
+[2026-11-16T01:02:25.676Z] [WARN] [RedAlert] 🚨 FIRING — NexusDashboard unresponsive for 3 minute(s) (source: praxis:supervisor)
+[RedAlert] 🚨 FIRING — NexusDashboard unresponsive for 3 minute(s) (source: praxis:supervisor)
+[2026-11-16T01:02:25.677Z] [WARN] [RedAlert] 🚨 FIRING — NexusDashboard unresponsive for 3 minute(s) (source: praxis:supervisor)
+[RedAlert] 🚨 FIRING — NexusDashboard unresponsive for 3 minute(s) (source: praxis:supervisor)
+[2026-11-16T01:02:25.677Z] [WARN] [RedAlert] 🚨 FIRING — NexusDashboard unresponsive for 3 minute(s) (source: praxis:supervisor)
+✔ the first service alert identifies the failure and observed status without waiting for a model (19.289292ms)
+✔ a service alert remains specific when its Inbox write fails (0.157333ms)
+✔ operational escalation preserves structured health evidence (0.345791ms)
+✔ other alerts lead with the actual failure and explicitly say recovery is unconfirmed (1.174542ms)
+✔ a newer successful probe wins over an alert delayed during publication (0.315084ms)
+✔ recovery updates only the matching service, preserves evidence and acknowledgement, and notifies once (1.154541ms)
+✔ raw diagnostic identifiers never turn a failure into an invented approval gate (0.1825ms)
+✔ a new alert after cooldown rearms recovery, while an initially recovered alert does not repeat it (1.547167ms)
+✔ the first healthy probe after restart reconciles a legacy service alert (0.604625ms)
+✔ long callback alert opens with a validated brief and retains all original evidence separately (0.387ms)
+✔ new alerts use the existing composer once, retain notice receipts, and do not announce enrichment (3.575834ms)
+[RedAlert] Human brief enrichment failed; readable fallback retained: Error: model offline
+[2026-11-16T01:02:25.685Z] [WARN] [RedAlert] Human brief enrichment failed; readable fallback retained: Error: model offline
+✔ late summaries never overwrite an acknowledgement (1.983375ms)
+[RedAlert] 🚨 FIRING — Callback recovery needs attention (source: praxis:callback)
+[2026-11-16T01:02:25.685Z] [WARN] [RedAlert] 🚨 FIRING — Callback recovery needs attention (source: praxis:callback)
+[RedAlert] 🚨 FIRING — System needs attention (source: ops-event)
+[2026-11-16T01:02:25.686Z] [WARN] [RedAlert] 🚨 FIRING — System needs attention (source: ops-event)
+✔ composer outage leaves the readable alert available (0.783458ms)
+✔ chat and push use the same brief instead of raw callback diagnostics (0.258042ms)
+✔ an alert without an acknowledgement item never tells the reader to acknowledge (0.213333ms)
+✔ canonical callback chat leads with the inbox brief and leaves diagnostics in the record (0.573208ms)
+ℹ tests 92
+ℹ suites 0
+ℹ pass 92
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 834.3275
+exit 0

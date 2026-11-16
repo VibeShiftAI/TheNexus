@@ -1,0 +1,66 @@
+✔ completion leads with the result and retains decision, QA, release and document facts without wrapper labels (2.498708ms)
+✔ mentioning the QA feature in a finding never substitutes for the actual review outcome (0.108125ms)
+✔ operational copy reuses an existing brief and preserves original diagnostics (0.264667ms)
+✔ known evaluation failure stays understandable even with no model (0.187084ms)
+✔ informational updates have no invented request and archived prompts are untouched (0.216167ms)
+✔ current Inbox brief is used and a closed request cannot inherit an old ask (0.10475ms)
+✔ frozen keyed announcements are not recomposed or mutated on a replay (7.76775ms)
+✔ a brief keeps exact pending questions and choices, but never advertises a closed decision (0.265416ms)
+✔ unknown event failures never invent a report approval or sending gate (0.2545ms)
+✔ a quality pass preserves delivery failures and distinguishes publication from deployment without a model (0.613959ms)
+✔ producer-only evidence links survive and inactive requests lose stale obligations in Activity metadata too (0.634167ms)
+✔ a completion with no readable result states its QA outcome exactly once and records that claim (0.643166ms)
+✖ rewording the producer QA sentence still renders exactly one QA statement (1.170708ms)
+✖ the router reads the recorded QA claim, not the situation wording (0.189167ms)
+✔ a model rewrite of the QA sentence carries no claim, so the QA line is still shown (0.129334ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 13
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 379.57275
+
+✖ failing tests:
+
+test at tests/operational_brief.test.ts:1:10497
+✖ rewording the producer QA sentence still renders exactly one QA statement (1.170708ms)
+  AssertionError [ERR_ASSERTION]: **Praxis (system)** — Reviewers signed off on Repair citations.
+  
+  Independent quality review passed.
+  
+  [Repair citations](/task/one)
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (/private/tmp/t9361/praxis-regex-router/tests/operational_brief.test.ts:169:12)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual'
+  }
+
+test at tests/operational_brief.test.ts:1:11234
+✖ the router reads the recorded QA claim, not the situation wording (0.189167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (/private/tmp/t9361/praxis-regex-router/tests/operational_brief.test.ts:180:10)
+      at Test.runInAsyncScope (node:async_hooks:211:14)
+      at Test.run (node:internal/test_runner/test:980:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:678:18)
+      at Test.postRun (node:internal/test_runner/test:1091:19)
+      at Test.run (node:internal/test_runner/test:1019:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual'
+  }
+exit 1

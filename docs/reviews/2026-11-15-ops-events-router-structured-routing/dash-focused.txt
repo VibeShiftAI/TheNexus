@@ -1,0 +1,50 @@
+✔ each tier's first-choice menu groups the newest models under the CLI that runs them (25.387541ms)
+✔ the fallback menu offers the other CLI's models and names what Automatic picks (7.439458ms)
+✔ moving a tier's first choice to the other CLI resets its fallback, and Save sends both (14.777084ms)
+✔ an older Praxis without providers or fallbacks gets a flat menu and no fallback menu (3.18325ms)
+✔ completed parent shows waiting improvement separately with full suggestion and timestamp (25.594792ms)
+✔ improvement review evidence and dispatch remain accessible for all terminal states (16.967708ms)
+✔ retained snapshots show stale status and unavailable API remains backwards compatible (8.210833ms)
+✔ linked follow-up is prominent and does not claim stale legacy execution status (1.544666ms)
+✔ review-only completion shows decision rationale and evidence without claiming verification (2.643542ms)
+✔ a repeated follow-up reason renders once and keeps every decision, evidence line and suggestion (1.726208ms)
+✔ a suggestion whose text repeats keeps its entry and source but not a second copy of the paragraph (5.459291ms)
+✔ a paragraph repeated inside one suggestion renders once and the entry stays (1.805125ms)
+✔ a paragraph shared by distinct suggestions renders once and keeps the rest of each (1.475541ms)
+✔ a decision reason that repeats one paragraph of the follow-up reason shows only its new paragraph (1.537291ms)
+✔ a field with no repeated paragraph renders exactly as recorded (1.810334ms)
+✔ summary separates reported text from evidence and renders chronological questions between attempts (29.006958ms)
+✔ unfinished task does not link to absent completion dossier anchors (3.421208ms)
+✔ renders source message timestamp next to update independently from task start (2.726458ms)
+✔ pending questions lead the task and history keeps its limits behind a disclosure (4.166375ms)
+✔ routine overlap is advisory and does not replace runtime progress with an admission wait (2.547917ms)
+✔ all routine overlap warnings appear but allowed and contract holds do not duplicate (8.916209ms)
+✔ historical admission holds are absent from active and terminal tasks and confirmed running work (7.417959ms)
+✔ scheduled work also exposes its admission hold before dispatch (1.117667ms)
+✔ partial overlap names remaining scope without promising automatic re-review (1.593333ms)
+✔ resumable nonterminal statuses show admission while active and terminal states suppress historical receipts (13.75975ms)
+✔ background hold renders exact reason and only links a recorded recovery question (2.709917ms)
+✔ overlap warning preserves confirmed queue state and contract holds remain separate (1.792ms)
+✔ rewording every state and action message changes only the words, never what renders (8.263917ms)
+✔ latest attempt supplies commentary while earlier failures stay historical (1.040291ms)
+✔ unavailable or stale sources never assert no action or currently active (0.201417ms)
+✔ pending exact question wins while expired and unrelated questions are ignored (0.116416ms)
+✔ success stays reported until evidence confirms verification (0.087625ms)
+✔ HITL answers remain separate task history and do not invent the retry cause (0.116166ms)
+✔ old verified dossier never verifies a new active attempt (0.155958ms)
+✔ stopped work without a pending request names the missing recovery action (0.252708ms)
+✔ a newly running execution never inherits the older dispatch commentary (0.076ms)
+✔ progress preview extracts readable prose without raw protocol fields or markdown (2.581833ms)
+✔ latest message time stays distinct from start time and never uses log modification time (0.318792ms)
+✔ optional improvement attempts never replace the completed parent or invalidate its QA (0.174333ms)
+✔ explicit reopened task and unrelated follow-up still require their own QA (0.057167ms)
+✔ background evidence hold has a runtime reason and never invents an operator request (0.0655ms)
+ℹ tests 41
+ℹ suites 0
+ℹ pass 41
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 801.400292
+exit 0
