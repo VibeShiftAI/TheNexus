@@ -4,7 +4,8 @@
  *
  * A document is only ever served by a server-issued id, and only when its
  * REAL path (symlinks resolved) sits inside the real path of a registered
- * project. Both the path as given and the resolved path must be of the same
+ * project or a verified linked Git worktree of that project. Both the path
+ * as given and the resolved path must be of the same
  * allowed media type (services/review-media.js; contract
  * docs/contracts/review-media-and-design-packages.md), so a `.md` or `.png`
  * symlink to `.env` is refused, and a link that resolves outside every project
@@ -38,8 +39,51 @@ function insideRoot(candidate, root) {
     return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
+function gitDirectory(worktree) {
+    const marker = path.join(worktree, '.git');
+    if (fs.statSync(marker).isDirectory()) return fs.realpathSync.native(marker);
+    const match = /^gitdir: ([^\r\n]+)\r?\n?$/.exec(fs.readFileSync(marker, 'utf8'));
+    if (!match) throw new Error('Invalid Git worktree marker');
+    return fs.realpathSync.native(path.resolve(worktree, match[1]));
+}
+
+/** Only reciprocal Git registrations extend a project's file boundary. */
+function linkedWorktreeRoots(projectRoot) {
+    try {
+        const gitDir = gitDirectory(projectRoot);
+        const commonFile = path.join(gitDir, 'commondir');
+        const commonDir = fs.existsSync(commonFile)
+            ? fs.realpathSync.native(path.resolve(gitDir, fs.readFileSync(commonFile, 'utf8').trim()))
+            : gitDir;
+        const registrations = path.join(commonDir, 'worktrees');
+        const result = [];
+        for (const entry of fs.readdirSync(registrations, { withFileTypes: true })) {
+            if (!entry.isDirectory()) continue;
+            try {
+                const registration = path.join(registrations, entry.name);
+                const marker = fs.readFileSync(path.join(registration, 'gitdir'), 'utf8').trim();
+                if (!path.isAbsolute(marker) || path.basename(marker) !== '.git') continue;
+                // Refuse stale registrations and substituted/symlinked directories.
+                if (fs.realpathSync.native(marker) !== marker) continue;
+                const worktree = path.dirname(marker);
+                if (hasForbiddenSegment(worktree) || !fs.statSync(worktree).isDirectory()) continue;
+                if (gitDirectory(worktree) !== fs.realpathSync.native(registration)) continue;
+                const registeredCommon = fs.realpathSync.native(path.resolve(registration,
+                    fs.readFileSync(path.join(registration, 'commondir'), 'utf8').trim()));
+                if (registeredCommon === commonDir) result.push(worktree);
+            } catch {
+                // Broken or removed worktrees do not grant access to their old paths.
+            }
+        }
+        return result;
+    } catch {
+        // Non-Git projects and repositories without linked worktrees stay valid.
+        return [];
+    }
+}
+
 /**
- * Real paths of every registered project directory that exists on disk.
+ * Real paths of every registered project directory and verified linked worktree.
  * Archived projects count: a document under an archived project is still a
  * project document, and the roots are read fresh on every call so a project
  * registered after boot is honoured.
@@ -51,7 +95,11 @@ async function listProjectRoots(db) {
         if (!project || typeof project.path !== 'string' || !path.isAbsolute(project.path)) continue;
         try {
             const realRoot = fs.realpathSync.native(project.path);
-            if (fs.statSync(realRoot).isDirectory()) roots.push({ projectId: project.id, name: project.name, root: realRoot });
+            if (fs.statSync(realRoot).isDirectory()) {
+                for (const root of new Set([realRoot, ...linkedWorktreeRoots(realRoot)])) {
+                    roots.push({ projectId: project.id, name: project.name, root });
+                }
+            }
         } catch {
             // A project whose directory is gone cannot anchor a document.
         }

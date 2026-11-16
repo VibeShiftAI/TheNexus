@@ -1,6 +1,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const { listProjectRoots, resolveDocumentPath, readDocumentFile, MAX_DOCUMENT_BYTES } = require('../services/document-registry');
 
 let base;
@@ -37,6 +38,36 @@ afterEach(() => { fs.rmSync(base, { recursive: true, force: true }); });
 
 test('only existing absolute project directories become roots', () => {
     expect(roots).toEqual([{ projectId: 'p1', name: 'Project', root: projectRoot }]);
+});
+
+test('registered Git worktrees remain project documents without admitting unrelated paths', async () => {
+    const git = (...args) => execFileSync('git', ['-C', projectRoot, ...args], { stdio: 'pipe' });
+    git('init');
+    git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '--allow-empty', '-m', 'fixture');
+    const worktree = path.join(base, 'task worktree');
+    git('worktree', 'add', '--detach', worktree);
+    const report = path.join(worktree, 'report.md');
+    fs.writeFileSync(report, '# Worktree research\n', 'utf8');
+    fs.symlinkSync(path.join(outsideDir, 'private.md'), path.join(worktree, 'escape.md'));
+    const db = { getProjects: async () => [{ id: 'p1', name: 'Project', path: projectRoot }] };
+    const currentRoots = await listProjectRoots(db);
+    expect(resolveDocumentPath(report, currentRoots)).toMatchObject({ ok: true, root: { projectId: 'p1', root: worktree } });
+    expect(resolveDocumentPath(path.join(worktree, 'escape.md'), currentRoots)).toMatchObject({ ok: false, code: 'symlink_escape' });
+    expect(resolveDocumentPath(path.join(outsideDir, 'private.md'), currentRoots)).toMatchObject({ ok: false, code: 'outside_roots' });
+
+    const linkedProjectRoots = await listProjectRoots({ getProjects: async () => [{ id: 'p1', path: worktree }] });
+    expect(resolveDocumentPath(report, linkedProjectRoots)).toMatchObject({ ok: true, root: { projectId: 'p1' } });
+    const marker = path.join(worktree, '.git');
+    const originalMarker = fs.readFileSync(marker, 'utf8');
+    fs.writeFileSync(marker, `gitdir: ${path.join(projectRoot, '.git')}\n`, 'utf8');
+    expect(resolveDocumentPath(report, await listProjectRoots(db))).toMatchObject({ ok: false, code: 'outside_roots' });
+    fs.writeFileSync(marker, originalMarker, 'utf8');
+
+    // A directory substituted at the recorded path must not inherit admission.
+    fs.renameSync(worktree, `${worktree}-moved`);
+    fs.symlinkSync(outsideDir, worktree);
+    const afterReplacement = await listProjectRoots(db);
+    expect(resolveDocumentPath(path.join(worktree, 'private.md'), afterReplacement)).toMatchObject({ ok: false, code: 'outside_roots' });
 });
 
 test('a Markdown file inside a project root resolves to its canonical path', () => {
