@@ -1,0 +1,49 @@
+{
+  "command": "cd dashboard && npm test (node:test + esbuild + jsdom; same shared node_modules)",
+  "baseline f19199e4": {
+    "counts": {
+      "tests": 1097,
+      "pass": 1086,
+      "fail": 11,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "failing_tests": [
+      "✖ Praxis journal exposes stock analysis and YouTube script tabs",
+      "✖ a blocked task and its question produce one complete spoken announcement",
+      "✖ a repeated announcement speaks its saved wording and does not copy another conversation into this chat",
+      "✖ ai-terminal.tsx stays under its line budget",
+      "✖ announcement chat and voice visibility: blocked",
+      "✖ announcement chat and voice visibility: cue-failure",
+      "✖ announcement chat and voice visibility: device-skip",
+      "✖ announcement chat and voice visibility: success",
+      "✖ announcement chat and voice visibility: synthesis-failure",
+      "✖ recomposed question uses a fresh archive identity instead of replaying question-only wording",
+      "✖ two eligible live alerts each compose once and replayed event IDs stay deduplicated"
+    ]
+  },
+  "post-change 58ffc186": {
+    "counts": {
+      "tests": 1110,
+      "pass": 1099,
+      "fail": 11,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "failing_tests": [
+      "✖ Praxis journal exposes stock analysis and YouTube script tabs",
+      "✖ a blocked task and its question produce one complete spoken announcement",
+      "✖ a repeated announcement speaks its saved wording and does not copy another conversation into this chat",
+      "✖ ai-terminal.tsx stays under its line budget",
+      "✖ announcement chat and voice visibility: blocked",
+      "✖ announcement chat and voice visibility: cue-failure",
+      "✖ announcement chat and voice visibility: device-skip",
+      "✖ announcement chat and voice visibility: success",
+      "✖ announcement chat and voice visibility: synthesis-failure",
+      "✖ recomposed question uses a fresh archive identity instead of replaying question-only wording",
+      "✖ two eligible live alerts each compose once and replayed event IDs stay deduplicated"
+    ]
+  }
+}

@@ -1,0 +1,308 @@
+{
+  "command": "npx jest --json (repo root; same shared node_modules for every revision)",
+  "note": "Failure messages are omitted on purpose: one pre-existing failure (openrouter-free-lane) prints part of a real API key from the environment.",
+  "baseline f19199e4 (parent of the first task commit bc94b986)": {
+    "suites": {
+      "failed": 7,
+      "total": 145
+    },
+    "tests": {
+      "failed": 42,
+      "passed": 1766,
+      "skipped": 1,
+      "total": 1809
+    },
+    "failing_suites": [
+      "server/__tests__/client-access.test.js",
+      "server/__tests__/local-operator-flows.test.js",
+      "server/__tests__/openrouter-free-lane.test.js",
+      "server/__tests__/praxis-stream.test.js",
+      "server/__tests__/studio-route.test.js",
+      "server/__tests__/task-canonical-deltas.test.js",
+      "server/__tests__/work-admission-operator-answers.test.js"
+    ],
+    "failing_tests": [
+      "__tests__/client-access.test.js :: a grant requires an existing, active member who is already linked to that project; it never creates membership",
+      "__tests__/client-access.test.js :: acceptance changes nothing else: tasks, checkpoints, gates and reserved proposals are untouched, and the runtime credential cannot grant or decide",
+      "__tests__/client-access.test.js :: an entitled member reads requirements, progress, checkpoints and links, and nothing internal leaves the server",
+      "__tests__/client-access.test.js :: an entitlement lookup that cannot run denies every scoped operation with 503 entitlement_unavailable and serves no stored content",
+      "__tests__/client-access.test.js :: an identical publish retry returns the existing version even when it supersedes; competing successors and conflicting predecessors are refused",
+      "__tests__/client-access.test.js :: an unavailable database fails closed with 503 on both surfaces",
+      "__tests__/client-access.test.js :: another member, another project, unknown ids and the decision-maker flag alone are denied with one indistinguishable shape",
+      "__tests__/client-access.test.js :: artifact detail preserves captured BOM and CRLF bytes covered by the immutable hash",
+      "__tests__/client-access.test.js :: asset reads reject corrupt bytes, expired sessions, withdrawal and supersession",
+      "__tests__/client-access.test.js :: design direction is required, recorded and bound to review idempotency",
+      "__tests__/client-access.test.js :: every acknowledged client_decision_id is reserved against its payload: a second accept key resolves to the one acceptance and can never be reused for a different review",
+      "__tests__/client-access.test.js :: every ledger table is append-only at the SQLite level",
+      "__tests__/client-access.test.js :: granting access needs Robert's operator credential: the cockpit stub, the runtime key, a wrong key, the bridge header and an unconfigured key all fail closed",
+      "__tests__/client-access.test.js :: legacy design acceptances without selection remain replayable after the media upgrade",
+      "__tests__/client-access.test.js :: links reach a client only as credential-free http(s) URLs: project settings are filtered on projection, publication refuses anything else, and a stored row is re-checked on read",
+      "__tests__/client-access.test.js :: list, workspace, artifact detail and review responses conform to @praxis/contract",
+      "__tests__/client-access.test.js :: published designs expose only safe media descriptors and protected version-bound assets",
+      "__tests__/client-access.test.js :: publishing binds one exact version; duplicates, foreign documents, bad links, unknown checkpoints and foreign tasks are refused",
+      "__tests__/client-access.test.js :: review room: pinned notes are validated against the published revision, recorded beside the decision and bound into idempotency",
+      "__tests__/client-access.test.js :: reviews need a live session assertion and the exact version; acceptance is replay-safe, final per version and distinct from comments",
+      "__tests__/client-access.test.js :: revoking the entitlement, unlinking the member, dormancy, an identity edit and deletion each deny every scoped operation, including replay of an earlier decision; a fresh grant restores it",
+      "__tests__/client-access.test.js :: the client surface accepts only the runtime credential: no key, the cockpit stub, the operator key, a wrong key and the bridge header are all refused",
+      "__tests__/client-access.test.js :: upgrade path: a review written before client_review_keys existed is backfilled by initialization, idempotently, and its key then rejects conflicting reuse",
+      "__tests__/local-operator-flows.test.js :: an invalid Access assertion cannot fall back to a valid local cookie",
+      "__tests__/local-operator-flows.test.js :: bridge remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: executor remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: local session approve_send reaches the mail relay with a valid body-bound operator:mail-drafts proof",
+      "__tests__/local-operator-flows.test.js :: local session cancel reaches the mail relay with a valid body-bound operator:mail-drafts proof",
+      "__tests__/local-operator-flows.test.js :: local session edit reaches the mail relay with a valid body-bound operator:mail-drafts proof",
+      "__tests__/local-operator-flows.test.js :: local session records approve as a direct operator decision in the real ledger",
+      "__tests__/local-operator-flows.test.js :: local session records request_changes as a direct operator decision in the real ledger",
+      "__tests__/local-operator-flows.test.js :: placeholder bearer remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: plain loopback / QA reviewer remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: runtime remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: shared chat authenticator accepts the signed local session and refuses it after logout",
+      "__tests__/local-operator-flows.test.js :: valid Access device keeps precedence over a malformed local cookie",
+      "__tests__/local-operator-flows.test.js :: valid Access user keeps precedence over a malformed local cookie",
+      "__tests__/openrouter-free-lane.test.js :: praxis-env parsing an unreadable file degrades to no values rather than throwing",
+      "__tests__/praxis-stream.test.js :: praxis-stream route POST /api/praxis/events ingest ignores X-Forwarded-For and judges loopback by the socket peer",
+      "__tests__/studio-route.test.js :: studio route the enrich endpoint drains un-enriched objects and reports remaining",
+      "__tests__/task-canonical-deltas.test.js :: workspace delta merges current roots/history and preserves unrelated fields; unauthorized drift remains held",
+      "__tests__/work-admission-operator-answers.test.js :: real scope, acceptance and workspace changes are held during execution, with or without an answer"
+    ]
+  },
+  "baseline f19199e4, second run": {
+    "suites": {
+      "failed": 7,
+      "total": 145
+    },
+    "tests": {
+      "failed": 42,
+      "passed": 1766,
+      "skipped": 1,
+      "total": 1809
+    },
+    "failing_suites": [
+      "server/__tests__/client-access.test.js",
+      "server/__tests__/local-operator-flows.test.js",
+      "server/__tests__/openrouter-free-lane.test.js",
+      "server/__tests__/praxis-stream.test.js",
+      "server/__tests__/studio-route.test.js",
+      "server/__tests__/task-canonical-deltas.test.js",
+      "server/__tests__/work-admission-operator-answers.test.js"
+    ],
+    "failing_tests": [
+      "__tests__/client-access.test.js :: a grant requires an existing, active member who is already linked to that project; it never creates membership",
+      "__tests__/client-access.test.js :: acceptance changes nothing else: tasks, checkpoints, gates and reserved proposals are untouched, and the runtime credential cannot grant or decide",
+      "__tests__/client-access.test.js :: an entitled member reads requirements, progress, checkpoints and links, and nothing internal leaves the server",
+      "__tests__/client-access.test.js :: an entitlement lookup that cannot run denies every scoped operation with 503 entitlement_unavailable and serves no stored content",
+      "__tests__/client-access.test.js :: an identical publish retry returns the existing version even when it supersedes; competing successors and conflicting predecessors are refused",
+      "__tests__/client-access.test.js :: an unavailable database fails closed with 503 on both surfaces",
+      "__tests__/client-access.test.js :: another member, another project, unknown ids and the decision-maker flag alone are denied with one indistinguishable shape",
+      "__tests__/client-access.test.js :: artifact detail preserves captured BOM and CRLF bytes covered by the immutable hash",
+      "__tests__/client-access.test.js :: asset reads reject corrupt bytes, expired sessions, withdrawal and supersession",
+      "__tests__/client-access.test.js :: design direction is required, recorded and bound to review idempotency",
+      "__tests__/client-access.test.js :: every acknowledged client_decision_id is reserved against its payload: a second accept key resolves to the one acceptance and can never be reused for a different review",
+      "__tests__/client-access.test.js :: every ledger table is append-only at the SQLite level",
+      "__tests__/client-access.test.js :: granting access needs Robert's operator credential: the cockpit stub, the runtime key, a wrong key, the bridge header and an unconfigured key all fail closed",
+      "__tests__/client-access.test.js :: legacy design acceptances without selection remain replayable after the media upgrade",
+      "__tests__/client-access.test.js :: links reach a client only as credential-free http(s) URLs: project settings are filtered on projection, publication refuses anything else, and a stored row is re-checked on read",
+      "__tests__/client-access.test.js :: list, workspace, artifact detail and review responses conform to @praxis/contract",
+      "__tests__/client-access.test.js :: published designs expose only safe media descriptors and protected version-bound assets",
+      "__tests__/client-access.test.js :: publishing binds one exact version; duplicates, foreign documents, bad links, unknown checkpoints and foreign tasks are refused",
+      "__tests__/client-access.test.js :: review room: pinned notes are validated against the published revision, recorded beside the decision and bound into idempotency",
+      "__tests__/client-access.test.js :: reviews need a live session assertion and the exact version; acceptance is replay-safe, final per version and distinct from comments",
+      "__tests__/client-access.test.js :: revoking the entitlement, unlinking the member, dormancy, an identity edit and deletion each deny every scoped operation, including replay of an earlier decision; a fresh grant restores it",
+      "__tests__/client-access.test.js :: the client surface accepts only the runtime credential: no key, the cockpit stub, the operator key, a wrong key and the bridge header are all refused",
+      "__tests__/client-access.test.js :: upgrade path: a review written before client_review_keys existed is backfilled by initialization, idempotently, and its key then rejects conflicting reuse",
+      "__tests__/local-operator-flows.test.js :: an invalid Access assertion cannot fall back to a valid local cookie",
+      "__tests__/local-operator-flows.test.js :: bridge remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: executor remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: local session approve_send reaches the mail relay with a valid body-bound operator:mail-drafts proof",
+      "__tests__/local-operator-flows.test.js :: local session cancel reaches the mail relay with a valid body-bound operator:mail-drafts proof",
+      "__tests__/local-operator-flows.test.js :: local session edit reaches the mail relay with a valid body-bound operator:mail-drafts proof",
+      "__tests__/local-operator-flows.test.js :: local session records approve as a direct operator decision in the real ledger",
+      "__tests__/local-operator-flows.test.js :: local session records request_changes as a direct operator decision in the real ledger",
+      "__tests__/local-operator-flows.test.js :: placeholder bearer remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: plain loopback / QA reviewer remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: runtime remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: shared chat authenticator accepts the signed local session and refuses it after logout",
+      "__tests__/local-operator-flows.test.js :: valid Access device keeps precedence over a malformed local cookie",
+      "__tests__/local-operator-flows.test.js :: valid Access user keeps precedence over a malformed local cookie",
+      "__tests__/openrouter-free-lane.test.js :: praxis-env parsing an unreadable file degrades to no values rather than throwing",
+      "__tests__/praxis-stream.test.js :: praxis-stream route POST /api/praxis/events ingest ignores X-Forwarded-For and judges loopback by the socket peer",
+      "__tests__/studio-route.test.js :: studio route the enrich endpoint drains un-enriched objects and reports remaining",
+      "__tests__/task-canonical-deltas.test.js :: workspace delta merges current roots/history and preserves unrelated fields; unauthorized drift remains held",
+      "__tests__/work-admission-operator-answers.test.js :: real scope, acceptance and workspace changes are held during execution, with or without an answer"
+    ]
+  },
+  "post-change 58ffc186 (last task commit)": {
+    "suites": {
+      "failed": 7,
+      "total": 146
+    },
+    "tests": {
+      "failed": 42,
+      "passed": 1782,
+      "skipped": 1,
+      "total": 1825
+    },
+    "failing_suites": [
+      "server/__tests__/client-access.test.js",
+      "server/__tests__/local-operator-flows.test.js",
+      "server/__tests__/openrouter-free-lane.test.js",
+      "server/__tests__/praxis-stream.test.js",
+      "server/__tests__/studio-route.test.js",
+      "server/__tests__/task-canonical-deltas.test.js",
+      "server/__tests__/work-admission-operator-answers.test.js"
+    ],
+    "failing_tests": [
+      "__tests__/client-access.test.js :: a grant requires an existing, active member who is already linked to that project; it never creates membership",
+      "__tests__/client-access.test.js :: acceptance changes nothing else: tasks, checkpoints, gates and reserved proposals are untouched, and the runtime credential cannot grant or decide",
+      "__tests__/client-access.test.js :: an entitled member reads requirements, progress, checkpoints and links, and nothing internal leaves the server",
+      "__tests__/client-access.test.js :: an entitlement lookup that cannot run denies every scoped operation with 503 entitlement_unavailable and serves no stored content",
+      "__tests__/client-access.test.js :: an identical publish retry returns the existing version even when it supersedes; competing successors and conflicting predecessors are refused",
+      "__tests__/client-access.test.js :: an unavailable database fails closed with 503 on both surfaces",
+      "__tests__/client-access.test.js :: another member, another project, unknown ids and the decision-maker flag alone are denied with one indistinguishable shape",
+      "__tests__/client-access.test.js :: artifact detail preserves captured BOM and CRLF bytes covered by the immutable hash",
+      "__tests__/client-access.test.js :: asset reads reject corrupt bytes, expired sessions, withdrawal and supersession",
+      "__tests__/client-access.test.js :: design direction is required, recorded and bound to review idempotency",
+      "__tests__/client-access.test.js :: every acknowledged client_decision_id is reserved against its payload: a second accept key resolves to the one acceptance and can never be reused for a different review",
+      "__tests__/client-access.test.js :: every ledger table is append-only at the SQLite level",
+      "__tests__/client-access.test.js :: granting access needs Robert's operator credential: the cockpit stub, the runtime key, a wrong key, the bridge header and an unconfigured key all fail closed",
+      "__tests__/client-access.test.js :: legacy design acceptances without selection remain replayable after the media upgrade",
+      "__tests__/client-access.test.js :: links reach a client only as credential-free http(s) URLs: project settings are filtered on projection, publication refuses anything else, and a stored row is re-checked on read",
+      "__tests__/client-access.test.js :: list, workspace, artifact detail and review responses conform to @praxis/contract",
+      "__tests__/client-access.test.js :: published designs expose only safe media descriptors and protected version-bound assets",
+      "__tests__/client-access.test.js :: publishing binds one exact version; duplicates, foreign documents, bad links, unknown checkpoints and foreign tasks are refused",
+      "__tests__/client-access.test.js :: review room: pinned notes are validated against the published revision, recorded beside the decision and bound into idempotency",
+      "__tests__/client-access.test.js :: reviews need a live session assertion and the exact version; acceptance is replay-safe, final per version and distinct from comments",
+      "__tests__/client-access.test.js :: revoking the entitlement, unlinking the member, dormancy, an identity edit and deletion each deny every scoped operation, including replay of an earlier decision; a fresh grant restores it",
+      "__tests__/client-access.test.js :: the client surface accepts only the runtime credential: no key, the cockpit stub, the operator key, a wrong key and the bridge header are all refused",
+      "__tests__/client-access.test.js :: upgrade path: a review written before client_review_keys existed is backfilled by initialization, idempotently, and its key then rejects conflicting reuse",
+      "__tests__/local-operator-flows.test.js :: an invalid Access assertion cannot fall back to a valid local cookie",
+      "__tests__/local-operator-flows.test.js :: bridge remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: executor remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: local session approve_send reaches the mail relay with a valid body-bound operator:mail-drafts proof",
+      "__tests__/local-operator-flows.test.js :: local session cancel reaches the mail relay with a valid body-bound operator:mail-drafts proof",
+      "__tests__/local-operator-flows.test.js :: local session edit reaches the mail relay with a valid body-bound operator:mail-drafts proof",
+      "__tests__/local-operator-flows.test.js :: local session records approve as a direct operator decision in the real ledger",
+      "__tests__/local-operator-flows.test.js :: local session records request_changes as a direct operator decision in the real ledger",
+      "__tests__/local-operator-flows.test.js :: placeholder bearer remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: plain loopback / QA reviewer remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: runtime remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: shared chat authenticator accepts the signed local session and refuses it after logout",
+      "__tests__/local-operator-flows.test.js :: valid Access device keeps precedence over a malformed local cookie",
+      "__tests__/local-operator-flows.test.js :: valid Access user keeps precedence over a malformed local cookie",
+      "__tests__/openrouter-free-lane.test.js :: praxis-env parsing an unreadable file degrades to no values rather than throwing",
+      "__tests__/praxis-stream.test.js :: praxis-stream route POST /api/praxis/events ingest ignores X-Forwarded-For and judges loopback by the socket peer",
+      "__tests__/studio-route.test.js :: studio route the enrich endpoint drains un-enriched objects and reports remaining",
+      "__tests__/task-canonical-deltas.test.js :: workspace delta merges current roots/history and preserves unrelated fields; unauthorized drift remains held",
+      "__tests__/work-admission-operator-answers.test.js :: real scope, acceptance and workspace changes are held during execution, with or without an answer"
+    ]
+  },
+  "post-change 58ffc186, second run": {
+    "suites": {
+      "failed": 7,
+      "total": 146
+    },
+    "tests": {
+      "failed": 42,
+      "passed": 1782,
+      "skipped": 1,
+      "total": 1825
+    },
+    "failing_suites": [
+      "server/__tests__/client-access.test.js",
+      "server/__tests__/local-operator-flows.test.js",
+      "server/__tests__/openrouter-free-lane.test.js",
+      "server/__tests__/praxis-stream.test.js",
+      "server/__tests__/studio-route.test.js",
+      "server/__tests__/task-canonical-deltas.test.js",
+      "server/__tests__/work-admission-operator-answers.test.js"
+    ],
+    "failing_tests": [
+      "__tests__/client-access.test.js :: a grant requires an existing, active member who is already linked to that project; it never creates membership",
+      "__tests__/client-access.test.js :: acceptance changes nothing else: tasks, checkpoints, gates and reserved proposals are untouched, and the runtime credential cannot grant or decide",
+      "__tests__/client-access.test.js :: an entitled member reads requirements, progress, checkpoints and links, and nothing internal leaves the server",
+      "__tests__/client-access.test.js :: an entitlement lookup that cannot run denies every scoped operation with 503 entitlement_unavailable and serves no stored content",
+      "__tests__/client-access.test.js :: an identical publish retry returns the existing version even when it supersedes; competing successors and conflicting predecessors are refused",
+      "__tests__/client-access.test.js :: an unavailable database fails closed with 503 on both surfaces",
+      "__tests__/client-access.test.js :: another member, another project, unknown ids and the decision-maker flag alone are denied with one indistinguishable shape",
+      "__tests__/client-access.test.js :: artifact detail preserves captured BOM and CRLF bytes covered by the immutable hash",
+      "__tests__/client-access.test.js :: asset reads reject corrupt bytes, expired sessions, withdrawal and supersession",
+      "__tests__/client-access.test.js :: design direction is required, recorded and bound to review idempotency",
+      "__tests__/client-access.test.js :: every acknowledged client_decision_id is reserved against its payload: a second accept key resolves to the one acceptance and can never be reused for a different review",
+      "__tests__/client-access.test.js :: every ledger table is append-only at the SQLite level",
+      "__tests__/client-access.test.js :: granting access needs Robert's operator credential: the cockpit stub, the runtime key, a wrong key, the bridge header and an unconfigured key all fail closed",
+      "__tests__/client-access.test.js :: legacy design acceptances without selection remain replayable after the media upgrade",
+      "__tests__/client-access.test.js :: links reach a client only as credential-free http(s) URLs: project settings are filtered on projection, publication refuses anything else, and a stored row is re-checked on read",
+      "__tests__/client-access.test.js :: list, workspace, artifact detail and review responses conform to @praxis/contract",
+      "__tests__/client-access.test.js :: published designs expose only safe media descriptors and protected version-bound assets",
+      "__tests__/client-access.test.js :: publishing binds one exact version; duplicates, foreign documents, bad links, unknown checkpoints and foreign tasks are refused",
+      "__tests__/client-access.test.js :: review room: pinned notes are validated against the published revision, recorded beside the decision and bound into idempotency",
+      "__tests__/client-access.test.js :: reviews need a live session assertion and the exact version; acceptance is replay-safe, final per version and distinct from comments",
+      "__tests__/client-access.test.js :: revoking the entitlement, unlinking the member, dormancy, an identity edit and deletion each deny every scoped operation, including replay of an earlier decision; a fresh grant restores it",
+      "__tests__/client-access.test.js :: the client surface accepts only the runtime credential: no key, the cockpit stub, the operator key, a wrong key and the bridge header are all refused",
+      "__tests__/client-access.test.js :: upgrade path: a review written before client_review_keys existed is backfilled by initialization, idempotently, and its key then rejects conflicting reuse",
+      "__tests__/local-operator-flows.test.js :: an invalid Access assertion cannot fall back to a valid local cookie",
+      "__tests__/local-operator-flows.test.js :: bridge remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: executor remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: local session approve_send reaches the mail relay with a valid body-bound operator:mail-drafts proof",
+      "__tests__/local-operator-flows.test.js :: local session cancel reaches the mail relay with a valid body-bound operator:mail-drafts proof",
+      "__tests__/local-operator-flows.test.js :: local session edit reaches the mail relay with a valid body-bound operator:mail-drafts proof",
+      "__tests__/local-operator-flows.test.js :: local session records approve as a direct operator decision in the real ledger",
+      "__tests__/local-operator-flows.test.js :: local session records request_changes as a direct operator decision in the real ledger",
+      "__tests__/local-operator-flows.test.js :: placeholder bearer remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: plain loopback / QA reviewer remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: runtime remains refused by documents and mail without direct operator proof",
+      "__tests__/local-operator-flows.test.js :: shared chat authenticator accepts the signed local session and refuses it after logout",
+      "__tests__/local-operator-flows.test.js :: valid Access device keeps precedence over a malformed local cookie",
+      "__tests__/local-operator-flows.test.js :: valid Access user keeps precedence over a malformed local cookie",
+      "__tests__/openrouter-free-lane.test.js :: praxis-env parsing an unreadable file degrades to no values rather than throwing",
+      "__tests__/praxis-stream.test.js :: praxis-stream route POST /api/praxis/events ingest ignores X-Forwarded-For and judges loopback by the socket peer",
+      "__tests__/studio-route.test.js :: studio route the enrich endpoint drains un-enriched objects and reports remaining",
+      "__tests__/task-canonical-deltas.test.js :: workspace delta merges current roots/history and preserves unrelated fields; unauthorized drift remains held",
+      "__tests__/work-admission-operator-answers.test.js :: real scope, acceptance and workspace changes are held during execution, with or without an answer"
+    ]
+  },
+  "current main ec37922a (this task's QA baseline)": {
+    "suites": {
+      "failed": 3,
+      "total": 173
+    },
+    "tests": {
+      "failed": 3,
+      "passed": 2313,
+      "skipped": 1,
+      "total": 2317
+    },
+    "failing_suites": [
+      "server/__tests__/openrouter-free-lane.test.js",
+      "server/__tests__/praxis-stream.test.js",
+      "server/__tests__/studio-route.test.js"
+    ],
+    "failing_tests": [
+      "__tests__/openrouter-free-lane.test.js :: praxis-env parsing an unreadable file degrades to no values rather than throwing",
+      "__tests__/praxis-stream.test.js :: praxis-stream route POST /api/praxis/events ingest ignores X-Forwarded-For and judges loopback by the socket peer",
+      "__tests__/studio-route.test.js :: studio route the enrich endpoint drains un-enriched objects and reports remaining"
+    ]
+  },
+  "this task's worktree (ec37922a + strengthened attribution test)": {
+    "suites": {
+      "failed": 3,
+      "total": 173
+    },
+    "tests": {
+      "failed": 3,
+      "passed": 2313,
+      "skipped": 1,
+      "total": 2317
+    },
+    "failing_suites": [
+      "__tests__/openrouter-free-lane.test.js",
+      "__tests__/praxis-stream.test.js",
+      "__tests__/studio-route.test.js"
+    ],
+    "failing_tests": [
+      "__tests__/openrouter-free-lane.test.js :: praxis-env parsing an unreadable file degrades to no values rather than throwing",
+      "__tests__/praxis-stream.test.js :: praxis-stream route POST /api/praxis/events ingest ignores X-Forwarded-For and judges loopback by the socket peer",
+      "__tests__/studio-route.test.js :: studio route the enrich endpoint drains un-enriched objects and reports remaining"
+    ]
+  }
+}

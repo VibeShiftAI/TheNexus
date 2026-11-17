@@ -1,0 +1,402 @@
+[
+  {
+    "id": "control-server",
+    "status": 0,
+    "summary": "Tests:       16 passed, 16 total",
+    "failed": [],
+    "loadFailure": false
+  },
+  {
+    "id": "control-dashboard",
+    "status": 0,
+    "summary": "ℹ pass 30 | ℹ fail 0",
+    "failed": [],
+    "loadFailure": false
+  },
+  {
+    "id": "Now strip sum marker",
+    "side": "server",
+    "file": "server/routes/dispatches.js",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "Tests:       1 failed, 15 passed, 16 total",
+    "failed": [
+      "✕ Now strip (/api/dispatches/active) returns no figure without a source marker"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "task dispatch row marker",
+    "side": "server",
+    "file": "server/routes/dispatches.js",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "Tests:       1 failed, 15 passed, 16 total",
+    "failed": [
+      "✕ task detail dispatch rows (/api/dispatches?task_id=task-1) returns no figure without a source marker"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "activity feed commit marker",
+    "side": "server",
+    "file": "server/routes/projects.js",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "Tests:       2 failed, 14 passed, 16 total",
+    "failed": [
+      "✕ Recent Activity Feed (/api/activity) returns no figure without a source marker",
+      "✕ per-run markers land on the right runs"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "activity feed: unavailable dressed as 0",
+    "side": "server",
+    "file": "server/routes/projects.js",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 0,
+    "summary": "Tests:       16 passed, 16 total",
+    "failed": [],
+    "loadFailure": false
+  },
+  {
+    "id": "dispatch-insight run tokens marker",
+    "side": "server",
+    "file": "server/routes/dispatch-insight.js",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "Tests:       2 failed, 14 passed, 16 total",
+    "failed": [
+      "✕ task detail insight (/api/dispatch-insight/task/task-1) returns no figure without a source marker",
+      "✕ per-run markers land on the right runs"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "dispatch-insight run cost marker",
+    "side": "server",
+    "file": "server/routes/dispatch-insight.js",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "Tests:       1 failed, 15 passed, 16 total",
+    "failed": [
+      "✕ per-run markers land on the right runs"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "dispatch-insight cost object marker",
+    "side": "server",
+    "file": "server/routes/dispatch-insight.js",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "Tests:       1 failed, 15 passed, 16 total",
+    "failed": [
+      "✕ task detail insight (/api/dispatch-insight/task/task-1) returns no figure without a source marker"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "dispatch-insight run-trace input: missing tokens dressed as 0",
+    "side": "server",
+    "file": "server/routes/dispatch-insight.js",
+    "occurrences": 2,
+    "replacedAll": false,
+    "status": 0,
+    "summary": "Tests:       16 passed, 16 total",
+    "failed": [],
+    "loadFailure": false
+  },
+  {
+    "id": "dispatch-insight run row: missing tokens dressed as 0",
+    "side": "server",
+    "file": "server/routes/dispatch-insight.js",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "Tests:       2 failed, 14 passed, 16 total",
+    "failed": [
+      "✕ task detail insight (/api/dispatch-insight/task/task-1) returns no figure without a source marker",
+      "✕ per-run markers land on the right runs"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "run-cost roll-up marker",
+    "side": "server",
+    "file": "server/services/run-cost.js",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "Tests:       1 failed, 15 passed, 16 total",
+    "failed": [
+      "✕ task detail insight (/api/dispatch-insight/task/task-1) returns no figure without a source marker"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "run-trace tokensTotal marker",
+    "side": "server",
+    "file": "server/services/run-trace.js",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "Tests:       2 failed, 14 passed, 16 total",
+    "failed": [
+      "✕ task detail insight (/api/dispatch-insight/task/task-1) returns no figure without a source marker",
+      "✕ per-run markers land on the right runs"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "routing economics token marker",
+    "side": "server",
+    "file": "server/services/routing-economics.js",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "Tests:       1 failed, 15 passed, 16 total",
+    "failed": [
+      "✕ routing economics (/api/routing-economics) returns no figure without a source marker"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "routing economics cost marker",
+    "side": "server",
+    "file": "server/services/routing-economics.js",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "Tests:       1 failed, 15 passed, 16 total",
+    "failed": [
+      "✕ routing economics (/api/routing-economics) returns no figure without a source marker"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "routing economics: missing total dressed as 0",
+    "side": "server",
+    "file": "server/services/routing-economics.js",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "Tests:       1 failed, 15 passed, 16 total",
+    "failed": [
+      "✕ routing economics (/api/routing-economics) returns no figure without a source marker"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "pulse 7d aggregate marker",
+    "side": "server",
+    "file": "server/routes/project-pulse.js",
+    "occurrences": 2,
+    "replacedAll": true,
+    "status": 1,
+    "summary": "Tests:       4 failed, 12 passed, 16 total",
+    "failed": [
+      "✕ project pulse (all) (/api/projects/pulse) returns no figure without a source marker",
+      "✕ project pulse (detail) (/api/projects/proj-1/pulse) returns no figure without a source marker",
+      "✕ pulse keeps \"unknown\" for only unknown-source usage (proj-unknown)",
+      "✕ pulse keeps \"unknown\" for measured and unknown-source usage, no estimate (proj-mixed)"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "pulse 24h unknown counted as measured",
+    "side": "server",
+    "file": "server/routes/project-pulse.js",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "Tests:       2 failed, 14 passed, 16 total",
+    "failed": [
+      "✕ pulse keeps \"unknown\" for only unknown-source usage (proj-unknown)",
+      "✕ pulse keeps \"unknown\" for measured and unknown-source usage, no estimate (proj-mixed)"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "pulse ops-log dispatch marker",
+    "side": "server",
+    "file": "server/routes/project-pulse.js",
+    "occurrences": 2,
+    "replacedAll": true,
+    "status": 1,
+    "summary": "Tests:       2 failed, 14 passed, 16 total",
+    "failed": [
+      "✕ project pulse (all) (/api/projects/pulse) returns no figure without a source marker",
+      "✕ project pulse (detail) (/api/projects/proj-1/pulse) returns no figure without a source marker"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "activity feed est tag",
+    "side": "dashboard",
+    "file": "dashboard/src/components/activity-feed.tsx",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "ℹ pass 28 | ℹ fail 2",
+    "failed": [
+      "✖ activity feed: the estimated token figure renders with its source",
+      "✖ activity feed: the unknown provenance token figure renders with its source"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "activity feed unavailable as 0",
+    "side": "dashboard",
+    "file": "dashboard/src/components/activity-feed.tsx",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "ℹ pass 29 | ℹ fail 1",
+    "failed": [
+      "✖ activity feed: the unavailable token figure renders with its source"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "Now strip est tag",
+    "side": "dashboard",
+    "file": "dashboard/src/components/bridge/now-strip.tsx",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "ℹ pass 29 | ℹ fail 1",
+    "failed": [
+      "✖ now strip: an estimated task total carries a visible est tag"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "Now strip unavailable as 0",
+    "side": "dashboard",
+    "file": "dashboard/src/components/bridge/now-strip.tsx",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "ℹ pass 28 | ℹ fail 2",
+    "failed": [
+      "✖ now strip: a running task with no usage yet reads unavailable, not a dash or zero",
+      "✖ the now strip says unavailable, not a dash, when no run reported usage"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "ops log est tag",
+    "side": "dashboard",
+    "file": "dashboard/src/components/project-brief/activity-report.tsx",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "ℹ pass 29 | ℹ fail 1",
+    "failed": [
+      "✖ ops log: dispatch tokens show est, source unknown, or unavailable; never a bare guess"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "ops log unavailable as 0",
+    "side": "dashboard",
+    "file": "dashboard/src/components/project-brief/activity-report.tsx",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "ℹ pass 29 | ℹ fail 1",
+    "failed": [
+      "✖ ops log: dispatch tokens show est, source unknown, or unavailable; never a bare guess"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "mission brief 24h est tag",
+    "side": "dashboard",
+    "file": "dashboard/src/components/project-brief/mission-brief.tsx",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "ℹ pass 28 | ℹ fail 2",
+    "failed": [
+      "✖ mission brief: an estimated 24h figure is tagged even when the 7d label is not",
+      "✖ mission brief: unknown-source usage keeps \"source unknown\" with no estimated run"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "mission brief 7d unavailable as 0",
+    "side": "dashboard",
+    "file": "dashboard/src/components/project-brief/mission-brief.tsx",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "ℹ pass 28 | ℹ fail 2",
+    "failed": [
+      "✖ mission brief: a null 7d sum reads unavailable",
+      "✖ runs that reported no usage read as unavailable, never as a zero"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "routing economics est tag",
+    "side": "dashboard",
+    "file": "dashboard/src/components/routing-economics-panel.tsx",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "ℹ pass 29 | ℹ fail 1",
+    "failed": [
+      "✖ routing economics: a token sum with any estimated run is tagged est; a missing one reads unavailable"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "routing economics unavailable as 0",
+    "side": "dashboard",
+    "file": "dashboard/src/components/routing-economics-panel.tsx",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "ℹ pass 29 | ℹ fail 1",
+    "failed": [
+      "✖ routing economics: a token sum with any estimated run is tagged est; a missing one reads unavailable"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "task detail est tag",
+    "side": "dashboard",
+    "file": "dashboard/src/components/task-view/dispatch-console.tsx",
+    "occurrences": 1,
+    "replacedAll": false,
+    "status": 1,
+    "summary": "ℹ pass 29 | ℹ fail 1",
+    "failed": [
+      "✖ measured token counts are labelled differently from estimated ones"
+    ],
+    "loadFailure": false
+  },
+  {
+    "id": "task detail tokens unavailable as 0",
+    "side": "dashboard",
+    "file": "dashboard/src/components/task-view/dispatch-console.tsx",
+    "occurrences": 1,
+    "replacedAll": true,
+    "status": 1,
+    "summary": "ℹ pass 29 | ℹ fail 1",
+    "failed": [
+      "✖ runs with no usage record read as unavailable instead of vanishing"
+    ],
+    "loadFailure": false
+  }
+]
