@@ -139,6 +139,8 @@ describe('praxis-env parsing', () => {
     test('an unreadable file degrades to no values rather than throwing', () => {
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-praxis-env-'));
         const prevRoot = process.env.PROJECT_ROOT;
+        const prevKey = process.env.OPENROUTER_API_KEY;
+        delete process.env.OPENROUTER_API_KEY;
         process.env.PROJECT_ROOT = dir; // no Praxis/.env under it
         resetPraxisEnvCache();
         try {
@@ -147,7 +149,10 @@ describe('praxis-env parsing', () => {
         } finally {
             if (prevRoot === undefined) delete process.env.PROJECT_ROOT;
             else process.env.PROJECT_ROOT = prevRoot;
+            if (prevKey === undefined) delete process.env.OPENROUTER_API_KEY;
+            else process.env.OPENROUTER_API_KEY = prevKey;
             resetPraxisEnvCache();
+            fs.rmSync(dir, { recursive: true, force: true });
         }
     });
 });

@@ -289,7 +289,9 @@ function listDir(dir) {
   fs.writeFileSync(path.join(ARTIFACTS, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
 
   const latest = path.join(REPO, 'logs', 'mcp-boundary-probe', 'latest');
-  fs.rmSync(latest, { force: true });
+  // lstat also sees dangling links; unlink never follows a link to its run directory.
+  const latestStat = fs.lstatSync(latest, { throwIfNoEntry: false });
+  if (latestStat?.isSymbolicLink()) fs.unlinkSync(latest);
   fs.symlinkSync(ARTIFACTS, latest);
 
   const failed = checks.filter((c) => !c.pass);
