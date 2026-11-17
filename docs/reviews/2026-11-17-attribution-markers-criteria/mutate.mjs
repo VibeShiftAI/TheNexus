@@ -43,7 +43,11 @@ const M = [
   [D, 'task detail tokens unavailable as 0', 'dashboard/src/components/task-view/dispatch-console.tsx', 'tokens unavailable', '0 tokens', true],
 ];
 function run([cmd, args, cwd]) {
-  const r = spawnSync(cmd, args, { cwd, encoding: 'utf8', maxBuffer: 64 << 20, env: { ...process.env, CI: '1' } });
+  // Node's default spawnSync output limit applies. If a run outgrows it the
+  // child is killed and r.error is set; that is reported as an error below,
+  // never counted as a killed mutant.
+  const r = spawnSync(cmd, args, { cwd, encoding: 'utf8', env: { ...process.env, CI: '1' } });
+  if (r.error) return { status: null, summary: '', failed: [], loadFailure: false, error: `spawn failed: ${r.error.code || r.error.message}` };
   const text = (r.stdout || '') + (r.stderr || '');
   const summary = text.split('\n').filter(l => /^(Tests:|ℹ (pass|fail) )/.test(l)).join(' | ');
   const failed = text.split('\n').filter(l => /^\s*(✕|✖) /.test(l)).map(l => l.trim().replace(/ \(\d+(\.\d+)? ?ms\)$/, '')).filter(l => l !== '✖ failing tests:');

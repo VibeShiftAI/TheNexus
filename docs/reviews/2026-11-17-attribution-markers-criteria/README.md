@@ -133,8 +133,8 @@ Each surface is rendered in jsdom by
 `:136`, ops log `:146`, routing economics `:170`) and
 `usage-missing-attribution.test.mjs` (task detail `:87`, `:103`, `:181`,
 `:205`). Both files pass 30 of 30 at `ec37922a`. The mutation run below
-removes each tag and turns each "unavailable" into `0`; all 13 dashboard
-mutants fail these tests.
+has 12 dashboard mutants (6 remove an "est" tag, 6 turn an "unavailable"
+into `0`, one of each on the six surfaces above); all 12 fail these tests.
 
 **Verdict: met.** (Caveat: the marker reads "est", not the full word
 "estimate", on compact chips; the tooltip says "ESTIMATED".)
@@ -143,12 +143,17 @@ mutants fail these tests.
 
 `mutate.mjs` makes one change at a time to current `main`, runs the attribution
 tests and restores the file byte for byte. A mutant that only fails because a
-test file no longer loads is reported as `LOAD`, not counted as killed (none
-did in the final runs).
+test file no longer loads is reported as `LOAD`, and a test run whose child
+process fails to spawn or exceeds Node's default `spawnSync` output limit is
+reported as `ERR`; neither counts as killed (none occurred in the final runs).
+The 29 mutants are 17 server (12 drop a marker, 4 show a missing figure as
+`0`, 1 counts unknown-source usage as measured) and 12 dashboard (above);
+counts are taken from the `side` field of the JSON files.
 
 - **Before this task** (`mutations-before.json`): 27 of 29 mutants killed. All
-  16 "drop a marker" mutants across the seven server surfaces, run-trace and
-  run-cost were killed. Two survived, both "missing figure dressed as 0":
+  12 server "drop a marker" mutants (seven routes, run-trace and run-cost),
+  the unknown-as-measured mutant and all 12 dashboard mutants were killed.
+  Two of the 4 "missing figure shown as 0" mutants survived:
   - `activity feed: unavailable dressed as 0` (`projects.js:150`, the
     no-dispatch fallback): no seeded project had commits without a dispatch,
     so this branch never ran.
