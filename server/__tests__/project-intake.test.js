@@ -423,6 +423,106 @@ describe('durable record-only project intake', () => {
     expect(accepted.body.intake.review).toEqual(result.body.intake.review);
   });
 
+  describe('partial councils with at least one substantive seat (Robert, 2026-11-17)', () => {
+    const twoOfThree = { substantive_seats: 2, total_seats: 3 };
+    const budget = need('budget');
+    const read = async id => (await request(`/${id}/intake`, null, 'GET')).body;
+    const preparationResult = async extra => {
+      const p = (await create()).body;
+      const requested = (await op(p, 'request_review', { mode: 'preparation', source_ref: 'chat:explicit-council', session_id: 'council:prep', brief_revision: p.intake.brief_revision })).body;
+      return op(requested, 'record_review', { session_id: 'council:prep', brief_revision: p.intake.brief_revision, source_ref: 'council:prep-result', findings: [], brief, sources: [{ ref: 'file:split-questions', type: 'file', availability: 'available' }], needs: [need(), budget], ...extra });
+    };
+    const reviewResult = async (extra, findings = []) => {
+      let p = (await op(await prepared(), 'start')).body;
+      p = (await op(p, 'request_review', { session_id: 'council:review', brief_revision: p.intake.brief_revision })).body;
+      return { pending: p, result: await op(p, 'record_review', { session_id: 'council:review', brief_revision: p.intake.brief_revision, source_ref: 'council:review-result', findings, ...extra }) };
+    };
+    const comparable = body => ({ state: body.intake.state, brief: body.intake.brief, sources: body.intake.sources.map(({ retrieved_at, ...s }) => s), brief_revision: body.intake.brief_revision, revision: body.intake.revision,
+      need_ids: body.intake.need_ids, pending_need_id: body.intake.pending_need_id, review: body.intake.review && { ...body.intake.review, status: undefined, participation: undefined, completed_at: undefined, requested_at: undefined },
+      needs: body.project.needs.map(n => ({ id: n.id, status: n.status, question: n.knowledge?.question })) });
+
+    test('a preparation partial applies brief, sources and needs and advances state exactly as a completed one', async () => {
+      const completed = await preparationResult({});
+      const partial = await preparationResult({ status: 'partial', participation: twoOfThree });
+      expect(completed.status).toBe(200); expect(partial.status).toBe(200);
+      expect(partial.body.intake.state).toBe('preparing');
+      expect(partial.body.intake.brief).toEqual(brief);
+      expect(partial.body.project.needs.map(n => n.id)).toEqual(['owner', 'budget']);
+      expect(partial.body.intake.review).toBeNull();
+      expect(comparable(partial.body)).toEqual(comparable(completed.body));
+      expect(partial.body.intake.review_history.at(-1)).toMatchObject({ mode: 'preparation', status: 'partial', participation: twoOfThree, source_ref: 'council:prep-result' });
+      expect(completed.body.intake.review_history.at(-1).participation).toBeUndefined();
+    });
+
+    test('a post-interview partial applies follow-up needs and settles like a completed review, keeping partial and 2/3 in history', async () => {
+      const completed = (await reviewResult({ needs: [budget] })).result;
+      const partial = (await reviewResult({ needs: [budget], status: 'partial', participation: twoOfThree })).result;
+      expect(partial.status).toBe(200);
+      expect(partial.body.intake.state).toBe('interviewing');
+      expect(partial.body.project.needs.map(n => n.id)).toEqual(['owner', 'budget']);
+      expect(comparable(partial.body)).toEqual(comparable(completed.body));
+      // The new need is material, so the reviewed revision moves to history.
+      expect(partial.body.intake.review).toBeNull();
+      expect(partial.body.intake.review_history.at(-1)).toMatchObject({ mode: 'review', status: 'partial', participation: twoOfThree, source_ref: 'council:review-result' });
+      expect((await read(partial.body.project.id)).intake.review_history.at(-1)).toMatchObject({ status: 'partial', participation: twoOfThree });
+    });
+
+    test('a post-interview partial without changes leaves panel review and stays partial when accepted', async () => {
+      const completed = (await reviewResult({})).result;
+      const { pending, result } = await reviewResult({ status: 'partial', participation: { substantive_seats: 1, total_seats: 3 } });
+      expect(pending.intake.state).toBe('council_review');
+      expect(result.status).toBe(200);
+      expect(result.body.intake.state).toBe('ready_for_decision');
+      expect(comparable(result.body)).toEqual(comparable(completed.body));
+      expect(result.body.intake.review).toMatchObject({ status: 'partial', participation: { substantive_seats: 1, total_seats: 3 } });
+      const accepted = await op(result.body, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: result.body.intake.brief_revision });
+      expect(accepted.status).toBe(200);
+      expect(accepted.body.intake.acceptance.review_disposition).toBe('partial');
+      expect(accepted.body.intake.review).toMatchObject({ status: 'partial', participation: { substantive_seats: 1, total_seats: 3 } });
+    });
+
+    test.each([
+      ['failed', { status: 'failed' }],
+      ['failed with seats', { status: 'failed', participation: twoOfThree }],
+      ['partial with zero seats', { status: 'partial', participation: { substantive_seats: 0, total_seats: 3 } }],
+      ['partial with no participation', { status: 'partial' }],
+    ])('%s is still refused when it carries changes', async (_label, extra) => {
+      const prep = await preparationResult(extra);
+      expect(prep.status).toBe(400);
+      expect(prep.body.code).toBe('INVALID_INTAKE');
+      expect(prep.body.error || prep.body.message).toMatch(/cannot apply preparation changes/);
+      const { pending, result } = await reviewResult({ ...extra, needs: [budget] });
+      expect(result.status).toBe(400);
+      expect(result.body.code).toBe('INVALID_INTAKE');
+      const unchanged = await read(pending.project.id);
+      expect(unchanged.intake).toEqual(pending.intake);
+      expect(unchanged.project.needs.map(n => n.id)).toEqual(['owner']);
+    });
+
+    test.each([
+      ['failed', { status: 'failed' }],
+      ['partial with zero seats', { status: 'partial', participation: { substantive_seats: 0, total_seats: 3 } }],
+      ['partial with no participation', { status: 'partial' }],
+    ])('%s without changes is saved but keeps the council in review', async (_label, extra) => {
+      const { result } = await reviewResult(extra);
+      expect(result.status).toBe(200);
+      expect(result.body.intake.state).toBe('council_review');
+      expect(result.body.intake.review.status).toBe(extra.status);
+      expect(result.body.intake.review.participation).toEqual(extra.participation);
+    });
+
+    test.each([
+      ['more seats than summoned', { status: 'partial', participation: { substantive_seats: 4, total_seats: 3 } }],
+      ['no seats summoned', { status: 'partial', participation: { substantive_seats: 1, total_seats: 0 } }],
+      ['a text figure', { status: 'partial', participation: '2/3' }],
+      ['a completed result missing seats', { status: 'completed', participation: twoOfThree }],
+    ])('participation with %s is refused', async (_label, extra) => {
+      const { result } = await reviewResult({ ...extra, needs: [budget] });
+      expect(result.status).toBe(400);
+      expect(result.body.code).toBe('INVALID_INTAKE');
+    });
+  });
+
   test('reopens from another database connection and preserves immutable operation results', async () => {
     const p = await prepared();
     const deferred = (await op(p, 'defer')).body;

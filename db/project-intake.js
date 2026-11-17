@@ -330,10 +330,14 @@ function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () =
                     const chosenState = ['interviewing', 'deferred'].includes(intake.state) ? intake.state : intake.review.resume_state === 'deferred' ? 'deferred' : null;
                     const preparation = intake.review.mode === 'preparation';
                     if (!preparation && (input.brief || input.sources)) throw fail('Only preparation councils may supply brief/source changes; revise and review the changed brief separately', 'INVALID_INTAKE', 400);
-                    const status = input.status || 'completed';
-                    if (status !== 'completed' && (input.brief || input.sources || input.needs?.length)) throw fail('Failed or partial council results cannot apply preparation changes', 'INVALID_INTAKE', 400);
-                    intake.review = { ...intake.review, status, source_ref: input.source_ref, findings: input.findings, completed_at: at };
-                    if (status !== 'completed') break;
+                    const status = input.status || 'completed', participation = input.participation;
+                    if (status === 'completed' && participation && participation.substantive_seats < participation.total_seats) throw fail('A council with fewer substantive seats than summoned is partial, not completed', 'INVALID_INTAKE', 400);
+                    // Robert's rule (2026-11-17): a partial council with at least one substantive seat proceeds,
+                    // its shortfall kept on the review. Failed, zero-seat or unmeasured partial results stay advisory.
+                    const usable = status === 'completed' || (status === 'partial' && participation?.substantive_seats >= 1);
+                    if (!usable && (input.brief || input.sources || input.needs?.length)) throw fail('Failed council results, and partial results without participation showing at least one substantive seat, cannot apply preparation changes', 'INVALID_INTAKE', 400);
+                    intake.review = { ...intake.review, status, source_ref: input.source_ref, findings: input.findings, completed_at: at, ...(participation ? { participation } : {}) };
+                    if (!usable) break;
                     if (preparation) {
                         mergeMaterial();
                         const resume = chosenState || intake.review.resume_state || 'preparing';
