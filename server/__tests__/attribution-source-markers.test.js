@@ -186,21 +186,30 @@ describe('every attribution surface marks every figure', () => {
         // measured trailer, and plain commits that fall back to the dispatch
         // correlation (the running row claims them: tokens unavailable).
         fs.mkdirSync(repoDir);
-        const git = (...args) => execFileSync('git', args, {
-            cwd: repoDir,
+        const gitIn = (cwd) => (...args) => execFileSync('git', args, {
+            cwd,
             env: { ...process.env, GIT_AUTHOR_NAME: 'Test', GIT_AUTHOR_EMAIL: 't@example.com', GIT_COMMITTER_NAME: 'Test', GIT_COMMITTER_EMAIL: 't@example.com' },
         });
+        const git = gitIn(repoDir);
         git('init', '-q');
         git('commit', '-q', '--allow-empty', '-m', 'plain commit, no trailers');
         git('commit', '-q', '--allow-empty', '-m', 'estimated work', '-m', 'Model: claude-opus-5\nTokens: ~9,000');
         git('commit', '-q', '--allow-empty', '-m', 'measured work', '-m', 'Model: claude-opus-5\nTokens: 12,345');
+        // A project with no dispatch rows at all: its commit takes the
+        // no-match path, so its count is unavailable (null), not 0.
+        const quietRepoDir = path.join(tmpDir, 'quiet-repo');
+        fs.mkdirSync(quietRepoDir);
+        const quietGit = gitIn(quietRepoDir);
+        quietGit('init', '-q');
+        quietGit('commit', '-q', '--allow-empty', '-m', 'commit with no dispatch behind it');
 
         const project = { id: 'proj-1', name: 'Attribution', path: repoDir, status: 'active' };
+        const quietProject = { id: 'proj-quiet', name: 'No dispatches', path: quietRepoDir, status: 'active' };
         const pulseOnly = ['proj-unknown', 'proj-mixed'].map((id) => {
             fs.mkdirSync(path.join(tmpDir, id));
             return { id, name: id, path: path.join(tmpDir, id), status: 'active' };
         });
-        const getAllProjects = async () => [project];
+        const getAllProjects = async () => [project, quietProject];
         const getPulseProjects = async () => [project, ...pulseOnly];
         const getProjectById = async (_root, id) => [project, ...pulseOnly].find(p => p.id === id) ?? null;
 
@@ -265,6 +274,9 @@ describe('every attribution surface marks every figure', () => {
         expect(byId['d-missing'].costSource).toBe('unavailable');
         expect(byId['d-measured'].costSource).toBe('estimated');
         expect(byId['d-measured'].runTrace.fields.modelCalls.evidence.tokensTotalSource).toBe('measured');
+        // A run with no usage record gives its run-trace no token evidence,
+        // rather than a total of 0 that would read as a measured zero.
+        expect(byId['d-missing'].runTrace.fields.modelCalls.evidence).toBeUndefined();
 
         const activity = (await getJson(`${handle.baseUrl}/api/activity`)).body;
         const bySubject = Object.fromEntries(activity.map(a => [a.message, a]));
@@ -272,6 +284,9 @@ describe('every attribution surface marks every figure', () => {
         expect(bySubject['estimated work'].tokensSource).toBe('estimated');
         expect(bySubject['plain commit, no trailers'].tokens).toBeNull();
         expect(bySubject['plain commit, no trailers'].tokensSource).toBe('unavailable');
+        expect(bySubject['commit with no dispatch behind it'].dispatchId).toBeNull();
+        expect(bySubject['commit with no dispatch behind it'].tokens).toBeNull();
+        expect(bySubject['commit with no dispatch behind it'].tokensSource).toBe('unavailable');
     });
 
     test.each([
