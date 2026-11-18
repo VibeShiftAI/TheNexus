@@ -591,7 +591,17 @@ export async function setProjectCheckpointTarget(
     checkpointId: string,
     input: { target: string | null; expected_target: string | null; expected_checkpoints_revision: string },
 ): Promise<Project> {
-    const url = `${API_URL}/${encodeURIComponent(projectId)}/checkpoints/${encodeURIComponent(checkpointId)}/target`;
+    return saveTarget(`${API_URL}/${encodeURIComponent(projectId)}/checkpoints/${encodeURIComponent(checkpointId)}/target`, input);
+}
+
+export async function setProjectIntakeTarget(
+    projectId: string,
+    input: { target: string | null; expected_target: string | null; expected_revision: number },
+): Promise<Project> {
+    return saveTarget(`${API_URL}/${encodeURIComponent(projectId)}/intake/target`, input);
+}
+
+async function saveTarget(url: string, input: object): Promise<Project> {
     const response = await operatorFetch(url, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
     });

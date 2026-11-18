@@ -156,24 +156,28 @@ function clearPendingAssessments(plan, changedNeeds) {
     return { ...plan, items: plan.items.map(cp => cp.status === 'pending' && cp.assessment && (!changedNeeds || changedNeeds.some(need => checkpointLinksNeed(cp, need))) ? { ...cp, assessment: null } : cp) };
 }
 
-/** Edit only the operator's target text. Evidence collected under this plan remains valid. */
-function applyCheckpointTarget(plan, checkpointId, input) {
+function parseTargetEdit(input, revisionKey) {
     object(input, 'checkpoint target');
-    if (Object.keys(input).some(key => !['target', 'expected_target', 'expected_checkpoints_revision'].includes(key))) {
+    if (Object.keys(input).some(key => !['target', 'expected_target', revisionKey].includes(key))) {
         throw invalid('Only the target and its concurrency guards are accepted.');
     }
     if (input.target !== null && (typeof input.target !== 'string' || !input.target.trim())) {
         throw invalid('Enter a target date or window, or send null to clear it.');
     }
-    if (!own(input, 'expected_target') || !own(input, 'expected_checkpoints_revision')) {
-        throw invalid('expected_target and expected_checkpoints_revision are required.', 428);
+    if (!own(input, 'expected_target') || !own(input, revisionKey)) {
+        throw invalid(`expected_target and ${revisionKey} are required.`, 428);
     }
+    return input.target === null ? null : input.target.trim();
+}
+
+/** Edit only the operator's target text. Evidence collected under this plan remains valid. */
+function applyCheckpointTarget(plan, checkpointId, input) {
+    const target = parseTargetEdit(input, 'expected_checkpoints_revision');
     const checkpoint = plan?.items?.find(cp => cp.id === checkpointId);
     if (!checkpoint) throw invalid('Checkpoint not found', 404, 'CHECKPOINT_NOT_FOUND');
     if (plan.revision !== input.expected_checkpoints_revision || (checkpoint.target ?? null) !== input.expected_target) {
         throw invalid('Checkpoint or target changed. Reload before saving.', 409, 'CHECKPOINT_TARGET_STALE');
     }
-    const target = input.target === null ? null : input.target.trim();
     if (target === (checkpoint.target ?? null)) return plan;
     const updated = { ...checkpoint };
     if (target === null) delete updated.target;
@@ -320,4 +324,4 @@ function applyCheckpointReopen(project, checkpointId, input, at) {
     return { plan: parse(CheckpointPlanSchema, nextPlan, 'checkpoints'), current_checkpoint_id: currentCheckpoint(nextPlan)?.id ?? null };
 }
 
-module.exports = { normalizeCheckpointPlan, clearPendingAssessments, needsLinkedToCheckpoints, applyCheckpointTransition, applyCheckpointReopen, applyCheckpointTarget, MAX_CHECKPOINTS };
+module.exports = { normalizeCheckpointPlan, clearPendingAssessments, needsLinkedToCheckpoints, applyCheckpointTransition, applyCheckpointReopen, applyCheckpointTarget, parseTargetEdit, MAX_CHECKPOINTS };

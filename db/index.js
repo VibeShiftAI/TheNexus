@@ -964,6 +964,7 @@ function upsertProject(project) {
             const existing = deserRow(db.prepare('SELECT * FROM projects WHERE id = ? OR name = ?').get(project.id || '', project.name));
             if (existing) return writeProject(existing.id, project);
             const input = { ...project, id: project.id || uuid(), created_at: project.created_at || now() };
+            if (input.intake != null) fenceExternalIntakeChange({}, input);
             if (input.path) projectIntake.assertWorkspaceUnclaimed(input.path, null, { onlyIntake: true });
             const prepared = prepareProjectPatch({}, input);
             const { sql, values } = buildInsert('projects', prepared, 'name');
@@ -3554,6 +3555,7 @@ module.exports = {
     assertProjectWorkspaceUnclaimed: (location, currentId) => projectIntake.assertWorkspaceUnclaimed(location, currentId),
     createProjectIntake: leasedBoardWrite(input => projectIntake.create(input)),
     operateProjectIntake: leasedBoardWrite((id, input) => projectIntake.operate(id, input)),
+    setProjectIntakeTarget: leasedBoardWrite((id, input) => projectIntake.setTarget(id, input)),
     upsertProject: async (...args) => leasedBoardWrite(upsertProject)(...args),
     updateProject: async (...args) => leasedBoardWrite(updateProject)(...args),
     updateProjectNeed: leasedBoardWrite(updateProjectNeed),

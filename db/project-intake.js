@@ -8,6 +8,7 @@ const path = require('path');
 const { isDeepStrictEqual: equal } = require('util');
 const { CreateProjectIntakeSchema, ProjectIntakeOperationSchema, ProjectIntakeSchema } = require('@praxis/contract');
 const { prepareProjectPatch, projectQuestionRespondents, invalid, timestamp } = require('./project-data');
+const { parseTargetEdit } = require('./project-checkpoints');
 const { recordBacklog, openTaskCount, backlogProposalIssue, markBacklogReplayed } = require('./intake-backlog');
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const fail = (message, code = 'INTAKE_CONFLICT', status = 409) => Object.assign(invalid(message, status), { code });
@@ -183,6 +184,21 @@ function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () =
     function get(projectId) {
         const { project, intake } = load(projectId);
         return { project, intake, ...handoff(project) };
+    }
+    function setTarget(projectId, input) {
+        const target = parseTargetEdit(input, 'expected_revision');
+        return db.transaction(() => {
+            const { project, intake } = load(projectId);
+            if (intake.state === 'handed_off') throw fail('Intake has been handed off to planning.', 'INTAKE_HANDED_OFF');
+            if (intake.revision !== input.expected_revision || (intake.target ?? null) !== input.expected_target) {
+                throw fail('Intake or target changed. Reload before saving.', 'INTAKE_TARGET_STALE');
+            }
+            if ((intake.target ?? null) === target) return project;
+            // This is scheduling text. The brief, its review and any outstanding interview remain current.
+            if (target === null) delete intake.target;
+            else intake.target = target;
+            return save(projectId, { intake: parse(ProjectIntakeSchema, intake), updated_at: timestamp(project.updated_at) });
+        }).immediate();
     }
     function create(raw) {
         const input = parse(CreateProjectIntakeSchema, raw);
@@ -394,7 +410,7 @@ function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () =
             return receipt(input, save(projectId, patch), projectId);
         }).immediate();
     }
-    return { create, get, operate,
+    return { create, get, operate, setTarget,
         findWorkspaceOwner: (location, options) => findWorkspaceOwner(workspace(location), null, options),
         assertWorkspaceUnclaimed: (location, currentId, options) => assertWorkspaceUnclaimed(workspace(location), currentId, options),
     };

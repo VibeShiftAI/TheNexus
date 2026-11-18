@@ -11,6 +11,7 @@
  * POST   /api/projects/:id/checkpoints/transition — Submit fresh evidence for the current checkpoint (advances at most once)
  * POST   /api/projects/:id/checkpoints/:checkpointId/reopen — Reopen a completed checkpoint (operator regression)
  * PUT    /api/projects/:id/checkpoints/:checkpointId/target — Set or clear Robert's date or window
+ * PUT    /api/projects/:id/intake/target        — Set or clear Robert's target during intake
  * DELETE /api/projects/:id                      — Delete project
  * POST   /api/projects/:id/archive              — Archive project + its tasks (files left intact)
  * POST   /api/projects/:id/unarchive            — Restore an archived project + its tasks
@@ -559,14 +560,16 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
     });
 
     const authorizeTarget = createDocumentDecisionAuthority();
-    router.put('/:id/checkpoints/:checkpointId/target', async (req, res) => {
+    router.put(['/:id/checkpoints/:checkpointId/target', '/:id/intake/target'], async (req, res) => {
         try {
             if (req.get('sec-fetch-site') === 'cross-site') return res.status(403).json({ error: 'Use the target control in your Nexus session.' });
             const auth = await authorizeTarget(req);
             if (!auth.ok || !['access_user', 'access_device', 'operator_credential'].includes(auth.actor?.authority)) {
                 return res.status(auth.ok ? 403 : auth.status).json({ error: 'Sign in as Robert to change a checkpoint target.', code: 'operator_required' });
             }
-            const project = await db.setProjectCheckpointTarget(req.params.id, req.params.checkpointId, req.body);
+            const project = req.params.checkpointId === undefined
+                ? await db.setProjectIntakeTarget(req.params.id, req.body)
+                : await db.setProjectCheckpointTarget(req.params.id, req.params.checkpointId, req.body);
             if (!project) return res.status(404).json({ error: 'Project not found' });
             res.json(project);
         } catch (error) {

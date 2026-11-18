@@ -27,6 +27,7 @@ import {
   checkpointResults,
   checkpointNeeds,
 } from "@/lib/project-checkpoints";
+import { CheckpointTargetEditor } from "./checkpoint-target-editor";
 import { CriteriaEditor } from "./criteria-editor";
 import { questionAudienceLabel } from "@/lib/project-endpoint";
 import { buttonClass, inputClass, Field, EvidenceRef, Status } from "./fields";
@@ -131,53 +132,13 @@ function CheckpointTarget({ project, checkpoint, onUpdate }: {
   checkpoint: Checkpoint;
   onUpdate: (project: Project) => void;
 }) {
-  const [draft, setDraft] = useState<{ value: string; prior: string | null; revision: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  function edit() {
-    if (!project.checkpoints) return;
-    setError("");
-    setDraft({ value: checkpoint.target ?? "", prior: checkpoint.target ?? null, revision: project.checkpoints.revision });
-  }
-  async function save(target: string | null) {
-    if (!draft) return;
-    setBusy(true);
-    setError("");
-    try {
-      const updated = await setProjectCheckpointTarget(project.id, checkpoint.id, {
-        target, expected_target: draft.prior, expected_checkpoints_revision: draft.revision,
-      });
-      onUpdate(updated);
-      setDraft(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save checkpoint target.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <div className="mt-2 space-y-2 text-xs" data-checkpoint-target={checkpoint.id}>
-      {draft ? (
-        <form className="space-y-2" onSubmit={e => { e.preventDefault(); void save(draft.value.trim()); }}>
-          <Field label="Target date or window">
-            <input className={inputClass} value={draft.value} disabled={busy}
-              onChange={e => setDraft({ ...draft, value: e.target.value })} />
-          </Field>
-          <div className="flex flex-wrap gap-2">
-            <button className={buttonClass} disabled={busy || !draft.value.trim()}>Save target</button>
-            {draft.prior !== null && <button type="button" className={buttonClass} disabled={busy} onClick={() => void save(null)}>Clear target</button>}
-            <button type="button" className={buttonClass} disabled={busy} onClick={() => { setDraft(null); setError(""); }}>Cancel</button>
-          </div>
-          {error && <p role="alert" className="text-amber-300">{error}</p>}
-        </form>
-      ) : (
-        <div className="flex flex-wrap items-baseline gap-2">
-          {checkpoint.target && <span className="break-words text-slate-300">Target · {checkpoint.target}</span>}
-          <button type="button" className="text-cyan-300 underline" onClick={edit}>{checkpoint.target ? "Edit target" : "Set target"}</button>
-        </div>
-      )}
-    </div>
-  );
+  if (!project.checkpoints) return null;
+  return <CheckpointTargetEditor id={checkpoint.id} target={checkpoint.target} revision={project.checkpoints.revision}
+    onSave={async (target, prior, revision) => {
+      onUpdate(await setProjectCheckpointTarget(project.id, checkpoint.id, {
+        target, expected_target: prior, expected_checkpoints_revision: revision,
+      }));
+    }} />;
 }
 
 function VerdictLine({ checkpoint }: { checkpoint: Checkpoint }) {

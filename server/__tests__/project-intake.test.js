@@ -16,6 +16,7 @@ describe('durable record-only project intake', () => {
     jest.resetModules(); db = require('../../db');
     raw = new (require('better-sqlite3'))(process.env.NEXUS_DB_PATH);
     const app = express(); app.use(express.json());
+    app.use((req, _res, next) => { req.user = { id: 'local_user', is_service: false }; next(); });
     app.use('/api/projects', require('../routes/projects')({ db, PROJECT_ROOT: dir, getProjectById: require('../utils/project-manager').getProjectById, getAllProjects: () => db.getProjects(), scanProjects: async () => [], contextSync: { pullAndSyncFromGit: async (_id, folder) => { if (folder?.startsWith(fs.realpathSync(dir))) fs.writeFileSync(path.join(folder, 'requested-context-write'), 'requested sync'); return { success: true }; } } }));
     server = http.createServer(app);
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -26,6 +27,56 @@ describe('durable record-only project intake', () => {
   const create = (overrides = {}) => request('/intake', { operation_id: crypto.randomUUID(), name: crypto.randomUUID(), problem: 'Help neighbors share tools', source_ref: 'chat:original', ...overrides });
   const op = (snapshot, action, rest = {}) => request(`/${snapshot.project.id}/intake/operations`, { operation_id: crypto.randomUUID(), expected_revision: snapshot.intake.revision, action, ...rest });
   const prepared = async (needs = [need()]) => { const created = await create(); expect(created.status).toBe(201); const result = await op(created.body, 'prepare', { brief, needs }); expect(result.status).toBe(200); return result.body; };
+  test('only Robert may set an active intake target; ordinary intake operations preserve it without a plan', async () => {
+    const originalKey = process.env.NEXUS_OPERATOR_APPROVAL_KEY;
+    const operatorKey = 'fixture-operator-key-for-intake-targets';
+    process.env.NEXUS_OPERATOR_APPROVAL_KEY = operatorKey;
+    try {
+      const snapshot = await prepared();
+      const path = '/' + snapshot.project.id + '/intake';
+      const set = async (input, authorized = true) => fetch(base + path + '/target', {
+        method: 'PUT', headers: { 'content-type': 'application/json', ...(authorized ? { authorization: 'Bearer ' + operatorKey } : {}) },
+        body: JSON.stringify(input),
+      });
+      const body = { target: 'After permit approval', expected_target: null, expected_revision: snapshot.intake.revision };
+      expect((await set(body, false)).status).toBe(403);
+      expect((await set({ ...body, expected_target: undefined })).status).toBe(428);
+      expect((await set({ ...body, target: '  ' })).status).toBe(400);
+      expect((await set(body)).status).toBe(200);
+      const saved = (await request(path, undefined, 'GET')).body;
+      expect(saved.intake).toEqual({ ...snapshot.intake, target: body.target });
+      expect(saved.project.checkpoints).toEqual(snapshot.project.checkpoints);
+      expect((await set({ ...body, target: 'Another window' })).status).toBe(409);
+      expect((await op(saved, 'start', { target: 'Invented' })).status).toBe(400);
+      expect((await request('/' + snapshot.project.id, { intake: { ...saved.intake, target: 'Invented' } }, 'PATCH')).status).toBe(400);
+      await expect(db.upsertProject({ name: crypto.randomUUID(), path: '', intake: saved.intake })).rejects.toMatchObject({ code: 'INTAKE_STATE_GUARD' });
+      const started = await op(saved, 'start');
+      expect(started.body.intake.target).toBe(body.target);
+      expect((await set({ ...body, expected_target: body.target, target: null })).status).toBe(409);
+      const current = { ...body, expected_revision: started.body.intake.revision };
+      expect((await set({ ...current, expected_target: body.target, target: null })).status).toBe(200);
+      expect((await request(path, undefined, 'GET')).body.intake.target).toBeUndefined();
+      expect((await set(current)).status).toBe(200);
+      const accepted = await op(started.body, 'accept', { source_ref: 'chat:approved', next_step: 'Prepare the pilot', brief_revision: started.body.intake.brief_revision });
+      expect(accepted.status).toBe(200);
+      expect((await set({ ...body, expected_target: body.target, expected_revision: accepted.body.intake.revision })).status).toBe(409);
+      expect(accepted.body.project.checkpoints).toEqual(snapshot.project.checkpoints);
+      const projectPath = '/' + snapshot.project.id;
+      const plan = await request(projectPath, { checkpoints: [{ id: 'intake', title: 'Open the pilot' }], expected_checkpoints_revision: null }, 'PATCH');
+      expect(plan.status).toBe(200);
+      const board = await fetch(base + projectPath + '/checkpoints/intake/target', {
+        method: 'PUT', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + operatorKey },
+        body: JSON.stringify({ target: 'December', expected_target: null, expected_checkpoints_revision: plan.body.checkpoints.revision }),
+      });
+      expect(board.status).toBe(200);
+      const project = await board.json();
+      expect(project.checkpoints.items[0].target).toBe('December');
+      expect(project.intake.target).toBe(body.target);
+    } finally {
+      if (originalKey === undefined) delete process.env.NEXUS_OPERATOR_APPROVAL_KEY;
+      else process.env.NEXUS_OPERATOR_APPROVAL_KEY = originalKey;
+    }
+  });
   test('intake preparation and guarded revisions classify the respondent and retain explicit corrections', async () => {
     const question = need();
     let snapshot = await prepared([question]);

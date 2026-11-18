@@ -1,6 +1,8 @@
 "use client";
 
 import type { Project } from '@/lib/nexus';
+import { setProjectIntakeTarget } from '@/lib/nexus/projects';
+import { CheckpointTargetEditor } from '../project-endpoint/checkpoint-target-editor';
 import { questionAudienceLabel } from '@/lib/project-endpoint';
 import type { IntakeAcceptance, ProjectIntake } from '@praxis/contract';
 
@@ -36,7 +38,7 @@ function backlogState(acceptance: IntakeAcceptance): { label: string; recorded: 
 
 /** Intake remains a conversation. This view reads the same project/needs and
  * opens an editable chat draft; it never fabricates a second questionnaire. */
-export function ProjectIntakePanel({ project, onDiscuss }: { project: Project; onDiscuss: (text: string) => void }) {
+export function ProjectIntakePanel({ project, onDiscuss, onUpdate }: { project: Project; onDiscuss: (text: string) => void; onUpdate: (project: Project) => void }) {
   const intake = project.intake;
   if (!intake) return null;
   const needs = (project.needs ?? []).filter(need => intake.need_ids.includes(need.id));
@@ -51,6 +53,12 @@ export function ProjectIntakePanel({ project, onDiscuss }: { project: Project; o
       <div className="min-w-0"><h2 className="text-lg font-semibold text-white">Project intake</h2>
         <p className="text-sm text-cyan-300 break-words">{stateLabels[intake.state]}{backlog && <> · <span data-intake-backlog={backlog.recorded ? 'recorded' : 'not-recorded'} className={backlog.recorded ? undefined : 'font-semibold text-amber-300'}>{backlog.label}</span></>}</p>
         <p className="mt-1 text-xs text-slate-400">Brief version {intake.brief_revision} · {open.length} open questions of {needs.length}</p>
+        {intake.state !== 'handed_off' && (
+          <CheckpointTargetEditor key={project.id} id="intake" revision={intake.revision} target={intake.target}
+            onSave={async (target, prior, revision) => {
+              onUpdate(await setProjectIntakeTarget(project.id, { target, expected_target: prior, expected_revision: revision }));
+            }} />
+        )}
       </div>
       <div className="flex flex-wrap gap-2">
         <button className="rounded-md bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950" onClick={() => discuss(intake.state === 'handed_off' ? 'Discuss the accepted intake and next planning step' : 'Resume intake from the pending question')}>{intake.state === 'handed_off' ? 'Discuss next step' : 'Resume intake'}</button>
