@@ -195,6 +195,24 @@ describe('skill-wiki route', () => {
     expect(body.knownSkills).toEqual(['plan-day', 'qa-loop']);
   });
 
+  it('opens a skill by its file name when its display name has spaces', async () => {
+    // Harvested skills are named for people ("Fold Context"), and a name with
+    // spaces is not a valid path segment here, so the page had no address.
+    fs.mkdirSync(path.join(vault, 'skills', 'development'), { recursive: true });
+    fs.writeFileSync(path.join(vault, 'skills', 'development', 'fold-context.md'),
+      '---\nname: Fold Context\ncategory: development\n---\n\n# Fold Context\n\nFolds old turns.\n', 'utf8');
+    fs.writeFileSync(path.join(vault, 'skills', '_knowledge', 'fold-context.md'), '# fold-context\n\nUsed twice.\n', 'utf8');
+
+    const { status, body } = await requestJson(`${handle.baseUrl}/api/skill-wiki/skills/fold-context`);
+    expect(status).toBe(200);
+    expect(body).toMatchObject({ name: 'Fold Context', relPath: 'skills/development/fold-context.md' });
+    expect(body.manifest).toContain('Folds old turns.');
+    expect(body.knowledge).toContain('Used twice.');
+    // A display name still resolves first, so existing links are unchanged.
+    await expect(requestJson(`${handle.baseUrl}/api/skill-wiki/skills/plan-day`))
+      .resolves.toMatchObject({ status: 200, body: { name: 'plan-day' } });
+  });
+
   it('rejects unknown skills and non-skill-name path shapes', async () => {
     await expect(requestJson(`${handle.baseUrl}/api/skill-wiki/skills/nope`))
       .resolves.toMatchObject({ status: 404 });

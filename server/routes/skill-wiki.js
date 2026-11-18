@@ -153,6 +153,10 @@ function scanManifests(vaultPath) {
             : path.basename(relPath, '.md');
         manifests.set(name, {
             name,
+            // The file name. Harvested skills carry a display name with spaces
+            // ("Decoupled Answer Synthesis"), which no URL segment here accepts,
+            // so a page is also reachable by the name of its file.
+            slug: path.basename(relPath, '.md'),
             relPath,
             category: data.category || category || 'general',
             frontmatter: data,
@@ -293,14 +297,15 @@ function createSkillWikiRouter({ vaultPath = DEFAULT_VAULT_PATH } = {}) {
         }
 
         const manifests = scanManifests(vaultPath);
-        const skill = manifests.get(name);
+        const skill = manifests.get(name) || [...manifests.values()].find((entry) => entry.slug === name);
         if (!skill) return res.status(404).json({ error: `unknown skill: ${name}` });
 
         const telemetry = loadTelemetry(vaultPath);
         const backlinks = parseBacklinkGraph(vaultPath);
         const evidence = Array.isArray(skill.frontmatter.evidence) ? skill.frontmatter.evidence : [];
-        const knowledge = readTextIfExists(
-            path.join(vaultPath, 'skills', '_knowledge', `${skill.name}.md`));
+        // Knowledge pages are filed under the skill's file name.
+        const knowledge = readTextIfExists(path.join(vaultPath, 'skills', '_knowledge', `${skill.name}.md`))
+            ?? readTextIfExists(path.join(vaultPath, 'skills', '_knowledge', `${skill.slug}.md`));
 
         res.json({
             name: skill.name,

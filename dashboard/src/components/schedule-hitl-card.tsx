@@ -764,6 +764,34 @@ export function ScheduleHitlCard({
 
 // ── Skill-candidates card (kind "skill-candidates") ─────────────────────
 
+const SKILL_REVIEW_GROUPS = [
+  {
+    id: "new", title: "New skills", one: "new skill", many: "new skills",
+    explain:
+      "Procedures Praxis drafted from things it read or from repeated QA corrections. None is in use yet. " +
+      "Add to library puts one in the live skill library, where agents pick it up for matching work. " +
+      "Reject takes it off this list.",
+  },
+  {
+    id: "change", title: "Changes to existing skills", one: "change to an existing skill", many: "changes to existing skills",
+    explain:
+      "Rewrites of skills that are already in use. A change can be applied only after a test shows the new text " +
+      "does better than the current text without making protected tasks worse, so Apply appears only on a change " +
+      "that passed. See what changes shows the exact edit and applies nothing. Reject change drops the proposal.",
+  },
+  {
+    id: "manual", title: "Other proposals", one: "other proposal", many: "other proposals",
+    explain:
+      "Proposals this card cannot carry out, such as splitting or retiring a skill. Read them here. " +
+      "Reject takes one off this list.",
+  },
+] as const;
+
+/** `kind` is written when the card is issued; a card without one predates typed candidates. */
+function skillReviewGroup(kind?: string): (typeof SKILL_REVIEW_GROUPS)[number]["id"] {
+  return !kind || kind === "new" ? "new" : kind === "skill-amendment" ? "change" : "manual";
+}
+
 export function SkillCandidatesHitlCard({
   request,
   resolving,
@@ -789,35 +817,52 @@ export function SkillCandidatesHitlCard({
   const states = candidates.map(c => candidateStates[keyFor(c)]);
   const decidedCount = states.filter(state => state && state !== "deciding").length;
   const deciding = states.includes("deciding");
+  // Three different things arrive on this card. Each group says what it is and
+  // what its buttons do, so a new skill is never read as a change to a live one.
+  const groups = SKILL_REVIEW_GROUPS
+    .map(group => ({ ...group, items: candidates.filter(c => skillReviewGroup(c.kind) === group.id) }))
+    .filter(group => group.items.length > 0);
 
   return (
     <article className="rounded-lg border border-violet-500/30 bg-slate-950/60 p-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
+      <div className="mb-1 flex items-center justify-between gap-2">
         <span className="rounded-full bg-violet-400/10 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] font-medium text-violet-300">
-          🧩 Skill Candidates — {meta.date}
+          🧩 Skill Candidates · {meta.date}
         </span>
         <span className="text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400">
           {decidedCount}/{candidates.length} decided
         </span>
       </div>
 
-      <p className="mb-2 text-[length:var(--hitl-fs-10,0.625rem)] text-slate-400">
-        Each decision takes effect immediately. Undecided candidates stay for tomorrow. Tap <b>Done</b> to clear the card.
+      <p className="mb-3 text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-200">
+        {groups.map(group => `${group.items.length} ${group.items.length === 1 ? group.one : group.many}`).join(" · ")}.
+        <span className="text-slate-400"> Decide each one on its own. Every button acts right away.</span>
       </p>
 
-      <ul className="mb-3 divide-y divide-slate-700/40 overflow-hidden rounded border border-slate-700/60">
-        {candidates.map(candidate => {
-          const key = keyFor(candidate);
-          return <SkillCandidateRow key={key} candidate={candidate} state={candidateStates[key]}
-            onState={state => setCandidateStates(previous => ({ ...previous, [key]: state }))} />;
-        })}
-      </ul>
+      {groups.map(group => (
+        <section key={group.id} className="mb-3">
+          <h3 className="text-[length:var(--hitl-fs-xs,0.75rem)] font-bold uppercase tracking-wide text-slate-100">
+            {group.title} ({group.items.length})
+          </h3>
+          <p className="mb-1.5 text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400">{group.explain}</p>
+          <ul className="divide-y divide-slate-700/40 overflow-hidden rounded border border-slate-700/60">
+            {group.items.map(candidate => {
+              const key = keyFor(candidate);
+              return <SkillCandidateRow key={key} candidate={candidate} state={candidateStates[key]}
+                onState={state => setCandidateStates(previous => ({ ...previous, [key]: state }))} />;
+            })}
+          </ul>
+        </section>
+      ))}
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-3">
+        <span className="text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400">
+          Done only clears this card. Anything you have not decided comes back on the next one.
+        </span>
         <button
           disabled={resolving || deciding}
           onClick={() => void onResolve(request.id, { choice: "done" })}
-          className="inline-flex items-center gap-1 rounded-md bg-violet-500 px-3 py-1.5 text-[length:var(--hitl-fs-xs,0.75rem)] font-bold text-slate-950 transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+          className="inline-flex shrink-0 items-center gap-1 rounded-md bg-violet-500 px-3 py-1.5 text-[length:var(--hitl-fs-xs,0.75rem)] font-bold text-slate-950 transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
         >
           {resolving ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
