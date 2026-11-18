@@ -40,6 +40,7 @@ import {
     getRecommendations,
     getTopicMap,
     ingestYouTubeVideo,
+    ingestPastedTranscript,
     rebuildCommunities,
     refreshRecommendations,
     removeIngestionSource,
@@ -133,6 +134,10 @@ export default function KnowledgeIngestionPage() {
     const [formType, setFormType] = useState<SourceType>("rss");
     const [formUrl, setFormUrl] = useState("");
     const [videoUrl, setVideoUrl] = useState("");
+    const [videoTranscript, setVideoTranscript] = useState("");
+    const [videoNote, setVideoNote] = useState("");
+    // Shown beside the form, not in the page-top banner that clears after 5 s.
+    const [videoResult, setVideoResult] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
     const loadAll = useCallback(async () => {
         try {
@@ -318,16 +323,35 @@ export default function KnowledgeIngestionPage() {
         setFormUrl("");
     };
 
+    // With a pasted transcript the video is ingested from that text; without
+    // one, Praxis tries to fetch the transcript itself (YouTube often blocks it).
     const submitVideo = async () => {
         const trimmed = videoUrl.trim();
-        if (!trimmed) return;
-        await runMutation("youtube-video", async () => {
-            const result = await ingestYouTubeVideo(trimmed);
-            return {
-                message: `Queued YouTube video ingestion (${result.ingestion.itemsEnqueued} item${result.ingestion.itemsEnqueued === 1 ? "" : "s"}) in ${result.ingestion.runId}.`,
-            };
-        });
-        setVideoUrl("");
+        if (!trimmed || busy !== null) return;
+        const transcript = videoTranscript.trim();
+        setBusy("youtube-video");
+        setVideoResult(null);
+        try {
+            if (transcript) {
+                const result = await ingestPastedTranscript({ text: transcript, url: trimmed, note: videoNote.trim() || undefined });
+                setVideoResult({ kind: "ok", text: `Ingesting "${result.title}" (${result.chars.toLocaleString()} characters of transcript) in ${result.runId}.` });
+            } else {
+                const result = await ingestYouTubeVideo(trimmed);
+                setVideoResult({
+                    kind: "ok",
+                    text: `Queued YouTube video ingestion (${result.ingestion.itemsEnqueued} item${result.ingestion.itemsEnqueued === 1 ? "" : "s"}) in ${result.ingestion.runId}.`,
+                });
+            }
+            setVideoUrl("");
+            setVideoTranscript("");
+            setVideoNote("");
+            await loadAll();
+        } catch (err) {
+            // What Robert pasted stays, so fixing the link or the text is one click, not a re-paste.
+            setVideoResult({ kind: "error", text: err instanceof Error ? err.message : "Ingestion failed" });
+        } finally {
+            setBusy(null);
+        }
     };
 
     const termSources = useMemo(
@@ -562,23 +586,63 @@ export default function KnowledgeIngestionPage() {
                     <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
                         <div className="flex items-center gap-2">
                             <Youtube size={18} className="text-rose-300" />
-                            <h2 className="font-semibold text-white">Single YouTube Video</h2>
+                            <h2 className="font-semibold text-white">Single Video</h2>
                         </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 p-3">
-                        <input
-                            value={videoUrl}
-                            onChange={(e) => setVideoUrl(e.target.value)}
-                            placeholder="YouTube video URL or ID"
-                            className="min-w-64 flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-600 focus:border-rose-500 focus:outline-none"
+                    <div className="space-y-2 p-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <input
+                                value={videoUrl}
+                                onChange={(e) => setVideoUrl(e.target.value)}
+                                disabled={busy === "youtube-video"}
+                                placeholder="Video link (YouTube or any site), or a YouTube video ID"
+                                aria-label="Video link"
+                                className="min-w-64 flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-600 focus:border-rose-500 focus:outline-none disabled:opacity-60"
+                            />
+                            <button
+                                onClick={submitVideo}
+                                disabled={busy !== null || !videoUrl.trim()}
+                                aria-describedby={videoTranscript.trim() && !videoUrl.trim() ? "video-link-needed" : undefined}
+                                className="inline-flex items-center gap-1 rounded-md border border-rose-500/50 bg-rose-500/10 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-500/20 disabled:opacity-50"
+                            >
+                                {busy === "youtube-video" ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}{" "}
+                                {videoTranscript.trim() ? "Ingest transcript" : "Ingest video"}
+                            </button>
+                        </div>
+                        <textarea
+                            value={videoTranscript}
+                            onChange={(e) => setVideoTranscript(e.target.value)}
+                            disabled={busy === "youtube-video"}
+                            rows={5}
+                            placeholder="Paste the transcript here (optional)"
+                            aria-label="Pasted transcript"
+                            aria-describedby="video-transcript-help"
+                            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs text-slate-200 placeholder:font-sans placeholder:text-slate-600 focus:border-rose-500 focus:outline-none disabled:opacity-60"
                         />
-                        <button
-                            onClick={submitVideo}
-                            disabled={busy !== null || !videoUrl.trim()}
-                            className="inline-flex items-center gap-1 rounded-md border border-rose-500/50 bg-rose-500/10 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-500/20 disabled:opacity-50"
-                        >
-                            {busy === "youtube-video" ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Ingest video
-                        </button>
+                        {videoTranscript.trim() && (
+                            <input
+                                value={videoNote}
+                                onChange={(e) => setVideoNote(e.target.value)}
+                                disabled={busy === "youtube-video"}
+                                placeholder="Why it's worth keeping (optional)"
+                                aria-label="Why it's worth keeping"
+                                className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-600 focus:border-rose-500 focus:outline-none disabled:opacity-60"
+                            />
+                        )}
+                        {videoTranscript.trim() && !videoUrl.trim() && (
+                            <p id="video-link-needed" className="text-xs text-amber-300">Add the video link above to ingest this transcript.</p>
+                        )}
+                        <p id="video-transcript-help" className="text-xs text-slate-500">
+                            On YouTube: open the description, choose Show transcript, select it all and copy; timestamps are fine. Without a transcript, Praxis tries to fetch one itself, which YouTube usually blocks from this machine.
+                        </p>
+                        {videoResult && (
+                            <p
+                                role={videoResult.kind === "error" ? "alert" : "status"}
+                                className={`text-sm ${videoResult.kind === "error" ? "text-rose-300" : "text-emerald-300"}`}
+                            >
+                                {videoResult.text}
+                            </p>
+                        )}
                     </div>
                 </section>
 

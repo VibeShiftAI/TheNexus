@@ -277,6 +277,20 @@ export function ingestYouTubeVideo(url: string): Promise<YouTubeVideoIngestionRe
     return api("/youtube/video", { method: "POST", body: JSON.stringify({ url }) });
 }
 
+export interface PastedTranscriptResult {
+    ok: true;
+    title: string;
+    url: string;
+    chars: number;
+    runId: string;
+    itemsEnqueued: number;
+}
+
+/** Ingest a transcript Robert copied from a video's own transcript panel; Praxis never fetches the video. */
+export function ingestPastedTranscript(input: { text: string; url: string; title?: string; note?: string }): Promise<PastedTranscriptResult> {
+    return api("/transcript", { method: "POST", body: JSON.stringify(input) });
+}
+
 export function toggleIngestionSource(name: string): Promise<MutationResult> {
     return api(`/sources/${encodeURIComponent(name)}/toggle`, { method: "POST" });
 }
