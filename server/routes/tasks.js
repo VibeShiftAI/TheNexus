@@ -330,10 +330,13 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
 
     router.patch('/:taskId', async (req, res) => {
         const { taskId } = req.params;
-        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, successor_id, description, model_assignment, antigravity_payload, name, title, default_executor, default_model, dispatch_instructions, source, suspended_at, suspended_reason, suspended_context, resume_action, knowledge_context, knowledge_need_ids, knowledge_unresolved_need_ids } = req.body;
+        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, successor_id, description, model_assignment, antigravity_payload, name, title, default_executor, default_model, dispatch_instructions, source, suspended_at, suspended_reason, suspended_context, resume_action, knowledge_context, knowledge_need_ids, knowledge_unresolved_need_ids, internal_only } = req.body;
         const expectedVersion = req.body.expected_version;
         if (expectedVersion !== undefined && (!Number.isSafeInteger(expectedVersion) || expectedVersion < 0)) {
             return res.status(400).json({ error: 'expected_version must be a non-negative safe integer' });
+        }
+        if (internal_only !== undefined && typeof internal_only !== 'boolean') {
+            return res.status(400).json({ error: 'internal_only must be true or false' });
         }
         if (!requireValidKnowledgeMetadata(res, { knowledge_context, knowledge_need_ids, knowledge_unresolved_need_ids })) return;
         try {
@@ -417,11 +420,15 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             // "suspended" via PATCH keeps the block as history unless the
             // caller explicitly nulls the fields.
             const suspensionPatch = buildSuspensionPatch(existing, { suspended_at, suspended_reason, suspended_context, resume_action, status: updates.status });
-            if (status_message !== undefined || suspensionPatch !== undefined || knowledge_context !== undefined || knowledge_need_ids !== undefined || knowledge_unresolved_need_ids !== undefined) {
+            if (status_message !== undefined || suspensionPatch !== undefined || knowledge_context !== undefined || knowledge_need_ids !== undefined || knowledge_unresolved_need_ids !== undefined || internal_only !== undefined) {
                 updates.metadata = { ...(existing.metadata || {}) };
                 // A narrow PATCH surface prevents knowledge backfills from
                 // replacing unrelated metadata or writing verification state.
                 if (knowledge_context !== undefined) updates.metadata.knowledge_context = knowledge_context;
+                // Internal-only work never appears in a client status report
+                // (Praxis src/stakeholders/report-model.ts). false clears the flag.
+                if (internal_only === true) updates.metadata.internal_only = true;
+                else if (internal_only === false) delete updates.metadata.internal_only;
                 if (knowledge_need_ids !== undefined) updates.metadata.knowledge_need_ids = knowledge_need_ids;
                 if (knowledge_unresolved_need_ids !== undefined) updates.metadata.knowledge_unresolved_need_ids = knowledge_unresolved_need_ids;
                 if (status_message !== undefined) updates.metadata.status_message = status_message;
