@@ -113,6 +113,10 @@ function createStakeholderRouters({ db }) {
                 created_at: t.created_at,
                 updated_at: t.updated_at ?? null,
                 gate: t.metadata?.stakeholder_gate,
+                // Read from the task itself, so a task listed through a proposal
+                // bound here after it moved to another project carries its flag
+                // too: Praxis keeps an internal-only task out of client reports.
+                internal_only: t.metadata?.internal_only === true,
                 // A moved task may have a proposal bound to another project. Read
                 // uncached tasks to preserve the exact-project filter below.
                 proposal: proposals.get(t.id) ?? db.getStakeholderProposal(t.id),

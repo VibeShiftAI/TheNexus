@@ -170,6 +170,19 @@ test('revised proposal follows its exact project, never a former revision scope'
     expect((await api('GET', `/api/projects/${project.id}/requests?status=all`)).data.requests).toEqual([]);
     expect((await api('GET', `/api/projects/${other.id}/requests?status=all`)).data.requests).toHaveLength(1);
 });
+test('a request row carries its task internal-only flag, also for a moved task listed through its bound proposal', async () => {
+    await propose();
+    const listed = async () => (await api('GET', `/api/projects/${project.id}/requests?status=all`)).data.requests
+        .map(r => [r.id, r.internal_only]);
+    expect(await listed()).toEqual([[task.id, false]]);
+    // Moved away and flagged: this project's board no longer holds the task, so
+    // only the row can tell Praxis to keep it out of the client report.
+    const other = await db.upsertProject({ name: 'Other synthetic scope', path: '/tmp/other-synthetic-scope' });
+    const current = await db.getTask(task.id);
+    await db.updateTask(task.id, { project_id: other.id, metadata: { ...(current.metadata || {}), internal_only: true } });
+    expect((await db.getTask(task.id)).project_id).toBe(other.id);
+    expect(await listed()).toEqual([[task.id, true]]);
+});
 test('request list reuses reconstructed project proposals', async () => {
     await propose();
     const read = jest.spyOn(db, 'getStakeholderProposal');
