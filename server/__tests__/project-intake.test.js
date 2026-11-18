@@ -26,6 +26,25 @@ describe('durable record-only project intake', () => {
   const create = (overrides = {}) => request('/intake', { operation_id: crypto.randomUUID(), name: crypto.randomUUID(), problem: 'Help neighbors share tools', source_ref: 'chat:original', ...overrides });
   const op = (snapshot, action, rest = {}) => request(`/${snapshot.project.id}/intake/operations`, { operation_id: crypto.randomUUID(), expected_revision: snapshot.intake.revision, action, ...rest });
   const prepared = async (needs = [need()]) => { const created = await create(); expect(created.status).toBe(201); const result = await op(created.body, 'prepare', { brief, needs }); expect(result.status).toBe(200); return result.body; };
+  test('intake preparation and guarded revisions classify the respondent and retain explicit corrections', async () => {
+    const question = need();
+    let snapshot = await prepared([question]);
+    expect(snapshot.project.needs[0].knowledge.client_facing).toBe(false);
+    const edit = async patch => {
+      const previous = snapshot.project.needs[0];
+      const result = await op(snapshot, 'revise', { needs: [{ ...question, expected_knowledge_revision: previous.knowledge.revision,
+        knowledge: { ...question.knowledge, resolution: previous.knowledge.resolution, ...patch } }] });
+      expect(result.status).toBe(200);
+      snapshot = result.body;
+      return snapshot.project.needs[0].knowledge;
+    };
+    expect((await edit({ resolution: { method: 'human', owner: 'Customer' } })).client_facing).toBe(true);
+    expect((await edit({ client_facing: false })).client_facing).toBe(false);
+    const retained = await edit({ purpose: 'Updated purpose' });
+    expect(retained.client_facing).toBe(false);
+    expect(retained.history.map(h => h.audience_changed_to)).toEqual([true, false]);
+  });
+
   const preHandoffStates = ['preparing', 'awaiting_choice', 'deferred', 'interviewing', 'council_review', 'ready_for_decision'];
   const atState = async state => {
     if (state === 'preparing') return (await op((await create()).body, 'revise', { brief, needs: [need()] })).body;

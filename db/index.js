@@ -12,7 +12,8 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const { normalizeTaskBoardStatus, isTaskDone, MemberMemoryInputSchema } = require('@praxis/contract');
-const { prepareProjectPatch, invalid: invalidProject, timestamp: projectTimestamp } = require('./project-data');
+const { isDeepStrictEqual } = require('node:util');
+const { prepareProjectPatch, projectQuestionRespondents, invalid: invalidProject, timestamp: projectTimestamp } = require('./project-data');
 const { routeKnowledgeChangeWork } = require('./knowledge-change-work');
 const { initializeProjectScopeDecisions, createProjectScopeDecisions } = require('./project-scope-decisions');
 const { initializeProjectIntake, createProjectIntakeStore, fenceExternalIntakeChange } = require('./project-intake');
@@ -977,7 +978,8 @@ function upsertProject(project) {
 function writeProject(projectId, updates, options) {
     const current = deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId));
     if (!current) return null;
-    const patch = prepareProjectPatch(current, updates, options);
+    const respondents = updates.needs ? projectQuestionRespondents(db, current.id) : [];
+    const patch = prepareProjectPatch(current, updates, { ...options, respondents });
     if (patch.path && patch.path !== current.path) projectIntake.assertWorkspaceUnclaimed(patch.path, current.id, { onlyIntake: true });
     fenceExternalIntakeChange(current, patch, updates);
     routeKnowledgeChangeWork({ db, current, patch, createTask, updateTask,
@@ -1016,6 +1018,11 @@ function updateProjectNeed(projectId, needId, updates) {
                 if (index < 0) throw invalidProject('Need not found', 404);
                 if (expected && ['status', 'notes', 'description', 'kind'].some(key =>
                     (needs[index][key] ?? '') !== (expected[key] ?? '')
+                )) return { conflict: true };
+                // These routing changes do not advance the verified answer revision.
+                // A reply or correction based on an outdated assignment must conflict.
+                if (expected?.knowledge && ['client_facing', 'resolution', 'deferred_until', 'deferred_reason', 'superseded_by'].some(
+                    key => !isDeepStrictEqual(expected.knowledge[key], needs[index].knowledge?.[key])
                 )) return { conflict: true };
                 needs[index] = { ...needs[index], ...patch, id: needId };
             } else {

@@ -1,7 +1,7 @@
 /** Pure knowledge lifecycle rules. The caller owns the read/write transaction. */
 const crypto = require('crypto');
 const { isDeepStrictEqual: equal } = require('util');
-const { KnowledgeNeedSchema, KnowledgeEvidenceSchema, KnowledgeApplicationSchema, KnowledgeVerificationSchema } = require('@praxis/contract');
+const { KnowledgeNeedSchema, KnowledgeEvidenceSchema, KnowledgeApplicationSchema, KnowledgeVerificationSchema, inferKnowledgeClientFacing, isInternalKnowledgeResolution } = require('@praxis/contract');
 const own = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
 const ROUTING_RECEIPT_PREFIX = 'knowledge-change:';
 const invalid = (message, status = 400) => Object.assign(new Error(message), { status });
@@ -26,6 +26,7 @@ function uniqueEvidence(evidence) {
 }
 function snapshot(before, at) {
     const out = { revision: before.revision ?? 0, question: before.question, satisfaction_test: before.satisfaction_test, evidence: before.evidence || [], at };
+    if (before.client_facing !== undefined) out.client_facing = before.client_facing;
     if (before.answer !== undefined) out.answer = before.answer;
     if (before.verification) out.verification = before.verification;
     return out;
@@ -64,7 +65,7 @@ function appendApplication(k, before, raw, need, at, legacy = false) {
     return ['insufficient', 'outdated'].includes(application.status) && (legacy || application.challenges_knowledge === true);
 }
 
-function normalizeKnowledgeLifecycle(candidate, previous, input, { at, actor, scoped = false } = {}) {
+function normalizeKnowledgeLifecycle(candidate, previous, input, { at, actor, scoped = false, respondents } = {}) {
     let need = { ...candidate };
     const before = previous?.knowledge;
     if ((!previous || previous.kind !== 'information' || (!before && input.knowledge)) && need.kind === 'information' && (!need.knowledge?.purpose?.trim() || !need.knowledge?.resolution)) {
@@ -103,6 +104,17 @@ function normalizeKnowledgeLifecycle(candidate, previous, input, { at, actor, sc
         else delete supplied[field];
     }
     let k = parse(KnowledgeNeedSchema, supplied, 'knowledge');
+    const reassigned = !before || k.resolution?.method !== before.resolution?.method || k.resolution?.owner !== before.resolution?.owner;
+    if (!own(input.knowledge, 'client_facing') && (reassigned || (before.client_facing === undefined && before.question !== k.question))) {
+        const inferred = inferKnowledgeClientFacing(k.resolution, respondents);
+        if (inferred === undefined) delete k.client_facing;
+        else k.client_facing = inferred;
+    }
+    if (k.client_facing === true && isInternalKnowledgeResolution(k.resolution) && (reassigned || own(input.knowledge, 'client_facing'))) {
+        throw invalid('Choose an external respondent and resolution route before marking this question client facing');
+    }
+    const audienceChanged = before && before.client_facing !== k.client_facing;
+    if (audienceChanged && !guarded) throw invalid('Changing question audience requires expected_knowledge_revision', 428);
     if (own(input, 'append_evidence')) {
         if (own(input.knowledge, 'evidence')) throw invalid('Use either append_evidence or knowledge.evidence replacement');
         if (!Array.isArray(input.append_evidence)) throw invalid('append_evidence must be an array');
@@ -120,7 +132,15 @@ function normalizeKnowledgeLifecycle(candidate, previous, input, { at, actor, sc
         throw invalid('Reopen this retired question or revise its successor before changing applied knowledge.', 409);
     }
     k.revision = before ? (before.revision ?? 0) + (changed ? 1 : 0) : 1;
-    k.history = changed ? [...(before.history || []), snapshot(before, at)] : [...(before?.history || [])];
+    k.history = [...(before?.history || [])];
+    if (changed || audienceChanged) {
+        const prior = snapshot(before, at);
+        if (audienceChanged) {
+            prior.audience_changed_to = k.client_facing ?? null;
+            prior.by = actor || input.source || 'api';
+        }
+        k.history.push(prior);
+    }
     need.knowledge = k;
     if (verifying) {
         if (!k.answer?.trim() || !k.evidence.length) throw invalid('Satisfying a structured need requires an answer and evidence reference');

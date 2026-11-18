@@ -1,6 +1,7 @@
 "use client";
 
 import type { Project } from '@/lib/nexus';
+import { questionAudienceLabel } from '@/lib/project-endpoint';
 import type { IntakeAcceptance, ProjectIntake } from '@praxis/contract';
 
 const stateLabels: Record<ProjectIntake['state'], string> = {
@@ -77,6 +78,8 @@ export function ProjectIntakePanel({ project, onDiscuss }: { project: Project; o
     </div>
     <div><h3 className="font-semibold text-white">Knowledge needs</h3><ul className="mt-3 space-y-3">{needs.map(need => <li key={need.id} className="rounded-lg border border-slate-700/60 p-3">
       <div className="flex gap-3 justify-between"><h4 className="text-sm font-medium text-slate-100">{need.knowledge?.question || need.description}</h4><span className="text-xs text-slate-400">{need.status}</span></div>
+      {need.knowledge && <div className="mt-2 flex items-center gap-3 text-xs text-slate-300"><span>{questionAudienceLabel(need.knowledge.client_facing)}</span>
+        <button className="text-cyan-300 underline" onClick={() => discuss(`I want to change the question audience for need ${JSON.stringify(need.id)}. Ask whether it should be client facing or internal and save my correction with its history`)}>Change audience</button></div>}
       {need.knowledge?.purpose && <p className="mt-1 text-xs text-slate-400">{need.knowledge.purpose}</p>}
       {need.knowledge?.answer && <p className="mt-2 whitespace-pre-wrap text-sm">{need.knowledge.answer}</p>}
       {!!need.knowledge?.evidence?.length && <ul className="mt-2 text-xs text-slate-400">{need.knowledge.evidence.map((e, i) => <li key={i}><Reference value={e.ref} />{e.summary && <span> — {e.summary}</span>}</li>)}</ul>}

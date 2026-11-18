@@ -110,6 +110,7 @@ test("shows the long-term goal, the current checkpoint with its evidence, upcomi
     assert.match(text, /1 of 2 criteria not passing, 1 required knowledge unresolved/);
     assert.match(text, /Regression in gate 2/);
     assert.match(text, /Which load model reflects production\?/);
+    assert.equal(ui.container.querySelector('a[href="#need-n"]').textContent, 'Audience unmarked');
     assert.match(text, /Upcoming/);
     assert.match(text, /Value ledger/);
     assert.match(text, /Completed/);

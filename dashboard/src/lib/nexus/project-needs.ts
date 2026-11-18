@@ -3,6 +3,10 @@ import { API_URL, authFetch } from "./shared";
 
 export type ProjectNeedPatch = Partial<Omit<ProjectNeed, "knowledge">> & {
   knowledge?: Partial<KnowledgeNeed>;
+  expected?: Pick<ProjectNeed, "status" | "description" | "kind"> & {
+    notes: string;
+    knowledge?: Pick<KnowledgeNeed, "client_facing" | "resolution" | "deferred_until" | "deferred_reason" | "superseded_by">;
+  };
   expected_knowledge_revision?: number;
   append_evidence?: KnowledgeEvidence[];
   record_application?: KnowledgeApplication;

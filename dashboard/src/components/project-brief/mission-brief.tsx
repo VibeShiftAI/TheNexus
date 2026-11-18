@@ -7,7 +7,7 @@
 "use client";
 
 import type { Project, ProjectBrief, PulseCrew } from "@/lib/nexus";
-import { knowledgeSatisfied } from "@/lib/project-endpoint";
+import { knowledgeSatisfied, questionAudienceLabel } from "@/lib/project-endpoint";
 import { currentWorkNeeds } from "@praxis/contract";
 import { checkpointView } from "@/lib/project-checkpoints";
 import { CornerBrackets } from "@/components/bridge/hud";
@@ -152,6 +152,7 @@ export function MissionBrief({ project, brief }: { project: Project; brief: Proj
                                         <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-amber-400/80" />
                                         <span className="min-w-0">
                                             {n.knowledge?.question || n.description}
+                                            {n.knowledge && <a className="ml-2 text-cyan-300 underline" href={`#need-${encodeURIComponent(n.id)}`}>{questionAudienceLabel(n.knowledge.client_facing)}</a>}
                                             {n.knowledge?.blocking && <span className="ml-1 text-amber-300"> · blocking knowledge</span>}
                                             <span className="ml-1.5 font-mono text-[10px] text-amber-500/60">[{n.kind}]</span>
                                         </span>

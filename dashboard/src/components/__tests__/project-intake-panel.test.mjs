@@ -31,6 +31,22 @@ test('deferred intake shows saved question, source issue, and workspace without 
     assert.doesNotMatch(ui.container.textContent, /\d+%/);
   } finally { ui.close(); }
 });
+test('intake questions show the saved audience and open a correction for the selected question', async () => {
+  const value = structuredClone(project);
+  value.needs[0].knowledge.client_facing = false;
+  const drafts = [];
+  const ui = await mount(value, text => drafts.push(text));
+  try {
+    assert.match(ui.container.textContent, /Internal/);
+    const change = [...ui.container.querySelectorAll('button')].find(b => b.textContent === 'Change audience');
+    assert.ok(change);
+    await act(async () => change.click());
+    assert.match(drafts[0], /audience/);
+    assert.ok(drafts[0].includes(JSON.stringify(value.needs[0].id)));
+    assert.ok(drafts[0].includes(JSON.stringify(value.id)));
+  } finally { ui.close(); }
+});
+
 test('planning acceptance shows unfinished readiness and actual council disposition', async () => {
   const value = structuredClone(project);
   value.phase = 'planning'; value.intake.state = 'handed_off';

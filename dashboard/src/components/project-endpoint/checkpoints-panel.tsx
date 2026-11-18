@@ -27,6 +27,7 @@ import {
   checkpointNeeds,
 } from "@/lib/project-checkpoints";
 import { CriteriaEditor } from "./criteria-editor";
+import { questionAudienceLabel } from "@/lib/project-endpoint";
 import { buttonClass, inputClass, Field, EvidenceRef, Status } from "./fields";
 
 const MAX_CHECKPOINTS = 30;
@@ -152,6 +153,7 @@ function NeedsList({ checkpoint, project }: { checkpoint: Checkpoint; project: P
             <Status value={satisfied ? "satisfied" : "unresolved"} />
             <span className="min-w-0 flex-1 break-words text-slate-300">
               {need.knowledge?.question || need.description}
+              {need.knowledge && <a className="ml-2 text-cyan-300 underline" href={`#need-${encodeURIComponent(need.id)}`}>{questionAudienceLabel(need.knowledge.client_facing)}</a>}
               <span className="ml-1 font-mono text-[10px] text-slate-500">{need.id}</span>
             </span>
           </li>
