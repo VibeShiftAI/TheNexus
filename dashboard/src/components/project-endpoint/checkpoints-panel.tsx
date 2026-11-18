@@ -16,6 +16,7 @@ import {
 import {
   updateProject,
   reopenProjectCheckpoint,
+  setProjectCheckpointTarget,
   type Project,
   type EndStateCriterion,
   type CheckpointDefinitionInput,
@@ -123,6 +124,60 @@ function History({ checkpoint }: { checkpoint: Checkpoint }) {
       {event.assessment?.results.map(r => <p key={r.id}>{r.description || r.id}: {r.status} · {r.detail}{r.evidence_ref && <> · <EvidenceRef refValue={r.evidence_ref} /></>}</p>)}
     </li>)}</ul>
   </details>;
+}
+
+function CheckpointTarget({ project, checkpoint, onUpdate }: {
+  project: Project;
+  checkpoint: Checkpoint;
+  onUpdate: (project: Project) => void;
+}) {
+  const [draft, setDraft] = useState<{ value: string; prior: string | null; revision: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  function edit() {
+    if (!project.checkpoints) return;
+    setError("");
+    setDraft({ value: checkpoint.target ?? "", prior: checkpoint.target ?? null, revision: project.checkpoints.revision });
+  }
+  async function save(target: string | null) {
+    if (!draft) return;
+    setBusy(true);
+    setError("");
+    try {
+      const updated = await setProjectCheckpointTarget(project.id, checkpoint.id, {
+        target, expected_target: draft.prior, expected_checkpoints_revision: draft.revision,
+      });
+      onUpdate(updated);
+      setDraft(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save checkpoint target.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="mt-2 space-y-2 text-xs" data-checkpoint-target={checkpoint.id}>
+      {draft ? (
+        <form className="space-y-2" onSubmit={e => { e.preventDefault(); void save(draft.value.trim()); }}>
+          <Field label="Target date or window">
+            <input className={inputClass} value={draft.value} disabled={busy}
+              onChange={e => setDraft({ ...draft, value: e.target.value })} />
+          </Field>
+          <div className="flex flex-wrap gap-2">
+            <button className={buttonClass} disabled={busy || !draft.value.trim()}>Save target</button>
+            {draft.prior !== null && <button type="button" className={buttonClass} disabled={busy} onClick={() => void save(null)}>Clear target</button>}
+            <button type="button" className={buttonClass} disabled={busy} onClick={() => { setDraft(null); setError(""); }}>Cancel</button>
+          </div>
+          {error && <p role="alert" className="text-amber-300">{error}</p>}
+        </form>
+      ) : (
+        <div className="flex flex-wrap items-baseline gap-2">
+          {checkpoint.target && <span className="break-words text-slate-300">Target · {checkpoint.target}</span>}
+          <button type="button" className="text-cyan-300 underline" onClick={edit}>{checkpoint.target ? "Edit target" : "Set target"}</button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function VerdictLine({ checkpoint }: { checkpoint: Checkpoint }) {
@@ -428,6 +483,7 @@ export function ProjectCheckpointsPanel({
                   {view.current.goal}
                 </p>
               )}
+              <CheckpointTarget key={view.current.id} project={project} checkpoint={view.current} onUpdate={onUpdate} />
               <VerdictLine checkpoint={view.current} />
               <CriteriaList checkpoint={view.current} />
               <NeedsList checkpoint={view.current} project={project} />
@@ -468,6 +524,7 @@ export function ProjectCheckpointsPanel({
                     <span className="text-slate-600">
                       {(cp.criteria ?? []).filter((c) => c.enabled !== false).length} criteria
                     </span>
+                    <CheckpointTarget project={project} checkpoint={cp} onUpdate={onUpdate} />
                   </li>
                 ))}
               </ol>
@@ -495,6 +552,7 @@ export function ProjectCheckpointsPanel({
                       {cp.goal && (
                         <p className="mt-2 whitespace-pre-wrap break-words text-slate-400">{cp.goal}</p>
                       )}
+                      <CheckpointTarget project={project} checkpoint={cp} onUpdate={onUpdate} />
                       <CriteriaList checkpoint={cp} />
                       <History checkpoint={cp} />
                       {cp.history.length > 0 && (
@@ -573,6 +631,7 @@ export function ProjectCheckpointsPanel({
                   <li key={cp.id} className="break-words">
                     {cp.title}
                     {cp.archived_at ? ` · archived ${when(cp.archived_at)}` : ""}
+                    {cp.target ? ` · Target: ${cp.target}` : ""}
                     {cp.completion ? ` · was verified ${when(cp.completion.at)}` : ""}
                     <CriteriaList checkpoint={cp} />
                     <History checkpoint={cp} />

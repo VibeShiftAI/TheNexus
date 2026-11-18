@@ -30,6 +30,7 @@ describe('project checkpoints: persistence, editing and guarded advancement', ()
         // Lifecycle status is now present in the base schema and intake migration.
         const app = express();
         app.use(express.json());
+        app.use((req, _res, next) => { req.user = { id: 'local_user', role: 'admin', is_service: false }; next(); });
         app.use('/api/projects', require('../routes/projects')({ db, PROJECT_ROOT: dir, getProjectById: (_, id) => db.getProject(id), getAllProjects: () => db.getProjects(), scanProjects: jest.fn(), callAI: jest.fn(), contextSync: {} }));
         server = http.createServer(app);
         await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -82,6 +83,70 @@ describe('project checkpoints: persistence, editing and guarded advancement', ()
         expect(result.body.transition).toMatchObject({ outcome: 'advanced' });
         return result.body.project;
     }
+
+    test('only Robert can set and clear a target; writes retain evidence and reject stale edits', async () => {
+        const keys = {
+            NEXUS_OPERATOR_APPROVAL_KEY: 'fixture-operator-key-for-checkpoint-targets',
+            NEXUS_DOCUMENT_APPROVAL_KEY: 'fixture-document-key-for-checkpoint-targets',
+            NEXUS_STAKEHOLDER_RUNTIME_KEY: 'fixture-runtime-key-for-checkpoint-targets',
+        };
+        const old = Object.fromEntries(Object.keys(keys).map(k => [k, process.env[k]]));
+        Object.assign(process.env, keys);
+        try {
+            let saved = await savePlan([checkpoint('a', 'Foundation', [manual('a1')]), checkpoint('b', 'Rollout', [])]);
+            // A completed checkpoint has a definition, assessment, immutable evidence and history to protect.
+            saved = await advance(saved, 'a');
+            const plan = saved.checkpoints;
+            const body = { expected_checkpoints_revision: plan.revision, expected_target: null, target: 'Early December, after the review' };
+            const operator = { Authorization: 'Bearer ' + keys.NEXUS_OPERATOR_APPROVAL_KEY };
+            const write = (input, headers = operator, id = 'a') => fetch(url + '/checkpoints/' + id + '/target', {
+                method: 'PUT', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(input),
+            });
+            for (const headers of [{}, { Authorization: 'Bearer local-dev-token' },
+                { Authorization: 'Bearer ' + keys.NEXUS_DOCUMENT_APPROVAL_KEY }, { Authorization: 'Bearer ' + keys.NEXUS_STAKEHOLDER_RUNTIME_KEY },
+                { ...operator, 'x-praxis-bridge-token': 'executor' }, { ...operator, 'sec-fetch-site': 'cross-site' }]) {
+                expect((await write({ ...body, operator: true, source: 'Robert' }, headers)).status).toBe(403);
+            }
+            expect((await db.getProject(PROJECT_ID)).checkpoints).toEqual(plan);
+            expect((await write({ ...body, expected_target: undefined })).status).toBe(428);
+            expect((await write({ ...body, expected_checkpoints_revision: undefined })).status).toBe(428);
+            expect((await write({ ...body, expected_checkpoints_revision: 'old-plan' })).status).toBe(409);
+            expect((await write({ ...body, target: '   ' })).status).toBe(400);
+            expect((await write({ ...body, target: { date: '2026-12-01' } })).status).toBe(400);
+            expect((await write({ ...body, status: 'pending' })).status).toBe(400);
+            expect((await write(body, operator, 'unknown')).status).toBe(404);
+            expect((await write(body)).status).toBe(200);
+            const set = (await req('', undefined, 'GET')).body;
+            expect(set).toEqual({ ...saved, updated_at: set.updated_at, checkpoints: {
+                ...plan, items: [{ ...plan.items[0], target: body.target }, plan.items[1]],
+            } });
+            expect((await write({ ...body, target: 'stale edit' })).status).toBe(409);
+            expect((await write({ ...body, expected_target: body.target, target: null })).status).toBe(200);
+            expect((await req('', undefined, 'GET')).body.checkpoints).toEqual(plan);
+
+            // Ordinary plan writers may echo or omit the target, even when saving a stale copy.
+            expect((await write({ ...body, target: '2026-12-15' }, operator, 'b')).status).toBe(200);
+            const archived = await savePlan([{ id: 'a' }]);
+            expect(archived.checkpoints.archived[0].target).toBe('2026-12-15');
+            const restored = await savePlan([{ id: 'a' }, { id: 'b', title: 'Rollout v2' }]);
+            expect(restored.checkpoints.items[1].target).toBe('2026-12-15');
+            const normalized = await savePlan([{ id: 'a' }, { id: ' b ', title: 'Rollout v2', goal: plan.items[1].goal }]);
+            expect(normalized.checkpoints).toEqual(restored.checkpoints);
+            for (const target of ['another window', null]) {
+                expect((await req('', { checkpoints: [{ id: 'a' }, { id: 'b', target }] })).status).toBe(403);
+            }
+            expect((await req('', { checkpoints: [{ ...checkpoint('new', 'New', []), target: body.target }] })).status).toBe(403);
+            const touched = await savePlan(restored.checkpoints.items);
+            const reopened = await req('/checkpoints/a/reopen', { expected_checkpoints_revision: touched.checkpoints.revision }, 'POST');
+            expect(reopened.body.project.checkpoints.items[1].target).toBe('2026-12-15');
+            const updated = await transition(reopened.body.project, 'a', { assessment: await assessment('a', ['a1'], 'fail') });
+            expect(updated.body.project.checkpoints.items[1].target).toBe('2026-12-15');
+        } finally {
+            for (const [k, value] of Object.entries(old)) {
+                if (value === undefined) delete process.env[k]; else process.env[k] = value;
+            }
+        }
+    });
 
     test('atomic question and checkpoint-link edits validate against the merged plan', async () => {
         const saved=await savePlan([checkpoint('a','Foundation',[manual('a1')])]);

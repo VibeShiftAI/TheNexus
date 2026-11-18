@@ -17,7 +17,7 @@ const { prepareProjectPatch, projectQuestionRespondents, invalid: invalidProject
 const { routeKnowledgeChangeWork } = require('./knowledge-change-work');
 const { initializeProjectScopeDecisions, createProjectScopeDecisions } = require('./project-scope-decisions');
 const { initializeProjectIntake, createProjectIntakeStore, fenceExternalIntakeChange } = require('./project-intake');
-const { applyCheckpointTransition, applyCheckpointReopen } = require('./project-checkpoints');
+const { applyCheckpointTransition, applyCheckpointReopen, applyCheckpointTarget } = require('./project-checkpoints');
 const { initializeMemberMemory, createMemberMemoryLedger } = require('./member-memory');
 const { initializeMemberProfileProposals, createMemberProfileProposals } = require('./member-profile-proposals');
 const { captureMemberDirectoryChange } = require('./member-directory-memory');
@@ -1067,6 +1067,21 @@ function transitionProjectCheckpoint(projectId, input) {
         console.error('[Database] Error transitioning project checkpoint:', err.message);
         return null;
     }
+}
+
+/** Persist a target against the latest stored plan without invalidating a checkpoint assessment. */
+function setProjectCheckpointTarget(projectId, checkpointId, input) {
+    if (!db) throw invalidProject('Checkpoint storage unavailable', 503);
+    return db.transaction(() => {
+        const current = deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId));
+        if (!current) return null;
+        const plan = applyCheckpointTarget(current.checkpoints, checkpointId, input);
+        if (plan === current.checkpoints) return current;
+        const updated_at = projectTimestamp(current.updated_at);
+        const { sql, values } = buildUpdate('projects', { checkpoints: plan, updated_at }, 'id', current.id);
+        db.prepare(sql).run(...values);
+        return { ...current, checkpoints: plan, updated_at };
+    }).immediate();
 }
 
 /** Operator-initiated reopen of a completed checkpoint; the completion stays in its history. */
@@ -3543,6 +3558,7 @@ module.exports = {
     updateProject: async (...args) => leasedBoardWrite(updateProject)(...args),
     updateProjectNeed: leasedBoardWrite(updateProjectNeed),
     transitionProjectCheckpoint: leasedBoardWrite(transitionProjectCheckpoint),
+    setProjectCheckpointTarget: leasedBoardWrite(setProjectCheckpointTarget),
     reopenProjectCheckpoint: leasedBoardWrite(reopenProjectCheckpoint),
     deleteProject: async (...args) => leasedBoardWrite(deleteProject)(...args),
     archiveProject: async (...args) => leasedBoardWrite(archiveProject)(...args),

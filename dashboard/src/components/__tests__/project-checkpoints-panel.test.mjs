@@ -96,6 +96,36 @@ function mockFetch(respond) {
   return { calls, restore() { globalThis.fetch = original; } };
 }
 
+test("sets a free-text checkpoint target and clears it through the operator endpoint", async () => {
+  let updated;
+  const net = mockFetch(({ url, body }) => {
+    if (!url.endsWith("/cp-b/target")) throw new Error("Unexpected route");
+    return { ok: true, json: async () => ({ ...project, checkpoints: { ...project.checkpoints,
+      items: [completed, { ...current, target: body.target ?? undefined }, upcoming],
+    } }) };
+  });
+  const props = { project, onUpdate: (p) => { updated = p; } };
+  const ui = await mount(ProjectCheckpointsPanel, props);
+  try {
+    const section = ui.container.querySelector('[data-checkpoint-target="cp-b"]');
+    assert.ok(section, "current checkpoint has a target control");
+    await act(async () => button(section, "Set target").click());
+    await act(async () => type(section.querySelector("input"), "Week after the review"));
+    await act(async () => button(section, "Save target").click());
+    assert.deepEqual(net.calls.at(-1), { url: "/api/projects/p/checkpoints/cp-b/target", method: "PUT",
+      body: { target: "Week after the review", expected_target: null, expected_checkpoints_revision: "rev-1" } });
+    await act(async () => ui.root.render(createElement(ProjectCheckpointsPanel, { ...props, project: updated })));
+    assert.match(section.textContent, /Week after the review/);
+    await act(async () => button(section, "Edit target").click());
+    await act(async () => button(section, "Clear target").click());
+    assert.deepEqual(net.calls.at(-1).body, { target: null, expected_target: "Week after the review", expected_checkpoints_revision: "rev-1" });
+    assert.equal(updated.checkpoints.items[1].target, undefined);
+  } finally {
+    ui.close();
+    net.restore();
+  }
+});
+
 test("shows the long-term goal, the current checkpoint with its evidence, upcoming and completed history", async () => {
   const ui = await mount(ProjectCheckpointsPanel, { project, onUpdate: () => {} });
   try {
