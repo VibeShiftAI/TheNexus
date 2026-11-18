@@ -242,6 +242,8 @@ try {
         console.warn('[Database] project data system migration skipped:', err.message);
     }
 
+    require('./question-audience-backfill').backfillQuestionAudience(db);
+
     // Migration: real-activity timestamp for the Board Groundskeeper (task
     // 02f3c8a7). Seeded from created_at, deliberately NOT updated_at — the
     // daily sweeps have touched updated_at on every row, so it carries no
