@@ -166,20 +166,29 @@ function scanManifests(vaultPath) {
     return manifests;
 }
 
-/** Telemetry rows from skills/_index.json, keyed by skill name. */
+/**
+ * Telemetry rows from skills/_index.json, as a lookup from a manifest to its
+ * row. A row carries the skill's display name in `name` and its file name in
+ * `id`, and some rows have only one of the two, so a skill's row is found by
+ * its name first and then by its slug.
+ */
 function loadTelemetry(vaultPath) {
     const byName = new Map();
+    const byId = new Map();
+    const rowFor = (skill) => byName.get(skill.name) || byId.get(skill.slug) || null;
     const raw = readTextIfExists(path.join(vaultPath, 'skills', '_index.json'));
-    if (raw === null) return byName;
+    if (raw === null) return rowFor;
     try {
         const parsed = JSON.parse(raw);
         for (const row of parsed.skills || []) {
-            if (row && typeof row.name === 'string') byName.set(row.name, row);
+            if (!row) continue;
+            if (typeof row.name === 'string') byName.set(row.name, row);
+            if (typeof row.id === 'string') byId.set(row.id, row);
         }
     } catch {
         // Malformed index: the wiki degrades to manifests-only, no telemetry.
     }
-    return byName;
+    return rowFor;
 }
 
 function telemetrySummary(row) {
@@ -220,18 +229,44 @@ function parseBacklinkGraph(vaultPath) {
     return graph;
 }
 
-/** Map a vault-relative path to a skill name when it belongs to a manifest. */
-function skillNameForPath(relPath, manifests) {
-    if (!relPath.startsWith('skills/')) return null;
-    const name = path.basename(relPath, '.md');
-    return manifests.has(name) ? name : null;
+/**
+ * Lookups over the scanned library. A skill is referred to three ways: by its
+ * display name (the manifest key), by its file name (the slug its page lives
+ * at, and what a [[wiki-link]] in the vault says), and by its vault path (how
+ * LINKS.md records it).
+ */
+function indexLibrary(manifests) {
+    const bySlug = new Map();
+    const byPath = new Map();
+    for (const skill of manifests.values()) {
+        if (!bySlug.has(skill.slug)) bySlug.set(skill.slug, skill);
+        byPath.set(skill.relPath, skill);
+    }
+    return {
+        byPath,
+        /** Display name first, so a link that worked before pages had slugs lands where it did. */
+        find: (target) => manifests.get(target) || bySlug.get(target) || null,
+        /** Every name a link may use for a skill, mapped to the slug of its page. */
+        slugs() {
+            const table = new Map();
+            for (const skill of bySlug.values()) table.set(skill.slug, skill.slug);
+            for (const skill of manifests.values()) table.set(skill.name, skill.slug);
+            return Object.fromEntries(table);
+        },
+    };
 }
 
-function relatedSkills(skill, manifests, backlinks) {
+function hasKnowledgePage(vaultPath, skill) {
+    const dir = path.join(vaultPath, 'skills', '_knowledge');
+    return fs.existsSync(path.join(dir, `${skill.name}.md`)) || fs.existsSync(path.join(dir, `${skill.slug}.md`));
+}
+
+/** Neighbours in the link graph, as display names (each one a key of the slug table). */
+function relatedSkills(skill, library, backlinks) {
     const inbound = new Set();
     for (const source of backlinks.get(skill.relPath) || []) {
-        const name = skillNameForPath(source, manifests);
-        if (name && name !== skill.name) inbound.add(name);
+        const from = library.byPath.get(source);
+        if (from && from !== skill) inbound.add(from.name);
     }
 
     const outbound = new Set();
@@ -239,8 +274,8 @@ function relatedSkills(skill, manifests, backlinks) {
     const scan = `${evidence.join('\n')}\n${skill.body}`;
     WIKI_LINK_RE.lastIndex = 0;
     for (let m = WIKI_LINK_RE.exec(scan); m; m = WIKI_LINK_RE.exec(scan)) {
-        const target = m[1].trim();
-        if (manifests.has(target) && target !== skill.name) outbound.add(target);
+        const to = library.find(m[1].trim());
+        if (to && to !== skill) outbound.add(to.name);
     }
     return { inbound: [...inbound].sort(), outbound: [...outbound].sort() };
 }
@@ -253,21 +288,23 @@ function createSkillWikiRouter({ vaultPath = DEFAULT_VAULT_PATH } = {}) {
     // Praxis /api/skills response so existing SkillSummary consumers work.
     router.get('/skills', (req, res) => {
         const manifests = scanManifests(vaultPath);
-        const telemetry = loadTelemetry(vaultPath);
+        const telemetryFor = loadTelemetry(vaultPath);
 
         const skills = [...manifests.values()].map((skill) => {
-            const row = telemetry.get(skill.name);
+            const row = telemetryFor(skill);
             const evidence = Array.isArray(skill.frontmatter.evidence) ? skill.frontmatter.evidence : [];
             return {
                 id: skill.name,
                 name: skill.name,
+                // What the skill's page is linked by: `name` can hold spaces, which the detail route refuses.
+                slug: skill.slug,
                 category: skill.category,
                 summary: (row && row.summary) || extractSummary(skill.body),
                 tags: Array.isArray(skill.frontmatter.tags) ? skill.frontmatter.tags : [],
                 provenance: skill.frontmatter.provenance || null,
                 evidenceProvenance: skill.frontmatter.evidence_provenance || null,
                 evidenceCount: evidence.length,
-                hasKnowledge: fs.existsSync(path.join(vaultPath, 'skills', '_knowledge', `${skill.name}.md`)),
+                hasKnowledge: hasKnowledgePage(vaultPath, skill),
                 confidence: skill.frontmatter.confidence ? Number(skill.frontmatter.confidence) : null,
                 source: skill.frontmatter.source || null,
                 created: skill.frontmatter.created || null,
@@ -297,10 +334,11 @@ function createSkillWikiRouter({ vaultPath = DEFAULT_VAULT_PATH } = {}) {
         }
 
         const manifests = scanManifests(vaultPath);
-        const skill = manifests.get(name) || [...manifests.values()].find((entry) => entry.slug === name);
+        const library = indexLibrary(manifests);
+        const skill = library.find(name);
         if (!skill) return res.status(404).json({ error: `unknown skill: ${name}` });
 
-        const telemetry = loadTelemetry(vaultPath);
+        const telemetryFor = loadTelemetry(vaultPath);
         const backlinks = parseBacklinkGraph(vaultPath);
         const evidence = Array.isArray(skill.frontmatter.evidence) ? skill.frontmatter.evidence : [];
         // Knowledge pages are filed under the skill's file name.
@@ -309,15 +347,18 @@ function createSkillWikiRouter({ vaultPath = DEFAULT_VAULT_PATH } = {}) {
 
         res.json({
             name: skill.name,
+            slug: skill.slug,
             category: skill.category,
             relPath: skill.relPath,
             frontmatter: skill.frontmatter,
             manifest: skill.body,
             evidence: evidence.map(classifyEvidence),
             knowledge,
-            telemetry: telemetrySummary(telemetry.get(skill.name)),
-            related: relatedSkills(skill, manifests, backlinks),
+            telemetry: telemetrySummary(telemetryFor(skill)),
+            related: relatedSkills(skill, library, backlinks),
             knownSkills: [...manifests.keys()].sort(),
+            // The page links related skills and [[wiki-links]] through this.
+            skillSlugs: library.slugs(),
         });
     });
 

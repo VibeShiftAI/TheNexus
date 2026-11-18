@@ -10,7 +10,10 @@
 
 export interface SkillIndexEntry {
     id: string;
+    /** Display name. Harvested skills have names with spaces ("Fold Context"). */
     name: string;
+    /** File name of the manifest ("fold-context"): what the skill's page is linked by. */
+    slug: string;
     category: string;
     summary: string | null;
     tags: string[];
@@ -55,8 +58,16 @@ export interface SkillTelemetry {
     archivedReason: string | null;
 }
 
+/**
+ * Every name a link may use for a skill, mapped to the slug of its page.
+ * Related-skill lists use display names; [[wiki-links]] in the vault use file
+ * names. Both are keys here.
+ */
+export type SkillSlugs = Record<string, string>;
+
 export interface SkillDetail {
     name: string;
+    slug: string;
     category: string;
     relPath: string;
     frontmatter: Record<string, string | string[]>;
@@ -64,43 +75,59 @@ export interface SkillDetail {
     evidence: SkillEvidence[];
     knowledge: string | null;
     telemetry: SkillTelemetry | null;
+    /** Display names of the skills this one links to and is linked from. */
     related: { inbound: string[]; outbound: string[] };
     knownSkills: string[];
+    skillSlugs: SkillSlugs;
 }
 
-/** Route a skill name to its wiki page. Kept in one place so callers agree. */
-export function skillHref(name: string): string {
-    return `/academy/skill/${encodeURIComponent(name)}`;
+/**
+ * Route a skill to its wiki page. Kept in one place so callers agree. Pass
+ * the slug: a display name only works when it has no spaces.
+ */
+export function skillHref(slug: string): string {
+    return `/academy/skill/${encodeURIComponent(slug)}`;
 }
+
+// The dashboard hot-reloads and the API does not, so an API process started
+// before pages had slugs can answer these two calls without them. Until it
+// restarts, fall back to linking by name: the pages that opened then still do.
 
 export async function getSkillIndex(): Promise<SkillIndexResponse> {
     const res = await fetch("/api/skill-wiki/skills", { cache: "no-store" });
     if (!res.ok) throw new Error(`skill index unavailable (${res.status})`);
-    return res.json();
+    const index: SkillIndexResponse = await res.json();
+    return { ...index, skills: index.skills.map((s) => ({ ...s, slug: s.slug ?? s.name })) };
 }
 
-export async function getSkillDetail(name: string): Promise<SkillDetail> {
-    const res = await fetch(`/api/skill-wiki/skills/${encodeURIComponent(name)}`, { cache: "no-store" });
+/** `slug` is what skillHref was given; a display name without spaces opens the same page. */
+export async function getSkillDetail(slug: string): Promise<SkillDetail> {
+    const res = await fetch(`/api/skill-wiki/skills/${encodeURIComponent(slug)}`, { cache: "no-store" });
     if (!res.ok) throw new Error(`skill unavailable (${res.status})`);
-    return res.json();
+    const detail: SkillDetail = await res.json();
+    return {
+        ...detail,
+        slug: detail.slug ?? detail.name,
+        skillSlugs: detail.skillSlugs ?? Object.fromEntries(detail.knownSkills.map((name) => [name, name])),
+    };
 }
 
 // ── wiki-link rendering ────────────────────────────────────────────────────
 
 export type WikiLinkSegment =
     | { type: "text"; value: string }
-    | { type: "skill"; name: string }
+    | { type: "skill"; name: string; slug: string }
     | { type: "vaultRef"; name: string };
 
 const WIKI_LINK_GLOBAL = /\[\[([^\[\]]+)\]\]/g;
 
 /**
  * Split prose into plain-text runs and [[wiki-link]] mentions. Links naming a
- * known skill become in-wiki navigation; the rest are vault references shown
- * as text. A string with no mention comes back as a single text segment.
+ * known skill (by display name or by file name) become in-wiki navigation to
+ * that skill's slug; the rest are vault references shown as text. A string
+ * with no mention comes back as a single text segment.
  */
-export function splitWikiLinks(value: string, knownSkills: Iterable<string>): WikiLinkSegment[] {
-    const skills = knownSkills instanceof Set ? knownSkills : new Set(knownSkills);
+export function splitWikiLinks(value: string, skillSlugs: ReadonlyMap<string, string>): WikiLinkSegment[] {
     const segments: WikiLinkSegment[] = [];
     let cursor = 0;
 
@@ -108,7 +135,8 @@ export function splitWikiLinks(value: string, knownSkills: Iterable<string>): Wi
     for (let match = WIKI_LINK_GLOBAL.exec(value); match; match = WIKI_LINK_GLOBAL.exec(value)) {
         const target = match[1].trim();
         if (match.index > cursor) segments.push({ type: "text", value: value.slice(cursor, match.index) });
-        segments.push(skills.has(target) ? { type: "skill", name: target } : { type: "vaultRef", name: target });
+        const slug = skillSlugs.get(target);
+        segments.push(slug === undefined ? { type: "vaultRef", name: target } : { type: "skill", name: target, slug });
         cursor = match.index + match[0].length;
     }
 
@@ -144,7 +172,7 @@ function segmentNode(segment: WikiLinkSegment): MdastNode {
     if (segment.type === "skill") {
         return {
             type: "link",
-            url: skillHref(segment.name),
+            url: skillHref(segment.slug),
             title: `Open skill ${segment.name}`,
             children: [{ type: "text", value: segment.name }],
         };
@@ -152,7 +180,7 @@ function segmentNode(segment: WikiLinkSegment): MdastNode {
     return { type: "inlineCode", value: segment.name };
 }
 
-function linkifyChildren(node: MdastNode, skills: Set<string>): void {
+function linkifyChildren(node: MdastNode, skills: ReadonlyMap<string, string>): void {
     if (!Array.isArray(node.children)) return;
 
     const rewritten: MdastNode[] = [];
@@ -177,8 +205,8 @@ function linkifyChildren(node: MdastNode, skills: Set<string>): void {
 }
 
 /** remark plugin: rewrite [[wiki-link]] mentions into wiki navigation. */
-export function remarkWikiLinks(knownSkills: string[]) {
-    const skills = new Set(knownSkills);
+export function remarkWikiLinks(skillSlugs: SkillSlugs) {
+    const skills = new Map(Object.entries(skillSlugs));
     return function transformer(tree: MdastNode): void {
         linkifyChildren(tree, skills);
     };

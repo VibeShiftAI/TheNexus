@@ -213,6 +213,109 @@ describe('skill-wiki route', () => {
       .resolves.toMatchObject({ status: 200, body: { name: 'plan-day' } });
   });
 
+  describe('with skills whose display names have spaces', () => {
+    // Two harvested skills, filed by slug everywhere in the vault: the
+    // manifest, the knowledge page, LINKS.md and every [[wiki-link]].
+    beforeEach(() => {
+      fs.mkdirSync(path.join(vault, 'skills', 'development'), { recursive: true });
+      fs.writeFileSync(path.join(vault, 'skills', 'development', 'fold-context.md'), [
+        '---',
+        'name: Fold Context',
+        'category: development',
+        '---',
+        '',
+        '# Fold Context',
+        '',
+        'Folds old turns. Pairs with [[route-by-cost]] after [[plan-day]].',
+        '',
+      ].join('\n'), 'utf8');
+      fs.writeFileSync(path.join(vault, 'skills', 'development', 'route-by-cost.md'),
+        '---\nname: Route By Cost\ncategory: development\n---\n\n# Route By Cost\n\nSee [[fold-context]].\n', 'utf8');
+      fs.writeFileSync(path.join(vault, 'skills', '_knowledge', 'fold-context.md'), '# fold-context\n\nUsed twice.\n', 'utf8');
+
+      // Telemetry rows come in both shapes: one known only by display name,
+      // one only by id (the slug). plan-day keeps its row with both.
+      const index = JSON.parse(fs.readFileSync(path.join(vault, 'skills', '_index.json'), 'utf8'));
+      index.skills.push(
+        { name: 'Fold Context', recallCount: 7, successCount: 2, failureCount: 0, state: 'active' },
+        { id: 'route-by-cost', recallCount: 3, successCount: 0, failureCount: 1, state: 'active' },
+      );
+      fs.writeFileSync(path.join(vault, 'skills', '_index.json'), JSON.stringify(index), 'utf8');
+
+      fs.writeFileSync(path.join(vault, 'LINKS.md'), [
+        '# LINKS',
+        '',
+        '## plan-day',
+        '- target: [skills/operations/plan-day.md](skills/operations/plan-day.md)',
+        '- ← [skills/operations/qa-loop.md](skills/operations/qa-loop.md)',
+        '- ← [skills/development/fold-context.md](skills/development/fold-context.md)',
+        '',
+        '## fold-context',
+        '- target: [skills/development/fold-context.md](skills/development/fold-context.md)',
+        '- ← [skills/development/route-by-cost.md](skills/development/route-by-cost.md)',
+        '- ← [skills/operations/qa-loop.md](skills/operations/qa-loop.md)',
+        '',
+      ].join('\n'), 'utf8');
+    });
+
+    it('gives every index row a slug that opens its page', async () => {
+      const { body } = await requestJson(`${handle.baseUrl}/api/skill-wiki/skills`);
+      expect(body.skills.map((s) => [s.name, s.slug])).toEqual([
+        ['Fold Context', 'fold-context'],
+        ['plan-day', 'plan-day'],
+        ['qa-loop', 'qa-loop'],
+        ['Route By Cost', 'route-by-cost'],
+      ]);
+      for (const row of body.skills) {
+        const page = await requestJson(`${handle.baseUrl}/api/skill-wiki/skills/${row.slug}`);
+        expect(page).toMatchObject({ status: 200, body: { name: row.name, slug: row.slug } });
+      }
+      // The display name itself is still not an address.
+      await expect(requestJson(`${handle.baseUrl}/api/skill-wiki/skills/${encodeURIComponent('Fold Context')}`))
+        .resolves.toMatchObject({ status: 400 });
+    });
+
+    it('finds the knowledge page and telemetry of a display-named skill', async () => {
+      const { body } = await requestJson(`${handle.baseUrl}/api/skill-wiki/skills`);
+      const bySlug = Object.fromEntries(body.skills.map((s) => [s.slug, s]));
+      // The knowledge page is filed as fold-context.md, not "Fold Context.md".
+      expect(bySlug['fold-context']).toMatchObject({ hasKnowledge: true, hasTelemetry: true, recallCount: 7, successCount: 2 });
+      expect(bySlug['route-by-cost']).toMatchObject({ hasKnowledge: false, hasTelemetry: true, recallCount: 3, failureCount: 1 });
+      expect(bySlug['plan-day']).toMatchObject({ hasKnowledge: true, hasTelemetry: true, recallCount: 42 });
+
+      const fold = await requestJson(`${handle.baseUrl}/api/skill-wiki/skills/fold-context`);
+      expect(fold.body.telemetry).toMatchObject({ recallCount: 7, successCount: 2 });
+      const route = await requestJson(`${handle.baseUrl}/api/skill-wiki/skills/route-by-cost`);
+      expect(route.body.telemetry).toMatchObject({ recallCount: 3, failureCount: 1 });
+    });
+
+    it('links a display-named skill to its neighbours, and every such link opens', async () => {
+      const { body } = await requestJson(`${handle.baseUrl}/api/skill-wiki/skills/fold-context`);
+      // Outbound: [[route-by-cost]] names a file, [[plan-day]] a name that is
+      // also its file. Inbound: LINKS.md records sources by vault path.
+      expect(body.related).toEqual({
+        inbound: ['Route By Cost', 'qa-loop'],
+        outbound: ['Route By Cost', 'plan-day'],
+      });
+      expect(body.skillSlugs).toEqual({
+        'Fold Context': 'fold-context',
+        'fold-context': 'fold-context',
+        'Route By Cost': 'route-by-cost',
+        'route-by-cost': 'route-by-cost',
+        'plan-day': 'plan-day',
+        'qa-loop': 'qa-loop',
+      });
+      for (const name of [...body.related.inbound, ...body.related.outbound]) {
+        const page = await requestJson(`${handle.baseUrl}/api/skill-wiki/skills/${body.skillSlugs[name]}`);
+        expect(page).toMatchObject({ status: 200, body: { name } });
+      }
+
+      // A slug-named skill sees a display-named neighbour by its display name.
+      const planDay = await requestJson(`${handle.baseUrl}/api/skill-wiki/skills/plan-day`);
+      expect(planDay.body.related).toEqual({ inbound: ['Fold Context', 'qa-loop'], outbound: ['qa-loop'] });
+    });
+  });
+
   it('rejects unknown skills and non-skill-name path shapes', async () => {
     await expect(requestJson(`${handle.baseUrl}/api/skill-wiki/skills/nope`))
       .resolves.toMatchObject({ status: 404 });

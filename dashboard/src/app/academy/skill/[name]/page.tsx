@@ -32,6 +32,7 @@ import {
   skillHref,
   type SkillDetail,
   type SkillEvidence,
+  type SkillSlugs,
 } from "@/lib/skill-wiki";
 
 const PROSE_CLASS = `prose prose-invert prose-sm max-w-none
@@ -43,11 +44,11 @@ const PROSE_CLASS = `prose prose-invert prose-sm max-w-none
   prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800
   prose-hr:border-slate-700`;
 
-function WikiMarkdown({ content, knownSkills }: { content: string; knownSkills: string[] }) {
+function WikiMarkdown({ content, skillSlugs }: { content: string; skillSlugs: SkillSlugs }) {
   return (
     <div className={PROSE_CLASS}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, () => remarkWikiLinks(knownSkills)]}
+        remarkPlugins={[remarkGfm, () => remarkWikiLinks(skillSlugs)]}
         components={{
           a: ({ href, title, children }) =>
             href?.startsWith("/academy/skill/") ? (
@@ -162,16 +163,19 @@ export default function SkillWikiPage({ params }: { params: Promise<{ name: stri
 
   const fm = skill?.frontmatter ?? {};
   const telemetry = skill?.telemetry ?? null;
+  // The URL holds the slug; the page is titled by the skill's display name once it loads.
+  const title = skill?.name ?? name;
+  const relatedHref = (related: string) => skillHref(skill?.skillSlugs[related] ?? related);
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30 pb-12">
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
         <div className="container mx-auto flex min-h-16 flex-wrap gap-y-2 py-3 items-center gap-4 px-6">
-          <Breadcrumbs parents={[{ label: "Academy", href: "/academy" }]} current={name} />
+          <Breadcrumbs parents={[{ label: "Academy", href: "/academy" }]} current={title} />
           <div className="h-6 w-px bg-slate-700" />
           <div className="flex min-w-0 items-center gap-2">
             <GraduationCap size={16} className="text-pink-400" />
-            <h1 className="truncate font-mono text-lg font-bold tracking-tight text-white">{name}</h1>
+            <h1 className="truncate font-mono text-lg font-bold tracking-tight text-white">{title}</h1>
             {skill && (
               <span className="rounded border border-slate-700 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-slate-400">
                 {skill.category}
@@ -202,7 +206,7 @@ export default function SkillWikiPage({ params }: { params: Promise<{ name: stri
                   <ScrollText size={13} />
                   Procedure — {skill.relPath}
                 </h2>
-                <WikiMarkdown content={skill.manifest} knownSkills={skill.knownSkills} />
+                <WikiMarkdown content={skill.manifest} skillSlugs={skill.skillSlugs} />
               </section>
 
               <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
@@ -211,10 +215,10 @@ export default function SkillWikiPage({ params }: { params: Promise<{ name: stri
                   Knowledge page
                 </h2>
                 {skill.knowledge ? (
-                  <WikiMarkdown content={skill.knowledge} knownSkills={skill.knownSkills} />
+                  <WikiMarkdown content={skill.knowledge} skillSlugs={skill.skillSlugs} />
                 ) : (
                   <EmptyState>
-                    No knowledge page yet — nothing has been written back to skills/_knowledge/{skill.name}.md.
+                    No knowledge page yet: nothing has been written back to skills/_knowledge/{skill.slug}.md.
                   </EmptyState>
                 )}
               </section>
@@ -299,7 +303,7 @@ export default function SkillWikiPage({ params }: { params: Promise<{ name: stri
                           {skill.related.outbound.map((s) => (
                             <Link
                               key={s}
-                              href={skillHref(s)}
+                              href={relatedHref(s)}
                               className="rounded border border-slate-700 bg-slate-800/60 px-2 py-0.5 font-mono text-[11px] text-cyan-300 hover:border-cyan-500/50"
                             >
                               {s}
@@ -315,7 +319,7 @@ export default function SkillWikiPage({ params }: { params: Promise<{ name: stri
                           {skill.related.inbound.map((s) => (
                             <Link
                               key={s}
-                              href={skillHref(s)}
+                              href={relatedHref(s)}
                               className="rounded border border-slate-700 bg-slate-800/60 px-2 py-0.5 font-mono text-[11px] text-cyan-300 hover:border-cyan-500/50"
                             >
                               {s}

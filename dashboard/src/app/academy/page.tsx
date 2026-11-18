@@ -2,7 +2,7 @@
  * Academy console — the skill-wiki index for the shared-mind skill bank.
  * Grouped by category, searchable, sorted by recall count; each row expands
  * to the skill's summary, tags, provenance, and usage telemetry, and links
- * through to the skill's wiki page (/academy/skill/<name>) — manifest,
+ * through to the skill's wiki page (/academy/skill/<slug>): manifest,
  * evidence, knowledge page, and backlink-graph neighbours.
  *
  * Backed by /api/skill-wiki (vault-direct, read-only) rather than the Praxis
@@ -136,7 +136,7 @@ export default function AcademyPage() {
                           )}
                         </button>
                         <Link
-                          href={skillHref(s.name)}
+                          href={skillHref(s.slug)}
                           className="min-w-0 flex-1 truncate font-mono text-xs text-slate-200 hover:text-cyan-300"
                           title={`Open wiki page for ${s.name}`}
                         >
@@ -195,7 +195,7 @@ export default function AcademyPage() {
                             <span>confidence {s.confidence != null ? s.confidence.toFixed(2) : "—"}</span>
                             <span>updated {relTime(s.updated)}</span>
                             <span>last used {relTime(s.lastUsedAt)}</span>
-                            <Link href={skillHref(s.name)} className="text-cyan-400 hover:underline">
+                            <Link href={skillHref(s.slug)} className="text-cyan-400 hover:underline">
                               Open wiki page →
                             </Link>
                           </div>
