@@ -61,9 +61,11 @@ const DEFAULT_DB_PATH = resolveNexusDbPath();
 const DEFAULT_SPINE_PATH = process.env.PRAXIS_EXECUTION_LOG_DB
     || path.join(os.homedir(), '.praxis-mind', 'cost_ledger.sqlite');
 // Praxis's detached-run records: one <taskId>.json per LIVE run, carrying the
-// ACTUAL resolved timeoutMs the timeout enforcer uses (deadline = startedAt +
-// timeoutMs). Removed at finalization, so it is real telemetry for running
-// rows only. See Praxis/src/executors/detached-run.ts (DetachedRunRecord).
+// pid/bin of its process group and the ACTUAL resolved timeoutMs the timeout
+// enforcer uses (deadline = startedAt + timeoutMs, only when timeoutMs > 0;
+// 0 or absent means no deadline, the default since 2026-11-13). Removed at
+// finalization, so it is real telemetry for running rows only. See
+// Praxis/src/executors/detached-run.ts (DetachedRunRecord).
 const DEFAULT_DETACHED_RUNS_DIR = process.env.PRAXIS_DETACHED_RUNS_DIR
     || '/Volumes/Projects/Praxis/data/detached-runs';
 
@@ -545,32 +547,58 @@ function createDispatchInsightRouter({
         }
     }
 
-    // Praxis's record for a task's LIVE detached run — the enforcer's real
-    // ceiling plus the pid/bin the targeted kill needs — or null when no
-    // record exists (finished runs delete theirs; fresh machines lack the
-    // dir). taskId is externally supplied — reject anything path-like before
-    // joining.
-    function readDetachedRunRecord(taskId) {
-        if (!/^[A-Za-z0-9_.-]+$/.test(taskId)) return null;
+    // Praxis's record for a task's LIVE detached run: the pid/bin the
+    // targeted kill needs plus the run's deadline, if it has one. Returns
+    // { record, missing, problem } so callers can tell "no record file"
+    // (finished runs delete theirs; fresh machines lack the dir) from "a
+    // record exists but was refused" (and why). taskId is externally
+    // supplied, so anything path-like is rejected before joining.
+    //
+    // timeoutMs is a deadline only when it is a finite number > 0. Since the
+    // 2026-11-13 removal of elapsed-time limits Praxis writes timeoutMs: 0
+    // with timeoutPolicy "disabled", and older records may omit the field;
+    // both mean "no deadline" (timeoutMs: null here), exactly as Praxis's
+    // own executorDeadlineMs reads them. The deadline is never a reason to
+    // refuse a record: refusing on it hid every current run from the kill
+    // route.
+    function loadDetachedRunRecord(taskId) {
+        if (!/^[A-Za-z0-9_.-]+$/.test(taskId)) {
+            return { record: null, missing: false, problem: 'the task id is not a valid record name' };
+        }
+        const file = path.join(detachedRunsDir, `${taskId}.json`);
+        let rec;
         try {
-            const file = path.join(detachedRunsDir, `${taskId}.json`);
-            if (!fs.existsSync(file)) return null;
-            const rec = JSON.parse(fs.readFileSync(file, 'utf-8'));
-            if (rec?.taskId !== taskId) return null;
-            const ms = Number(rec.timeoutMs);
-            if (!Number.isFinite(ms) || ms <= 0) return null;
-            return {
-                executionId: typeof rec.executionId === "string" ? rec.executionId : null,
-                timeoutMs: Math.floor(ms),
+            if (!fs.existsSync(file)) return { record: null, missing: true, problem: null };
+            rec = JSON.parse(fs.readFileSync(file, 'utf-8'));
+        } catch (err) {
+            console.warn(`[DispatchInsight] detached-run record read failed (${err.message})`);
+            return { record: null, missing: false, problem: `it could not be read as JSON (${err.message})` };
+        }
+        if (!rec || typeof rec !== 'object' || Array.isArray(rec)) {
+            return { record: null, missing: false, problem: 'it is not a JSON object' };
+        }
+        if (rec.taskId !== taskId) {
+            return { record: null, missing: false, problem: `its taskId (${JSON.stringify(rec.taskId ?? null)}) does not match this task` };
+        }
+        const ms = typeof rec.timeoutMs === 'number' || typeof rec.timeoutMs === 'string'
+            ? Number(rec.timeoutMs)
+            : NaN;
+        return {
+            record: {
+                executionId: typeof rec.executionId === 'string' ? rec.executionId : null,
+                timeoutMs: Number.isFinite(ms) && ms > 0 ? Math.floor(ms) : null,
                 startedAt: rec.startedAt || null,
                 pid: Number.isInteger(rec.pid) ? rec.pid : null,
                 bin: typeof rec.bin === 'string' ? rec.bin : null,
                 executor: typeof rec.executor === 'string' ? rec.executor : null,
-            };
-        } catch (err) {
-            console.warn(`[DispatchInsight] detached-run record read failed (${err.message})`);
-            return null;
-        }
+            },
+            missing: false,
+            problem: null,
+        };
+    }
+
+    function readDetachedRunRecord(taskId) {
+        return loadDetachedRunRecord(taskId).record;
     }
 
     function spineRows(taskId) {
@@ -1124,7 +1152,9 @@ function createDispatchInsightRouter({
             : null;
         const DEFAULT_CEILING = { ms: DEFAULT_CEILING_MS, source: 'default_assumed' };
         // Task-level ceiling = what governs the live run (the strip's figure);
-        // per-run values are attached to each row below.
+        // per-run values are attached to each row below. A record without a
+        // deadline (timeoutMs 0/absent) reports ms: null, meaning the live
+        // run has no elapsed-time limit, so it can never read as overdue.
         const ceiling = recordRunId
             ? { ms: record.timeoutMs, source: 'praxis_run_record' }
             : DEFAULT_CEILING;
@@ -1279,7 +1309,7 @@ function createDispatchInsightRouter({
                 completedAt: d.completed_at,
                 elapsedMs,
                 ceiling: runCeiling,
-                overdue: running && elapsedMs != null && elapsedMs > runCeiling.ms,
+                overdue: running && elapsedMs != null && runCeiling.ms != null && elapsedMs > runCeiling.ms,
                 cost: (() => {
                     const usd = estimateRunCostUsd(d.tokens, d.model);
                     return usd != null ? { usd, estimated: true, source: costSource(usd) } : null;
@@ -1365,9 +1395,11 @@ function createDispatchInsightRouter({
     // before any signal is sent, and rows are closed only after the process
     // is CONFIRMED dead. Praxis's completion poller observes the death and
     // does its own bookkeeping (task.failed → slot freed → queue pump).
-    // Without a record there is nothing to target: a run the registry still
-    // shows active is refused (409), and a ghost row (no record, no active
-    // run) is closed as pure bookkeeping with no Praxis call at all.
+    // Without a live, identified group there is nothing to target: a run the
+    // registry still shows active is refused (409, naming whether the record
+    // is missing, rejected, or points at a dead group), and a ghost row (no
+    // live group, no active run) is closed as pure bookkeeping with no
+    // Praxis tool call at all. The record's timeoutMs plays no part here.
     function closeRunningRows(taskId, note, dispatchId = null) {
         try {
             return db.prepare(`
@@ -1404,7 +1436,8 @@ function createDispatchInsightRouter({
             const latest = db.prepare("SELECT id FROM task_dispatches WHERE task_id = ? AND outcome = 'running' ORDER BY started_at DESC, rowid DESC LIMIT 1").get(taskId);
             if (!latest || latest.id !== dispatchId) return res.status(409).json({ok:false, error:'This is no longer the current running dispatch. Refresh before stopping it.'});
         }
-        const record = readDetachedRunRecord(taskId);
+        const loaded = loadDetachedRunRecord(taskId);
+        const record = loaded.record;
         // Group liveness, not leader liveness: a dead wrapper with a
         // surviving child still means the run is alive and killable.
         if (record && record.pid && isGroupAlive(record.pid)) {
@@ -1471,22 +1504,33 @@ function createDispatchInsightRouter({
             }
         }
 
-        // No live process to target. Distinguish a ghost row (safe to close)
-        // from a run Praxis still tracks as active (refuse — nothing targeted
-        // exists to kill it with).
+        // No live process to target. Say exactly why, then distinguish a
+        // ghost row (safe to close) from a run Praxis still tracks as active
+        // (refuse: nothing targeted exists to kill it with).
+        const recordFile = path.join(detachedRunsDir, `${taskId}.json`);
+        let noTarget;
+        if (loaded.missing) {
+            noTarget = `no detached-run record exists to target (${recordFile} is absent)`;
+        } else if (loaded.problem) {
+            noTarget = `the detached-run record ${recordFile} was rejected because ${loaded.problem}`;
+        } else if (!record?.pid) {
+            noTarget = `the detached-run record ${recordFile} carries no usable pid`;
+        } else {
+            noTarget = `the detached-run record names process group ${record.pid}, but that process group is not alive`;
+        }
         let active;
         try {
             active = activeRunFor(await fetchDispatchState(true), taskId);
         } catch (err) {
             return res.status(502).json({
-                error: `No live run record for this task and Praxis is unreachable (${err.message || 'unreachable'}) — cannot tell a ghost row from a live run, so nothing was touched.`,
+                error: `Nothing to signal (${noTarget}) and Praxis is unreachable (${err.message || 'unreachable'}), so a ghost row cannot be told from a live run; nothing was touched.`,
             });
         }
         if (active) {
             return res.status(409).json({
                 ok: false,
                 cancelled: false,
-                error: `Praxis reports an active ${active.executor} run for this task but no detached-run record exists to target — there is no safe kill primitive for it from here.`,
+                error: `Praxis reports an active ${active.executor} run for this task, but ${noTarget}. There is no safe kill primitive for it from here, so nothing was signalled.`,
             });
         }
         const closed = closeRunningRows(

@@ -92,6 +92,21 @@ export interface RunGuardrailEvent {
   detail: string | null;
 }
 
+/**
+ * A run's wall-clock ceiling. `ms: null` comes only with `praxis_run_record`
+ * and means the live run has NO elapsed-time deadline: Praxis wrote
+ * timeoutMs 0 (policy "disabled", the default since 2026-11-13) or omitted it.
+ */
+export interface RunCeiling {
+  ms: number | null;
+  source: "praxis_run_record" | "default_assumed";
+}
+
+/** "3h" for a deadline, "no deadline" for a run Praxis never times out. */
+export function formatCeiling(ceiling: RunCeiling): string {
+  return ceiling.ms == null ? "no deadline" : formatMs(ceiling.ms);
+}
+
 export interface RunInsight {
   dispatchId: string;
   executor: string;
@@ -103,9 +118,9 @@ export interface RunInsight {
   /**
    * THIS run's ceiling: `praxis_run_record` only on the live run the record
    * describes; historical runs read `default_assumed` because their true
-   * ceiling was never persisted.
+   * ceiling was never persisted. `ms: null` = the live run has no deadline.
    */
-  ceiling: { ms: number; source: "praxis_run_record" | "default_assumed" };
+  ceiling: RunCeiling;
   overdue: boolean;
   cost: { usd: number; estimated: boolean; source?: UsageSource } | null;
   /** The cost figure's marker: 'estimated' when priced, 'unavailable' when `cost` is null. */
@@ -219,8 +234,9 @@ export interface TaskDispatchInsight {
    * `praxis_run_record` = the live run's actual enforced timeout (from
    * Praxis's detached-run record); `default_assumed` = the 3h fallback —
    * Praxis's env override and historical runs' true ceilings are invisible.
+   * `ms: null` with `praxis_run_record` = the live run has no deadline.
    */
-  ceiling: { ms: number; source: "praxis_run_record" | "default_assumed" };
+  ceiling: RunCeiling;
   scheduleEstimateMinutes: number | null;
   spineAvailable: boolean;
   praxisReachable: boolean;

@@ -47,6 +47,7 @@ import {
 } from "@/lib/dispatches";
 import {
   describeUnknownRuns,
+  formatCeiling,
   formatCostUsd,
   formatCoverage,
   formatMs,
@@ -238,13 +239,13 @@ function UsageRollupChip({ rollup }: { rollup: UsageRollup }) {
  */
 function GovernanceStrip({ insight }: { insight: TaskDispatchInsight }) {
   const ceilingLabel = insight.ceiling.source === "praxis_run_record"
-    ? `${formatMs(insight.ceiling.ms)} (live run record)`
-    : `${formatMs(insight.ceiling.ms)} (assumed default)`;
+    ? `${formatCeiling(insight.ceiling)} (live run record)`
+    : `${formatCeiling(insight.ceiling)} (assumed default)`;
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-[11px] text-slate-400">
       <span
         className="inline-flex items-center gap-1.5"
-        title="The wall-clock ceiling governing the LIVE run (each row shows its own). 'Live run record' is the actual timeout Praxis's enforcer is using for the in-flight run; 'assumed default' is the 3h fallback — historical runs' true ceilings and any PRAXIS_EXECUTOR_TIMEOUT_MS env override on Praxis are invisible here."
+        title="The wall-clock ceiling governing the LIVE run (each row shows its own). 'Live run record' is the actual timeout Praxis's enforcer is using for the in-flight run, or 'no deadline' when the run has none (Praxis's default since 2026-11-13); 'assumed default' is the 3h fallback; historical runs' true ceilings and any PRAXIS_EXECUTOR_TIMEOUT_MS env override on Praxis are invisible here."
       >
         <Timer size={12} className="text-slate-500" />
         Ceiling <span className="font-semibold text-slate-200">{ceilingLabel}</span>
@@ -1023,7 +1024,7 @@ function DispatchRow({
         {insight?.overdue && (
           <span
             className="inline-flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[11px] font-semibold text-rose-300"
-            title={`Elapsed ${insight.elapsedMs != null ? formatMs(insight.elapsedMs) : "?"} exceeds this run's ${formatMs(insight.ceiling.ms)} ceiling — Praxis's timeout enforcer should be reaping it; if this persists, the run is a ghost.`}
+            title={`Elapsed ${insight.elapsedMs != null ? formatMs(insight.elapsedMs) : "?"} exceeds this run's ${formatCeiling(insight.ceiling)} ceiling. Praxis's timeout enforcer should be reaping it; if this persists, the run is a ghost.`}
           >
             <Timer size={11} /> over ceiling
           </span>
@@ -1151,9 +1152,13 @@ function DispatchRow({
 
           {insight && (
             <p className="text-[10px] text-slate-600">
-              {dispatch.outcome === "running" && insight.elapsedMs != null
-                ? `Elapsed ${formatMs(insight.elapsedMs)} of this run's ${formatMs(insight.ceiling.ms)} wall-clock ceiling`
-                : `Ceiling for this run: ${formatMs(insight.ceiling.ms)}`}
+              {insight.ceiling.ms == null
+                ? dispatch.outcome === "running" && insight.elapsedMs != null
+                  ? `Elapsed ${formatMs(insight.elapsedMs)}; this run has no wall-clock deadline`
+                  : "This run has no wall-clock deadline"
+                : dispatch.outcome === "running" && insight.elapsedMs != null
+                  ? `Elapsed ${formatMs(insight.elapsedMs)} of this run's ${formatMs(insight.ceiling.ms)} wall-clock ceiling`
+                  : `Ceiling for this run: ${formatMs(insight.ceiling.ms)}`}
               {insight.ceiling.source === "praxis_run_record"
                 ? " (from Praxis's live run record)."
                 : " (assumed default — this run's actual ceiling was never persisted)."}

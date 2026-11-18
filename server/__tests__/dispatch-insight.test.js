@@ -431,6 +431,38 @@ describe('dispatch-insight route', () => {
         expect(body.runs[0].overdue).toBe(false);
     });
 
+    // Since the 2026-11-13 timeout removal Praxis writes timeoutMs: 0 with
+    // timeoutPolicy "disabled" (and older records omit the field). The live
+    // run is still described by its record; it just has no deadline, so it
+    // must never read as overdue or fall back to the assumed 3h ceiling.
+    test.each([
+        ['timeoutMs 0 (timeoutPolicy disabled)', { timeoutMs: 0, timeoutPolicy: 'disabled' }],
+        ['absent timeoutMs', {}],
+        ['null timeoutMs', { timeoutMs: null }],
+    ])('task insight reports a no-deadline live run for %s', async (_label, timeoutFields) => {
+        await boot({
+            detachedRecord: {
+                taskId: 'task-running', executor: 'claude-code',
+                startedAt: new Date(Date.now() - 4 * HOUR).toISOString(),
+                ...timeoutFields,
+            },
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({
+                id: 'disp-nodeadline', task_id: 'task-running', executor: 'claude-code',
+                started_at: new Date(Date.now() - 4 * HOUR).toISOString(),
+            }),
+        });
+        const { status, body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/task/task-running`);
+        expect(status).toBe(200);
+        expect(body.ceiling).toEqual({ ms: null, source: 'praxis_run_record' });
+        expect(body.runs[0].ceiling).toEqual({ ms: null, source: 'praxis_run_record' });
+        // 4h elapsed, past the old 3h assumed default, yet not overdue.
+        expect(body.runs[0].overdue).toBe(false);
+        expect(body.runs[0].canKill).toBe(true);
+    });
+
     test('council ballots trace each seat position and cue from the session file, with dissent kept apart from agreement and missing evidence', async () => {
         const T = 'task-queued';
         await boot({
@@ -1040,11 +1072,169 @@ describe('dispatch-insight route', () => {
         });
         expect(status).toBe(409);
         expect(body.cancelled).toBe(false);
-        expect(body.error).toContain('no detached-run record');
+        expect(body.error).toContain('no detached-run record exists');
+        expect(body.error).toContain('is absent');
         expect(agentToolCalls).toEqual([]);
 
         const list = await requestJson(`${handle.baseUrl}/api/dispatches?task_id=task-running`);
         expect(list.body.dispatches[0].outcome).toBe('running');
+    });
+
+    // ─── Records written since the 2026-11-13 timeout removal ────────────
+    // The Stop button regression: Praxis writes timeoutMs: 0 (policy
+    // "disabled") for every run, and older records omit the field. The
+    // record still identifies the run, so the kill must find and stop it
+    // with every identity check intact. Only scratch process groups spawned
+    // here are ever signalled.
+    test.each([
+        ['timeoutMs 0 (timeoutPolicy disabled)', { timeoutMs: 0, timeoutPolicy: 'disabled' }],
+        ['absent timeoutMs', {}],
+    ])('kill finds and stops a live run whose record has %s', async (_label, timeoutFields) => {
+        const pid = spawnScratchRun();
+        await boot({
+            detachedRecord: {
+                taskId: 'task-running', executor: 'claude-code', pid, bin: '/bin/sh',
+                executionId: 'exec-nodeadline', startedAt: new Date().toISOString(),
+                ...timeoutFields,
+            },
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({ id: 'disp-nodeadline-kill', task_id: 'task-running', executor: 'claude-code' }),
+        });
+
+        const { status, body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/kill`, {
+            method: 'POST',
+            body: JSON.stringify({ taskId: 'task-running', dispatchId: 'disp-nodeadline-kill' }),
+        });
+        expect(status).toBe(200);
+        expect(body).toMatchObject({ ok: true, cancelled: true, closedDispatches: 1 });
+        expect(['sigterm', 'sigkill']).toContain(body.method);
+        expect(groupAlive(pid)).toBe(false); // the whole scratch group is dead
+        // Stop intent was persisted under the record's execution identity.
+        const control = JSON.parse(fs.readFileSync(path.join(tmpDir, 'detached-runs', 'task-running.control'), 'utf8'));
+        expect(control).toMatchObject({ id: 'exec-nodeadline', pid, taskId: 'task-running' });
+        expect(control.stopRequestedAt).toBeTruthy();
+        expect(agentToolCalls).toEqual([]);
+
+        const list = await requestJson(`${handle.baseUrl}/api/dispatches?task_id=task-running`);
+        expect(list.body.dispatches[0].outcome).toBe('cancelled');
+        expect(list.body.dispatches[0].error).toContain('full group death confirmed');
+    });
+
+    test('kill still refuses a recycled pgid whose members do not match bin when timeoutMs is 0', async () => {
+        const pid = spawnScratchRun();
+        await boot({
+            detachedRecord: {
+                taskId: 'task-running', executor: 'claude-code', pid,
+                bin: '/definitely/not/this/binary',
+                startedAt: new Date().toISOString(), timeoutMs: 0, timeoutPolicy: 'disabled',
+            },
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({ id: 'disp-recycled', task_id: 'task-running', executor: 'claude-code' }),
+        });
+
+        const { status, body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/kill`, {
+            method: 'POST',
+            body: JSON.stringify({ taskId: 'task-running' }),
+        });
+        expect(status).toBe(409);
+        expect(body.cancelled).toBe(false);
+        // Refused by the identity check, not by a missing record.
+        expect(body.error).toContain(`process group ${pid} no longer matches the run record`);
+        expect(body.error).toContain('recycled');
+        expect(pidAlive(pid)).toBe(true); // never signalled
+        expect(fs.existsSync(path.join(tmpDir, 'detached-runs', 'task-running.control'))).toBe(false);
+
+        const list = await requestJson(`${handle.baseUrl}/api/dispatches?task_id=task-running`);
+        expect(list.body.dispatches[0].outcome).toBe('running');
+    });
+
+    // A process group that existed and is now gone: spawn, kill, await death.
+    async function deadScratchPgid() {
+        const pid = spawnScratchRun();
+        process.kill(-pid, 'SIGKILL');
+        for (let i = 0; i < 100 && groupAlive(pid); i += 1) {
+            await new Promise((r) => setTimeout(r, 20));
+        }
+        expect(groupAlive(pid)).toBe(false);
+        return pid;
+    }
+
+    test('the 409 for an active run names a record whose process group is not alive', async () => {
+        const pid = await deadScratchPgid();
+        await boot({
+            detachedRecord: {
+                taskId: 'task-running', executor: 'claude-code', pid, bin: '/bin/sh',
+                startedAt: new Date().toISOString(), timeoutMs: 0, timeoutPolicy: 'disabled',
+            },
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({ id: 'disp-deadgroup', task_id: 'task-running', executor: 'claude-code' }),
+        });
+
+        const { status, body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/kill`, {
+            method: 'POST',
+            body: JSON.stringify({ taskId: 'task-running' }),
+        });
+        expect(status).toBe(409);
+        expect(body.cancelled).toBe(false);
+        expect(body.error).toContain(`names process group ${pid}, but that process group is not alive`);
+        expect(body.error).not.toContain('no detached-run record exists');
+        const list = await requestJson(`${handle.baseUrl}/api/dispatches?task_id=task-running`);
+        expect(list.body.dispatches[0].outcome).toBe('running');
+    });
+
+    test.each([
+        ['unparseable JSON', '{ not json', 'could not be read as JSON'],
+        ['a taskId for another task', JSON.stringify({ taskId: 'someone-else', pid: 4242, bin: '/bin/sh', timeoutMs: 0 }), 'does not match this task'],
+        ['a non-object body', '[]', 'is not a JSON object'],
+    ])('the 409 for an active run says why a record with %s was rejected', async (_label, contents, reason) => {
+        await boot();
+        fs.writeFileSync(path.join(tmpDir, 'detached-runs', 'task-running.json'), contents);
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({ id: 'disp-rejected', task_id: 'task-running', executor: 'claude-code' }),
+        });
+
+        const { status, body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/kill`, {
+            method: 'POST',
+            body: JSON.stringify({ taskId: 'task-running' }),
+        });
+        expect(status).toBe(409);
+        expect(body.cancelled).toBe(false);
+        expect(body.error).toContain('was rejected because');
+        expect(body.error).toContain(reason);
+        expect(body.error).not.toContain('no detached-run record exists');
+        expect(agentToolCalls).toEqual([]);
+    });
+
+    test('a no-deadline record whose group is dead still takes the unchanged ghost-row path', async () => {
+        const pid = await deadScratchPgid();
+        await boot({
+            state: { executors: { runs: [], cliQueue: [], health: {}, incidents: {} } },
+            detachedRecord: {
+                taskId: 'task-free', executor: 'claude-code', pid, bin: '/bin/sh',
+                startedAt: new Date().toISOString(), timeoutMs: 0, timeoutPolicy: 'disabled',
+            },
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({ id: 'disp-ghost-nodeadline', task_id: 'task-free', executor: 'claude-code' }),
+        });
+
+        const { status, body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/kill`, {
+            method: 'POST',
+            body: JSON.stringify({ taskId: 'task-free' }),
+        });
+        expect(status).toBe(200);
+        expect(body).toEqual({ ok: true, cancelled: true, method: 'ghost_cleanup', closedDispatches: 1 });
+        expect(agentToolCalls).toEqual([]);
+        // No stop intent is written for a group that was never signalled.
+        expect(fs.existsSync(path.join(tmpDir, 'detached-runs', 'task-free.control'))).toBe(false);
     });
 
     test('kill cleans up a ghost row without touching Praxis tools', async () => {
