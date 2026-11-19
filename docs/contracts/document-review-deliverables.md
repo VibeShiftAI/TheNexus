@@ -1040,11 +1040,14 @@ to Reference itself, with no decision and a way back.
 ### 13.1 Naming what a registration replaces
 
 - Both registration forms (plain, and declared with `deliverable`) accept an
-  optional top-level `replaces`: an array of at most 50 names, each an object
-  with exactly one of `{ "document_id": "…" }`, `{ "deliverable_key": "…" }`
-  or `{ "path": "/absolute/path" }` (a path is normalized and also matched in
+  optional top-level `replaces`: an array of names, each an object with
+  exactly one of `{ "document_id": "…" }`, `{ "deliverable_key": "…" }` or
+  `{ "path": "/absolute/path" }` (a path is normalized and also matched in
   its resolved form). Duplicates are dropped; an empty or absent list names
-  nothing.
+  nothing. The list has no count or length limit of its own: the request
+  body limit the API already applies (`express.json({ limit: '50mb' })` in
+  `server/server.js`) bounds it, and a name too long to match any registered
+  document is reported `not_found` like any other name that matches nothing.
 - A malformed list (not an array, an entry with no field or two fields, an
   unknown field such as `title`, an empty value, a relative path) is refused
   with 400 `invalid_replaces` and nothing is registered.
@@ -1057,16 +1060,24 @@ to Reference itself, with no decision and a way back.
 ### 13.2 When a name applies (Robert's ruling, option A)
 
 A replacing document retires what it names only once it is itself **waiting
-for Robert's review** (`requires_review` true) and **ready to view** (its
-current revision is reviewable: no open replacement work, not the bytes of a
-failed attempt, and for visual media every required asset servable). Until
-then each name is `pending`, with the reason (`replacement_not_in_queue` or
-`replacement_not_ready`), and it is applied the moment the document enters the
-queue: at its next registration, at request-review on it, or at the next read
-of it, its readiness, a document list or the counts. A reference-only
-registration (`requires_review: false`) therefore never retires anything, and
-a plain registration (which never requests review) retires only after review
-of it is requested.
+for Robert's review** and **ready to view**. Waiting means actually in his
+queue: its review is requested (`requires_review` true) **and** its list
+bucket is Needs your review or Changes requested. `requires_review` alone is
+not enough, because approval leaves it true: an approved document is out of
+the queue, so its names stay `pending` (reason `replacement_not_in_queue`
+with `bucket: "approved"`) until a new version registered for review brings
+it back. Ready to view means its current revision is reviewable: no open
+replacement work, not the bytes of a failed attempt, and for visual media
+every required asset servable. Until both hold, each name is `pending`, with
+the reason (`replacement_not_in_queue` or `replacement_not_ready`), and it is
+applied the moment the document enters the queue ready: at its next
+registration, at request-review on it, or at the next read of it, its
+readiness, a document list or the counts. Every one of those checks the
+queue the same way, so neither a registration nor a list read lets an
+approved document retire anything. A reference-only registration
+(`requires_review: false`) therefore never retires anything, and a plain
+registration (which never requests review) retires only after review of it is
+requested.
 
 Each name is resolved first, so a name that matches nothing (`not_found`),
 matches several other documents (`ambiguous`: a path registered under several
@@ -1181,10 +1192,14 @@ reasons on both pages.
 absence of any decision or delivery, both pages' views, a cross-project name,
 each guard and their combination, re-naming after a guard clears, reopening
 and the final retired name, replay versus new bytes, every reported outcome,
-malformed lists, the manual-close shape, no similarity matching, the
-reference-only, plain and not-ready-visual pending cases and application on a
-later count), at the store (the check, the record, immutability, a single
-reopening, re-declaration and exact paths), and the code-review repairs (new
+malformed lists, a list longer than any fixed cap with over-long names (all
+accepted and reported), the manual-close shape, no similarity matching, the
+reference-only, plain, not-ready-visual and approved-replacement pending cases
+(an approved replacement keeps its names pending through registration, lists,
+counts and both pages, and applies them when a new version waits for review)
+and application on a later count), at the store (the check, the record,
+immutability, a single reopening, re-declaration and exact paths), and the
+code-review repairs (new
 bytes captured by a read after a retirement, a new version at the same path
 under a new task, a reference document with replacement work, a failed
 attempt's wording, a summary-only draft). The `dashboard` suite

@@ -444,6 +444,33 @@ describe('names that retire nothing are reported, and the registration still suc
         expect(store().listRetirements(old.document.id)).toHaveLength(1);
     });
 
+    test('a long list is accepted whole and every name reported: no count or length limit of its own (QA repair)', async () => {
+        const old = await original();
+        // More names than the old cap of 50, plus a path and a key longer than any registered document could have.
+        const missing = Array.from({ length: 118 }, (_, i) => ({ document_id: `missing-document-${i}` }));
+        const longPath = { path: path.join(projectRoot, 'docs', `${'x'.repeat(250)}/`.repeat(20), 'brief.md') };
+        const longKey = { deliverable_key: 'k'.repeat(400) };
+        expect(longPath.path.length).toBeGreaterThan(5000);
+        const names = [...missing, longPath, longKey, { deliverable_key: 'launch-brief-v1' }];
+        for (const send of [
+            replaces => register(writeFile('brief-v2.md', V2), { key: 'launch-brief-v2', task_id: NEW_TASK, replaces }),
+            replaces => plain(writeFile('plain.md', '# Plain\n'), { replaces }),
+        ]) {
+            const registered = await send(names);
+            expect(registered.status).toBe(201);
+            expect(registered.json.replaces_error).toBeNull();
+            expect(registered.json.replaces).toHaveLength(names.length);
+        }
+        const outcomes = rows => rows.reduce((tally, row) => ({ ...tally, [row.outcome]: (tally[row.outcome] || 0) + 1 }), {});
+        // The declared registration waits for review, so it retires the one real name and reports the 120 others.
+        const declared = store().findDocumentByKey('launch-brief-v2');
+        expect(outcomes(store().listSupersessions(declared.id))).toEqual({ not_found: 120, retired: 1 });
+        // The plain one (no review requested) reports the same 120 and finds the real document already retired.
+        const plainDoc = store().findDocumentsByPath(path.join(projectRoot, 'docs', 'plain.md'))[0];
+        expect(outcomes(store().listSupersessions(plainDoc.id))).toEqual({ not_found: 120, not_waiting: 1 });
+        expect(store().getDocument(old.document.id).requires_review).toBe(false);
+    });
+
     test('a malformed replaces list is refused before anything is registered', async () => {
         for (const replaces of [{ document_id: 'x' }, [{ title: 'Launch brief' }], [{ document_id: 'a', deliverable_key: 'b' }], [{ path: 'relative/brief.md' }], [{ document_id: '' }]]) {
             const refused = await register(writeFile('brief-v2.md', V2), { key: 'launch-brief-v2', task_id: NEW_TASK, replaces });
@@ -563,6 +590,45 @@ describe('the rule: exact names only, and only once the replacement waits for re
         expect(await counts()).toMatchObject({ needs_review: 1, reference: 1 });
         expect(store().getDocument(old.document.id).requires_review).toBe(false);
         expect((await read(old.document.id)).retirement).toMatchObject({ trigger: 'ready', replaced_by: { document_id: next.document.id } });
+    });
+
+    test('an approved replacement is out of the queue: names given at registration stay pending until a new version waits for review (QA repair)', async () => {
+        const old = await original();
+        const next = await replacement([]);
+        expect((await api('POST', `/api/documents/${next.document.id}/decisions`, { decision: 'approve', revision_id: next.revision.id }, operator)).status).toBe(201);
+        // Approval leaves requires_review set. A replay of its own unchanged bytes now names what it replaces.
+        const replay = await replacement([{ deliverable_key: 'launch-brief-v1' }]);
+        expect(replay.replaces[0]).toMatchObject({ outcome: 'pending', target: { document_id: old.document.id }, reasons: [{ code: 'replacement_not_in_queue', bucket: 'approved' }] });
+        expect(replay.replaces[0].reasons[0].message).toMatch(/already approved/);
+        expect(store().getReviewStatus(next.document.id)).toBe('approved');
+        expect(store().getDocument(old.document.id).requires_review).toBe(true);
+        // Lists, counts and both pages re-check the pending name and still retire nothing.
+        expect(await counts()).toMatchObject({ needs_review: 1, approved: 1, reference: 0 });
+        expect(await listIds('needs_review')).toEqual([old.document.id]);
+        expect((await read(next.document.id)).replaces[0]).toMatchObject({ outcome: 'pending' });
+        expect((await read(old.document.id)).named_as_replaced).toEqual([expect.objectContaining({ outcome: 'pending' })]);
+        expect(store().getDocument(old.document.id).requires_review).toBe(true);
+        expect(decisionRows(old.document.id)).toEqual([]);
+        // New bytes registered for review put it back in the queue, and the name applies in that registration.
+        const v3 = await replacement(undefined, { content: '# Launch brief\n\nThird draft.\n' });
+        expect(v3.replaces[0]).toMatchObject({ outcome: 'retired', target: { document_id: old.document.id } });
+        expect(await counts()).toMatchObject({ needs_review: 1, approved: 0, reference: 1 });
+    });
+
+    test('a pending name is not applied on a list or count read while its replacement is approved (QA repair)', async () => {
+        const old = await original();
+        const next = await replacement([{ deliverable_key: 'launch-brief-v1' }], { requires_review: false });
+        expect(next.replaces[0].outcome).toBe('pending');
+        // Fixture: the replacing document enters the queue and is approved before anything re-reads its pending name.
+        store().updateDocument(next.document.id, { requires_review: true });
+        expect((await api('POST', `/api/documents/${next.document.id}/decisions`, { decision: 'approve', revision_id: next.revision.id }, operator)).status).toBe(201);
+        expect(await counts()).toMatchObject({ needs_review: 1, approved: 1, reference: 0 });
+        expect(await listIds('needs_review')).toEqual([old.document.id]);
+        expect((await read(old.document.id)).retirement).toBeNull();
+        expect(store().getDocument(old.document.id).requires_review).toBe(true);
+        const [row] = store().listSupersessions(next.document.id);
+        expect(row).toMatchObject({ outcome: 'pending' });
+        expect(row.reasons).toEqual([expect.objectContaining({ code: 'replacement_not_in_queue', bucket: 'approved' })]);
     });
 });
 

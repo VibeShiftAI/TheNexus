@@ -53,9 +53,10 @@
  *
  * Retiring replaced documents (task d9f46e2f, contract §13): a registration,
  * plain or declared, may carry `replaces: [{ document_id } | { deliverable_key }
- * | { path }]`. Once the registering document is waiting for review and ready
- * to view (Robert's ruling, 2026-11-19), each named document still waiting is
- * moved to Reference with no decision recorded, unless open replacement work,
+ * | { path }]`. Once the registering document is waiting for review (in the
+ * queue, not approved) and ready to view (Robert's ruling, 2026-11-19), each
+ * named document still waiting is moved to Reference with no decision
+ * recorded, unless open replacement work,
  * an unsent outgoing message, unsubmitted draft comments, waiting tasks or an
  * agent review keep it; every name is answered with its outcome and reasons.
  * POST /:id/request-review reopens a retired document. Never by title, project
@@ -86,7 +87,7 @@ const { LIST_STATUSES, REPLACEMENT_STATES, REPLACEMENT_OPEN_STATES } = require('
 const { NAME_FIELDS } = require('../../db/document-retirements');
 
 const KINDS = new Set(['document', 'report', 'spec', 'plan', 'research', 'walkthrough', 'other', 'design', 'image', 'video', 'audio', 'prototype', 'pdf', 'data']);
-const LIMITS = { title: 300, body: 20000, summary: 20000, selection: 2000, metadataJson: 8000, clientId: 120, purpose: 500, key: 300, sourceId: 200, query: 200, selectionJson: 2048, editSummary: 2000, replaces: 50, path: 4096 };
+const LIMITS = { title: 300, body: 20000, summary: 20000, selection: 2000, metadataJson: 8000, clientId: 120, purpose: 500, key: 300, sourceId: 200, query: 200, selectionJson: 2048, editSummary: 2000 };
 /** What the deliverable is for once approved. Approval records the decision; it never performs the action. */
 const INTENDED_ACTIONS = new Set(['none', 'implement', 'send', 'publish']);
 const { parseBlockingTaskIds } = require('../../db/document-review-blockers');
@@ -140,11 +141,13 @@ function validMetadata(value) {
  * one replaces, each named by exactly one exact identity: `{ document_id }`, `{ deliverable_key }` or `{ path }`
  * (absolute). Nothing is ever matched by title, project or age. Naming nothing is valid. A malformed list is refused
  * before anything is written; a well-formed name that matches nothing is not an error, it is reported per name.
+ * There is no count or length limit of its own: the request body limit in server/server.js bounds the list, duplicate
+ * names collapse to one, and a name too long to match any document is simply reported `not_found`.
  */
 function parseReplaces(value) {
     if (value === undefined || value === null) return { ok: true, value: [] };
     const refuse = error => badRequest(error, 'invalid_replaces');
-    if (!Array.isArray(value) || value.length > LIMITS.replaces) return refuse(`replaces must be an array of at most ${LIMITS.replaces} names`);
+    if (!Array.isArray(value)) return refuse('replaces must be an array of names');
     const seen = new Set();
     const names = [];
     for (const item of value) {
@@ -153,9 +156,8 @@ function parseReplaces(value) {
             return refuse(`Each replaces entry must be an object with exactly one of ${NAME_FIELDS.join(', ')}`);
         }
         const by = keys[0];
-        const max = by === 'path' ? LIMITS.path : LIMITS.key;
         const given = typeof item[by] === 'string' ? item[by].trim() : '';
-        if (!given || given.length > max || CONTROL_CHARS.test(given)) return refuse(`replaces ${by} must be 1-${max} printable characters`);
+        if (!given || CONTROL_CHARS.test(given)) return refuse(`replaces ${by} must be a non-empty string of printable characters`);
         if (by === 'path' && !path.isAbsolute(given)) return refuse('replaces path must be an absolute path');
         const named = by === 'path' ? path.normalize(given) : given;
         if (seen.has(`${by}\u0000${named}`)) continue;
@@ -537,13 +539,23 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
 
     /**
      * Robert's ruling (2026-11-19, option A): a replacing document retires what it names only once it is itself
-     * waiting for his review (review requested) and ready to view (a reviewable current revision, every required asset
-     * servable). Until then its names stay pending, so nothing leaves his queue before its successor is in it.
+     * waiting for his review (review requested and listed in Needs your review or Changes requested, so not approved)
+     * and ready to view (a reviewable current revision, every required asset servable). Until then its names stay
+     * pending, so nothing leaves his queue before its successor is in it.
      */
     function successorGate(doc) {
         const keep = 'The names are kept and applied the moment it is waiting for your review and ready to view';
         if (!doc.requires_review) {
             return { ok: false, reason: { code: 'replacement_not_in_queue', message: `The replacing document is not waiting for your review (a reference document, or its review has not been requested yet), so it retires nothing yet. ${keep}` } };
+        }
+        // A requested review is not enough: approval leaves requires_review set, so the list bucket decides whether the
+        // document is actually in the queue (Needs your review or Changes requested; In progress falls to the gate below).
+        const position = store().queuePosition(doc);
+        if (!position.waiting) {
+            const where = position.bucket === 'approved'
+                ? 'it is already approved. A new version registered for your review brings it back to the queue'
+                : `it is listed under ${position.bucket}`;
+            return { ok: false, reason: { code: 'replacement_not_in_queue', message: `The replacing document is not waiting for your review: ${where}. Until then it retires nothing. ${keep}`, bucket: position.bucket } };
         }
         const revision = doc.current_revision_id ? store().getRevisionMeta(doc.current_revision_id) : null;
         const gate = reviewability(doc, revision);
