@@ -38,6 +38,7 @@ const { randomUUID } = require('crypto');
 const { createAgentReviewStore } = require('./document-agent-reviews');
 const { ACTIVE_TASK_SQL, WAITING_TASKS_FROM_SQL } = require('./document-review-blockers');
 const { initializeDocumentOutgoing, createDocumentOutgoingStore } = require('./document-outgoing');
+const { initializeDocumentRetirements, createDocumentRetirementStore } = require('./document-retirements');
 
 function now() { return new Date().toISOString(); }
 
@@ -511,6 +512,8 @@ function initializeDocumentReviews(db) {
       WHERE json_extract(provenance,'$.kind')='operator_suggestion'`);
     migrateReplacementLifecycle(db);
     initializeDocumentOutgoing(db);
+    // Retiring documents a later deliverable replaces (task d9f46e2f, contract §13). Additive tables only.
+    initializeDocumentRetirements(db);
 }
 
 const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration', 'provenance', 'blocking_task_ids', 'anchor', 'selection_json', 'manifest', 'superseded_review_ids', 'author', 'suggestion', 'decision_answers']);
@@ -582,6 +585,7 @@ function serialize(value) {
 
 function createDocumentReviewStore(db) {
     const outgoing = createDocumentOutgoingStore(db);
+    const retirements = createDocumentRetirementStore(db);
     const hasTasks = () => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'tasks'").get());
     const queryDocuments = (filters) => documentQuery(filters, hasTasks()
         ? `CASE WHEN (${REVIEW_STATUS_SQL}) IN ('needs_review', 'changes_requested')
@@ -603,6 +607,7 @@ function createDocumentReviewStore(db) {
 
     return {
         ...outgoing,
+        ...retirements,
         transaction(fn) { return db.transaction(fn)(); },
 
         // ── Documents ────────────────────────────────────────────────────

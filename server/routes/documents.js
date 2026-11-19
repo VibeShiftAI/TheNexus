@@ -51,6 +51,16 @@
  * replacement_failed) until an explicit recovery delivers, and a recovery that
  * itself ends before registering anything leaves them closed.
  *
+ * Retiring replaced documents (task d9f46e2f, contract §13): a registration,
+ * plain or declared, may carry `replaces: [{ document_id } | { deliverable_key }
+ * | { path }]`. Once the registering document is waiting for review and ready
+ * to view (Robert's ruling, 2026-11-19), each named document still waiting is
+ * moved to Reference with no decision recorded, unless open replacement work,
+ * an unsent outgoing message, unsubmitted draft comments, waiting tasks or an
+ * agent review keep it; every name is answered with its outcome and reasons.
+ * POST /:id/request-review reopens a retired document. Never by title, project
+ * or age.
+ *
  * Mounted behind the server's `authenticate` middleware; every review belongs
  * to the authenticated reviewer. The router never touches task status.
  *
@@ -73,9 +83,10 @@ const { createDocumentDecisionAuthority } = require('../services/document-decisi
 const { parseExecutorProvenance, resolveSourceReview, buildProvenance, DELEGATING_AUTHORITIES } = require('../services/document-decision-provenance');
 const decisionItems = require('../services/document-decision-items');
 const { LIST_STATUSES, REPLACEMENT_STATES, REPLACEMENT_OPEN_STATES } = require('../../db/document-reviews');
+const { NAME_FIELDS } = require('../../db/document-retirements');
 
 const KINDS = new Set(['document', 'report', 'spec', 'plan', 'research', 'walkthrough', 'other', 'design', 'image', 'video', 'audio', 'prototype', 'pdf', 'data']);
-const LIMITS = { title: 300, body: 20000, summary: 20000, selection: 2000, metadataJson: 8000, clientId: 120, purpose: 500, key: 300, sourceId: 200, query: 200, selectionJson: 2048, editSummary: 2000 };
+const LIMITS = { title: 300, body: 20000, summary: 20000, selection: 2000, metadataJson: 8000, clientId: 120, purpose: 500, key: 300, sourceId: 200, query: 200, selectionJson: 2048, editSummary: 2000, replaces: 50, path: 4096 };
 /** What the deliverable is for once approved. Approval records the decision; it never performs the action. */
 const INTENDED_ACTIONS = new Set(['none', 'implement', 'send', 'publish']);
 const { parseBlockingTaskIds } = require('../../db/document-review-blockers');
@@ -122,6 +133,36 @@ function sourceDetails(refusal) {
 
 function validMetadata(value) {
     return isPlainObject(value) && JSON.stringify(value).length <= LIMITS.metadataJson;
+}
+
+/**
+ * `replaces` on a registration, plain or declared (task d9f46e2f, contract §13): the waiting review documents this
+ * one replaces, each named by exactly one exact identity: `{ document_id }`, `{ deliverable_key }` or `{ path }`
+ * (absolute). Nothing is ever matched by title, project or age. Naming nothing is valid. A malformed list is refused
+ * before anything is written; a well-formed name that matches nothing is not an error, it is reported per name.
+ */
+function parseReplaces(value) {
+    if (value === undefined || value === null) return { ok: true, value: [] };
+    const refuse = error => badRequest(error, 'invalid_replaces');
+    if (!Array.isArray(value) || value.length > LIMITS.replaces) return refuse(`replaces must be an array of at most ${LIMITS.replaces} names`);
+    const seen = new Set();
+    const names = [];
+    for (const item of value) {
+        const keys = isPlainObject(item) ? Object.keys(item) : [];
+        if (keys.length !== 1 || !NAME_FIELDS.includes(keys[0])) {
+            return refuse(`Each replaces entry must be an object with exactly one of ${NAME_FIELDS.join(', ')}`);
+        }
+        const by = keys[0];
+        const max = by === 'path' ? LIMITS.path : LIMITS.key;
+        const given = typeof item[by] === 'string' ? item[by].trim() : '';
+        if (!given || given.length > max || CONTROL_CHARS.test(given)) return refuse(`replaces ${by} must be 1-${max} printable characters`);
+        if (by === 'path' && !path.isAbsolute(given)) return refuse('replaces path must be an absolute path');
+        const named = by === 'path' ? path.normalize(given) : given;
+        if (seen.has(`${by}\u0000${named}`)) continue;
+        seen.add(`${by}\u0000${named}`);
+        names.push({ by, value: named });
+    }
+    return { ok: true, value: names };
 }
 
 /**
@@ -200,10 +241,12 @@ function parseDeclaration(body) {
         }
         expectedHash = body.expected_content_hash;
     }
+    const replaces = parseReplaces(body.replaces);
+    if (!replaces.ok) return replaces;
     return {
         ok: true,
         value: {
-            key, purpose, title, projectId, taskId, kind, source, expectedHash, blockingTaskIds,
+            key, purpose, title, projectId, taskId, kind, source, expectedHash, blockingTaskIds, replaces: replaces.value,
             requiresReview: declared.requires_review, intendedAction: declared.intended_action,
             // The decision-items revision stamp is Nexus's own record, never taken from a producer.
             metadata: decisionItems.withoutRevisionStamp(body.metadata) || null,
@@ -476,6 +519,218 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         if (open) return open;
         const revision = current || (doc.current_revision_id ? store().getRevisionMeta(doc.current_revision_id) : null);
         return authorityRevision(doc, revision).closedBy || store().latestReplacement(doc.id);
+    }
+
+    // ── Retiring documents a later deliverable replaces (task d9f46e2f, contract §13) ──
+    const NAME_LABEL = { document_id: 'document id', deliverable_key: 'deliverable key', path: 'path' };
+
+    /** The registered documents a name points at, by its one exact identity; a path may name several (one per task). */
+    function resolveReplacedName(row) {
+        if (row.named_by === 'document_id') { const found = store().getDocument(row.named_value); return found ? [found] : []; }
+        if (row.named_by === 'deliverable_key') { const found = store().findDocumentByKey(row.named_value); return found ? [found] : []; }
+        const matches = new Map();
+        for (const candidate of new Set([row.named_value, registrationIdentityPath(row.named_value)].filter(Boolean))) {
+            for (const found of store().findDocumentsByPath(candidate)) matches.set(found.id, found);
+        }
+        return [...matches.values()];
+    }
+
+    /**
+     * Robert's ruling (2026-11-19, option A): a replacing document retires what it names only once it is itself
+     * waiting for his review (review requested) and ready to view (a reviewable current revision, every required asset
+     * servable). Until then its names stay pending, so nothing leaves his queue before its successor is in it.
+     */
+    function successorGate(doc) {
+        const keep = 'The names are kept and applied the moment it is waiting for your review and ready to view';
+        if (!doc.requires_review) {
+            return { ok: false, reason: { code: 'replacement_not_in_queue', message: `The replacing document is not waiting for your review (a reference document, or its review has not been requested yet), so it retires nothing yet. ${keep}` } };
+        }
+        const revision = doc.current_revision_id ? store().getRevisionMeta(doc.current_revision_id) : null;
+        const gate = reviewability(doc, revision);
+        if (gate.ok) return { ok: true, reason: null };
+        const why = gate.reason === 'revision_not_ready'
+            ? `it is not ready to view yet (${gate.readiness.required_ok}/${gate.readiness.required_total} required assets servable)`
+            : gate.reason === 'no_revision' ? 'it has no readable revision yet'
+                : gate.reason === 'replacement_in_progress' ? 'replacement work on it is in progress, so its current version is not reviewable'
+                    : 'its current version was registered by replacement work that failed or was cancelled, so it is not reviewable';
+        return { ok: false, reason: { code: 'replacement_not_ready', message: `The replacing document is waiting for review but ${why}. ${keep}`, gate: gate.reason } };
+    }
+
+    /** Store an evaluated outcome, writing only when it changed (lists re-check pending names on every read). */
+    function settleName(row, outcome, reasons = [], { target = null, candidates = [] } = {}) {
+        const targetId = target ? target.id : null;
+        const candidateIds = candidates.map(c => c.id);
+        if (row.outcome === outcome && (row.target_document_id || null) === targetId && JSON.stringify(row.reasons || []) === JSON.stringify(reasons)
+            && JSON.stringify(row.candidate_ids || []) === JSON.stringify(candidateIds) && row.evaluated_at) return row;
+        return store().settleSupersession(row.id, { outcome, reasons, target_document_id: targetId, candidate_ids: candidateIds });
+    }
+
+    /**
+     * Evaluate one pending name of `successor` against the documents as they are now. Synchronous: it runs inside the
+     * caller's transaction, so a retirement lands in the same operation as the registration or review request that
+     * made it due. A retired name is final; only Robert's request-review on the retired document undoes it.
+     */
+    function evaluateName(successor, row, gate, trigger) {
+        if (row.outcome === 'retired') return row;
+        const matches = resolveReplacedName(row);
+        if (!matches.length) {
+            return settleName(row, 'not_found', [{ code: 'not_found', message: `No registered document has this ${NAME_LABEL[row.named_by]}; nothing was retired` }]);
+        }
+        if (matches.length > 1) {
+            return settleName(row, 'ambiguous', [{ code: 'ambiguous', message: `This path is registered as ${matches.length} documents (one per task); name the one it replaces by document id or deliverable key. Nothing was retired` }], { candidates: matches });
+        }
+        const [target] = matches;
+        if (target.id === successor.id) {
+            return settleName(row, 'self', [{ code: 'self', message: 'This names the replacing document itself; a document cannot retire itself' }], { target });
+        }
+        // A document already out of the queue is reported at once, ready or not; the guards are judged when the name applies.
+        const check = store().retirementCheck(target);
+        if (check.outcome === 'not_waiting') return settleName(row, 'not_waiting', check.reasons, { target });
+        if (!gate.ok) return settleName(row, 'pending', [gate.reason], { target });
+        if (check.outcome !== 'retirable') return settleName(row, check.outcome, check.reasons, { target });
+        const retirement = store().retireDocument({ target, successor, supersession: row, trigger, bucket: check.bucket });
+        console.log(`[Documents] retired ${target.id} (was ${check.bucket}) as replaced by ${successor.id} (named by ${row.named_by}, registration ${row.registration_id || 'plain'}, task ${row.task_id || 'none'}, ${trigger}); retirement ${retirement.id}, no decision recorded`);
+        return store().getSupersession(row.id);
+    }
+
+    /**
+     * Declare the names a registration of `docId` carries, then evaluate them together with every name still pending
+     * on that document. Run inside a transaction. Returns every name the document's registrations declared, as they
+     * now stand.
+     */
+    function settleReplaces(docId, { trigger, names = [], registrationId = null, revisionId = null, taskId = null, actorId = null } = {}) {
+        for (const name of names) {
+            store().declareSupersession({
+                document_id: docId, named_by: name.by, named_value: name.value,
+                registration_id: registrationId, revision_id: revisionId, task_id: taskId, declared_by: actorId || 'unknown',
+            });
+        }
+        const pending = store().listSupersessions(docId).filter(row => row.outcome === 'pending');
+        if (pending.length) {
+            const successor = store().getDocument(docId);
+            const gate = successorGate(successor);
+            for (const row of pending) evaluateName(successor, row, gate, trigger);
+        }
+        return store().listSupersessions(docId);
+    }
+
+    /** Apply the pending names of these replacing documents now; one failure leaves its names pending and the read goes on. */
+    function settlePendingOf(ids) {
+        for (const id of ids) {
+            try { store().transaction(() => settleReplaces(id, { trigger: 'ready' })); } catch (err) { console.error(`[Documents] pending retirements named by ${id} failed:`, err); }
+        }
+    }
+
+    /** Apply the pending names of every replacing document before a list or count read, so the queue agrees with the rule. */
+    function reconcilePendingRetirements() {
+        settlePendingOf(store().listPendingSuccessorIds());
+    }
+
+    /** Before a document is read: apply its own pending names and those of documents that name it. */
+    function settlePendingAround(docId) {
+        const ids = new Set(store().hasPendingSupersessions(docId) ? [docId] : []);
+        for (const row of store().listSupersessionsTargeting(docId)) if (row.outcome === 'pending') ids.add(row.document_id);
+        settlePendingOf(ids);
+    }
+
+    /** A retirement as a registration or review request reports it on the document it was about. */
+    function retirementEffect(action, rt) {
+        const message = action === 'kept'
+            ? 'This document was retired when a later document replaced it, and this registration carries the bytes it already had, so it stays in Reference. Robert can put it back with Move to review queue (request-review)'
+            : action === 'reopened_by_registration'
+                ? 'This document had been retired when a later document replaced it; this registration delivered new bytes for review, so it is back in the queue and the retirement is recorded as reopened'
+                : 'This document had been retired when a later document replaced it; it is back in the queue and the retirement is recorded as reopened';
+        return { action, message, ...retirementView(rt) };
+    }
+
+    /** A link to a document in a retirement record: its title, review page and current review status (null when it is gone). */
+    function documentRef(id) {
+        if (!id) return null;
+        const found = store().getDocument(id);
+        return { document_id: id, title: found ? found.title : null, exists: Boolean(found), review_path: fmt.reviewPathFor(id), review_status: found ? store().getReviewStatus(id) : null };
+    }
+
+    /** One name a registration declared, with its outcome and why. */
+    function supersessionView(row) {
+        const retirement = row.retirement_id ? store().getRetirement(row.retirement_id) : null;
+        return {
+            id: row.id, source: 'registration',
+            named_as: { [row.named_by]: row.named_value },
+            outcome: row.outcome, reasons: row.reasons || [],
+            target: documentRef(row.target_document_id),
+            candidates: (row.candidate_ids || []).map(documentRef),
+            registration_id: row.registration_id || null, revision_id: row.revision_id || null, task_id: row.task_id || null,
+            declared_by: row.declared_by, created_at: row.created_at, updated_at: row.updated_at, evaluated_at: row.evaluated_at || null,
+            retirement: retirement ? {
+                id: retirement.id, state: retirement.reopened_at ? 'reopened' : 'retired', retired_at: retirement.retired_at, trigger: retirement.trigger,
+                reopened_at: retirement.reopened_at || null, reopened_by: retirement.reopened_by || null, reopened_via: retirement.reopened_via || null, reason: null,
+            } : null,
+        };
+    }
+
+    const RETIRED_REASON = 'Replaced by a later document registered for your review. Moved to Reference without a decision: nothing was approved, no changes were requested and its intended action was not carried out.';
+
+    /** A retirement record in the shape the review page shows, for a registration's retirement and a manual close alike. */
+    function retirementView(rt) {
+        return {
+            id: rt.id, source: 'replacement', state: rt.reopened_at ? 'reopened' : 'retired',
+            retired_at: rt.retired_at, retired_by: rt.retired_by, reason: RETIRED_REASON,
+            replaced_by: documentRef(rt.replaced_by_document_id), replaced_by_revision_id: rt.replaced_by_revision_id || null,
+            registration_id: rt.registration_id || null, task_id: rt.task_id || null,
+            task_path: rt.task_id ? `/task/${encodeURIComponent(rt.task_id)}` : null,
+            trigger: rt.trigger, named_as: { [rt.named_by]: rt.named_value },
+            previous: rt.previous || null, reopened_at: rt.reopened_at || null, reopened_by: rt.reopened_by || null, reopened_via: rt.reopened_via || null,
+        };
+    }
+
+    /**
+     * A manual close of 2026-11-18/19 (metadata.review_closed: at, by, reason, previous, superseded_by?) read into
+     * the same shape, without rewriting the stamp. It is in force while the document is still out of the queue.
+     */
+    function manualRetirementView(doc) {
+        const stamp = doc.metadata?.review_closed;
+        if (!isPlainObject(stamp) || typeof stamp.at !== 'string' || !stamp.at.trim()) return null;
+        const supersededBy = typeof stamp.superseded_by === 'string' && stamp.superseded_by.trim() ? stamp.superseded_by.trim() : null;
+        return {
+            id: null, source: 'manual', state: doc.requires_review ? 'reopened' : 'retired',
+            retired_at: stamp.at, retired_by: typeof stamp.by === 'string' ? stamp.by : null,
+            reason: typeof stamp.reason === 'string' && stamp.reason.trim() ? stamp.reason.trim() : 'Closed by hand without review. Not an approval.',
+            replaced_by: documentRef(supersededBy), replaced_by_revision_id: null,
+            registration_id: null, task_id: null, task_path: null, trigger: 'manual', named_as: null,
+            previous: isPlainObject(stamp.previous) ? stamp.previous : null, reopened_at: null, reopened_by: null, reopened_via: null,
+        };
+    }
+
+    /** The retirement in force on a document (if any) and its whole retirement history, newest first. */
+    function retirementsForReader(doc) {
+        const rows = store().listRetirements(doc.id).map(retirementView);
+        const manual = manualRetirementView(doc);
+        const history = [...rows, ...(manual ? [manual] : [])].sort((a, b) => String(b.retired_at).localeCompare(String(a.retired_at)));
+        const current = rows.find(rt => rt.state === 'retired') || (manual && manual.state === 'retired' ? manual : null);
+        return { current, history };
+    }
+
+    /** What a replacing document retired or named: its registrations' names, plus the manual closes that named it. */
+    function replacesForReader(doc) {
+        const named = store().listSupersessions(doc.id).map(supersessionView);
+        const manual = store().listManualClosesReplacedBy(doc.id).map(closed => {
+            const view = manualRetirementView(closed);
+            return {
+                id: null, source: 'manual', named_as: null, outcome: 'retired', reasons: [],
+                target: documentRef(closed.id), candidates: [],
+                registration_id: null, revision_id: null, task_id: null,
+                declared_by: view?.retired_by ?? null, created_at: view?.retired_at ?? null, updated_at: view?.retired_at ?? null, evaluated_at: view?.retired_at ?? null,
+                retirement: { id: null, state: view?.state ?? 'retired', retired_at: view?.retired_at ?? null, trigger: 'manual', reopened_at: null, reopened_by: null, reopened_via: null, reason: view?.reason ?? null },
+            };
+        });
+        return [...named, ...manual];
+    }
+
+    /** Other documents that named this one as replaced and left it waiting (or are not ready yet): shown on this page. */
+    function namedAsReplacedForReader(doc) {
+        return store().listSupersessionsTargeting(doc.id)
+            .filter(row => row.outcome === 'pending' || row.outcome === 'left_waiting')
+            .map(row => ({ ...supersessionView(row), replacing: documentRef(row.document_id) }));
     }
 
     // Binary and design revisions are always identified by their exact bytes (contract §1).
@@ -877,22 +1132,34 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 media_type: read.mediaType, mime_type: read.mimeType,
             };
             let documentCreated = false;
+            let retirement = null;
             if (doc) {
                 // A declared deliverable is identified by its exact bytes, which is the identity recordRevision uses below.
-                const refusal = decisionItemsChangeRefusal(doc, v.metadata, revisionHash({ ...doc, deliverable_key: key }, read));
+                const hash = revisionHash({ ...doc, deliverable_key: key }, read);
+                const refusal = decisionItemsChangeRefusal(doc, v.metadata, hash);
                 if (refusal) throw refusal;
                 const taskId = doc.task_id || v.taskId;
                 if (doc.path !== resolved.canonicalPath || taskId !== doc.task_id) {
                     const occupant = store().findDocumentByPath(resolved.canonicalPath, taskId);
                     if (occupant && occupant.id !== doc.id) throw conflict('identity_conflict', 'Another registered document already holds this file for this task');
                 }
+                // A retired document (contract §13) stays in Reference when a registration carries the bytes it already
+                // had (a retry or replay must not undo the retirement); new bytes declared for review bring it back.
+                const openRetirement = v.requiresReview ? store().findOpenRetirement(doc.id) : null;
+                const keepRetired = Boolean(openRetirement && doc.current_revision_id && store().findRevisionByHash(doc.id, hash)?.id === doc.current_revision_id);
                 doc = store().updateDocument(doc.id, {
                     ...declared,
+                    ...(keepRetired ? { requires_review: false } : {}),
                     task_id: taskId,
                     project_id: taskId === v.taskId ? v.projectId : doc.project_id,
                     ...(v.kind ? { kind: v.kind } : {}),
                     ...(v.metadata ? { metadata: { ...(doc.metadata || {}), ...v.metadata } } : {}),
                 });
+                if (openRetirement) {
+                    retirement = keepRetired
+                        ? retirementEffect('kept', openRetirement)
+                        : retirementEffect('reopened_by_registration', store().reopenRetirement(doc.id, actorId, 'registration'));
+                }
             } else {
                 doc = store().insertDocument({
                     ...declared, project_id: v.projectId, task_id: v.taskId, kind: v.kind || 'document', metadata: v.metadata || {}, registered_by: actorId,
@@ -923,7 +1190,12 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                     document_created: documentCreated, revision_created: revisionCreated, registered_by: actorId,
                 });
             }
-            return { doc: store().getDocument(doc.id), revision, registration, documentCreated, duplicate };
+            // The documents this registration names as replaced (contract §13), retired in this same transaction when it
+            // is waiting for review and ready to view, else kept pending until it is.
+            const replaces = settleReplaces(doc.id, {
+                trigger: 'registration', names: v.replaces || [], registrationId: registration.id, revisionId: revision.id, taskId: v.taskId, actorId,
+            });
+            return { doc: store().getDocument(doc.id), revision, registration, documentCreated, duplicate, replaces, retirement };
         });
     }
 
@@ -959,7 +1231,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (/UNIQUE/i.test(err.message || '')) return res.status(409).json({ error: 'A concurrent registration claimed this identity; retry', code: 'registration_conflict' });
             throw err;
         }
-        const { doc, revision, registration, documentCreated, duplicate } = written;
+        const { doc, revision, registration, documentCreated, duplicate, replaces, retirement } = written;
         return res.status(documentCreated ? 201 : 200).json({
             document: doc,
             revision: revisionMeta(revision),
@@ -968,6 +1240,10 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             created: documentCreated,
             duplicate,
             receipt: receiptView(registration, revision),
+            // Every name this document's registrations declared, with its outcome and reasons (contract §13).
+            replaces: replaces.map(supersessionView),
+            // This document's own retirement, when the registration found it retired (kept, or reopened by new bytes).
+            retirement,
         });
     }
 
@@ -1002,6 +1278,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             const metadata = decisionItems.withoutRevisionStamp(body.metadata);
             const title = body.title === undefined ? null : text(String(body.title), LIMITS.title);
             if (body.title !== undefined && !title) return res.status(400).json({ error: `title must be 1-${LIMITS.title} characters` });
+            const replaces = parseReplaces(body.replaces);
+            if (!replaces.ok) return res.status(400).json({ error: replaces.error, code: replaces.code });
 
             const registered = store().transaction(() => {
                 const existing = store().findDocumentByPath(resolved.canonicalPath, taskId);
@@ -1029,12 +1307,17 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 const { revision } = recordRevision(doc, read, resolved.mtime);
                 store().updateDocument(doc.id, { current_revision_id: revision.id, media_type: read.mediaType, mime_type: read.mimeType });
                 bindDecisionItems(doc, metadata, revision.id);
-                return { doc: store().getDocument(doc.id), revision, created: !existing };
+                // Names of what this document replaces (contract §13). A plain registration never requests review, so on a
+                // new document they wait until review is requested and it is ready to view.
+                const named = settleReplaces(doc.id, {
+                    trigger: 'registration', names: replaces.value, revisionId: revision.id, taskId: taskId || doc.task_id || null, actorId: req.user.id,
+                });
+                return { doc: store().getDocument(doc.id), revision, created: !existing, named };
             });
-            const { doc, revision, created } = registered;
+            const { doc, revision, created, named } = registered;
             return res.status(created ? 201 : 200).json({
                 document: doc, revision: revisionMeta(revision), review_url: fmt.reviewUrlFor(doc.id),
-                review_path: fmt.reviewPathFor(doc.id), created,
+                review_path: fmt.reviewPathFor(doc.id), created, replaces: named.map(supersessionView),
             });
         } catch (err) {
             if (err.status === 409) return res.status(409).json({ error: err.message, code: err.code });
@@ -1049,6 +1332,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (!parsed.ok) return res.status(400).json({ error: parsed.error, code: 'invalid_query' });
             const { status, limit, offset, filters } = parsed.value;
             await reconcileOpenReplacements();
+            reconcilePendingRetirements();
             const page = store().listDocumentsPage({ status, limit, offset, ...filters });
             return res.json({
                 documents: page.documents.map(doc => listEntry(doc, req.user.id)),
@@ -1083,6 +1367,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             const parsed = parseListQuery(req.query, { paging: false });
             if (!parsed.ok) return res.status(400).json({ error: parsed.error, code: 'invalid_query' });
             await reconcileOpenReplacements();
+            reconcilePendingRetirements();
             return res.json({ counts: store().countDocumentsByStatus(parsed.value.filters), filters: parsed.value.filters });
         } catch (err) {
             console.error('[Documents] counts failed:', err);
@@ -1104,7 +1389,9 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (!doc) return;
             const captured = await captureRevision(doc);
             await reconcileReplacement(doc);
+            settlePendingAround(doc.id);
             const fresh = store().getDocument(doc.id);
+            const retirements = retirementsForReader(fresh);
             const review = store().findLatestReview(doc.id, req.user.id);
             const source = await sourceSummary(fresh);
             const latest = store().latestDecision(doc.id);
@@ -1133,6 +1420,13 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 // the newest closed one, which explains a failed or cancelled attempt), and whether this version takes review actions now.
                 replacement: replacementView(replacementForReader(fresh, captured.revision)),
                 reviewable: { ok: gate.ok, reason: gate.reason, replacement_id: gate.replacement?.id ?? null },
+                // Retiring replaced documents (task d9f46e2f, contract §13): the retirement in force on this document (a
+                // registration's, or a manual close of 2026-11-18/19 in the same shape) and its history; what this document
+                // names as replaced, with outcomes and reasons; and other documents that named this one but left it waiting.
+                retirement: retirements.current,
+                retirement_history: retirements.history,
+                replaces: replacesForReader(fresh),
+                named_as_replaced: namedAsReplacedForReader(fresh),
                 version: { current_revision_id: fresh.current_revision_id, current_version: captured.revision ? store().revisionVersion(captured.revision.id) : null, revision_count: store().listRevisionMeta(doc.id).length, capture_count: store().listRevisionMeta(doc.id).length, draft_count: store().draftHistory(doc.id).drafts.length },
                 // Who this read is for: the browser binds its unsaved review text to this reviewer (task 1390fc34).
                 viewer: { id: req.user.id },
@@ -1160,8 +1454,20 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (invalid) return res.status(404).json(invalid);
             const captured = await captureRevision(doc);
             if (captured.fileState !== 'ok') return res.status(409).json({ error: 'The document file must be available before requesting review', code: 'file_unavailable' });
-            const document = store().updateDocument(doc.id, { requires_review: true, blocking_task_ids: parsed.value });
-            return res.json({ document, review_status: store().getReviewStatus(doc.id), blocking_tasks: store().getBlockingTasks(doc.id) });
+            // One operation (contract §13): back into the queue, a retirement in force recorded as reopened (its waiting
+            // tasks return with it unless new ones are given), and this document's own pending names applied now that it waits.
+            const { document, reopened, named } = store().transaction(() => {
+                const updated = store().updateDocument(doc.id, { requires_review: true, blocking_task_ids: parsed.value });
+                const reopenedRetirement = store().reopenRetirement(doc.id, req.user.id, 'request_review');
+                const replaces = settleReplaces(doc.id, { trigger: 'review_requested' });
+                return { document: store().getDocument(updated.id), reopened: reopenedRetirement, named: replaces };
+            });
+            if (reopened) console.log(`[Documents] ${doc.id} reopened from retirement ${reopened.id} (replaced by ${reopened.replaced_by_document_id}) by ${req.user.id}`);
+            return res.json({
+                document, review_status: store().getReviewStatus(doc.id), blocking_tasks: store().getBlockingTasks(doc.id),
+                retirement: reopened ? retirementEffect('reopened', reopened) : null,
+                replaces: named.map(supersessionView),
+            });
         } catch (err) {
             console.error('[Documents] review requirements failed:', err);
             return res.status(500).json({ error: 'Failed to update review requirements' });
@@ -1299,6 +1605,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (!doc) return;
             const revision = await revisionForQuery(doc, req, res);
             if (!revision) return;
+            // A producer polls this until its visual media is servable; that is when its pending names apply (contract §13).
+            settlePendingAround(doc.id);
             return res.json(readinessView(doc, revision));
         } catch (err) {
             console.error('[Documents] readiness failed:', err);
