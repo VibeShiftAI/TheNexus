@@ -1341,4 +1341,111 @@ describe('durable record-only project intake', () => {
     expect((await request(`/${p.project.id}/intake`, null, 'GET')).body).toEqual(p);
   });
 
+  // Intake stages 5 to 7: the council proposes the project plan, Robert approves it, and the
+  // approved checkpoints are recorded on the project.
+  const plan = {
+    checkpoints: [
+      { title: 'Pilot loan', goal: 'One neighbor borrows and returns a tool.', reached_when: 'A completed loan is on the ledger.', command: 'npm test -- ledger' },
+      { title: 'Ten households', goal: 'Ten households lend or borrow each month.', reached_when: 'Robert counts ten active households in the ledger.', proposed_command_criterion: { command: 'node scripts/count-households.js --min 10', description: 'Counts active households', rationale: 'Nothing checks participation yet' } },
+    ],
+    stages: [{ name: 'Build the ledger', description: 'What: a loan ledger. Why: the pilot needs a record.', goal: 'A ledger that records a loan and its return.', acceptance_criteria: ['Run `npm test -- ledger`. Expected: exit code 0.'] }],
+  };
+  const reviewedWith = async (rest = {}) => {
+    let p = (await op(await prepared(), 'start')).body;
+    p = (await op(p, 'request_review', { session_id: `council:${crypto.randomUUID()}`, brief_revision: p.intake.brief_revision })).body;
+    return op(p, 'record_review', { session_id: p.intake.review.session_id, brief_revision: p.intake.brief_revision, source_ref: 'council:result', findings: [], ...rest });
+  };
+
+  test('a usable review saves the proposed plan; failed, seatless and preparation results cannot', async () => {
+    const reviewed = await reviewedWith({ plan });
+    expect(reviewed.status).toBe(200);
+    expect(reviewed.body.intake).toMatchObject({ state: 'ready_for_decision', review: { status: 'completed', plan } });
+    const partial = await reviewedWith({ plan, status: 'partial', participation: { substantive_seats: 1, total_seats: 3 } });
+    expect(partial.status).toBe(200);
+    expect(partial.body.intake.review).toMatchObject({ status: 'partial', plan, participation: { substantive_seats: 1, total_seats: 3 } });
+    for (const rest of [{ status: 'failed' }, { status: 'partial' }, { status: 'partial', participation: { substantive_seats: 0, total_seats: 3 } }]) {
+      const refused = await reviewedWith({ plan, ...rest });
+      expect(refused.status).toBe(400); expect(refused.body.error).toMatch(/cannot propose a project plan/);
+    }
+    const failed = await reviewedWith({ status: 'failed', findings: [{ summary: 'Council could not complete', disposition: 'revise_proposal' }] });
+    expect(failed.status).toBe(200); expect(failed.body.intake.review.plan).toBeUndefined();
+    let p = await prepared();
+    p = (await op(p, 'request_review', { mode: 'preparation', source_ref: 'chat:prepare', session_id: 'council:prep-plan', brief_revision: p.intake.brief_revision })).body;
+    const preparation = await op(p, 'record_review', { session_id: 'council:prep-plan', brief_revision: p.intake.brief_revision, source_ref: 'council:result', findings: [], plan });
+    expect(preparation.status).toBe(400); expect(preparation.body.error).toMatch(/Only a review council proposes the project plan/);
+  });
+
+  test('acceptance records which plan Robert approved and record_checkpoints records exactly its checkpoints', async () => {
+    const reviewed = (await reviewedWith({ plan })).body;
+    const accept = (snapshot, rest = {}) => op(snapshot, 'accept', { source_ref: 'chat:approve-plan', next_step: 'Build the ledger', brief_revision: snapshot.intake.brief_revision, ...rest });
+    const accepted = await accept(reviewed, { plan });
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.intake.acceptance.plan).toEqual({ ...plan, basis: 'council', council_session_id: reviewed.intake.review.session_id });
+    // Approval alone records no checkpoint and files nothing.
+    expect(accepted.body.project.checkpoints ?? null).toBeNull();
+    expect(raw.prepare('SELECT count(*) AS n FROM tasks WHERE project_id=?').get(reviewed.project.id).n).toBe(0);
+
+    const input = { operation_id: crypto.randomUUID(), expected_revision: accepted.body.intake.revision, action: 'record_checkpoints' };
+    const recorded = await request(`/${reviewed.project.id}/intake/operations`, input);
+    expect(recorded.status).toBe(200);
+    const items = recorded.body.project.checkpoints.items;
+    expect(items.map(cp => [cp.title, cp.goal, cp.status])).toEqual(plan.checkpoints.map(cp => [cp.title, cp.goal, 'pending']));
+    expect(items[0].criteria).toEqual([expect.objectContaining({ kind: 'command', command: 'npm test -- ledger', description: plan.checkpoints[0].reached_when, source: 'chat:approve-plan' })]);
+    // No runnable check: Robert judges it, and the proposed command stays a proposal on the plan.
+    expect(items[1].criteria).toEqual([expect.objectContaining({ kind: 'manual', description: plan.checkpoints[1].reached_when })]);
+    expect(JSON.stringify(items[1])).not.toContain('count-households');
+    expect(recorded.body.intake.acceptance.plan.checkpoints_recorded).toMatchObject({ operation_id: input.operation_id, checkpoint_ids: items.map(cp => cp.id) });
+    expect(recorded.body.intake.acceptance).toMatchObject({ source_ref: 'chat:approve-plan', plan: { basis: 'council', checkpoints: plan.checkpoints, stages: plan.stages } });
+    expect(raw.prepare('SELECT count(*) AS n FROM tasks WHERE project_id=?').get(reviewed.project.id).n).toBe(0);
+    // An identical retry replays; a second recording is refused and changes nothing.
+    expect((await request(`/${reviewed.project.id}/intake/operations`, input)).body).toEqual(recorded.body);
+    const again = await op(recorded.body, 'record_checkpoints');
+    expect(again.status).toBe(409); expect(again.body.code).toBe('INTAKE_CHECKPOINTS_RECORDED');
+    expect((await request(`/${reviewed.project.id}/intake`, null, 'GET')).body.project.checkpoints).toEqual(recorded.body.project.checkpoints);
+
+    // The plan as Robert changed it, and his own plan when no council plan is current.
+    const changed = { ...plan, checkpoints: [plan.checkpoints[0]] };
+    const second = (await reviewedWith({ plan })).body;
+    expect((await accept(second, { plan: changed })).body.intake.acceptance.plan).toEqual({ ...changed, basis: 'council_changed', council_session_id: second.intake.review.session_id });
+    const own = (await op(await prepared(), 'start')).body;
+    expect((await accept(own, { plan: changed })).body.intake.acceptance.plan).toEqual({ ...changed, basis: 'operator' });
+  });
+
+  test('record_checkpoints is refused, and writes nothing, without an approved plan on record', async () => {
+    const unchanged = async (snapshot) => {
+      const now = (await request(`/${snapshot.project.id}/intake`, null, 'GET')).body;
+      expect(now.intake).toEqual(snapshot.intake);
+      expect(now.project.checkpoints ?? null).toBeNull();
+      expect(raw.prepare('SELECT count(*) AS n FROM project_intake_operations WHERE project_id=?').get(snapshot.project.id).n).toBe(snapshot.intake.operations.length);
+    };
+    // No approval at all, at the point where the council's plan is waiting for Robert.
+    const reviewed = (await reviewedWith({ plan })).body;
+    const early = await op(reviewed, 'record_checkpoints');
+    expect(early.status).toBe(409); expect(early.body.code).toBe('INTAKE_PLAN_NOT_APPROVED');
+    await unchanged(reviewed);
+    // Approved, but without a plan: the council's unapproved plan is not recorded either.
+    const accepted = (await op(reviewed, 'accept', { source_ref: 'chat:approve', next_step: 'Plan', brief_revision: reviewed.intake.brief_revision })).body;
+    expect(accepted.intake.acceptance.plan).toBeUndefined();
+    const planless = await op(accepted, 'record_checkpoints');
+    expect(planless.status).toBe(409); expect(planless.body.code).toBe('INTAKE_PLAN_NOT_APPROVED');
+    await unchanged(accepted);
+    // The operation carries no checkpoint content of its own.
+    const smuggled = await op(accepted, 'record_checkpoints', { checkpoints: plan.checkpoints });
+    expect(smuggled.status).toBe(400);
+    await unchanged(accepted);
+  });
+
+  test('record_checkpoints never replaces a checkpoint plan the project already has', async () => {
+    const reviewed = (await reviewedWith({ plan })).body;
+    const accepted = (await op(reviewed, 'accept', { source_ref: 'chat:approve-plan', next_step: 'Build', brief_revision: reviewed.intake.brief_revision, plan })).body;
+    const existing = await request(`/${reviewed.project.id}`, { checkpoints: [{ title: 'Robert set this', goal: 'His own checkpoint', criteria: [{ kind: 'manual', description: 'Robert accepts it' }] }], expected_checkpoints_revision: null }, 'PATCH');
+    expect(existing.status).toBe(200);
+    const current = (await request(`/${reviewed.project.id}/intake`, null, 'GET')).body;
+    const refused = await op(current, 'record_checkpoints');
+    expect(refused.status).toBe(409); expect(refused.body.code).toBe('INTAKE_CHECKPOINTS_EXIST');
+    const after = (await request(`/${reviewed.project.id}/intake`, null, 'GET')).body;
+    expect(after.project.checkpoints.items.map(cp => cp.title)).toEqual(['Robert set this']);
+    expect(after.intake.acceptance).toEqual(accepted.intake.acceptance);
+  });
+
 });

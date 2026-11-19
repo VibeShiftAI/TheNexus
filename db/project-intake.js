@@ -109,6 +109,18 @@ function reviewDisposition(intake) {
     if (intake.review_history.some(review => (review.mode || 'review') === 'review')) return 'stale';
     return intake.review_history.length ? 'preparation_only' : 'not_requested';
 }
+/**
+ * The plan Robert approved, with its basis read from the saved review: the council's plan as
+ * proposed, that plan as he changed it, or his own when no council plan is current for this brief.
+ */
+function approvedPlan(plan, intake) {
+    const review = intake.review;
+    const proposed = review && review.brief_revision === intake.brief_revision && review.status !== 'pending' && review.plan ? review.plan : null;
+    if (!proposed) return { ...plan, basis: 'operator' };
+    // Compared as plain data: the stored review is a clone, whose prototypes a strict comparison can tell apart.
+    const plain = value => JSON.parse(JSON.stringify(value));
+    return { ...plan, basis: equal(plain(plan), plain(proposed)) ? 'council' : 'council_changed', council_session_id: review.session_id };
+}
 function readinessGaps(needs, intake, disposition) {
     const gaps = [];
     for (const field of ['purpose', 'outcome', 'beneficiary', 'scope', 'decision_owner']) {
@@ -221,7 +233,7 @@ function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () =
             let { project, intake } = load(projectId);
             const currentProject = project;
             if (intake.revision !== input.expected_revision) throw fail('Intake revision changed; reload before saving', 'INTAKE_REVISION_STALE');
-            if (intake.state === 'handed_off' && !['attach_workspace', 'answer', 'revise', 'record_backlog'].includes(input.action)) throw fail('Intake was already handed off to planning. Use answer or revise to update its knowledge and brief, record_backlog to record the initial backlog, or continue the planning conversation.', 'INTAKE_HANDED_OFF');
+            if (intake.state === 'handed_off' && !['attach_workspace', 'answer', 'revise', 'record_backlog', 'record_checkpoints'].includes(input.action)) throw fail('Intake was already handed off to planning. Use answer or revise to update its knowledge and brief, record_checkpoints to record the approved plan\'s checkpoints, record_backlog to record the initial backlog, or continue the planning conversation.', 'INTAKE_HANDED_OFF');
             if (!Array.isArray(project.needs ?? [])) throw fail('Stored needs are invalid', 'INVALID_STORED_NEEDS', 500);
             intake = structuredClone(intake);
             const at = timestamp(project.updated_at);
@@ -336,7 +348,11 @@ function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () =
                     // its shortfall kept on the review. Failed, zero-seat or unmeasured partial results stay advisory.
                     const usable = status === 'completed' || (status === 'partial' && participation?.substantive_seats >= 1);
                     if (!usable && (input.brief || input.sources || input.needs?.length)) throw fail('Failed council results, and partial results without participation showing at least one substantive seat, cannot apply preparation changes', 'INVALID_INTAKE', 400);
-                    intake.review = { ...intake.review, status, source_ref: input.source_ref, findings: input.findings, completed_at: at, ...(participation ? { participation } : {}) };
+                    // The project plan (intake stage 5) is proposed by the review after the conversation, and
+                    // only by a result that counts: a failed council proposes nothing.
+                    if (input.plan && preparation) throw fail('Only a review council proposes the project plan; a preparation council chooses the questions', 'INVALID_INTAKE', 400);
+                    if (input.plan && !usable) throw fail('Failed council results, and partial results without participation showing at least one substantive seat, cannot propose a project plan', 'INVALID_INTAKE', 400);
+                    intake.review = { ...intake.review, status, source_ref: input.source_ref, findings: input.findings, completed_at: at, ...(participation ? { participation } : {}), ...(input.plan ? { plan: input.plan } : {}) };
                     if (!usable) break;
                     if (preparation) {
                         mergeMaterial();
@@ -367,11 +383,40 @@ function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () =
                     Object.assign(patch, adopted, { phase: 'planning' });
                     intake.acceptance = { brief_revision: intake.brief_revision, source_ref: input.source_ref, next_step: input.next_step, at,
                         readiness_gaps: readinessGaps(project.needs || [], intake, disposition), review_disposition: disposition,
-                        ...(input.decision_note ? { decision_note: input.decision_note } : {}) };
+                        ...(input.decision_note ? { decision_note: input.decision_note } : {}),
+                        ...(input.plan ? { plan: approvedPlan(input.plan, intake) } : {}) };
                     if (intake.review?.status === 'pending') {
                         intake.review_history.push(intake.review); intake.review = null;
                     }
                     intake.state = 'handed_off'; break;
+                }
+                case 'record_checkpoints': {
+                    // Intake stage 7, first half. The only source is the plan on Robert's acceptance: the
+                    // operation carries no checkpoint content, so nothing he did not approve is recorded.
+                    if (intake.state !== 'handed_off' || !intake.acceptance) throw fail('No approval is on record for this intake, so no checkpoint plan can be recorded. Robert approves the plan first (accept).', 'INTAKE_PLAN_NOT_APPROVED');
+                    const plan = intake.acceptance.plan;
+                    if (!plan) throw fail('The approval on record names no project plan, so there are no approved checkpoints to record. A checkpoint plan is then Robert\'s own decision through the project update.', 'INTAKE_PLAN_NOT_APPROVED');
+                    if (plan.checkpoints_recorded) throw fail('The approved plan\'s checkpoints are already recorded; a later change to the checkpoint plan is Robert\'s decision through the project update.', 'INTAKE_CHECKPOINTS_RECORDED');
+                    if (project.checkpoints?.items?.length) throw fail('The project already has a checkpoint plan. It is not replaced from intake; a change to it is Robert\'s decision through the project update.', 'INTAKE_CHECKPOINTS_EXIST');
+                    const taken = new Set([...(project.end_state_criteria || []), ...(project.checkpoints?.archived || []).flatMap(cp => cp.criteria || [])].map(c => c.id));
+                    const definitions = plan.checkpoints.map((cp, index) => {
+                        let id = `intake-checkpoint-${index + 1}`;
+                        while (taken.has(id)) id = `intake-checkpoint-${index + 1}-${crypto.randomUUID().slice(0, 8)}`;
+                        taken.add(id);
+                        // A runnable check Robert approved is the criterion. Without one the checkpoint is
+                        // judged by him from "reached_when"; a proposed command stays a proposal on the plan.
+                        return { title: cp.title, goal: cp.goal, criteria: [cp.command
+                            ? { id, kind: 'command', description: cp.reached_when, command: cp.command, source: intake.acceptance.source_ref }
+                            : { id, kind: 'manual', description: cp.reached_when, source: intake.acceptance.source_ref }] };
+                    });
+                    const recorded = prepareProjectPatch(project, { checkpoints: definitions, expected_checkpoints_revision: project.checkpoints?.revision ?? null,
+                        expected_updated_at: project.updated_at, end_state_source: intake.acceptance.source_ref });
+                    if (!recorded.checkpoints) throw fail('The approved plan produced no checkpoint change', 'INVALID_INTAKE', 400);
+                    project = { ...project, ...recorded };
+                    Object.assign(patch, recorded);
+                    const ids = recorded.checkpoints.items.slice(-definitions.length).map(cp => cp.id);
+                    intake.acceptance = { ...intake.acceptance, plan: { ...plan, checkpoints_recorded: { operation_id: input.operation_id, at, checkpoint_ids: ids } } };
+                    break;
                 }
                 case 'record_backlog':
                     // The step after accept. It files proposals as tasks and records which tasks are the
