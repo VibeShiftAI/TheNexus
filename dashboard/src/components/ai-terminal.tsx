@@ -9,7 +9,7 @@
  * What moved out, and where:
  *   - markdown / highlighting / task-link decoration → components/chat/markdown-message
  *   - one transcript row (bubbles, artifacts, players) → components/chat/message-row
- *   - the fullscreen plan review                      → components/chat/plan-review-modal
+ *   - the fullscreen plan viewer (read-only)          → components/chat/plan-review-modal
  *   - the conversation-history panel                  → components/chat/conversation-list
  *   - attachment chips                                → components/chat/attachment-chips
  *   - the draft textarea + send button                → components/chat/composer
@@ -41,7 +41,7 @@ import { ComposerRow } from "@/components/chat/composer";
 import { ConversationList } from "@/components/chat/conversation-list";
 import { TerminalHeader } from "@/components/chat/terminal-header";
 import { MessageRow } from "@/components/chat/message-row";
-import { PlanReviewModal, type CritiqueFeedbackState } from "@/components/chat/plan-review-modal";
+import { PlanReviewModal } from "@/components/chat/plan-review-modal";
 import type { Message, CortexArtifact } from "@/components/cortex-provider";
 
 interface AITerminalProps {
@@ -80,7 +80,7 @@ function noteReplyOutcome(clientMessageId: string, reply: { state?: string; erro
 
 export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function AITerminal({ isOpen = true, onClose, mode = 'modal', hideHeader = false }, ref) {
     const isInline = mode === 'inline';
-    const { messages, setMessages, readyForReview, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages, chatAudio, playChatAudio, toggleChatAudio, pauseChatAudio } = useCortex();
+    const { messages, setMessages, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages, chatAudio, playChatAudio, toggleChatAudio, pauseChatAudio } = useCortex();
     // NOTE: the composer's draft text deliberately does NOT live here — it is
     // ChatComposer's own state, so keystrokes can't re-render the transcript.
     const [loading, setLoading] = useState(false);
@@ -144,17 +144,6 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         newConversation: () => { void startNewConversation(); },
         toggleHistory: toggleConversations,
     }), [startNewConversation, toggleConversations]);
-    // Inline critique feedback state
-    // Keyed by messageKey(msg), NOT by array index: reveals, prepends and
-    // window trims shift indices, and this state must stay glued to its row.
-    const [critiqueFeedback, setCritiqueFeedback] = useState<CritiqueFeedbackState>({
-        messageKey: null,
-        text: '',
-        loading: false
-    });
-    // Approval loading state
-    const [approvalLoading, setApprovalLoading] = useState<string | null>(null);
-    // readyForReview (which thread_ids are ready for human review after voting) comes from useCortex()
     // Track expanded artifact index for full content viewing (council reviews)
     const [expandedArtifact, setExpandedArtifact] = useState<string | null>(null);
     // Fullscreen plan review modal state
@@ -503,12 +492,6 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             {reviewModalData && (
                 <PlanReviewModal
                     data={reviewModalData}
-                    readyForReview={readyForReview}
-                    critiqueFeedback={critiqueFeedback}
-                    setCritiqueFeedback={setCritiqueFeedback}
-                    approvalLoading={approvalLoading}
-                    setApprovalLoading={setApprovalLoading}
-                    setMessages={setMessages}
                     onClose={() => setReviewModalData(null)}
                 />
             )}
@@ -599,15 +582,9 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                         i={i}
                         isLast={i === visibleMessages.length - 1}
                         loading={loading}
-                        readyForReview={readyForReview}
                         expandedArtifact={expandedArtifact}
                         setExpandedArtifact={setExpandedArtifact}
                         setReviewModalData={setReviewModalData}
-                        critiqueFeedback={critiqueFeedback}
-                        setCritiqueFeedback={setCritiqueFeedback}
-                        approvalLoading={approvalLoading}
-                        setApprovalLoading={setApprovalLoading}
-                        setMessages={setMessages}
                         chatAudio={chatAudio}
                         toggleChatAudio={toggleChatAudio}
                         pauseChatAudio={pauseChatAudio}

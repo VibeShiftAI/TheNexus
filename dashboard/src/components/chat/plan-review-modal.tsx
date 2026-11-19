@@ -1,56 +1,38 @@
 "use client"
 
 /**
- * Fullscreen plan-review modal: the markdown plan, the council rationale, and
- * the approve / request-revisions actions.
+ * Fullscreen plan viewer: the markdown plan and the council rationale.
  *
  * Extracted verbatim from ai-terminal.tsx (P2-27, 2026-09-03) so the terminal
  * no longer reaches for ReactMarkdown / the syntax highlighter itself. The
  * modal keeps its OWN prose scale (roomier than the transcript's) — that is
  * deliberate, not a drift from MarkdownMessage.
+ *
+ * Read-only since 2026-11-19: the approve / request-revisions footer posted to
+ * /api/terminal/interact, which belonged to the decommissioned LangGraph
+ * engine and that no server answers. Plans in old transcripts still open here.
  */
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { X, FileText, XCircle, Loader2 } from "lucide-react";
+import { X, FileText } from "lucide-react";
 
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
-import type { CortexArtifact, Message, PlanDraftData } from "@/components/cortex-provider";
-
-export interface CritiqueFeedbackState {
-    messageKey: string | null;
-    text: string;
-    loading: boolean;
-}
+import type { CortexArtifact, PlanDraftData } from "@/components/cortex-provider";
 
 export interface PlanReviewModalProps {
     data: { artifact: CortexArtifact; messageKey: string };
-    readyForReview: Set<string>;
-    critiqueFeedback: CritiqueFeedbackState;
-    setCritiqueFeedback: React.Dispatch<React.SetStateAction<CritiqueFeedbackState>>;
-    approvalLoading: string | null;
-    setApprovalLoading: React.Dispatch<React.SetStateAction<string | null>>;
-    setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
     onClose: () => void;
 }
 
 export function PlanReviewModal({
     data: reviewModalData,
-    readyForReview,
-    critiqueFeedback,
-    setCritiqueFeedback,
-    approvalLoading,
-    setApprovalLoading,
-    setMessages,
     onClose,
 }: PlanReviewModalProps) {
     const planData = reviewModalData.artifact.data as PlanDraftData;
-    const modalMsgKey = reviewModalData.messageKey;
     const isRevised = reviewModalData.artifact.type?.trim().toUpperCase() === 'PLAN_REVISED';
-    const threadId = (planData as any)?.thread_id;
-    const showActions = (planData as any)?.is_final || readyForReview.has(threadId);
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
             {/* Backdrop */}
@@ -154,123 +136,6 @@ export function PlanReviewModal({
                         </div>
                     )}
                 </div>
-
-                {/* Modal Footer — Actions */}
-                {showActions && (
-                    <div className="flex-shrink-0 px-6 py-4 border-t border-slate-700 bg-slate-800/60">
-                        {critiqueFeedback.messageKey === modalMsgKey ? (
-                            <div className="space-y-3">
-                                <label className="block text-sm font-medium text-red-300">Revision Feedback</label>
-                                <textarea
-                                    value={critiqueFeedback.text}
-                                    onChange={(e) => setCritiqueFeedback(prev => ({ ...prev, text: e.target.value }))}
-                                    placeholder="Describe the changes you'd like to see..."
-                                    className="w-full h-28 bg-slate-950 border border-slate-600 rounded-lg px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-red-500 focus:outline-none resize-none"
-                                    autoFocus
-                                    disabled={critiqueFeedback.loading}
-                                />
-                                <div className="flex gap-3 justify-end">
-                                    <button
-                                        onClick={() => setCritiqueFeedback({ messageKey: null, text: '', loading: false })}
-                                        className="px-4 py-2 text-slate-400 hover:text-white text-sm transition-colors"
-                                        disabled={critiqueFeedback.loading}
-                                    >Cancel</button>
-                                    <button
-                                        onClick={async () => {
-                                            if (!critiqueFeedback.text.trim()) return;
-                                            setCritiqueFeedback(prev => ({ ...prev, loading: true }));
-                                            const formData = new FormData();
-                                            formData.append('thread_id', threadId || 'unknown');
-                                            formData.append('action', 'REJECT');
-                                            formData.append('comment', critiqueFeedback.text);
-                                            try {
-                                                const response = await fetch(`/api/terminal/interact`, {
-                                                    method: 'POST',
-                                                    body: formData
-                                                });
-                                                if (!response.ok) throw new Error('Failed to submit feedback');
-                                                setMessages(prev => [...prev, {
-                                                    role: 'user',
-                                                    content: `🔄 Requested revision: ${critiqueFeedback.text}`,
-                                                    timestamp: new Date()
-                                                }]);
-                                                setCritiqueFeedback({ messageKey: null, text: '', loading: false });
-                                                onClose();
-                                            } catch (e) {
-                                                console.error('Critique failed:', e);
-                                                setMessages(prev => [...prev, {
-                                                    role: 'system',
-                                                    content: '❌ Failed to submit feedback. Please try again.',
-                                                    timestamp: new Date()
-                                                }]);
-                                                setCritiqueFeedback(prev => ({ ...prev, loading: false }));
-                                            }
-                                        }}
-                                        disabled={critiqueFeedback.loading || !critiqueFeedback.text.trim()}
-                                        className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                    >
-                                        {critiqueFeedback.loading && <Loader2 size={14} className="animate-spin" />}
-                                        {critiqueFeedback.loading ? 'Submitting...' : 'Submit Feedback'}
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setCritiqueFeedback({ messageKey: modalMsgKey, text: '', loading: false })}
-                                    className="flex-1 py-3 px-4 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 flex items-center justify-center gap-2 transition-colors font-medium"
-                                    disabled={approvalLoading === modalMsgKey}
-                                >
-                                    <XCircle size={18} /> Request Revisions
-                                </button>
-                                <button
-                                    onClick={async () => {
-                                        if (!threadId || threadId === 'unknown') {
-                                            setMessages(prev => [...prev, {
-                                                role: 'system',
-                                                content: '❌ Cannot approve: No valid thread ID found. Please try again.',
-                                                timestamp: new Date()
-                                            }]);
-                                            return;
-                                        }
-                                        setApprovalLoading(modalMsgKey);
-                                        const formData = new FormData();
-                                        formData.append('thread_id', threadId);
-                                        formData.append('action', 'APPROVE');
-                                        formData.append('comment', 'Plan approved by user');
-                                        try {
-                                            const response = await fetch(`/api/terminal/interact`, {
-                                                method: 'POST',
-                                                body: formData
-                                            });
-                                            if (!response.ok) throw new Error(`Server returned ${response.status}`);
-                                            setMessages(prev => [...prev, {
-                                                role: 'user',
-                                                content: '✅ Plan Approved - Execution starting...',
-                                                timestamp: new Date()
-                                            }]);
-                                            onClose();
-                                        } catch (e) {
-                                            console.error('Approve failed:', e);
-                                            setMessages(prev => [...prev, {
-                                                role: 'system',
-                                                content: `❌ Approval failed: ${e instanceof Error ? e.message : 'Unknown error'}. Please try again.`,
-                                                timestamp: new Date()
-                                            }]);
-                                        } finally {
-                                            setApprovalLoading(null);
-                                        }
-                                    }}
-                                    className="flex-1 py-3 px-4 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 flex items-center justify-center gap-2 transition-colors font-medium"
-                                    disabled={approvalLoading === modalMsgKey}
-                                >
-                                    {approvalLoading === modalMsgKey && <Loader2 size={14} className="animate-spin" />}
-                                    {approvalLoading === modalMsgKey ? 'Approving...' : '✅ Approve Plan'}
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
         </div>
     );
