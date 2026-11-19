@@ -31,6 +31,8 @@ import { CheckpointTargetEditor } from "./checkpoint-target-editor";
 import { CriteriaEditor } from "./criteria-editor";
 import { questionAudienceLabel } from "@/lib/project-endpoint";
 import { buttonClass, inputClass, Field, EvidenceRef, Status } from "./fields";
+import { useIntakeCheckpoint } from "@/lib/intake-checkpoint";
+import { IntakeCheckpointCard } from "./intake-checkpoint";
 
 const MAX_CHECKPOINTS = 30;
 
@@ -192,6 +194,10 @@ export function ProjectCheckpointsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const view = checkpointView(project);
+  // A project that came through intake has Intake as its first checkpoint;
+  // while it is unfinished, no checkpoint of the plan is the current one.
+  const intake = useIntakeCheckpoint(project);
+  const intakeCurrent = intake.state === "ready" && intake.checkpoint.status === "current";
   const needOptions = (project.needs ?? []).filter(
     (n) => n.kind === "information" && n.status !== "dropped" && n.knowledge,
   );
@@ -421,17 +427,20 @@ export function ProjectCheckpointsPanel({
         </form>
       ) : (
         <>
+          <IntakeCheckpointCard intake={intake} />
+
           {view.phase === "none" && (
             <p className="text-sm text-slate-400">
-              No checkpoints defined. The long-term goal is the effective endpoint until a
-              checkpoint sequence is adopted.
+              {intakeCurrent
+                ? "No checkpoints are planned after Intake yet."
+                : "No checkpoints defined. The long-term goal is the effective endpoint until a checkpoint sequence is adopted."}
             </p>
           )}
 
           {view.phase === "current" && view.current && (
             <div className="rounded-lg border border-cyan-700/60 bg-cyan-950/20 p-4">
               <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300">
-                <span>Working toward now</span>
+                <span>{intakeCurrent ? "Next, once Intake is complete" : "Working toward now"}</span>
                 <span className="font-mono text-cyan-500/80">
                   checkpoint {view.position} of {view.total}
                 </span>

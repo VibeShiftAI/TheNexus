@@ -586,6 +586,10 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
 
     // ── Bridge / cockpit passthroughs (command-deck dashboard) ─────
     router.get('/stats', (req, res) => proxyJson(req, res, '/api/praxis/stats'));
+    // Intake as a project's first checkpoint, read by Praxis from the saved
+    // intake (Praxis docs/intake-stages.md, "Intake on the board"). Read-only.
+    router.get('/projects/:id/intake-checkpoint', (req, res) =>
+        proxyJson(req, res, `/api/projects/${encodeURIComponent(req.params.id)}/intake-checkpoint`));
     // Voice line health (ElevenLabs quota etc.) — the bridge's muted-voice badge.
     router.get('/voice-status', (req, res) => proxyJson(req, res, '/api/voice/status'));
     // External-comms feed (feedback gateway in/out) — forwards ?since/?limit.
