@@ -117,7 +117,11 @@ function NameRow({ item }: { item: DocumentSupersession }) {
             {item.outcome === "retired" && item.retirement && (
                 <p className="mt-1 text-slate-400">
                     Moved to Reference {formatWhen(item.retirement.retired_at)}
-                    {reopened ? <>; Robert put it back in the queue {formatWhen(item.retirement.reopened_at)}, so it is not retired again</> : null}.
+                    {reopened
+                        ? item.retirement.reopened_via === "registration"
+                            ? <>; new bytes registered for its review brought it back {formatWhen(item.retirement.reopened_at)}, so this name does not retire it again</>
+                            : <>; it was put back in the queue with Move to review queue {formatWhen(item.retirement.reopened_at)}, so this name does not retire it again</>
+                        : null}.
                 </p>
             )}
             {item.reasons.length > 0 && (

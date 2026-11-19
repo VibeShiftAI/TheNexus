@@ -217,6 +217,25 @@ function createDocumentRetirementStore(db) {
             })).filter(draft => draft.comment_count > 0 || draft.answer_count > 0 || String(draft.review.summary || '').trim());
         },
         /**
+         * Where `doc` sits for this rule, from one list-row read: waiting for
+         * Robert's review (its review was requested, or an agent review keeps it
+         * in Needs your review), or out of the queue with the reason. A document
+         * whose review was never requested is not waiting even while replacement
+         * work lists it under In progress: retiring could not move it.
+         */
+        queuePosition(doc) {
+            const row = this.getDocumentListRow(doc.id);
+            const bucket = row.replacement_id ? 'in_progress' : row.agent_review_ready ? 'needs_review' : row.review_status;
+            if (WAITING_BUCKETS.has(bucket) && (row.requires_review || row.agent_review_ready)) return { waiting: true, bucket, row };
+            const open = this.findOpenRetirement(doc.id);
+            const reasons = open
+                ? [reason('already_retired', 'It was already moved to Reference when another document replaced it', { replaced_by_document_id: open.replaced_by_document_id, retired_at: open.retired_at })]
+                : bucket === 'approved'
+                    ? [reason('approved', 'It is already approved, so it is not waiting for your review')]
+                    : [reason('reference', 'It is a reference document, not waiting for your review')];
+            return { waiting: false, bucket, row, reasons };
+        },
+        /**
          * Decide what retiring `doc` would do, from its state now. Never looks at
          * titles, projects or dates. Returns
          *   { outcome: 'not_waiting', reasons }   already out of the queue
@@ -224,21 +243,17 @@ function createDocumentRetirementStore(db) {
          *   { outcome: 'retirable', row }         may move to Reference
          */
         retirementCheck(doc) {
-            const row = this.getDocumentListRow(doc.id);
-            const bucket = row.replacement_id ? 'in_progress' : row.agent_review_ready ? 'needs_review' : row.review_status;
-            if (!WAITING_BUCKETS.has(bucket)) {
-                const open = this.findOpenRetirement(doc.id);
-                const reasons = open
-                    ? [reason('already_retired', 'It was already moved to Reference when another document replaced it', { replaced_by_document_id: open.replaced_by_document_id, retired_at: open.retired_at })]
-                    : bucket === 'approved'
-                        ? [reason('approved', 'It is already approved, so it is not waiting for your review')]
-                        : [reason('reference', 'It is a reference document, not waiting for your review')];
-                return { outcome: 'not_waiting', reasons, bucket };
-            }
+            const position = this.queuePosition(doc);
+            if (!position.waiting) return { outcome: 'not_waiting', reasons: position.reasons, bucket: position.bucket };
+            const { row, bucket } = position;
             const reasons = [];
             if (row.replacement_id) {
-                reasons.push(reason('replacement_in_progress', `Replacement work on it is ${row.replacement_state}${row.replacement_task_id ? ` (task ${row.replacement_task_id})` : ''}; it stays until that work is finished`,
-                    { replacement_id: row.replacement_id, replacement_state: row.replacement_state, task_id: row.replacement_task_id || null }));
+                const task = row.replacement_task_id ? ` (task ${row.replacement_task_id})` : '';
+                const facts = { replacement_id: row.replacement_id, replacement_state: row.replacement_state, task_id: row.replacement_task_id || null };
+                // A failed or cancelled attempt whose bytes are current governs the document until a recovery delivers (contract §12.5).
+                reasons.push(['failed', 'cancelled'].includes(row.replacement_state)
+                    ? reason('replacement_failed', `Its current version came from replacement work that ${row.replacement_state === 'failed' ? 'failed' : 'was cancelled'}${task}; it stays in In progress until a recovery delivers a new version`, facts)
+                    : reason('replacement_in_progress', `Replacement work on it is ${row.replacement_state}${task}; it stays until that work is finished`, facts));
             }
             const outgoing = this.getOutgoing(doc.id);
             if (outgoing && UNSENT_OUTGOING.has(outgoing.status)) {
@@ -247,8 +262,15 @@ function createDocumentRetirementStore(db) {
             const drafts = this.listUnsubmittedDrafts(doc.id);
             if (drafts.length) {
                 const comments = drafts.reduce((n, d) => n + d.comment_count, 0);
-                reasons.push(reason('draft_comments', `It has review comments not yet submitted (${comments} comment${comments === 1 ? '' : 's'} in ${drafts.length} draft${drafts.length === 1 ? '' : 's'}); they are never discarded`,
-                    { review_ids: drafts.map(d => d.review.id), comment_count: comments }));
+                const answers = drafts.reduce((n, d) => n + d.answer_count, 0);
+                const summaries = drafts.filter(d => String(d.review.summary || '').trim()).length;
+                const held = [
+                    comments && `${comments} comment${comments === 1 ? '' : 's'}`,
+                    answers && `${answers} decision answer${answers === 1 ? '' : 's'}`,
+                    summaries && (summaries === 1 ? 'a summary' : `${summaries} summaries`),
+                ].filter(Boolean).join(', ');
+                reasons.push(reason('draft_comments', `It has review work not yet submitted (${held} in ${drafts.length} draft${drafts.length === 1 ? '' : 's'}); none of it is ever discarded`,
+                    { review_ids: drafts.map(d => d.review.id), comment_count: comments, answer_count: answers }));
             }
             const waiting = this.getBlockingTasks(doc.id);
             if (waiting.length) {

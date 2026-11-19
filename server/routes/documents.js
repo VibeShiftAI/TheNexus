@@ -573,20 +573,25 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
     function evaluateName(successor, row, gate, trigger) {
         if (row.outcome === 'retired') return row;
         const matches = resolveReplacedName(row);
+        // A new version registered at the same path under a new task is the usual case: the replacing document never counts
+        // as a candidate for its own name.
+        const others = matches.filter(found => found.id !== successor.id);
         if (!matches.length) {
             return settleName(row, 'not_found', [{ code: 'not_found', message: `No registered document has this ${NAME_LABEL[row.named_by]}; nothing was retired` }]);
         }
-        if (matches.length > 1) {
-            return settleName(row, 'ambiguous', [{ code: 'ambiguous', message: `This path is registered as ${matches.length} documents (one per task); name the one it replaces by document id or deliverable key. Nothing was retired` }], { candidates: matches });
+        if (!others.length) {
+            return settleName(row, 'self', [{ code: 'self', message: 'This names the replacing document itself; a document cannot retire itself' }], { target: successor });
         }
-        const [target] = matches;
-        if (target.id === successor.id) {
-            return settleName(row, 'self', [{ code: 'self', message: 'This names the replacing document itself; a document cannot retire itself' }], { target });
+        if (others.length > 1) {
+            return settleName(row, 'ambiguous', [{ code: 'ambiguous', message: `This path is registered as ${others.length} other documents (one per task); name the one it replaces by document id or deliverable key. Nothing was retired` }], { candidates: others });
         }
-        // A document already out of the queue is reported at once, ready or not; the guards are judged when the name applies.
-        const check = store().retirementCheck(target);
-        if (check.outcome === 'not_waiting') return settleName(row, 'not_waiting', check.reasons, { target });
+        const [target] = others;
+        // A document already out of the queue is reported at once, ready or not. The guards (several queries each) are
+        // judged only when the name can apply, so pending names stay cheap on every list and count read.
+        const position = store().queuePosition(target);
+        if (!position.waiting) return settleName(row, 'not_waiting', position.reasons, { target });
         if (!gate.ok) return settleName(row, 'pending', [gate.reason], { target });
+        const check = store().retirementCheck(target);
         if (check.outcome !== 'retirable') return settleName(row, check.outcome, check.reasons, { target });
         const retirement = store().retireDocument({ target, successor, supersession: row, trigger, bucket: check.bucket });
         console.log(`[Documents] retired ${target.id} (was ${check.bucket}) as replaced by ${successor.id} (named by ${row.named_by}, registration ${row.registration_id || 'plain'}, task ${row.task_id || 'none'}, ${trigger}); retirement ${retirement.id}, no decision recorded`);
@@ -1143,10 +1148,12 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                     const occupant = store().findDocumentByPath(resolved.canonicalPath, taskId);
                     if (occupant && occupant.id !== doc.id) throw conflict('identity_conflict', 'Another registered document already holds this file for this task');
                 }
-                // A retired document (contract §13) stays in Reference when a registration carries the bytes it already
-                // had (a retry or replay must not undo the retirement); new bytes declared for review bring it back.
+                // A retired document (contract §13) stays in Reference when a registration carries the bytes it had when it
+                // was retired (a retry or replay must not undo the retirement); other bytes declared for review bring it
+                // back. Compared with the retired revision, not the current one: a read may have captured newer bytes since.
                 const openRetirement = v.requiresReview ? store().findOpenRetirement(doc.id) : null;
-                const keepRetired = Boolean(openRetirement && doc.current_revision_id && store().findRevisionByHash(doc.id, hash)?.id === doc.current_revision_id);
+                const retiredRevisionId = openRetirement?.previous?.current_revision_id || null;
+                const keepRetired = Boolean(openRetirement && retiredRevisionId && store().findRevisionByHash(doc.id, hash)?.id === retiredRevisionId);
                 doc = store().updateDocument(doc.id, {
                     ...declared,
                     ...(keepRetired ? { requires_review: false } : {}),

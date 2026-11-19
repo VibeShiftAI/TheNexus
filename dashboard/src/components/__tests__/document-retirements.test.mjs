@@ -176,3 +176,15 @@ test('nothing renders when the API predates retirements or there is nothing to s
   const empty = mount(ReplacesPanel, { replaces: [] });
   try { assert.equal(empty.container.innerHTML, ''); } finally { empty.cleanup(); }
 });
+
+test('a reopened name says how it came back: Move to review queue, or new bytes registered for review', () => {
+  const reopened = via => name({ id: `n-${via}`, outcome: 'retired', target: ref(`doc-${via}`, `Doc ${via}`), retirement: { id: `rt-${via}`, state: 'reopened', retired_at: '2026-11-19T15:50:00Z', trigger: 'registration', reopened_at: '2026-11-19T16:30:00Z', reopened_by: 'someone', reopened_via: via, reason: null } });
+  const t = mount(ReplacesPanel, { replaces: [reopened('request_review'), reopened('registration')] });
+  try {
+    const rows = [...t.container.querySelectorAll('[data-replaces-row]')];
+    assert.match(rows[0].textContent, /put back in the queue with Move to review queue/);
+    assert.match(rows[1].textContent, /new bytes registered for its review brought it back/);
+    assert.doesNotMatch(t.container.textContent, /Robert put it back/);
+    for (const row of rows) assert.match(row.textContent, /so this name does not retire it again/);
+  } finally { t.cleanup(); }
+});

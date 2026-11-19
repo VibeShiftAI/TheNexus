@@ -641,3 +641,54 @@ describe('the store: retirement records and the rule underneath the route (crite
         expect(store().listManualClosesReplacedBy(b.id)).toEqual([]);
     });
 });
+
+describe('review repairs (code-review gate, 2026-11-19)', () => {
+    test('new bytes a page read captured after the retirement still bring the document back when registered for review', async () => {
+        const old = await original();
+        await replacement([{ deliverable_key: 'launch-brief-v1' }]);
+        const file = path.join(projectRoot, 'docs', 'brief-v1.md');
+        fs.writeFileSync(file, `${V1}\nRevised after it was retired.\n`);
+        // Opening the retired page captures the new bytes as its current revision.
+        const page = await read(old.document.id);
+        expect(page.revision.id).not.toBe(old.revision.id);
+        expect(page.retirement).toMatchObject({ state: 'retired' });
+        const revised = await register(file, { key: 'launch-brief-v1' });
+        expect(revised.json.retirement).toMatchObject({ action: 'reopened_by_registration', reopened_via: 'registration' });
+        expect(revised.json.document.requires_review).toBe(true);
+    });
+
+    test('a new version at the same path under a new task retires the old one by path, not ambiguous', async () => {
+        const shared = writeFile('brief.md', V1);
+        const old = await register(shared, { key: 'launch-brief-v1' });
+        expect(old.status).toBe(201);
+        fs.writeFileSync(shared, V2);
+        const next = await register(shared, { key: 'launch-brief-v2', task_id: NEW_TASK, replaces: [{ path: shared }] });
+        expect(next.status).toBe(201);
+        expect(next.json.document.id).not.toBe(old.json.document.id);
+        expect(next.json.replaces[0]).toMatchObject({ outcome: 'retired', target: { document_id: old.json.document.id }, candidates: [] });
+        // A path that only the replacing document holds names itself.
+        const alone = await register(writeFile('alone.md', '# Alone\n'), { key: 'alone', task_id: NEW_TASK, replaces: [{ path: path.join(projectRoot, 'docs', 'alone.md') }] });
+        expect(alone.json.replaces[0]).toMatchObject({ outcome: 'self' });
+    });
+
+    test('a reference document listed In progress by replacement work is not waiting; a failed attempt is worded as such', async () => {
+        const reference = await register(writeFile('ref.md', '# Reference notes\n'), { key: 'ref-notes', requires_review: false });
+        store().insertReplacement({ document_id: reference.json.document.id, base_revision_id: reference.json.revision.id, client_request_id: 'synthetic-ref-1', task_id: WAITER_TASK, state: 'running', accepted_by: 'local_user' });
+        const failedOld = await original();
+        store().insertReplacement({ document_id: failedOld.document.id, base_revision_id: failedOld.revision.id, result_revision_id: failedOld.revision.id, client_request_id: 'synthetic-failed-1', task_id: WAITER_TASK, state: 'failed', accepted_by: 'local_user' });
+        const next = await replacement([{ deliverable_key: 'ref-notes' }, { deliverable_key: 'launch-brief-v1' }]);
+        expect(next.replaces[0]).toMatchObject({ outcome: 'not_waiting', reasons: [{ code: 'reference' }] });
+        expect(next.replaces[1]).toMatchObject({ outcome: 'left_waiting', reasons: [{ code: 'replacement_failed', replacement_state: 'failed' }] });
+        expect(next.replaces[1].reasons[0].message).toMatch(/came from replacement work that failed .*until a recovery delivers a new version/);
+    });
+
+    test('a draft holding only a summary is named as such, not as zero comments', async () => {
+        const old = await original();
+        const opened = await api('POST', `/api/documents/${old.document.id}/reviews`, {});
+        expect((await api('PATCH', `/api/documents/reviews/${opened.json.review.id}`, { summary: 'Half-written overall note.' })).status).toBe(200);
+        const next = await replacement([{ deliverable_key: 'launch-brief-v1' }]);
+        expect(next.replaces[0]).toMatchObject({ outcome: 'left_waiting', reasons: [{ code: 'draft_comments', comment_count: 0 }] });
+        expect(next.replaces[0].reasons[0].message).toMatch(/\(a summary in 1 draft\)/);
+        expect(next.replaces[0].reasons[0].message).not.toMatch(/0 comments/);
+    });
+});

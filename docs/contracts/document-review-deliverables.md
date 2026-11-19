@@ -1069,10 +1069,13 @@ a plain registration (which never requests review) retires only after review
 of it is requested.
 
 Each name is resolved first, so a name that matches nothing (`not_found`),
-matches several documents (`ambiguous`: a path registered under several
-tasks; name one by id or key), names the document itself (`self`) or names a
-document already out of the queue (`not_waiting`) is reported at once, ready
-or not.
+matches several other documents (`ambiguous`: a path registered under several
+tasks; name one by id or key), names only the document itself (`self`) or
+names a document already out of the queue (`not_waiting`: its review was never
+requested, it is approved, or it is already retired) is reported at once,
+ready or not. The replacing document never counts as a match for its own path
+name, so a new version registered at the same path under a new task retires
+the old one.
 
 ### 13.3 What retiring does, and what it never does
 
@@ -1101,6 +1104,7 @@ every one that holds is listed as a reason `{ code, message, …facts }`:
 | Code | Holds when |
 |---|---|
 | `replacement_in_progress` | it has open replacement work (§12) |
+| `replacement_failed` | its current version came from a failed or cancelled attempt, which keeps it In progress until a recovery delivers (§12.5) |
 | `outgoing_unsent` | its outgoing message is `draft`, `approved`, `delivering` or `uncertain` |
 | `draft_comments` | a draft review round holds comments, decision answers or a summary not yet submitted (an empty draft does not hold it) |
 | `waiting_tasks` | active tasks wait on it (completed or archived ones do not) |
@@ -1125,10 +1129,12 @@ with `action: "reopened"`, or null) and `replaces` (this document's own names,
 applied now if it is ready).
 
 A declared re-registration of a retired document that carries the bytes it
-already had (a retry or replay) keeps it in Reference and answers
-`retirement.action: "kept"`. New bytes declared for review bring it back and
-record the retirement as reopened with `reopened_via: registration`
-(`retirement.action: "reopened_by_registration"`).
+had when it was retired (a retry or replay) keeps it in Reference and answers
+`retirement.action: "kept"`; its receipt keeps the declaration as sent
+(`requires_review: true`) beside `review_status: "reference"`. Any other bytes
+declared for review (including bytes a read captured after the retirement)
+bring it back and record the retirement as reopened with
+`reopened_via: registration` (`retirement.action: "reopened_by_registration"`).
 
 ### 13.6 Responses, the review page and the manual closes
 
@@ -1173,11 +1179,14 @@ each guard and their combination, re-naming after a guard clears, reopening
 and the final retired name, replay versus new bytes, every reported outcome,
 malformed lists, the manual-close shape, no similarity matching, the
 reference-only, plain and not-ready-visual pending cases and application on a
-later count) and at the store (the check, the record, immutability, a single
-reopening, re-declaration and exact paths). The `dashboard` suite
+later count), at the store (the check, the record, immutability, a single
+reopening, re-declaration and exact paths), and the code-review repairs (new
+bytes captured by a read after a retirement, a new version at the same path
+under a new task, a reference document with replacement work, a failed
+attempt's wording, a summary-only draft). The `dashboard` suite
 `document-retirements.test.mjs` covers the banner (registration and manual in
-the same form), the way back through request-review, the replaces panel and
-the named-but-waiting notice.
+the same form), the way back through request-review, the replaces panel (with
+how a reopened name came back) and the named-but-waiting notice.
 
 Activation: the two tables are created additively at API startup; the live
 :4000 serves this section only after the Nexus API restarts on the new code.
