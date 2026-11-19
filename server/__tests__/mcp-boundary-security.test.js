@@ -24,6 +24,11 @@
  *
  * The write-path TOOL_MATRIX below is a ratchet: registering a new tool fails
  * this suite until the tool is classified here with its privilege gate.
+ *
+ * These cases call handlers directly. The protocol orderings a direct call
+ * cannot reach (tools/call with no prior tools/list, and a grant revoked in
+ * keys.json mid-session) run against the real stdio server, with server-state
+ * snapshots and positive controls, in mcp-boundary-denied-calls.test.js.
  */
 
 const fs = require('fs');
@@ -553,6 +558,39 @@ describe('request isolation — identity is context, never ambient', () => {
     const records = transitionsIn(config);
     expect(records.map((r) => r.intent.title)).toEqual(['w1', 'w2']);
     expect(records.every((r) => r.caller.identity === 'agent-a')).toBe(true);
+  });
+
+  test('perInvocationAuth: each call resolves its own caller once, and no caller exists outside a call', async () => {
+    jest.resetModules();
+    jest.doMock(`${SVC}/lib/log`, () => ({ log: () => {} }));
+    jest.doMock(`${SVC}/lib/config`, () => config);
+    const { perInvocationAuth } = require(`${SVC}/lib/auth`);
+
+    // The resolver stands in for keys.json: the grant changes between calls.
+    const grants = [writerCaller('agent-a'), READONLY];
+    const resolve = jest.fn(() => grants.shift() || null);
+    const registry = makeRegistry();
+    const { server, ctx } = perInvocationAuth(registry.server, resolve);
+    let release;
+    const gate = new Promise((r) => { release = r; });
+    server.tool('probe', 'probe', {}, async () => {
+      const first = ctx.caller.identity;
+      await gate;
+      return { first, last: ctx.caller.identity };
+    });
+    const { handler } = registry.tools.get('probe');
+
+    expect(ctx.caller).toBeNull();
+    // Two overlapping calls: the grant changes between them while the first
+    // is still awaiting.
+    const first = handler({});
+    const second = handler({});
+    release();
+    // One snapshot per invocation: never re-resolved mid-call, never shared.
+    expect(await first).toEqual({ first: 'agent-a', last: 'agent-a' });
+    expect(await second).toEqual({ first: 'readonly', last: 'readonly' });
+    expect(resolve).toHaveBeenCalledTimes(2);
+    expect(ctx.caller).toBeNull();
   });
 
   test('MG-1: no session-id dependency and no ambient key reads in the serving surface', () => {

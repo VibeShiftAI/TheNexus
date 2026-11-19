@@ -28,8 +28,9 @@
  * draw on one quota, one audit vocabulary (transition-log compensation keys on
  * it) and one contention gauge.
  *
- * Identity is whatever `ctx.caller` the surface resolved for this process —
- * never read from the environment here (MG-1).
+ * Identity is whatever `ctx.caller` the surface resolved for this invocation
+ * (stdio.js re-resolves it per tool call, lib/auth.js perInvocationAuth). It
+ * is never read from the environment here (MG-1).
  */
 const { checkPrivilege } = require('./auth');
 const { guardDispatchPayload } = require('../../../server/lib/provenance');

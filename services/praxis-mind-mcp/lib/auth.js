@@ -3,6 +3,7 @@
  * to a caller identity + privileges via ~/.praxis-mind/keys.json.
  */
 const fs = require('fs');
+const { AsyncLocalStorage } = require('async_hooks');
 const { KEYS_FILE } = require('./config');
 const { log } = require('./log');
 
@@ -24,9 +25,27 @@ const PRIVILEGES = Object.freeze([
   // retired with server/mcp.js (M-1, 2026-09-04); no key ever held them.
 ]);
 
+// Cache of the parsed keys file, keyed by a stat signature. The file is
+// re-read whenever the signature changes, so an operator edit (a revoked key,
+// a withdrawn privilege, a chmod) reaches the NEXT invocation of an already
+// running spawn instead of waiting for the client to respawn the server.
 let _keys = null;
+let _keysSignature = null;
+
+function keysSignature() {
+  try {
+    const st = fs.statSync(KEYS_FILE);
+    return [st.dev, st.ino, st.size, st.mtimeMs, st.ctimeMs, st.mode].join(':');
+  } catch (e) {
+    return `unreadable:${e.code || e.message}`;
+  }
+}
+
 function loadKeys() {
-  if (_keys) return _keys;
+  const signature = keysSignature();
+  if (_keys && signature === _keysSignature) return _keys;
+  const reloading = _keysSignature !== null;
+  _keysSignature = signature;
   try {
     // The keys file IS the identity boundary: a group/world-accessible copy is
     // no longer a scoped credential, so refuse it rather than trust it.
@@ -38,7 +57,10 @@ function loadKeys() {
     }
     const raw = fs.readFileSync(KEYS_FILE, 'utf8');
     _keys = JSON.parse(raw).keys || {};
+    if (reloading) log(`keys file ${KEYS_FILE} changed since it was last read; reloaded ${Object.keys(_keys).length} key(s)`);
   } catch (e) {
+    // Fail closed: an unreadable or half-written file authorizes nobody. The
+    // signature changes again when the write completes, which re-reads it.
     log(`FATAL: failed to load keys file ${KEYS_FILE}: ${e.message}`);
     _keys = {};
   }
@@ -86,4 +108,38 @@ function checkPrivilege(caller, action) {
   return null; // no error — caller is authorized
 }
 
-module.exports = { resolveCaller, checkPrivilege, PRIVILEGES };
+/**
+ * Authorize each invocation, not the spawn. Returns a `server` facade whose
+ * `tool()` registers every handler wrapped so the caller is resolved from
+ * PRAXIS_MIND_KEY + keys.json at the moment of the call, and a `ctx` whose
+ * `caller` reads that per-invocation snapshot (one consistent caller for the
+ * whole call, null outside any call so nothing can act on a stale grant).
+ *
+ * Why: tools/call does not require a prior tools/list, and a discovery
+ * response is not a durable authorization decision; policy can change between
+ * discovery and invocation. A stdio spawn lives as long as the client session
+ * (hours), so a caller resolved once at spawn kept a revoked grant alive for
+ * the rest of that session. server/__tests__/mcp-boundary-denied-calls.test.js
+ * drives the real stdio server through both orderings.
+ */
+function perInvocationAuth(server, resolve = resolveCaller) {
+  const invocation = new AsyncLocalStorage();
+  const ctx = {
+    get caller() {
+      const store = invocation.getStore();
+      return store ? store.caller : null;
+    },
+  };
+  const scopedServer = {
+    tool(...args) {
+      const handler = args[args.length - 1];
+      return server.tool(
+        ...args.slice(0, -1),
+        (...callArgs) => invocation.run({ caller: resolve() }, () => handler(...callArgs)),
+      );
+    },
+  };
+  return { server: scopedServer, ctx };
+}
+
+module.exports = { resolveCaller, checkPrivilege, perInvocationAuth, PRIVILEGES };

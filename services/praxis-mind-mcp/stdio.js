@@ -6,7 +6,9 @@
  * ledger, rate limits) lives in WAL-mode sqlite at ~/.praxis-mind/.
  *
  * Caller identity comes from PRAXIS_MIND_KEY env (passed by the client
- * via its MCP config). Resolved against ~/.praxis-mind/keys.json (chmod 600).
+ * via its MCP config). Resolved against ~/.praxis-mind/keys.json (chmod 600)
+ * on every tool call, not once per spawn, so revocation is not deferred to
+ * the next respawn.
  *
  * IMPORTANT: never write to stdout from anything other than the SDK —
  * stdout is the JSON-RPC channel. All diagnostics go to stderr.
@@ -19,7 +21,7 @@ const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
 
 const { log } = require('./lib/log');
-const { resolveCaller } = require('./lib/auth');
+const { resolveCaller, perInvocationAuth } = require('./lib/auth');
 
 const identityTool = require('./tools/identity');
 const vaultTool = require('./tools/vault');
@@ -40,13 +42,16 @@ async function main() {
     version: '0.1.0',
   });
 
-  const ctx = { caller };
+  // The spawn-time resolution above is for the log only. Every tool call
+  // re-resolves its caller (lib/auth.js perInvocationAuth), so a key revoked
+  // or narrowed in keys.json applies to this session's next call.
+  const scoped = perInvocationAuth(server);
 
-  identityTool.register(server, ctx);
-  vaultTool.register(server, ctx);
-  memoryTool.register(server, ctx);
-  brainTool.register(server, ctx);
-  nexusTool.register(server, ctx);
+  identityTool.register(scoped.server, scoped.ctx);
+  vaultTool.register(scoped.server, scoped.ctx);
+  memoryTool.register(scoped.server, scoped.ctx);
+  brainTool.register(scoped.server, scoped.ctx);
+  nexusTool.register(scoped.server, scoped.ctx);
 
   log('All tools registered. Connecting transport.');
   const transport = new StdioServerTransport();
