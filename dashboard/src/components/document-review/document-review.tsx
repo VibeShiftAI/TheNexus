@@ -102,6 +102,7 @@ import { DecisionCard, ReplacementDetail } from "./decision-card";
 import { DocumentChoices, StaleAnswersNotice } from "./document-choices";
 import { choicesView, unsendableDraftAnswers } from "@/lib/document-choices";
 import { OutgoingCard } from "./outgoing-card";
+import { NamedAsReplacedNotice, ReplacesPanel, RetirementBanner } from "./retirement-panel";
 import { DocumentStatusBadge } from "./deliverable-row";
 import { HumanBriefBlock } from "@/components/human-brief";
 import { briefFromMetadata } from "@/lib/human-brief";
@@ -1758,6 +1759,11 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                             </span>
                         </div>
                     )}
+                    {/* Retiring replaced documents (contract §13): what replaced this one, what this one replaced, and who
+                        named this one but left it waiting, with every reason. A manual close shows in the same form. */}
+                    {data?.retirement && <RetirementBanner retirement={data.retirement} />}
+                    {data?.named_as_replaced && <NamedAsReplacedNotice items={data.named_as_replaced} />}
+                    {data?.replaces && <ReplacesPanel replaces={data.replaces} />}
                     {data && data.file_state !== "ok" && (
                         <div role="status" className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100">
                             The file on disk is currently unavailable ({data.file_error || data.file_state}). Showing the last captured revision{VISUAL_NOTE(mediaType)}.

@@ -389,7 +389,82 @@ export interface DocumentResponse {
     replacement?: DocumentReplacement | null;
     reviewable?: Reviewability;
     version?: { current_revision_id: string | null; current_version: number | null; revision_count: number };
+    /**
+     * Retiring replaced documents (contract §13). Absent on an API that predates it. `retirement` is the one in force
+     * (a registration's, or a manual close of 2026-11-18/19 read in the same shape); `replaces` is what this document
+     * named as replaced, with outcomes and reasons; `named_as_replaced` is other documents that named this one but
+     * left it waiting or have not applied the name yet.
+     */
+    retirement?: DocumentRetirement | null;
+    retirement_history?: DocumentRetirement[];
+    replaces?: DocumentSupersession[];
+    named_as_replaced?: DocumentSupersession[];
     links: { review_url: string; raw_url: string; review_path?: string };
+}
+
+/** How a registration names a document it replaces: exact identities only, never a title, project or age. */
+export type ReplacedName = Partial<Record<'document_id' | 'deliverable_key' | 'path', string>>;
+
+/** A document in a retirement record: its title, review page and status now (null fields when it no longer exists). */
+export interface DocumentRetirementRef {
+    document_id: string;
+    title: string | null;
+    exists: boolean;
+    review_path: string;
+    review_status: DocumentReviewStatus | null;
+}
+
+/** A document moved to Reference because a later one replaced it, or closed by hand; never a decision. */
+export interface DocumentRetirement {
+    id: string | null;
+    source: 'replacement' | 'manual';
+    state: 'retired' | 'reopened';
+    retired_at: string;
+    retired_by: string | null;
+    reason: string;
+    replaced_by: DocumentRetirementRef | null;
+    replaced_by_revision_id: string | null;
+    registration_id: string | null;
+    task_id: string | null;
+    task_path: string | null;
+    trigger: 'registration' | 'review_requested' | 'ready' | 'manual';
+    named_as: ReplacedName | null;
+    previous: { requires_review?: boolean; review_status?: DocumentReviewStatus; list_bucket?: string; blocking_task_ids?: string[]; intended_action?: string } | null;
+    reopened_at: string | null;
+    reopened_by: string | null;
+    reopened_via: 'request_review' | 'registration' | null;
+}
+
+export type SupersessionOutcome = 'pending' | 'retired' | 'left_waiting' | 'not_found' | 'not_waiting' | 'self' | 'ambiguous';
+
+/** Why a name retired nothing (yet): a guard on the named document, or the replacing document not being ready. */
+export interface SupersessionReason {
+    code: string;
+    message: string;
+}
+
+/** One name a registration declared (or a manual close that named this document), with its outcome. */
+export interface DocumentSupersession {
+    id: string | null;
+    source: 'registration' | 'manual';
+    named_as: ReplacedName | null;
+    outcome: SupersessionOutcome;
+    reasons: SupersessionReason[];
+    target: DocumentRetirementRef | null;
+    candidates: DocumentRetirementRef[];
+    registration_id: string | null;
+    revision_id: string | null;
+    task_id: string | null;
+    declared_by: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+    evaluated_at: string | null;
+    retirement: {
+        id: string | null; state: 'retired' | 'reopened'; retired_at: string | null; trigger: string;
+        reopened_at: string | null; reopened_by: string | null; reopened_via: 'request_review' | 'registration' | null; reason: string | null;
+    } | null;
+    /** On `named_as_replaced`: the document that named this one. */
+    replacing?: DocumentRetirementRef | null;
 }
 
 export interface DocumentListEntry extends DocumentRecord {
@@ -516,6 +591,9 @@ export function getReviewTaskOptions(): Promise<{ tasks: DocumentBlockingTask[] 
 
 export function requestDocumentReview(documentId: string, blockingTaskIds: string[]): Promise<{
     document: DocumentRecord; review_status: DocumentReviewStatus; blocking_tasks: DocumentBlockingTask[];
+    /** The retirement this request reopened (contract §13), else null; and this document's own names, now applied if it is ready. */
+    retirement?: (DocumentRetirement & { action: string; message: string }) | null;
+    replaces?: DocumentSupersession[];
 }> {
     return request(`${BASE}/${encodeURIComponent(documentId)}/request-review`, {
         method: 'POST', body: JSON.stringify({ blocking_task_ids: blockingTaskIds }),
