@@ -41,7 +41,8 @@ praxis-mind MCP surface every session rides" refers to.
   rate_limits_per_hour, daily_cap_usd }`. Three identities exist today — `claude`, `codex`,
   `antigravity` — and **all three currently hold an identical privilege set**, including every
   write tool.
-- **Authorization:** per-tool privilege check (`checkPrivilege`) plus per-caller/per-tool/per-hour
+- **Authorization:** per-tool privilege check (`checkPrivilege`), with the caller re-resolved
+  from `keys.json` on every tool call (`perInvocationAuth`, since 2026-11-19), plus per-caller/per-tool/per-hour
   rate limits (`lib/ratelimit.js`, counter in WAL sqlite). `nexus_project_update` falls back from
   `nexus.project_update` to the `nexus.task_update` privilege when the dedicated one is absent.
 - **Read trust:** retrieved content is rendered through `lib/provenance.js`, which stamps an
@@ -321,6 +322,30 @@ rejection, request isolation — the July-revision + unauthorized-action-evaluat
 
 Still open from the P0/P1 set: AZ-3 (daily cost cap enforcement), key expiry/rotation
 (ID-2), read audit (AU-2), remote attribution (AU-3), and the readonly dispatch-lane wiring.
+
+### Status update: 2026-11-19 (Nexus task `973f4c51`, "Verify denied calls against server-side effects")
+
+Two protocol orderings a direct handler call cannot reach are now tested against the real
+stdio server (`server/__tests__/mcp-boundary-denied-calls.test.js`), and a denial counts only
+when every place a tool can leave state (vault tree, Nexus backend, cost ledger, transition
+log) is byte-identical before and after it. Each denial has an authorized positive control
+through the same harness that does change that state.
+
+- **Invocation without discovery:** `tools/call` with no prior `tools/list` is refused for an
+  under-privileged key with no side effect, and succeeds for an authorized key. `tools/list`
+  is not filtered by privilege (a reader sees `vault_write` advertised) and grants nothing.
+- **Revocation mid-session (gap found and closed):** until this change `stdio.js` resolved the
+  caller once at spawn and `lib/auth.js` memoized `keys.json`, so a key revoked or narrowed
+  while a client session was open kept its old grant until the client respawned the server
+  (the baseline run of the new suite shows the revoked writer still writing). Now
+  `perInvocationAuth` resolves the caller per tool call, `loadKeys` re-reads `keys.json` when
+  its stat signature changes (logging the reload on stderr, failing closed on an unreadable or
+  half-written file), and the next call in the same session is refused with no side effect.
+  A deleted key resolves unauthenticated; a re-granted key is honored without a respawn.
+- **Scope of the guarantee:** revocation applies at the next invocation, not to a call already
+  running (each call keeps the one caller snapshot it started with). `PRAXIS_MIND_KEY` itself
+  still cannot change for a running spawn; revocation means editing `keys.json`. Key expiry and
+  `key_id` (ID-2) remain open.
 
 ---
 

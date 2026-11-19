@@ -1,0 +1,11 @@
+  ● praxis-stream route › POST /api/praxis/events ingest › ignores X-Forwarded-For and judges loopback by the socket peer
+  ● studio route › the enrich endpoint drains un-enriched objects and reports remaining
+FAIL server/__tests__/praxis-stream.test.js
+FAIL server/__tests__/studio-route.test.js
+Test Suites: 2 failed, 176 passed, 178 total
+Tests:       2 failed, 1 skipped, 2370 passed, 2373 total
+baseline 5de09506:   ● praxis-stream route › POST /api/praxis/events ingest › ignores X-Forwarded-For and judges loopback by the socket peer
+baseline 5de09506:   ● studio route › the enrich endpoint drains un-enriched objects and reports remaining
+baseline 5de09506: FAIL server/__tests__/praxis-stream.test.js
+baseline 5de09506: FAIL server/__tests__/studio-route.test.js
+baseline 5de09506: Tests:       2 failed, 42 passed, 44 total

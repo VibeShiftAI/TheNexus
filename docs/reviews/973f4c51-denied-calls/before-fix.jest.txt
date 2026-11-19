@@ -1,0 +1,67 @@
+# git rev-parse HEAD: 5de09506b893081fb7d41dea194a4d3c83f4f433 (lib/auth.js and stdio.js unchanged from baseline 5de09506)
+# command: npx jest server/__tests__/mcp-boundary-denied-calls.test.js
+FAIL server/__tests__/mcp-boundary-denied-calls.test.js
+  invocation without discovery — tools/call is authorized at invocation, not by tools/list
+    ✓ an under-privileged caller that never listed tools is refused, and the server state is unchanged (305 ms)
+    ✓ positive control: an authorized caller that never listed tools writes, and the state changes (379 ms)
+    ✓ discovery grants nothing: tools/list advertises write tools to a reader that is still refused (231 ms)
+  invocation after revocation — a grant withdrawn mid-session stops the next call in that session
+    ✕ privileges removed from the key are refused on the next call, with no side effect; what remains still works (358 ms)
+    ✕ a key deleted mid-session resolves unauthenticated on the next call, with no side effect (265 ms)
+    ✕ positive control: a key re-granted mid-session is honored on the next call without a respawn (178 ms)
+
+  ● invocation after revocation — a grant withdrawn mid-session stops the next call in that session › privileges removed from the key are refused on the next call, with no side effect; what remains still works
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: undefined
+
+      368 |     const create = await session.call('nexus_task_create', CREATE_ARGS('after revocation'));
+      369 |
+    > 370 |     expect(write.isError).toBe(true);
+          |                           ^
+      371 |     expect(textOf(write)).toMatch(/caller "writer" lacks privilege "vault\.write"/);
+      372 |     expect(create.isError).toBe(true);
+      373 |     expect(textOf(create)).toMatch(/caller "writer" lacks privilege "nexus\.task_create"/);
+
+      at Object.toBe (server/__tests__/mcp-boundary-denied-calls.test.js:370:27)
+
+  ● invocation after revocation — a grant withdrawn mid-session stops the next call in that session › a key deleted mid-session resolves unauthenticated on the next call, with no side effect
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: undefined
+
+      405 |
+      406 |     for (const result of [write, create, who]) {
+    > 407 |       expect(result.isError).toBe(true);
+          |                              ^
+      408 |       expect(textOf(result)).toMatch(/unauthenticated/i);
+      409 |     }
+      410 |     expect(serverState(fixture, nexus)).toEqual(before);
+
+      at Object.toBe (server/__tests__/mcp-boundary-denied-calls.test.js:407:30)
+
+  ● invocation after revocation — a grant withdrawn mid-session stops the next call in that session › positive control: a key re-granted mid-session is honored on the next call without a respawn
+
+    expect(received).toBeUndefined()
+
+    Received: true
+
+      425 |
+      426 |     const ok = await session.call('vault_write', VAULT_ARGS('regrant'));
+    > 427 |     expect(ok.isError).toBeUndefined();
+          |                        ^
+      428 |     const after = serverState(fixture, nexus);
+      429 |     expect(after).not.toEqual(before);
+      430 |     expect(after.vault['memories/regrant.md']).toBeDefined();
+
+      at Object.toBeUndefined (server/__tests__/mcp-boundary-denied-calls.test.js:427:24)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 3 passed, 6 total
+Snapshots:   0 total
+Time:        2.208 s
+Ran all test suites matching server/__tests__/mcp-boundary-denied-calls.test.js.
