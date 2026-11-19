@@ -1028,3 +1028,158 @@ Activation: the schema change is additive and runs at API startup; the live
 The dashboard coerces a missing `in_progress` count to 0 and treats a missing
 `reviewable` as reviewable, so a newer dashboard against an older API degrades
 to the previous behaviour.
+
+## 13. Retiring a document its replacement names (2026-11-19, task d9f46e2f)
+
+Why: on 2026-11-18 and 2026-11-19, 113 documents that later deliverables had
+replaced were closed by hand (`metadata.review_closed`) so Needs your review
+showed only live work. This section makes that automatic and recorded: a
+registration names the waiting documents it replaces, and the Nexus moves them
+to Reference itself, with no decision and a way back.
+
+### 13.1 Naming what a registration replaces
+
+- Both registration forms (plain, and declared with `deliverable`) accept an
+  optional top-level `replaces`: an array of at most 50 names, each an object
+  with exactly one of `{ "document_id": "…" }`, `{ "deliverable_key": "…" }`
+  or `{ "path": "/absolute/path" }` (a path is normalized and also matched in
+  its resolved form). Duplicates are dropped; an empty or absent list names
+  nothing.
+- A malformed list (not an array, an entry with no field or two fields, an
+  unknown field such as `title`, an empty value, a relative path) is refused
+  with 400 `invalid_replaces` and nothing is registered.
+- Names are exact identities only. **Nothing is ever retired on title,
+  project or age similarity**: a document that looks like a successor in
+  every human sense retires nothing unless it names what it replaces. A name
+  may point into another project (the modular template replaced documents in
+  two projects).
+
+### 13.2 When a name applies (Robert's ruling, option A)
+
+A replacing document retires what it names only once it is itself **waiting
+for Robert's review** (`requires_review` true) and **ready to view** (its
+current revision is reviewable: no open replacement work, not the bytes of a
+failed attempt, and for visual media every required asset servable). Until
+then each name is `pending`, with the reason (`replacement_not_in_queue` or
+`replacement_not_ready`), and it is applied the moment the document enters the
+queue: at its next registration, at request-review on it, or at the next read
+of it, its readiness, a document list or the counts. A reference-only
+registration (`requires_review: false`) therefore never retires anything, and
+a plain registration (which never requests review) retires only after review
+of it is requested.
+
+Each name is resolved first, so a name that matches nothing (`not_found`),
+matches several documents (`ambiguous`: a path registered under several
+tasks; name one by id or key), names the document itself (`self`) or names a
+document already out of the queue (`not_waiting`) is reported at once, ready
+or not.
+
+### 13.3 What retiring does, and what it never does
+
+Retiring clears `requires_review` on the named document, so it moves from
+Needs your review or Changes requested into Reference (an In progress
+document always has open work, which keeps it, 13.4) and the counts follow, in the same transaction as the registration or request that
+made it due. It records **no decision** (no approval, no change request,
+nothing else), so no consumer can act on its intended action, and the
+decisions route refuses it as a reference document. Its waiting-task list,
+decisions, drafts, comments and declaration are left exactly as they were.
+
+The record (`review_document_retirements`) keeps what replaced it
+(`replaced_by_document_id`, `replaced_by_revision_id`), when (`retired_at`),
+which registration and task (`registration_id`, null for a plain
+registration; `task_id`), the name used, the trigger (`registration`,
+`review_requested`, `ready`) and the previous state (`requires_review`,
+`review_status`, `list_bucket`, `blocking_task_ids`, `intended_action`,
+`current_revision_id`). It is immutable apart from its reopening, which is
+written once; a document has at most one retirement in force.
+
+### 13.4 Guards and outcomes
+
+A named document stays waiting (`left_waiting`) when any of these hold, and
+every one that holds is listed as a reason `{ code, message, …facts }`:
+
+| Code | Holds when |
+|---|---|
+| `replacement_in_progress` | it has open replacement work (§12) |
+| `outgoing_unsent` | its outgoing message is `draft`, `approved`, `delivering` or `uncertain` |
+| `draft_comments` | a draft review round holds comments, decision answers or a summary not yet submitted (an empty draft does not hold it) |
+| `waiting_tasks` | active tasks wait on it (completed or archived ones do not) |
+| `agent_review_waiting` | an agent's review of its current revision waits for Robert's choices (that keeps it in Needs your review whatever `requires_review` says) |
+
+Outcomes per name: `pending`, `retired`, `left_waiting`, `not_found`,
+`not_waiting` (reasons `reference`, `approved` or `already_retired`), `self`,
+`ambiguous` (with `candidates`). A pending name is re-checked at every trigger
+in 13.2; a `left_waiting` name is re-checked when a registration names it
+again; `retired` is final for that name, so a later registration naming it
+again never retires it a second time after Robert has put it back.
+
+### 13.5 Reopening
+
+The existing `POST /api/documents/:id/request-review` puts a retired document
+back: `requires_review` true, its waiting tasks back unless new ones are given,
+and its review status derived again from its decisions (a change request is a
+change request again). The retirement is recorded as reopened
+(`reopened_at`, `reopened_by`, `reopened_via: request_review`) and stays in
+the document's history. The response adds `retirement` (the reopened record
+with `action: "reopened"`, or null) and `replaces` (this document's own names,
+applied now if it is ready).
+
+A declared re-registration of a retired document that carries the bytes it
+already had (a retry or replay) keeps it in Reference and answers
+`retirement.action: "kept"`. New bytes declared for review bring it back and
+record the retirement as reopened with `reopened_via: registration`
+(`retirement.action: "reopened_by_registration"`).
+
+### 13.6 Responses, the review page and the manual closes
+
+- Registration responses add top-level `replaces` (every name this document's
+  registrations declared, with `named_as`, `outcome`, `reasons`, `target`
+  `{ document_id, title, exists, review_path, review_status }`, `candidates`,
+  `registration_id`, `task_id` and its `retirement` summary). The declared
+  form also adds `retirement` when it found the document itself retired.
+  The receipt is unchanged.
+- `GET /api/documents/:id` adds `retirement` (the one in force, or null),
+  `retirement_history` (newest first, reopened ones included), `replaces` (as
+  above, plus manual closes that named this document) and
+  `named_as_replaced` (other documents whose names to this one are pending or
+  left it waiting, each with `replacing`).
+- The manual closes of 2026-11-18/19 are read, never rewritten: a
+  `metadata.review_closed` stamp `{ at, by, reason, previous, superseded_by? }`
+  is shown as a retirement with `source: "manual"` in the same shape while the
+  document is out of the queue, and as reopened once review is requested
+  again.
+- The review page opens a retired document with what replaced it (a link),
+  when, the reason, the task and registration, that no decision was recorded,
+  and that Move to review queue puts it back; a manual close renders in the
+  same form. The replacing document lists every name with its outcome and
+  reasons, all of them; a document named but left waiting says who named it
+  and why it stays.
+
+### 13.7 Consumer guidance for Praxis
+
+Name what a deliverable replaces only when the producer knows it, by
+`deliverable_key` when the old document had one, else by `document_id`; avoid
+paths that several tasks registered. Read the outcome from the response's
+top-level `replaces`, not from the receipt. A `left_waiting` or `pending`
+outcome is not an error: the registration succeeded, and Robert sees the
+reasons on both pages.
+
+### 13.8 Verification and activation
+
+`server/__tests__/document-retirements.test.js` covers the rule at the route
+(retirement in the same operation with counts and lists, the record and the
+absence of any decision or delivery, both pages' views, a cross-project name,
+each guard and their combination, re-naming after a guard clears, reopening
+and the final retired name, replay versus new bytes, every reported outcome,
+malformed lists, the manual-close shape, no similarity matching, the
+reference-only, plain and not-ready-visual pending cases and application on a
+later count) and at the store (the check, the record, immutability, a single
+reopening, re-declaration and exact paths). The `dashboard` suite
+`document-retirements.test.mjs` covers the banner (registration and manual in
+the same form), the way back through request-review, the replaces panel and
+the named-but-waiting notice.
+
+Activation: the two tables are created additively at API startup; the live
+:4000 serves this section only after the Nexus API restarts on the new code.
+Nothing is retired until a registration names something, and the existing
+manual closes are read as they are.
