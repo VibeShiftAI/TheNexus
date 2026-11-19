@@ -136,3 +136,94 @@ test("when Praxis does not answer the page says the Intake checkpoint was not re
     assert.equal(ui.container.querySelectorAll("[data-intake-stage]").length, 0);
   } finally { ui.close(); net.restore(); }
 });
+
+// The status report task finishing moves an Intake stage and leaves the project
+// row's updated_at alone (a task update writes the task, not the project). The
+// page then hands the mounted components a refreshed project record.
+const flush = () => act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+const settled = (count) => stages.map((s, i) => ({ id: s.id, name: s.name, status: i < count ? "done" : "in_progress" }));
+
+for (const [name, Component, extra] of [
+  ["ProjectCheckpointsPanel", ProjectCheckpointsPanel, { onUpdate: () => {} }],
+  ["MissionBrief", MissionBrief, { brief: null }],
+]) {
+  test(`${name}: a mounted page follows Intake to complete when a task finishes and the project's updated_at does not change`, async () => {
+    let served = reading("current", settled(6));
+    const net = mockFetch(() => answer(served)());
+    const ui = await mount(Component, { project: withPlan, ...extra });
+    try {
+      assert.ok(ui.container.querySelector('[data-intake-checkpoint="current"]'), "Intake starts as the current checkpoint");
+      assert.match(ui.container.textContent, /Next, once Intake is complete/);
+      if (Component === ProjectCheckpointsPanel) {
+        assert.match(ui.container.querySelector('[data-intake-stage="stage-7"]').textContent, /in progress/);
+      }
+
+      // The task completes; Praxis now reads the stage done and Intake complete.
+      served = reading("complete", settled(7));
+      const refreshed = { ...withPlan };
+      assert.equal(refreshed.updated_at, withPlan.updated_at);
+      await act(async () => ui.root.render(createElement(Component, { project: refreshed, ...extra })));
+      await flush();
+
+      assert.equal(net.calls.length, 2, "the refreshed record asked Praxis again");
+      assert.equal(ui.container.querySelector('[data-intake-checkpoint="current"]'), null, "Intake is no longer current");
+      assert.doesNotMatch(ui.container.textContent, /Next, once Intake is complete/);
+      assert.match(ui.container.textContent, /Working toward now/);
+      assert.match(ui.container.textContent, /checkpoint 1 of 1/);
+      assert.match(ui.container.textContent, /First planned checkpoint/);
+      if (Component === ProjectCheckpointsPanel) {
+        const card = ui.container.querySelector('[data-intake-checkpoint="complete"]');
+        assert.ok(card, "Intake reads complete");
+        assert.match(card.textContent, /7 of 7 stages settled/);
+        assert.match(card.querySelector('[data-intake-stage="stage-7"]').textContent, /done/);
+        assert.doesNotMatch(card.textContent, /Working toward now/);
+      }
+    } finally { ui.close(); net.restore(); }
+  });
+}
+
+test("a slow answer to an earlier request never replaces a newer reading", async () => {
+  const pending = [];
+  const net = mockFetch(() => new Promise((resolve) => pending.push(resolve)));
+  const ui = await mount(ProjectCheckpointsPanel, { project: withPlan, onUpdate: () => {} });
+  try {
+    await act(async () => ui.root.render(createElement(ProjectCheckpointsPanel, { project: { ...withPlan }, onUpdate: () => {} })));
+    assert.equal(pending.length, 2);
+    // The newer request answers first with Intake complete; the older one answers late with Intake current.
+    await act(async () => pending[1](answer(reading("complete", settled(7)))()));
+    await flush();
+    assert.ok(ui.container.querySelector('[data-intake-checkpoint="complete"]'));
+    await act(async () => pending[0](answer(reading("current", settled(6)))()));
+    await flush();
+    assert.ok(ui.container.querySelector('[data-intake-checkpoint="complete"]'), "the late answer is dropped");
+    assert.equal(ui.container.querySelector('[data-intake-checkpoint="current"]'), null);
+  } finally { ui.close(); net.restore(); }
+});
+
+test("a live board invalidation refreshes the reading without a new project record", async () => {
+  const { LiveBoardStateContext } = await import("../live-board-state.tsx");
+  let served = reading("current", settled(6));
+  const net = mockFetch(() => answer(served)());
+  const props = { project: withPlan, onUpdate: () => {} };
+  const tree = (board) => createElement(LiveBoardStateContext.Provider, { value: { revisions: { board } } },
+    createElement(ProjectCheckpointsPanel, props));
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => root.render(tree(1)));
+    await flush();
+    assert.ok(container.querySelector('[data-intake-checkpoint="current"]'));
+    // Same project object, same board revision: nothing is asked again.
+    await act(async () => root.render(tree(1)));
+    await flush();
+    assert.equal(net.calls.length, 1);
+    // The board is invalidated (a task changed). The project object is the same one.
+    served = reading("complete", settled(7));
+    await act(async () => root.render(tree(2)));
+    await flush();
+    assert.equal(net.calls.length, 2);
+    assert.ok(container.querySelector('[data-intake-checkpoint="complete"]'));
+    assert.equal(container.querySelector('[data-intake-checkpoint="current"]'), null);
+  } finally { act(() => root.unmount()); container.remove(); net.restore(); }
+});

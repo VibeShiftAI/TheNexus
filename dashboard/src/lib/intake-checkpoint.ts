@@ -11,7 +11,8 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLiveBoardState } from "@/components/live-board-state";
 
 export interface IntakeStageReading {
     id: string;
@@ -54,21 +55,35 @@ export async function fetchIntakeCheckpoint(projectId: string): Promise<IntakeCh
 
 /**
  * The Intake reading of one project. Only a project that carries an intake
- * record asks Praxis; it asks again whenever the project row changes.
+ * record asks Praxis.
+ *
+ * Intake advances on things the project row does not record: a task of the
+ * project changing status moves a stage and leaves the project's updated_at
+ * alone. So the reading is asked for again whenever the page hands in a
+ * refreshed project record (a new object, whatever its timestamp says) and
+ * whenever the live board is invalidated. Requests are numbered: only the
+ * answer to the latest one is shown, so a slow earlier answer cannot replace a
+ * newer reading. While a newer reading of the same project is on its way the
+ * last one stays on screen.
  */
-export function useIntakeCheckpoint(project: { id: string; updated_at?: string | null; intake?: { state?: string | null } | null }): IntakeCheckpointState {
-    const hasIntake = Boolean(project.intake?.state);
-    const key = hasIntake ? `${project.id}|${project.updated_at ?? ""}` : "";
-    const [result, setResult] = useState<{ key: string; value: IntakeCheckpointState } | null>(null);
+export function useIntakeCheckpoint(project: { id: string; intake?: { state?: string | null } | null }): IntakeCheckpointState {
+    const projectId = project.intake?.state ? project.id : "";
+    const boardRevision = useLiveBoardState().revisions.board;
+    const [result, setResult] = useState<{ projectId: string; value: IntakeCheckpointState } | null>(null);
+    const latest = useRef(0);
     useEffect(() => {
-        if (!key) return;
-        let live = true;
-        fetchIntakeCheckpoint(project.id).then(
-            (checkpoint) => { if (live) setResult({ key, value: checkpoint ? { state: "ready", checkpoint } : { state: "none" } }); },
-            (error) => { if (live) setResult({ key, value: { state: "unavailable", reason: error instanceof Error ? error.message : "Praxis did not answer" } }); },
+        if (!projectId) return;
+        const request = ++latest.current;
+        const show = (value: IntakeCheckpointState) => {
+            if (latest.current === request) setResult({ projectId, value });
+        };
+        fetchIntakeCheckpoint(projectId).then(
+            (checkpoint) => show(checkpoint ? { state: "ready", checkpoint } : { state: "none" }),
+            (error) => show({ state: "unavailable", reason: error instanceof Error ? error.message : "Praxis did not answer" }),
         );
-        return () => { live = false; };
-    }, [key, project.id]);
-    if (!key) return { state: "none" };
-    return result?.key === key ? result.value : { state: "loading" };
+        // Unmounting, or a newer request, retires this one.
+        return () => { if (latest.current === request) latest.current += 1; };
+    }, [projectId, project, boardRevision]);
+    if (!projectId) return { state: "none" };
+    return result?.projectId === projectId ? result.value : { state: "loading" };
 }
