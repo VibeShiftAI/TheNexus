@@ -13,12 +13,44 @@ const project = {
     sources: [{ ref: '/missing/notes.md', type: 'file', availability: 'unavailable', processing_result: 'File could not be read' }],
     need_ids: ['audience'], pending_need_id: 'audience', workspace: { state: 'unassigned' }, review: null, review_history: [], brief_history: [], acceptance: null, operations: [] }
 };
-async function mount(value, onDiscuss = () => {}) {
+async function mount(value, onDiscuss = () => {}, onUpdate = () => {}) {
   const container = document.createElement('div'); document.body.append(container);
   const root = createRoot(container);
-  await act(async () => root.render(createElement(ProjectIntakePanel, { project: value, onDiscuss })));
-  return { container, close() { act(() => root.unmount()); container.remove(); } };
+  const render = project => act(async () => root.render(createElement(ProjectIntakePanel, { project, onDiscuss, onUpdate })));
+  await render(value);
+  return { container, render, close() { act(() => root.unmount()); container.remove(); } };
 }
+test('edits an active intake target without a checkpoint plan and removes the control after handoff', async () => {
+  const original = fetch;
+  const calls = [];
+  let updated;
+  globalThis.fetch = async (url, options) => {
+    const body = JSON.parse(options.body);
+    calls.push({ url: String(url), method: options.method, body });
+    return { ok: true, json: async () => ({ ...project, intake: { ...project.intake, target: body.target ?? undefined } }) };
+  };
+  const ui = await mount(project, undefined, value => { updated = value; });
+  const button = label => [...ui.container.querySelectorAll('button')].find(b => b.textContent === label);
+  try {
+    assert.ok(button('Set target'), 'active intake has an operator target control');
+    await act(async () => button('Set target').click());
+    await act(async () => {
+      const input = ui.container.querySelector('input');
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, 'After permit approval');
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+    await act(async () => button('Save target').click());
+    assert.deepEqual(calls[0], { url: '/api/projects/project%2Fa/intake/target', method: 'PUT',
+      body: { target: 'After permit approval', expected_target: null, expected_revision: 3 } });
+    await ui.render(updated);
+    assert.ok(ui.container.textContent.includes('After permit approval'));
+    await act(async () => button('Edit target').click());
+    await act(async () => button('Clear target').click());
+    assert.deepEqual(calls[1].body, { target: null, expected_target: 'After permit approval', expected_revision: 3 });
+    await ui.render({ ...updated, intake: { ...updated.intake, state: 'handed_off' } });
+    assert.equal(button('Set target'), undefined);
+  } finally { ui.close(); globalThis.fetch = original; }
+});
 test('deferred intake shows saved question, source issue, and workspace without invented progress', async () => {
   const ui = await mount(project);
   try {
@@ -31,6 +63,22 @@ test('deferred intake shows saved question, source issue, and workspace without 
     assert.doesNotMatch(ui.container.textContent, /\d+%/);
   } finally { ui.close(); }
 });
+test('intake questions show the saved audience and open a correction for the selected question', async () => {
+  const value = structuredClone(project);
+  value.needs[0].knowledge.client_facing = false;
+  const drafts = [];
+  const ui = await mount(value, text => drafts.push(text));
+  try {
+    assert.match(ui.container.textContent, /Internal/);
+    const change = [...ui.container.querySelectorAll('button')].find(b => b.textContent === 'Change audience');
+    assert.ok(change);
+    await act(async () => change.click());
+    assert.match(drafts[0], /audience/);
+    assert.ok(drafts[0].includes(JSON.stringify(value.needs[0].id)));
+    assert.ok(drafts[0].includes(JSON.stringify(value.id)));
+  } finally { ui.close(); }
+});
+
 test('planning acceptance shows unfinished readiness and actual council disposition', async () => {
   const value = structuredClone(project);
   value.phase = 'planning'; value.intake.state = 'handed_off';

@@ -7,9 +7,10 @@
 "use client";
 
 import type { Project, ProjectBrief, PulseCrew } from "@/lib/nexus";
-import { knowledgeSatisfied } from "@/lib/project-endpoint";
+import { knowledgeSatisfied, questionAudienceLabel } from "@/lib/project-endpoint";
 import { currentWorkNeeds } from "@praxis/contract";
 import { checkpointView } from "@/lib/project-checkpoints";
+import { useIntakeCheckpoint } from "@/lib/intake-checkpoint";
 import { CornerBrackets } from "@/components/bridge/hud";
 import { ActivityLed, activityBand, BAND_STYLES, timeAgo } from "@/components/pulse-visuals";
 import { Crosshair, ListChecks, CircleAlert, Tag, Flag } from "lucide-react";
@@ -55,6 +56,9 @@ export function MissionBrief({ project, brief }: { project: Project; brief: Proj
     const bandStyle = BAND_STYLES[band];
     const directive = project.end_state?.trim() || project.description?.trim() || "No mission directive on file.";
     const checkpoints = checkpointView(project);
+    // Intake is the first checkpoint of a project that came through intake.
+    const intake = useIntakeCheckpoint(project);
+    const intakeCheckpoint = intake.state === "ready" && intake.checkpoint.status === "current" ? intake.checkpoint : null;
     const criteria = (checkpoints.current?.criteria ?? project.end_state_criteria ?? []).filter(c => c.enabled !== false);
     const openNeeds = currentWorkNeeds(project.checkpoints, project.needs ?? []).filter(n => n.knowledge
         ? n.status !== "dropped" && !knowledgeSatisfied(n, project.end_state_updated_at)
@@ -100,11 +104,29 @@ export function MissionBrief({ project, brief }: { project: Project; brief: Proj
                     </div>
                     <p className="whitespace-pre-line text-sm leading-relaxed text-slate-300">{directive}</p>
 
+                    {intakeCheckpoint && (
+                        <div data-intake-checkpoint="current" className="mt-3 rounded-md border border-cyan-800/60 bg-cyan-950/30 px-3 py-2">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300">
+                                <Flag size={11} />
+                                Working toward now
+                                <span className="font-mono text-cyan-500/80">first checkpoint · {intakeCheckpoint.stages_settled} of {intakeCheckpoint.stages.length} stages settled</span>
+                            </div>
+                            <div className="mt-1 break-words text-sm font-semibold text-white">{intakeCheckpoint.title}</div>
+                            {intakeCheckpoint.goal && (
+                                <p className="mt-0.5 whitespace-pre-line break-words text-xs leading-relaxed text-slate-300">{intakeCheckpoint.goal}</p>
+                            )}
+                        </div>
+                    )}
+                    {intake.state === "unavailable" && (
+                        <p data-intake-checkpoint="unavailable" className="mt-3 text-xs text-amber-300">
+                            Intake checkpoint not read: {intake.reason}.
+                        </p>
+                    )}
                     {checkpoints.phase === "current" && checkpoints.current && (
                         <div className="mt-3 rounded-md border border-cyan-800/60 bg-cyan-950/30 px-3 py-2">
                             <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300">
                                 <Flag size={11} />
-                                Working toward now
+                                {intakeCheckpoint ? "Next, once Intake is complete" : "Working toward now"}
                                 <span className="font-mono text-cyan-500/80">checkpoint {checkpoints.position} of {checkpoints.total}</span>
                             </div>
                             <div className="mt-1 break-words text-sm font-semibold text-white">{checkpoints.current.title}</div>
@@ -152,6 +174,7 @@ export function MissionBrief({ project, brief }: { project: Project; brief: Proj
                                         <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-amber-400/80" />
                                         <span className="min-w-0">
                                             {n.knowledge?.question || n.description}
+                                            {n.knowledge && <a className="ml-2 text-cyan-300 underline" href={`#need-${encodeURIComponent(n.id)}`}>{questionAudienceLabel(n.knowledge.client_facing)}</a>}
                                             {n.knowledge?.blocking && <span className="ml-1 text-amber-300"> · blocking knowledge</span>}
                                             <span className="ml-1.5 font-mono text-[10px] text-amber-500/60">[{n.kind}]</span>
                                         </span>

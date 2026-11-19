@@ -12,11 +12,12 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const { normalizeTaskBoardStatus, isTaskDone, MemberMemoryInputSchema } = require('@praxis/contract');
-const { prepareProjectPatch, invalid: invalidProject, timestamp: projectTimestamp } = require('./project-data');
+const { isDeepStrictEqual } = require('node:util');
+const { prepareProjectPatch, projectQuestionRespondents, invalid: invalidProject, timestamp: projectTimestamp } = require('./project-data');
 const { routeKnowledgeChangeWork } = require('./knowledge-change-work');
 const { initializeProjectScopeDecisions, createProjectScopeDecisions } = require('./project-scope-decisions');
 const { initializeProjectIntake, createProjectIntakeStore, fenceExternalIntakeChange } = require('./project-intake');
-const { applyCheckpointTransition, applyCheckpointReopen } = require('./project-checkpoints');
+const { applyCheckpointTransition, applyCheckpointReopen, applyCheckpointTarget } = require('./project-checkpoints');
 const { initializeMemberMemory, createMemberMemoryLedger } = require('./member-memory');
 const { initializeMemberProfileProposals, createMemberProfileProposals } = require('./member-profile-proposals');
 const { captureMemberDirectoryChange } = require('./member-directory-memory');
@@ -240,6 +241,8 @@ try {
     } catch (err) {
         console.warn('[Database] project data system migration skipped:', err.message);
     }
+
+    require('./question-audience-backfill').backfillQuestionAudience(db);
 
     // Migration: real-activity timestamp for the Board Groundskeeper (task
     // 02f3c8a7). Seeded from created_at, deliberately NOT updated_at — the
@@ -961,6 +964,7 @@ function upsertProject(project) {
             const existing = deserRow(db.prepare('SELECT * FROM projects WHERE id = ? OR name = ?').get(project.id || '', project.name));
             if (existing) return writeProject(existing.id, project);
             const input = { ...project, id: project.id || uuid(), created_at: project.created_at || now() };
+            if (input.intake != null) fenceExternalIntakeChange({}, input);
             if (input.path) projectIntake.assertWorkspaceUnclaimed(input.path, null, { onlyIntake: true });
             const prepared = prepareProjectPatch({}, input);
             const { sql, values } = buildInsert('projects', prepared, 'name');
@@ -977,7 +981,8 @@ function upsertProject(project) {
 function writeProject(projectId, updates, options) {
     const current = deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId));
     if (!current) return null;
-    const patch = prepareProjectPatch(current, updates, options);
+    const respondents = updates.needs ? projectQuestionRespondents(db, current.id) : [];
+    const patch = prepareProjectPatch(current, updates, { ...options, respondents });
     if (patch.path && patch.path !== current.path) projectIntake.assertWorkspaceUnclaimed(patch.path, current.id, { onlyIntake: true });
     fenceExternalIntakeChange(current, patch, updates);
     routeKnowledgeChangeWork({ db, current, patch, createTask, updateTask,
@@ -1016,6 +1021,11 @@ function updateProjectNeed(projectId, needId, updates) {
                 if (index < 0) throw invalidProject('Need not found', 404);
                 if (expected && ['status', 'notes', 'description', 'kind'].some(key =>
                     (needs[index][key] ?? '') !== (expected[key] ?? '')
+                )) return { conflict: true };
+                // These routing changes do not advance the verified answer revision.
+                // A reply or correction based on an outdated assignment must conflict.
+                if (expected?.knowledge && ['client_facing', 'resolution', 'deferred_until', 'deferred_reason', 'superseded_by'].some(
+                    key => !isDeepStrictEqual(expected.knowledge[key], needs[index].knowledge?.[key])
                 )) return { conflict: true };
                 needs[index] = { ...needs[index], ...patch, id: needId };
             } else {
@@ -1058,6 +1068,21 @@ function transitionProjectCheckpoint(projectId, input) {
         console.error('[Database] Error transitioning project checkpoint:', err.message);
         return null;
     }
+}
+
+/** Persist a target against the latest stored plan without invalidating a checkpoint assessment. */
+function setProjectCheckpointTarget(projectId, checkpointId, input) {
+    if (!db) throw invalidProject('Checkpoint storage unavailable', 503);
+    return db.transaction(() => {
+        const current = deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId));
+        if (!current) return null;
+        const plan = applyCheckpointTarget(current.checkpoints, checkpointId, input);
+        if (plan === current.checkpoints) return current;
+        const updated_at = projectTimestamp(current.updated_at);
+        const { sql, values } = buildUpdate('projects', { checkpoints: plan, updated_at }, 'id', current.id);
+        db.prepare(sql).run(...values);
+        return { ...current, checkpoints: plan, updated_at };
+    }).immediate();
 }
 
 /** Operator-initiated reopen of a completed checkpoint; the completion stays in its history. */
@@ -3530,10 +3555,12 @@ module.exports = {
     assertProjectWorkspaceUnclaimed: (location, currentId) => projectIntake.assertWorkspaceUnclaimed(location, currentId),
     createProjectIntake: leasedBoardWrite(input => projectIntake.create(input)),
     operateProjectIntake: leasedBoardWrite((id, input) => projectIntake.operate(id, input)),
+    setProjectIntakeTarget: leasedBoardWrite((id, input) => projectIntake.setTarget(id, input)),
     upsertProject: async (...args) => leasedBoardWrite(upsertProject)(...args),
     updateProject: async (...args) => leasedBoardWrite(updateProject)(...args),
     updateProjectNeed: leasedBoardWrite(updateProjectNeed),
     transitionProjectCheckpoint: leasedBoardWrite(transitionProjectCheckpoint),
+    setProjectCheckpointTarget: leasedBoardWrite(setProjectCheckpointTarget),
     reopenProjectCheckpoint: leasedBoardWrite(reopenProjectCheckpoint),
     deleteProject: async (...args) => leasedBoardWrite(deleteProject)(...args),
     archiveProject: async (...args) => leasedBoardWrite(archiveProject)(...args),

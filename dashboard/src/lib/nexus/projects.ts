@@ -1,6 +1,7 @@
 import { updateTask } from './tasks';
 import type { TaskStatus } from './tasks';
 import { API_URL, authFetch } from './shared';
+import { operatorFetch } from '../local-operator-session';
 import type { Task } from './tasks';
 import type { ProjectCommsSettings, ReportTemplate, ProjectIntake } from '@praxis/contract';
 import type { RunTrace } from '../run-trace';
@@ -583,6 +584,30 @@ export async function updateProject(
         throw new Error(res.status === 409 || res.status === 428 ? `${data.error || "Project changed"}. Reload the project before saving again.` : data.error || "Failed to update project");
     }
     return res.json();
+}
+
+export async function setProjectCheckpointTarget(
+    projectId: string,
+    checkpointId: string,
+    input: { target: string | null; expected_target: string | null; expected_checkpoints_revision: string },
+): Promise<Project> {
+    return saveTarget(`${API_URL}/${encodeURIComponent(projectId)}/checkpoints/${encodeURIComponent(checkpointId)}/target`, input);
+}
+
+export async function setProjectIntakeTarget(
+    projectId: string,
+    input: { target: string | null; expected_target: string | null; expected_revision: number },
+): Promise<Project> {
+    return saveTarget(`${API_URL}/${encodeURIComponent(projectId)}/intake/target`, input);
+}
+
+async function saveTarget(url: string, input: object): Promise<Project> {
+    const response = await operatorFetch(url, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Could not save checkpoint target.');
+    return result;
 }
 
 /**

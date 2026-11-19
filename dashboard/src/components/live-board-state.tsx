@@ -162,7 +162,8 @@ const SERVER_CONNECTION_STATE: ConnectionState = Object.freeze({
 }) as ConnectionState;
 const getServerConnectionState = () => SERVER_CONNECTION_STATE;
 
-const LiveBoardStateContext = createContext<LiveBoardStateValue | null>(null);
+/** Exported so a test can stand in for the provider; pages use LiveBoardStateProvider. */
+export const LiveBoardStateContext = createContext<LiveBoardStateValue | null>(null);
 
 export function LiveBoardStateProvider({ children }: { children: ReactNode }) {
     const [socketState, setSocketState] = useState<

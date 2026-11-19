@@ -487,10 +487,31 @@ test("mission brief keeps stale met knowledge visible among outstanding needs", 
   });
   try {
     assert.match(ui.container.textContent, /Outstanding needs/);
+    assert.equal(ui.container.querySelector('a[href="#need-n"]').textContent, 'Audience unmarked');
     assert.match(ui.container.textContent, /Which database survives failover/);
   } finally {
     ui.close();
   }
+});
+
+test("a tracked question shows the recorded audience and submits an explicit guarded correction", async () => {
+  const original = fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    if (options.method === 'PATCH') calls.push(JSON.parse(options.body));
+    return { ok: true, json: async () => project };
+  };
+  const unmarked = { ...need, knowledge: { ...need.knowledge, resolution: { method: 'human', owner: 'Respondent' } } };
+  const ui = await mount(ProjectNeedsPanel, { project: { ...project, needs: [unmarked] }, tasks: [], onUpdate: () => {} });
+  try {
+    assert.match(ui.container.querySelector('#need-n').textContent, /Audience unmarked/);
+    await act(async () => button(ui.container, 'Review answer').click());
+    await inputValue(ui.container, 'Question audience', 'true');
+    await act(async () => button(ui.container, "Save need").click());
+    assert.equal(calls[0].expected_knowledge_revision, 4);
+    assert.equal(calls[0].expected.kind, 'information');
+    assert.deepEqual(calls[0].knowledge, { client_facing: true });
+  } finally { ui.close(); globalThis.fetch = original; }
 });
 
 test("received evidence without an answer opens a usable editor and preserves text on a conflict", async () => {

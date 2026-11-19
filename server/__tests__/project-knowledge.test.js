@@ -53,6 +53,51 @@ describe('project knowledge API and database invariants', () => {
     return result.body.need;
   }
 
+  test('audience corrections are guarded, audited and preserve verified answers', async () => {
+    const verified = await satisfy(await addNeed({ knowledge: { ...knowledge(), resolution: { method: 'human', owner: 'Client' }, client_facing: false } }));
+    expect(verified.knowledge.client_facing).toBe(false);
+    const path = `/needs/${verified.id}`;
+    const audience = { knowledge: { client_facing: true }, source: 'operator' };
+    expect((await req(path, audience)).status).toBe(428);
+    const guard = { expected: { ...verified, notes: verified.notes || '' }, expected_knowledge_revision: verified.knowledge.revision };
+    const corrected = await req(path, { ...guard, ...audience });
+    expect(corrected.status).toBe(200);
+    expect(corrected.body.need).toMatchObject({ status: 'met', knowledge: {
+      client_facing: true, revision: verified.knowledge.revision, verification: verified.knowledge.verification,
+    } });
+    expect(corrected.body.need.knowledge.history.at(-1)).toMatchObject({ client_facing: false, audience_changed_to: true, by: 'operator' });
+    expect((await req(path, { ...guard, knowledge: { client_facing: false } })).status).toBe(409);
+    const unchanged = await req(path, { knowledge: { purpose: 'Updated rationale' } });
+    expect(unchanged.body.need.knowledge.client_facing).toBe(true);
+    expect(unchanged.body.need.knowledge.history).toEqual(corrected.body.need.knowledge.history);
+    const ambiguous = await req(path, { expected_knowledge_revision: verified.knowledge.revision, knowledge: { resolution: { method: 'human', owner: 'Respondent' } } });
+    expect(ambiguous.status).toBe(200);
+    expect(ambiguous.body.need.knowledge).not.toHaveProperty('client_facing');
+    expect(ambiguous.body.need.knowledge.history.at(-1)).toMatchObject({ client_facing: true, audience_changed_to: null });
+    expect(ambiguous.body.need.knowledge.verification).toEqual(verified.knowledge.verification);
+  });
+
+  test('a recorded project contact identifies a named respondent and a stale routing snapshot cannot save an answer', async () => {
+    raw.prepare("INSERT INTO contacts (id, name, kind) VALUES ('human-contact', 'Avery Chen', 'human')").run();
+    raw.prepare('INSERT INTO project_contacts (project_id, contact_id) VALUES (?, ?)').run('11111111-1111-4111-8111-111111111111', 'human-contact');
+    const need = await addNeed({ knowledge: { ...knowledge(), resolution: { method: 'human', owner: 'avery' } } });
+    expect(need.knowledge.client_facing).toBe(true);
+    const path = `/needs/${need.id}`;
+    const expected = { ...need, notes: need.notes ?? '' };
+    expect((await req(path, { knowledge: { deferred_reason: 'Next season' } })).status).toBe(200);
+    expect((await req(path, { expected, expected_knowledge_revision: need.knowledge.revision, knowledge: { answer: 'Old reply' } })).status).toBe(409);
+    expect((await req(path, { expected_knowledge_revision: need.knowledge.revision, knowledge: { resolution: { method: 'human', owner: 'Warehouse' } } })).body.need.knowledge).not.toHaveProperty('client_facing');
+  });
+
+  test('the stored resolution prevents contradictory client-facing corrections and creations', async () => {
+    const need = await addNeed();
+    const changed = await req(`/needs/${need.id}`, { expected_knowledge_revision: need.knowledge.revision, knowledge: { client_facing: true } });
+    expect(changed.status).toBe(400);
+    expect(changed.body.error).toMatch(/resolution|owner/i);
+    expect((await req('/needs', { kind: 'information', description: 'Internal choice', knowledge: { ...knowledge(),
+      resolution: { method: 'decision', owner: 'Robert' }, client_facing: true } }, 'POST')).status).toBe(400);
+  });
+
   test('marking verified research stale reopens its need while retaining answer and evidence', async () => {
     const verified = await satisfy(await addNeed());
     const stale = await req(`/needs/${verified.id}`, { knowledge: { research_status: 'stale' } });

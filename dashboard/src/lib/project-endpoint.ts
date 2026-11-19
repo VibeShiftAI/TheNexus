@@ -4,6 +4,11 @@ import { internalHref } from "./task-links";
 import type { ProjectNeedPatch } from "./nexus/project-needs";
 import type { Task } from "./nexus/tasks";
 
+export function questionAudienceLabel(clientFacing?: boolean | null): string {
+  if (clientFacing === undefined || clientFacing === null) return "Audience unmarked";
+  return clientFacing ? "Client facing" : "Internal";
+}
+
 /** Matches the runtime's evidence and endpoint revision requirements. */
 export function knowledgeSatisfied(
   need: ProjectNeed,
@@ -84,12 +89,21 @@ export function needPatch(
   }
   if (after.knowledge) {
     const knowledge: Record<string, unknown> = {};
-    for (const key of ["question", "purpose", "group", "resolution", "deferred_until", "deferred_reason", "superseded_by", "tags", "satisfaction_test", "criterion_ids", "task_ids", "blocking", "research_status", "answer", "evidence"] as const) {
+    for (const key of ["question", "purpose", "group", "resolution", "client_facing", "deferred_until", "deferred_reason", "superseded_by", "tags", "satisfaction_test", "criterion_ids", "task_ids", "blocking", "research_status", "answer", "evidence"] as const) {
       if (
         JSON.stringify(before.knowledge?.[key]) !==
         JSON.stringify(after.knowledge[key])
       )
         knowledge[key] = after.knowledge[key];
+    }
+    const previous = before.knowledge;
+    const route = after.knowledge.resolution;
+    const reassigned = previous?.resolution?.method !== route?.method || previous?.resolution?.owner !== route?.owner;
+    if (reassigned && after.knowledge.client_facing !== undefined) knowledge.client_facing = after.knowledge.client_facing;
+    if (previous && (reassigned || "client_facing" in knowledge)) {
+      const { client_facing, resolution, deferred_until, deferred_reason, superseded_by } = previous;
+      patch.expected = { status: before.status, description: before.description, kind: before.kind, notes: before.notes ?? "",
+        knowledge: { client_facing, resolution, deferred_until, deferred_reason, superseded_by } };
     }
     if (Object.keys(knowledge).length) patch.knowledge = knowledge;
   }

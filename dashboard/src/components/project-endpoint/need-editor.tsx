@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, type ReactNode } from "react";
-import { ProjectNeedSchema, type KnowledgeNeed, type KnowledgeApplication } from "@praxis/contract";
+import { inferKnowledgeClientFacing, isInternalKnowledgeResolution, ProjectNeedSchema, type KnowledgeNeed, type KnowledgeApplication } from "@praxis/contract";
 import type { Project, ProjectNeed } from "@/lib/nexus/projects";
 import type { Task } from "@/lib/nexus/tasks";
 import { verificationPatch, applicationPatch, knowledgeLifecycle, hasAppliedKnowledge, appliedKnowledgeChanged } from "@/lib/project-endpoint";
@@ -10,7 +10,7 @@ import { buttonClass, inputClass, Field, EvidenceRef } from "./fields";
 function emptyKnowledge(question: string): KnowledgeNeed {
   return {
     question,
-    purpose: "", resolution: { method: "existing_knowledge" },
+    purpose: "", resolution: { method: "existing_knowledge" }, client_facing: false,
     tags: [],
     satisfaction_test: "",
     criterion_ids: [],
@@ -42,10 +42,14 @@ export function NeedEditor({
     (need.knowledge?.task_ids ?? []).join(", "),
   );
   const [error, setError] = useState("");
+  const [audienceEdited, setAudienceEdited] = useState(false);
   const k = draft.knowledge;
   const criteria = [...(project.end_state_criteria ?? []), ...(project.checkpoints?.items ?? []).flatMap(cp => cp.criteria)];
   function knowledge(patch: Partial<KnowledgeNeed>) {
     setDraft({ ...draft, knowledge: { ...k!, ...patch } });
+  }
+  function assign(resolution: NonNullable<KnowledgeNeed["resolution"]>) {
+    knowledge({ resolution, ...(!audienceEdited || isInternalKnowledgeResolution(resolution) ? { client_facing: inferKnowledgeClientFacing(resolution) } : {}) });
   }
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -155,9 +159,18 @@ export function NeedEditor({
             <textarea required className={inputClass} rows={2} value={k.purpose ?? ""} onChange={e => knowledge({ purpose: e.target.value })} />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Resolution route"><select required className={inputClass} value={k.resolution?.method ?? ""} onChange={e => knowledge({ resolution: { ...k.resolution, method: e.target.value as NonNullable<KnowledgeNeed["resolution"]>["method"] } })}><option value="" disabled>Choose a route</option>{Object.entries(resolutionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
-            <Field label="Responsible owner"><input className={inputClass} value={k.resolution?.owner ?? ""} onChange={e => knowledge({ resolution: { method: "existing_knowledge", ...k.resolution, owner: e.target.value } })} /></Field>
+            <Field label="Resolution route"><select required className={inputClass} value={k.resolution?.method ?? ""} onChange={e => assign({ ...k.resolution, method: e.target.value as NonNullable<KnowledgeNeed["resolution"]>["method"] })}><option value="" disabled>Choose a route</option>{Object.entries(resolutionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
+            <Field label="Responsible owner"><input className={inputClass} value={k.resolution?.owner ?? ""} onChange={e => assign({ method: "existing_knowledge", ...k.resolution, owner: e.target.value })} /></Field>
           </div>
+          <Field label="Question audience">
+            <select className={inputClass} value={k.client_facing === undefined ? "" : String(k.client_facing)} onChange={e => {
+              setAudienceEdited(true); knowledge({ client_facing: e.target.value === "true" });
+            }}>
+              <option value="" disabled>Audience unmarked</option>
+              <option value="true" disabled={isInternalKnowledgeResolution(k.resolution)}>Client facing</option>
+              <option value="false">Internal</option>
+            </select>
+          </Field>
           <Field label="Next action"><textarea className={inputClass} rows={2} value={k.resolution?.next_action ?? ""} onChange={e => knowledge({ resolution: { method: "existing_knowledge", ...k.resolution, next_action: e.target.value } })} /></Field>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Question group"><input className={inputClass} value={k.group ?? ""} onChange={e => knowledge({ group: e.target.value })} /></Field>

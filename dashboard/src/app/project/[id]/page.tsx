@@ -264,7 +264,7 @@ export default function ProjectDetailPage() {
                 )}
 
                 {projectRefreshError && <p role="alert" className="rounded-lg border border-amber-500/40 p-3 text-sm text-amber-300">The latest project state could not be loaded. Showing the last saved view. <button className="underline" onClick={reloadProject}>Retry refresh</button></p>}
-                <ProjectIntakePanel project={project} onDiscuss={text => {
+                <ProjectIntakePanel project={project} onUpdate={setProject} onDiscuss={text => {
                     const existing = readChatDraft().trim();
                     const draft = existing ? `${existing}\n\n${text}` : text;
                     writeChatDraft(draft);

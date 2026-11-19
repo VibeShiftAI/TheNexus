@@ -7,7 +7,8 @@ const fs = require('fs');
 const path = require('path');
 const { isDeepStrictEqual: equal } = require('util');
 const { CreateProjectIntakeSchema, ProjectIntakeOperationSchema, ProjectIntakeSchema } = require('@praxis/contract');
-const { prepareProjectPatch, invalid, timestamp } = require('./project-data');
+const { prepareProjectPatch, projectQuestionRespondents, invalid, timestamp } = require('./project-data');
+const { parseTargetEdit } = require('./project-checkpoints');
 const { recordBacklog, openTaskCount, backlogProposalIssue, markBacklogReplayed } = require('./intake-backlog');
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const fail = (message, code = 'INTAKE_CONFLICT', status = 409) => Object.assign(invalid(message, status), { code });
@@ -196,6 +197,21 @@ function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () =
         const { project, intake } = load(projectId);
         return { project, intake, ...handoff(project) };
     }
+    function setTarget(projectId, input) {
+        const target = parseTargetEdit(input, 'expected_revision');
+        return db.transaction(() => {
+            const { project, intake } = load(projectId);
+            if (intake.state === 'handed_off') throw fail('Intake has been handed off to planning.', 'INTAKE_HANDED_OFF');
+            if (intake.revision !== input.expected_revision || (intake.target ?? null) !== input.expected_target) {
+                throw fail('Intake or target changed. Reload before saving.', 'INTAKE_TARGET_STALE');
+            }
+            if ((intake.target ?? null) === target) return project;
+            // This is scheduling text. The brief, its review and any outstanding interview remain current.
+            if (target === null) delete intake.target;
+            else intake.target = target;
+            return save(projectId, { intake: parse(ProjectIntakeSchema, intake), updated_at: timestamp(project.updated_at) });
+        }).immediate();
+    }
     function create(raw) {
         const input = parse(CreateProjectIntakeSchema, raw);
         return db.transaction(() => {
@@ -241,7 +257,8 @@ function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () =
             let patch = {}, material = false;
             const allowed = states => { if (!states.includes(intake.state)) throw fail(`${input.action} is unavailable while intake is ${intake.state}`, 'INTAKE_STATE_CONFLICT'); };
             const mergeNeeds = additions => {
-                if (!additions) return;
+                if (!additions?.length) return;
+                const respondents = projectQuestionRespondents(db, project.id);
                 const ids = new Set();
                 for (const addition of additions) {
                     if (ids.has(addition.id)) throw fail('Duplicate need ids in one operation', 'INVALID_INTAKE', 400);
@@ -252,7 +269,7 @@ function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () =
                     const { expected_knowledge_revision, ...definition } = addition;
                     if (index >= 0) needs[index] = { ...needs[index], ...definition, knowledge: { ...needs[index].knowledge, ...definition.knowledge } };
                     else needs.push({ ...definition, status: 'open' });
-                    const prepared = prepareProjectPatch(project, { needs }, { needMutation: { id: addition.id, input: addition, source: addition.source || 'intake' } });
+                    const prepared = prepareProjectPatch(project, { needs }, { respondents, needMutation: { id: addition.id, input: addition, source: addition.source || 'intake' } });
                     project = { ...project, ...prepared }; Object.assign(patch, prepared);
                     if (!intake.need_ids.includes(addition.id)) intake.need_ids.push(addition.id);
                 }
@@ -438,7 +455,7 @@ function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () =
             return receipt(input, save(projectId, patch), projectId);
         }).immediate();
     }
-    return { create, get, operate,
+    return { create, get, operate, setTarget,
         findWorkspaceOwner: (location, options) => findWorkspaceOwner(workspace(location), null, options),
         assertWorkspaceUnclaimed: (location, currentId, options) => assertWorkspaceUnclaimed(workspace(location), currentId, options),
     };

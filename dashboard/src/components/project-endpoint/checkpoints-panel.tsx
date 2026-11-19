@@ -16,6 +16,7 @@ import {
 import {
   updateProject,
   reopenProjectCheckpoint,
+  setProjectCheckpointTarget,
   type Project,
   type EndStateCriterion,
   type CheckpointDefinitionInput,
@@ -26,8 +27,12 @@ import {
   checkpointResults,
   checkpointNeeds,
 } from "@/lib/project-checkpoints";
+import { CheckpointTargetEditor } from "./checkpoint-target-editor";
 import { CriteriaEditor } from "./criteria-editor";
+import { questionAudienceLabel } from "@/lib/project-endpoint";
 import { buttonClass, inputClass, Field, EvidenceRef, Status } from "./fields";
+import { useIntakeCheckpoint } from "@/lib/intake-checkpoint";
+import { IntakeCheckpointCard } from "./intake-checkpoint";
 
 const MAX_CHECKPOINTS = 30;
 
@@ -124,6 +129,20 @@ function History({ checkpoint }: { checkpoint: Checkpoint }) {
   </details>;
 }
 
+function CheckpointTarget({ project, checkpoint, onUpdate }: {
+  project: Project;
+  checkpoint: Checkpoint;
+  onUpdate: (project: Project) => void;
+}) {
+  if (!project.checkpoints) return null;
+  return <CheckpointTargetEditor id={checkpoint.id} target={checkpoint.target} revision={project.checkpoints.revision}
+    onSave={async (target, prior, revision) => {
+      onUpdate(await setProjectCheckpointTarget(project.id, checkpoint.id, {
+        target, expected_target: prior, expected_checkpoints_revision: revision,
+      }));
+    }} />;
+}
+
 function VerdictLine({ checkpoint }: { checkpoint: Checkpoint }) {
   const verdict = checkpointVerdict(checkpoint);
   const tone =
@@ -152,6 +171,7 @@ function NeedsList({ checkpoint, project }: { checkpoint: Checkpoint; project: P
             <Status value={satisfied ? "satisfied" : "unresolved"} />
             <span className="min-w-0 flex-1 break-words text-slate-300">
               {need.knowledge?.question || need.description}
+              {need.knowledge && <a className="ml-2 text-cyan-300 underline" href={`#need-${encodeURIComponent(need.id)}`}>{questionAudienceLabel(need.knowledge.client_facing)}</a>}
               <span className="ml-1 font-mono text-[10px] text-slate-500">{need.id}</span>
             </span>
           </li>
@@ -174,6 +194,10 @@ export function ProjectCheckpointsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const view = checkpointView(project);
+  // A project that came through intake has Intake as its first checkpoint;
+  // while it is unfinished, no checkpoint of the plan is the current one.
+  const intake = useIntakeCheckpoint(project);
+  const intakeCurrent = intake.state === "ready" && intake.checkpoint.status === "current";
   const needOptions = (project.needs ?? []).filter(
     (n) => n.kind === "information" && n.status !== "dropped" && n.knowledge,
   );
@@ -403,17 +427,20 @@ export function ProjectCheckpointsPanel({
         </form>
       ) : (
         <>
+          <IntakeCheckpointCard intake={intake} />
+
           {view.phase === "none" && (
             <p className="text-sm text-slate-400">
-              No checkpoints defined. The long-term goal is the effective endpoint until a
-              checkpoint sequence is adopted.
+              {intakeCurrent
+                ? "No checkpoints are planned after Intake yet."
+                : "No checkpoints defined. The long-term goal is the effective endpoint until a checkpoint sequence is adopted."}
             </p>
           )}
 
           {view.phase === "current" && view.current && (
             <div className="rounded-lg border border-cyan-700/60 bg-cyan-950/20 p-4">
               <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300">
-                <span>Working toward now</span>
+                <span>{intakeCurrent ? "Next, once Intake is complete" : "Working toward now"}</span>
                 <span className="font-mono text-cyan-500/80">
                   checkpoint {view.position} of {view.total}
                 </span>
@@ -426,6 +453,7 @@ export function ProjectCheckpointsPanel({
                   {view.current.goal}
                 </p>
               )}
+              <CheckpointTarget key={view.current.id} project={project} checkpoint={view.current} onUpdate={onUpdate} />
               <VerdictLine checkpoint={view.current} />
               <CriteriaList checkpoint={view.current} />
               <NeedsList checkpoint={view.current} project={project} />
@@ -466,6 +494,7 @@ export function ProjectCheckpointsPanel({
                     <span className="text-slate-600">
                       {(cp.criteria ?? []).filter((c) => c.enabled !== false).length} criteria
                     </span>
+                    <CheckpointTarget project={project} checkpoint={cp} onUpdate={onUpdate} />
                   </li>
                 ))}
               </ol>
@@ -493,6 +522,7 @@ export function ProjectCheckpointsPanel({
                       {cp.goal && (
                         <p className="mt-2 whitespace-pre-wrap break-words text-slate-400">{cp.goal}</p>
                       )}
+                      <CheckpointTarget project={project} checkpoint={cp} onUpdate={onUpdate} />
                       <CriteriaList checkpoint={cp} />
                       <History checkpoint={cp} />
                       {cp.history.length > 0 && (
@@ -571,6 +601,7 @@ export function ProjectCheckpointsPanel({
                   <li key={cp.id} className="break-words">
                     {cp.title}
                     {cp.archived_at ? ` · archived ${when(cp.archived_at)}` : ""}
+                    {cp.target ? ` · Target: ${cp.target}` : ""}
                     {cp.completion ? ` · was verified ${when(cp.completion.at)}` : ""}
                     <CriteriaList checkpoint={cp} />
                     <History checkpoint={cp} />

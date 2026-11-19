@@ -38,14 +38,18 @@ function normalizeCriteria(raw, existing = [], at, label = 'end_state_criteria')
         return { ...candidate, ...criterion };
     });
 }
-function normalizeNeed(item, previous, project, at, actor, mutation) {
+function projectQuestionRespondents(db, projectId) {
+    return db.prepare(`SELECT c.name FROM project_contacts pc JOIN contacts c ON c.id = pc.contact_id
+        WHERE pc.project_id = ? AND c.kind = 'human'`).pluck().all(projectId);
+}
+function normalizeNeed(item, previous, project, at, actor, mutation, respondents) {
     object(item, 'need');
     if (own(item, 'knowledge')) object(item.knowledge, 'knowledge');
     const candidate = { ...previous, ...item, id: previous?.id || item.id || crypto.randomUUID().slice(0, 8), created_at: previous?.created_at || item.created_at || at };
     // Attribution records the original declarer. PATCH source identifies the verifier.
     if (previous?.source) candidate.source = previous.source;
     if (previous?.knowledge || item.knowledge) candidate.knowledge = { ...previous?.knowledge, ...item.knowledge };
-    let need = normalizeKnowledgeLifecycle(candidate, previous, mutation?.input || item, { at, actor, scoped: !!mutation });
+    let need = normalizeKnowledgeLifecycle(candidate, previous, mutation?.input || item, { at, actor, scoped: !!mutation, respondents });
     need = { ...need, ...parse(ProjectNeedSchema, need, 'need') };
     for (const field of ['expected_knowledge_revision', 'append_evidence', 'record_application']) delete need[field];
     if (!need.id.trim() || !need.description.trim()) throw invalid('each need requires an id and description');
@@ -75,7 +79,7 @@ function criterionDefinitions(criteria = []) {
 }
 
 /** Pure preparation. Caller holds a SQLite transaction from read through write. */
-function prepareProjectPatch(current, updates, { needMutation, changedKnowledgeSourceRefs = [] } = {}) {
+function prepareProjectPatch(current, updates, { needMutation, changedKnowledgeSourceRefs = [], respondents = [] } = {}) {
     object(updates, 'project patch');
     const patch = { ...updates };
     if (own(patch, 'checkpoints') && current.id && !own(updates, 'expected_checkpoints_revision')) throw invalid('Checkpoint saves require expected_checkpoints_revision from the read snapshot', 428);
@@ -126,7 +130,7 @@ function prepareProjectPatch(current, updates, { needMutation, changedKnowledgeS
             const previous = existing.find(n => n?.id === item?.id);
             // Adding/patching a different need must never rewrite legacy records.
             const mutation = needMutation?.id === item?.id ? needMutation : undefined;
-            let need = equal(item, previous) && !mutation ? previous : normalizeNeed(item, previous, needProject, at, mutation?.source || patch.end_state_source, mutation);
+            let need = equal(item, previous) && !mutation ? previous : normalizeNeed(item, previous, needProject, at, mutation?.source || patch.end_state_source, mutation, respondents);
             if (ids.has(need.id)) throw invalid('Need ids must be unique');
             ids.add(need.id);
             return need;
@@ -208,4 +212,4 @@ function prepareProjectPatch(current, updates, { needMutation, changedKnowledgeS
     patch.updated_at = at;
     return patch;
 }
-module.exports = { prepareProjectPatch, invalid, timestamp };
+module.exports = { prepareProjectPatch, projectQuestionRespondents, invalid, timestamp };
