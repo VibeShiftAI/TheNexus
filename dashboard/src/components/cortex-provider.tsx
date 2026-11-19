@@ -147,8 +147,6 @@ export interface ChatAudioNowPlaying {
 interface CortexContextValue {
     messages: Message[];
     setMessages: Dispatch<SetStateAction<Message[]>>;
-    readyForReview: Set<string>;
-    setReadyForReview: Dispatch<SetStateAction<Set<string>>>;
     // Conversation management
     conversationId: string | null;
     conversations: ChatConversation[];
@@ -188,6 +186,9 @@ function apiBase(): string {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     return isLocal ? 'http://localhost:4000' : '';
 }
+
+/** Thread id the retired LangGraph terminal left in browser storage. */
+const LEGACY_TERMINAL_THREAD_KEY = 'cortex_thread_id';
 
 function mapStoredMessage(m: any): Message {
     return {
@@ -240,7 +241,6 @@ export function mergeFetchedMessages(prev: Message[], fetched: Message[]): Messa
 
 export function CortexProvider({ children }: { children: ReactNode }) {
     const [messages, setMessages] = useState<Message[]>([]);
-    const [readyForReview, setReadyForReview] = useState<Set<string>>(new Set());
     const [conversationId, setConversationId] = useState<string | null>(null);
     const [conversations, setConversations] = useState<ChatConversation[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
@@ -330,27 +330,10 @@ export function CortexProvider({ children }: { children: ReactNode }) {
 
         loadActiveConversation();
 
-        // Check for pending Cortex state (rehydration)
-        const lastThreadId = localStorage.getItem('cortex_thread_id');
-        if (lastThreadId) {
-            fetch(`${base}/api/terminal/state/${lastThreadId}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.is_paused && data.current_plan) {
-                        console.log('[CortexProvider] Rehydrating pending plan:', data.current_plan.title);
-                        setMessages(prev => [...prev, {
-                            role: 'system',
-                            content: `⏸️ Pending plan "${data.current_plan.title}" awaiting your review.`,
-                            timestamp: new Date(),
-                            artifact: {
-                                type: 'PLAN_DRAFT',
-                                data: { ...data.current_plan, thread_id: lastThreadId }
-                            }
-                        }]);
-                    }
-                })
-                .catch(err => console.warn('[CortexProvider] Rehydration check failed:', err));
-        }
+        // A browser may still hold the thread id of the decommissioned LangGraph
+        // terminal. Its pending-plan lookup (/api/terminal/state) has no server
+        // any more, so drop the stale key instead of asking for it.
+        localStorage.removeItem(LEGACY_TERMINAL_THREAD_KEY);
     }, []);
 
     // ── Load conversation list ──
@@ -493,17 +476,11 @@ export function CortexProvider({ children }: { children: ReactNode }) {
                 return;
             }
 
-            // READY_FOR_REVIEW → mark thread as ready
-            if (type === 'READY_FOR_REVIEW') {
-                const threadId = artifact.data?.thread_id;
-                console.log('[CortexProvider] READY_FOR_REVIEW received, thread:', threadId);
-                if (threadId) {
-                    setReadyForReview(prev => new Set(prev).add(threadId));
-                } else {
-                    console.warn('[CortexProvider] READY_FOR_REVIEW missing thread_id');
-                }
-                return;
-            }
+            // READY_FOR_REVIEW used to unlock the plan Approve / Critique
+            // controls of the retired LangGraph terminal. Those controls are
+            // gone, so the signal has nothing to drive; drop it rather than
+            // turning it into a chat bubble.
+            if (type === 'READY_FOR_REVIEW') return;
 
             // All other artifacts become chat messages
             const labelMap: Record<string, string> = {
@@ -707,7 +684,6 @@ export function CortexProvider({ children }: { children: ReactNode }) {
     return (
         <CortexContext.Provider value={{
             messages, setMessages,
-            readyForReview, setReadyForReview,
             conversationId, conversations,
             startNewConversation,
             switchConversation: switchConversationFn,

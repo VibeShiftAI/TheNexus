@@ -8,7 +8,7 @@ for (const [role, content] of [['user', 'Hello'], ['assistant', 'Update'], ['sys
     const timestamp = new Date('2026-10-22T15:04:05Z');
     const markup = renderToStaticMarkup(createElement(MessageRow, {
       msg: { role, content, timestamp }, rowKey: 'row', i: 0,
-      dismissedVoice: new Set(), listenedVoice: new Set(), readyForReview: new Set(),
+      dismissedVoice: new Set(), listenedVoice: new Set(),
     }));
     const host = document.createElement('div'); host.innerHTML = markup;
     const time = host.querySelector('time');

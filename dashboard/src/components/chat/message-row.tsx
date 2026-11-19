@@ -8,15 +8,19 @@
  * Extracted verbatim from ai-terminal.tsx (P2-27, 2026-09-03). Every prop,
  * title, className and data-message-row attribute is unchanged — this file is
  * a move, not a redesign.
+ *
+ * Plan cards (PLAN_DRAFT / PLAN_REVISED) are read-only since 2026-11-19: their
+ * Approve / Critique controls posted to /api/terminal/interact, which belonged
+ * to the decommissioned LangGraph engine and that no server answers. Old
+ * transcripts still show the card and its full view, without the controls.
  */
 
-import { Bot, User, Loader2, X, XCircle, Maximize2, Square, ChevronRight, Volume2, Save } from "lucide-react";
+import { Bot, User, Loader2, X, Maximize2, Square, ChevronRight, Volume2, Save } from "lucide-react";
 
 import { MarkdownMessage, TaskLinkedText } from "@/components/chat/markdown-message";
 import { fullReportAudioForMessage } from "@/lib/chat-audio";
 import { bindMediaSpeech } from "@/lib/speech-ownership";
 import { voiceKeyForMessage } from "@/hooks/use-chat-audio";
-import type { CritiqueFeedbackState } from "@/components/chat/plan-review-modal";
 import type {
     ChatAudioNowPlaying,
     CortexArtifact,
@@ -54,15 +58,9 @@ export interface MessageRowProps {
     /** True for the newest visible row (drives the inline "thinking" spinner). */
     isLast: boolean;
     loading: boolean;
-    readyForReview: Set<string>;
     expandedArtifact: string | null;
     setExpandedArtifact: React.Dispatch<React.SetStateAction<string | null>>;
     setReviewModalData: React.Dispatch<React.SetStateAction<{ artifact: CortexArtifact; messageKey: string } | null>>;
-    critiqueFeedback: CritiqueFeedbackState;
-    setCritiqueFeedback: React.Dispatch<React.SetStateAction<CritiqueFeedbackState>>;
-    approvalLoading: string | null;
-    setApprovalLoading: React.Dispatch<React.SetStateAction<string | null>>;
-    setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
     chatAudio: ChatAudioNowPlaying | null;
     toggleChatAudio: (item: ChatAudioItem) => void;
     pauseChatAudio: () => void;
@@ -84,15 +82,9 @@ export function MessageRow({
     i,
     isLast,
     loading,
-    readyForReview,
     expandedArtifact,
     setExpandedArtifact,
     setReviewModalData,
-    critiqueFeedback,
-    setCritiqueFeedback,
-    approvalLoading,
-    setApprovalLoading,
-    setMessages,
     chatAudio,
     toggleChatAudio,
     pauseChatAudio,
@@ -242,120 +234,6 @@ export function MessageRow({
                                     )}
                                 </ul>
                             </>
-                        )}
-                        {/* Only show Approve/Critique buttons when plan is marked as final for review */}
-                        {((msg.artifact?.data as PlanDraftData)?.is_final || readyForReview.has((msg.artifact?.data as any)?.thread_id)) && (
-                            <div className="mt-3 flex gap-2">
-                                <button
-                                    onClick={async () => {
-                                        const threadId = (msg.artifact?.data as any)?.thread_id;
-                                        if (!threadId || threadId === 'unknown') {
-                                            setMessages(prev => [...prev, {
-                                                role: 'system',
-                                                content: '❌ Cannot approve: No valid thread ID found. Please try again.',
-                                                timestamp: new Date()
-                                            }]);
-                                            return;
-                                        }
-                                        setApprovalLoading(rowKey);
-                                        const formData = new FormData();
-                                        formData.append('thread_id', threadId);
-                                        formData.append('action', 'APPROVE');
-                                        formData.append('comment', 'Plan approved by user');
-                                        try {
-                                            const response = await fetch(`/api/terminal/interact`, {
-                                                method: 'POST',
-                                                body: formData
-                                            });
-                                            if (!response.ok) {
-                                                throw new Error(`Server returned ${response.status}`);
-                                            }
-                                            setMessages(prev => [...prev, {
-                                                role: 'user',
-                                                content: '✅ Plan Approved - Execution starting...',
-                                                timestamp: new Date()
-                                            }]);
-                                        } catch (e) {
-                                            console.error('Approve failed:', e);
-                                            setMessages(prev => [...prev, {
-                                                role: 'system',
-                                                content: `❌ Approval failed: ${e instanceof Error ? e.message : 'Unknown error'}. Please try again.`,
-                                                timestamp: new Date()
-                                            }]);
-                                        } finally {
-                                            setApprovalLoading(null);
-                                        }
-                                    }}
-                                    className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                    disabled={critiqueFeedback.messageKey === rowKey || approvalLoading === rowKey}
-                                >
-                                    {approvalLoading === rowKey && <Loader2 size={14} className="animate-spin" />}
-                                    {approvalLoading === rowKey ? 'Approving...' : 'Approve'}
-                                </button>
-                                <button
-                                    onClick={() => setCritiqueFeedback({ messageKey: rowKey, text: '', loading: false })}
-                                    className="px-3 py-1 bg-red-600 hover:bg-red-500 rounded text-sm transition-colors"
-                                    disabled={critiqueFeedback.messageKey === rowKey || approvalLoading === rowKey}
-                                >Critique</button>
-                            </div>
-                        )}
-                        {/* Inline Critique Feedback Form */}
-                        {critiqueFeedback.messageKey === rowKey && (
-                            <div className="mt-3 border border-red-500/30 bg-red-900/20 rounded-lg p-3">
-                                <label className="block text-xs text-red-300 mb-2 font-medium">Revision Feedback</label>
-                                <textarea
-                                    value={critiqueFeedback.text}
-                                    onChange={(e) => setCritiqueFeedback(prev => ({ ...prev, text: e.target.value }))}
-                                    placeholder="Describe the changes you'd like to see..."
-                                    className="w-full h-24 bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-red-500 focus:outline-none resize-none"
-                                    autoFocus
-                                    disabled={critiqueFeedback.loading}
-                                />
-                                <div className="mt-2 flex gap-2 justify-end">
-                                    <button
-                                        onClick={() => setCritiqueFeedback({ messageKey: null, text: '', loading: false })}
-                                        className="px-3 py-1 text-slate-400 hover:text-white text-sm transition-colors"
-                                        disabled={critiqueFeedback.loading}
-                                    >Cancel</button>
-                                    <button
-                                        onClick={async () => {
-                                            if (!critiqueFeedback.text.trim()) return;
-                                            setCritiqueFeedback(prev => ({ ...prev, loading: true }));
-                                            const threadId = (msg.artifact?.data as any)?.thread_id || 'unknown';
-                                            const formData = new FormData();
-                                            formData.append('thread_id', threadId);
-                                            formData.append('action', 'REJECT');
-                                            formData.append('comment', critiqueFeedback.text);
-                                            try {
-                                                const response = await fetch(`/api/terminal/interact`, {
-                                                    method: 'POST',
-                                                    body: formData
-                                                });
-                                                if (!response.ok) throw new Error('Failed to submit feedback');
-                                                setMessages(prev => [...prev, {
-                                                    role: 'user',
-                                                    content: `🔄 Requested revision: ${critiqueFeedback.text}`,
-                                                    timestamp: new Date()
-                                                }]);
-                                                setCritiqueFeedback({ messageKey: null, text: '', loading: false });
-                                            } catch (e) {
-                                                console.error('Critique failed:', e);
-                                                setMessages(prev => [...prev, {
-                                                    role: 'system',
-                                                    content: '❌ Failed to submit feedback. Please try again.',
-                                                    timestamp: new Date()
-                                                }]);
-                                                setCritiqueFeedback(prev => ({ ...prev, loading: false }));
-                                            }
-                                        }}
-                                        disabled={critiqueFeedback.loading || !critiqueFeedback.text.trim()}
-                                        className="px-3 py-1 bg-red-600 hover:bg-red-500 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                    >
-                                        {critiqueFeedback.loading && <Loader2 size={14} className="animate-spin" />}
-                                        {critiqueFeedback.loading ? 'Submitting...' : 'Submit Feedback'}
-                                    </button>
-                                </div>
-                            </div>
                         )}
                     </div>
                 )}

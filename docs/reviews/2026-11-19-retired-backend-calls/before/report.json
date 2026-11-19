@@ -1,0 +1,266 @@
+{
+  "base": "http://localhost:65191",
+  "label": "before",
+  "at": "2026-11-19T17:38:41.350Z",
+  "dashboard": "/private/tmp/nexus-62b7-baseline-9b707549/dashboard",
+  "api": {
+    "serverRoot": "/private/tmp/nexus-62b7-baseline-9b707549",
+    "upstream": "http://127.0.0.1:4000"
+  },
+  "webSecurityDisabled": true,
+  "viewports": {
+    "desktop": {
+      "staleThread": {
+        "requests": 287,
+        "retiredRequests": [
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404"
+        ],
+        "failedRequests": [
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404"
+        ],
+        "canceledRequests": [
+          "GET http://localhost:65191/api/praxis/hitl/pending (net::ERR_ABORTED)",
+          "GET http://localhost:65191/api/praxis/hitl/pending (net::ERR_ABORTED)",
+          "GET http://localhost:65191/api/praxis/hitl/pending?_cb=1795109982167 (net::ERR_ABORTED)",
+          "GET http://localhost:65191/api/praxis/hitl/pending (net::ERR_ABORTED)",
+          "GET http://localhost:65191/api/praxis/hitl/pending?_cb=1795109982843 (net::ERR_ABORTED)",
+          "GET http://localhost:65191/api/praxis/hitl/pending?_cb=1795109986152 (net::ERR_ABORTED)",
+          "GET http://localhost:65191/api/praxis/hitl/pending (net::ERR_ABORTED)",
+          "GET http://localhost:65191/api/praxis/hitl/pending (net::ERR_ABORTED)",
+          "GET http://localhost:65191/api/praxis/hitl/pending?_cb=1795110042122 (net::ERR_ABORTED)",
+          "GET http://localhost:65191/api/praxis/hitl/pending (net::ERR_ABORTED)",
+          "GET http://localhost:65191/api/praxis/hitl/pending?_cb=1795110091767 (net::ERR_ABORTED)",
+          "GET http://localhost:65191/api/praxis/hitl/pending?_cb=1795110092121 (net::ERR_ABORTED)",
+          "GET http://localhost:65191/api/praxis/hitl/pending?_cb=1795110092823 (net::ERR_ABORTED)",
+          "GET http://localhost:65191/api/praxis/hitl/pending?_cb=1795110092906 (net::ERR_ABORTED)"
+        ],
+        "nonGetRequests": [
+          "POST http://localhost:4000/socket.io/?EIO=4&transport=polling&t=u3koota3&sid=yWmlE1G874qi3pU5AABc -> 200",
+          "POST http://localhost:4000/socket.io/?EIO=4&transport=polling&t=u3korkyb&sid=yWmlE1G874qi3pU5AABc -> 200"
+        ],
+        "threadKeyAfterLoad": "legacy-langgraph-thread-0001",
+        "chatShown": true,
+        "screenshot": "A-desktop-chat-with-stale-thread-id.png"
+      },
+      "transcriptFallback": "[CortexProvider] Failed to load chat history from server: Error: HTTP 503\n    at loadActiveConversation (webpack-internal:///(app-pages-browser)/./src/components/cortex-provider.tsx:165:40)",
+      "planCard": {
+        "heading": "Final Review: Plan v2: Synthetic legacy plan (verification fixture)",
+        "buttons": [
+          "Open Full View",
+          "Approve",
+          "Critique"
+        ],
+        "text": "Final Review: Plan v2: Synthetic legacy plan (verification fixture)\nOpen Full View\nMarkdown Plan (v2)\n— click to review\nRationale: Old LangGraph plan kept in browser history; shown read-only.\nApprove\nCritique"
+      },
+      "planCardScreenshot": "B-desktop-old-plan-card.png",
+      "fullView": {
+        "title": "Draft Plan — Synthetic legacy plan (verification fixture)",
+        "buttons": [
+          "(icon)",
+          "Request Revisions",
+          "✅ Approve Plan"
+        ],
+        "text": "Draft Plan — Synthetic legacy plan (verification fixture)\nv2\nMarkdown Plan\nFixture plan\n\nRead the brief\n\nMake the change\n\nVerify it\n\nCOUNCIL RATIONALE\n\nOld LangGraph plan kept in browser history; shown read-only.\n\nRequest Revisions\n✅ Approve Plan"
+      },
+      "fullViewScreenshot": "B-desktop-old-plan-full-view.png",
+      "planCardRun": {
+        "retiredRequests": [
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404"
+        ],
+        "failedRequests": [
+          "GET http://localhost:4000/api/chat/active?mode=praxis&limit=30 -> 503",
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404"
+        ]
+      }
+    },
+    "phone": {
+      "staleThread": {
+        "requests": 72,
+        "retiredRequests": [
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404"
+        ],
+        "failedRequests": [
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404"
+        ],
+        "canceledRequests": [],
+        "nonGetRequests": [
+          "POST http://localhost:4000/socket.io/?EIO=4&transport=polling&t=u7cfqa8z&sid=VjdzN1dn3oPK_J_DAABg -> 200",
+          "POST http://localhost:4000/socket.io/?EIO=4&transport=polling&t=u7cg3t2h&sid=VjdzN1dn3oPK_J_DAABg -> 200"
+        ],
+        "threadKeyAfterLoad": "legacy-langgraph-thread-0001",
+        "chatShown": true,
+        "screenshot": "A-phone-chat-with-stale-thread-id.png"
+      },
+      "transcriptFallback": "[CortexProvider] Failed to load chat history from server: Error: HTTP 503\n    at loadActiveConversation (webpack-internal:///(app-pages-browser)/./src/components/cortex-provider.tsx:165:40)",
+      "planCard": {
+        "heading": "Final Review: Plan v2: Synthetic legacy plan (verification fixture)",
+        "buttons": [
+          "Open Full View",
+          "Approve",
+          "Critique"
+        ],
+        "text": "Final Review: Plan v2: Synthetic legacy plan (verification fixture)\nOpen Full View\nMarkdown Plan (v2)\n— click to review\nRationale: Old LangGraph plan kept in browser history; shown read-only.\nApprove\nCritique"
+      },
+      "planCardScreenshot": "B-phone-old-plan-card.png",
+      "fullView": {
+        "title": "Draft Plan — Synthetic legacy plan (verification fixture)",
+        "buttons": [
+          "(icon)",
+          "Request Revisions",
+          "✅ Approve Plan"
+        ],
+        "text": "Draft Plan — Synthetic legacy plan (verification fixture)\nv2\nMarkdown Plan\nFixture plan\n\nRead the brief\n\nMake the change\n\nVerify it\n\nCOUNCIL RATIONALE\n\nOld LangGraph plan kept in browser history; shown read-only.\n\nRequest Revisions\n✅ Approve Plan"
+      },
+      "fullViewScreenshot": "B-phone-old-plan-full-view.png",
+      "planCardRun": {
+        "retiredRequests": [
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404"
+        ],
+        "failedRequests": [
+          "GET http://localhost:4000/api/chat/active?mode=praxis&limit=30 -> 503",
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404"
+        ]
+      }
+    }
+  },
+  "commentScreenshot": "C-desktop-document-review-comment.png",
+  "resolvedScreenshot": "C-desktop-document-review-comment-resolved.png",
+  "documentReviewComments": {
+    "documentShown": true,
+    "commentButton": true,
+    "composerOpen": true,
+    "typed": true,
+    "saveClicked": true,
+    "listedAfterSave": true,
+    "storedOnReview": true,
+    "storedKind": "passage",
+    "reviewStatus": "draft",
+    "listedAfterReload": true,
+    "resolveClicked": true,
+    "resolvedInUi": true,
+    "resolvedStored": true,
+    "documentRequestsFailed": [],
+    "retiredRequests": [
+      "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404",
+      "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404"
+    ],
+    "documentWrites": [
+      "POST http://localhost:65191/api/documents/96392ed8-824a-4339-a87d-158fada9f6a7/reviews?_cb=1795110106340 -> 201",
+      "POST http://localhost:65191/api/documents/reviews/45194dd0-c9c6-4e4c-9d48-c3301c72527f/comments?_cb=1795110106351 -> 201",
+      "PATCH http://localhost:65191/api/documents/reviews/45194dd0-c9c6-4e4c-9d48-c3301c72527f/comments/6fd71f3b-a953-4782-b582-516d9f306d1f?_cb=1795110108462 -> 200"
+    ]
+  },
+  "featureComments": [
+    {
+      "label": "list (server route)",
+      "method": "GET",
+      "path": "/api/projects/<project>/features/<task>/comments",
+      "status": 200,
+      "body": {
+        "comments": []
+      },
+      "text": null
+    },
+    {
+      "label": "add (server route)",
+      "method": "POST",
+      "path": "/api/projects/<project>/features/<task>/comments",
+      "status": 500,
+      "body": {
+        "error": "Failed to add comment"
+      },
+      "text": null
+    },
+    {
+      "label": "resolve seeded (server route)",
+      "method": "PATCH",
+      "path": "/api/projects/<project>/features/<task>/comments/<seeded comment>",
+      "status": 404,
+      "body": {
+        "error": "Comment not found"
+      },
+      "text": null
+    },
+    {
+      "label": "list (dashboard client path, timeline.ts getInlineComments)",
+      "method": "GET",
+      "path": "/api/projects/<project>/tasks/<task>/comments",
+      "status": 404,
+      "body": null,
+      "text": "<pre>Cannot GET /api/projects/<project>/tasks/<task>/comments</pre>"
+    }
+  ],
+  "commentOutcomes": {
+    "documentReview": {
+      "documentShown": true,
+      "commentButton": true,
+      "composerOpen": true,
+      "typed": true,
+      "saveClicked": true,
+      "listedAfterSave": true,
+      "storedOnReview": true,
+      "storedKind": "passage",
+      "reviewStatus": "draft",
+      "listedAfterReload": true,
+      "resolveClicked": true,
+      "resolvedInUi": true,
+      "resolvedStored": true,
+      "documentRequestsFailed": []
+    },
+    "featureComments": [
+      {
+        "label": "list (server route)",
+        "status": 200,
+        "error": null,
+        "success": null,
+        "comments": 0,
+        "text": null
+      },
+      {
+        "label": "add (server route)",
+        "status": 500,
+        "error": "Failed to add comment",
+        "success": null,
+        "comments": null,
+        "text": null
+      },
+      {
+        "label": "resolve seeded (server route)",
+        "status": 404,
+        "error": "Comment not found",
+        "success": null,
+        "comments": null,
+        "text": null
+      },
+      {
+        "label": "list (dashboard client path, timeline.ts getInlineComments)",
+        "status": 404,
+        "error": null,
+        "success": null,
+        "comments": null,
+        "text": "<pre>Cannot GET /api/projects/<project>/tasks/<task>/comments</pre>"
+      }
+    ]
+  },
+  "failures": [
+    "desktop A: no request to a retired route",
+    "desktop A: no failed request",
+    "desktop A: stale cortex_thread_id removed",
+    "desktop B: card has no approve/critique control",
+    "desktop B: no approve/critique wording on the card",
+    "desktop B: full view has only its close control",
+    "desktop B: full view shows the plan, no approve/revise action",
+    "desktop B: no request to a retired route",
+    "desktop B: only the simulated transcript 503 failed",
+    "phone A: no request to a retired route",
+    "phone A: no failed request",
+    "phone A: stale cortex_thread_id removed",
+    "phone B: card has no approve/critique control",
+    "phone B: no approve/critique wording on the card",
+    "phone B: full view has only its close control",
+    "phone B: full view shows the plan, no approve/revise action",
+    "phone B: no request to a retired route",
+    "phone B: only the simulated transcript 503 failed",
+    "C: no request to a retired route"
+  ]
+}
