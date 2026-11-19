@@ -40,12 +40,18 @@ const path = require('path');
 const Database = require('better-sqlite3');
 
 const SERVER = path.resolve(__dirname, '../../services/praxis-mind-mcp/stdio.js');
+// Port 9 is the IANA "discard" port, which nothing on this machine serves;
+// mcp-boundary-security.test.js makeTempConfig points Cortex/Praxis/Nexus at
+// the same address. Any call that leaks there fails fast with ECONNREFUSED.
 const CLOSED_PORT = 'http://127.0.0.1:9';
 
 const READ_PRIVILEGES = ['identity.whoami', 'vault.read', 'nexus.tasks_read', 'nexus.task_status'];
 const WRITE_PRIVILEGES = ['vault.write', 'nexus.task_create'];
 
-jest.setTimeout(30000);
+// No timeout override: jest.config.js sets no testTimeout, so every test and
+// hook here runs under Jest's default per-test budget, like the rest of the
+// server suite. A hung server reply is bounded by that budget; a server that
+// exits rejects its pending replies at once (see spawnServer).
 
 // ─── Fake Nexus backend: records every request, keeps just enough task state
 // for nexus_task_create's apply → read-back → verify cycle to commit. ────────
@@ -108,6 +114,8 @@ function makeFixture() {
   const home = path.join(root, 'home');
   const stateDir = path.join(home, '.praxis-mind');
   const vault = path.join(root, 'vault');
+  // 0700 dir / 0600 keys file: lib/auth.js refuses a keys file with any
+  // group/world bit (mode & 0o077), the same modes scripts/mcp-boundary-probe.js uses.
   fs.mkdirSync(stateDir, { recursive: true, mode: 0o700 });
   fs.mkdirSync(path.join(vault, 'memories'), { recursive: true });
   fs.writeFileSync(path.join(vault, 'memories', 'seed.md'), '# Seed\nDenied-call fixture.\n');
@@ -128,7 +136,7 @@ function writeKeys(fixture, keys) {
   fs.renameSync(tmp, fixture.keysFile);
 }
 
-const newKey = (label) => `${label}-${crypto.randomBytes(12).toString('hex')}`;
+const newKey = (label) => `${label}-${crypto.randomUUID()}`;
 
 // ─── Real stdio server over JSON-RPC ────────────────────────────────────────
 
@@ -161,28 +169,35 @@ async function spawnServer(fixture, nexus, key) {
       if (!line.trim()) continue;
       const msg = JSON.parse(line);
       if (msg.id && pending.has(msg.id)) {
-        pending.get(msg.id)(msg);
+        pending.get(msg.id).resolve(msg);
         pending.delete(msg.id);
       }
     }
   });
-  const exited = new Promise((resolve) => child.once('exit', resolve));
+  const exited = new Promise((resolve) => child.once('exit', (code, signal) => {
+    for (const { reject, method } of pending.values()) {
+      reject(new Error(`server exited (code ${code}, signal ${signal}) before replying to ${method}; stderr:\n${stderr.join('\n')}`));
+    }
+    pending.clear();
+    resolve();
+  }));
 
   let nextId = 0;
   const send = (payload) => {
     sent.push(payload);
     child.stdin.write(`${JSON.stringify(payload)}\n`);
   };
+  // A reply can only arrive while the server process is alive, so its exit is
+  // the deadline: every pending reply is rejected then, with the server's
+  // stderr, instead of after an invented wall-clock wait.
   const rpc = (method, params) => new Promise((resolve, reject) => {
     const id = ++nextId;
-    const timer = setTimeout(() => {
-      pending.delete(id);
-      reject(new Error(`timeout waiting for ${method}; stderr:\n${stderr.join('\n')}`));
-    }, 15000);
-    pending.set(id, (msg) => { clearTimeout(timer); resolve(msg); });
+    pending.set(id, { resolve, reject, method });
     send({ jsonrpc: '2.0', id, method, params });
   });
 
+  // '2025-06-18' is one of the SDK's SUPPORTED_PROTOCOL_VERSIONS
+  // (@modelcontextprotocol/sdk dist/cjs/types.js).
   await rpc('initialize', {
     protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'denied-calls-test', version: '1' },
   });
@@ -242,6 +257,7 @@ function serverState(fixture, nexus) {
 const textOf = (result) => result.content.map((c) => c.text).join('\n');
 
 const VAULT_ARGS = (name) => ({ path: `memories/${name}.md`, content: `${name}\n`, mode: 'replace' });
+// priority 1 is the nexus_task_create schema default ("1=normal", tools/nexus.js).
 const CREATE_ARGS = (title) => ({ project_id: 'p-fixture', title, description: '', priority: 1, dependencies: [] });
 
 let fixture;
@@ -319,6 +335,7 @@ describe('invocation without discovery: tools/call is authorized at invocation, 
       ['vault_write', 'committed', 'writer'],
       ['nexus_task_create', 'committed', 'writer'],
     ]);
+    // calls.success is stored as INTEGER 1/0 (lib/ledger.js record()).
     expect(after.ledger.map((r) => [r.caller, r.tool, r.success])).toEqual([
       ['writer', 'vault_write', 1],
       ['writer', 'nexus_task_create', 1],
@@ -357,7 +374,7 @@ describe('invocation after revocation: a grant withdrawn mid-session stops the n
     expect(control.isError).toBeUndefined();
     const controlCreate = await session.call('nexus_task_create', CREATE_ARGS('before revocation'));
     expect(controlCreate.isError).toBeUndefined();
-    expect(transitions(fixture)).toHaveLength(2);
+    expect(transitions(fixture)).toHaveLength(2); // the two control calls above
 
     // Revoke the write privileges. The session is NOT respawned.
     writeKeys(fixture, { [key]: { ...grant, privileges: [...READ_PRIVILEGES] } });

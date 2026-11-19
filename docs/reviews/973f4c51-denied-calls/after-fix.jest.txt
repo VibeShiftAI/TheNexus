@@ -1,17 +1,17 @@
-# working tree on branch praxis/run/973f4c51-c734-453e-86b8-92c3f3710a41, base 5de09506 plus this task's lib/auth.js + stdio.js change
-# command: npx jest server/__tests__/mcp-boundary-denied-calls.test.js --verbose
+# working tree on branch praxis/run/973f4c51-c734-453e-86b8-92c3f3710a41, base f5e997eb plus the round-2 timeout repair (no jest.setTimeout, no per-RPC wall-clock deadline)
+# command: npx jest server/__tests__/mcp-boundary-denied-calls.test.js --runInBand --verbose
 PASS server/__tests__/mcp-boundary-denied-calls.test.js
   invocation without discovery: tools/call is authorized at invocation, not by tools/list
-    ✓ an under-privileged caller that never listed tools is refused, and the server state is unchanged (103 ms)
-    ✓ positive control: an authorized caller that never listed tools writes, and the state changes (144 ms)
-    ✓ discovery grants nothing: tools/list advertises write tools to a reader that is still refused (102 ms)
+    ✓ an under-privileged caller that never listed tools is refused, and the server state is unchanged (87 ms)
+    ✓ positive control: an authorized caller that never listed tools writes, and the state changes (131 ms)
+    ✓ discovery grants nothing: tools/list advertises write tools to a reader that is still refused (93 ms)
   invocation after revocation: a grant withdrawn mid-session stops the next call in that session
-    ✓ privileges removed from the key are refused on the next call, with no side effect; what remains still works (146 ms)
-    ✓ a key deleted mid-session resolves unauthenticated on the next call, with no side effect (113 ms)
-    ✓ positive control: a key re-granted mid-session is honored on the next call without a respawn (120 ms)
+    ✓ privileges removed from the key are refused on the next call, with no side effect; what remains still works (125 ms)
+    ✓ a key deleted mid-session resolves unauthenticated on the next call, with no side effect (103 ms)
+    ✓ positive control: a key re-granted mid-session is honored on the next call without a respawn (101 ms)
 
 Test Suites: 1 passed, 1 total
 Tests:       6 passed, 6 total
 Snapshots:   0 total
-Time:        0.865 s, estimated 2 s
+Time:        0.702 s, estimated 2 s
 Ran all test suites matching server/__tests__/mcp-boundary-denied-calls.test.js.
