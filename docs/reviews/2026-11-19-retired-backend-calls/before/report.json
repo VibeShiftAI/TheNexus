@@ -1,0 +1,130 @@
+{
+  "base": "http://localhost:3000",
+  "label": "before",
+  "at": "2026-11-19T16:11:31.860Z",
+  "webSecurityDisabled": false,
+  "viewports": {
+    "desktop": {
+      "staleThread": {
+        "requests": 126,
+        "retiredRequests": [
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404"
+        ],
+        "failedRequests": [
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404",
+          "POST http://localhost:4000/api/operator-session/bootstrap -> 403"
+        ],
+        "canceledRequests": [],
+        "nonGetRequests": [
+          "POST http://localhost:4000/socket.io/?EIO=4&transport=polling&t=qzh73vx2&sid=7S0VelaixRvXsNfHAAAG -> 200",
+          "POST http://localhost:4000/socket.io/?EIO=4&transport=polling&t=qzh7etz0&sid=7S0VelaixRvXsNfHAAAG -> 200",
+          "POST http://localhost:4000/api/operator-session/bootstrap -> 403"
+        ],
+        "threadKeyAfterLoad": "legacy-langgraph-thread-0001",
+        "chatShown": true,
+        "screenshot": "A-desktop-chat-with-stale-thread-id.png"
+      },
+      "planCard": {
+        "heading": "Final Review: Plan v2: Synthetic legacy plan (verification fixture)",
+        "buttons": [
+          "Open Full View",
+          "Approve",
+          "Critique"
+        ],
+        "text": "Final Review: Plan v2: Synthetic legacy plan (verification fixture)\nOpen Full View\nMarkdown Plan (v2)\n— click to review\nRationale: Old LangGraph plan kept in browser history; shown read-only.\nApprove\nCritique"
+      },
+      "planCardScreenshot": "B-desktop-old-plan-card.png",
+      "fullView": {
+        "title": "Draft Plan — Synthetic legacy plan (verification fixture)",
+        "buttons": [
+          "(icon)",
+          "Request Revisions",
+          "✅ Approve Plan"
+        ],
+        "text": "Draft Plan — Synthetic legacy plan (verification fixture)\nv2\nMarkdown Plan\nFixture plan\n\nRead the brief\n\nMake the change\n\nVerify it\n\nCOUNCIL RATIONALE\n\nOld LangGraph plan kept in browser history; shown read-only.\n\nRequest Revisions\n✅ Approve Plan"
+      },
+      "fullViewScreenshot": "B-desktop-old-plan-full-view.png",
+      "planCardRun": {
+        "retiredRequests": [
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404"
+        ],
+        "failedRequests": [
+          "GET http://localhost:4000/api/chat/active?mode=praxis&limit=30 -> 503",
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404",
+          "POST http://localhost:4000/api/operator-session/bootstrap -> 403"
+        ]
+      }
+    },
+    "phone": {
+      "staleThread": {
+        "requests": 108,
+        "retiredRequests": [
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404"
+        ],
+        "failedRequests": [
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404",
+          "POST http://localhost:4000/api/operator-session/bootstrap -> 403"
+        ],
+        "canceledRequests": [],
+        "nonGetRequests": [
+          "POST http://localhost:4000/socket.io/?EIO=4&transport=polling&t=r027p7s2&sid=0er_V_EFiFAlbElnAAAK -> 200",
+          "POST http://localhost:4000/socket.io/?EIO=4&transport=polling&t=r027ut9g&sid=0er_V_EFiFAlbElnAAAK -> 200",
+          "POST http://localhost:4000/api/operator-session/bootstrap -> 403"
+        ],
+        "threadKeyAfterLoad": "legacy-langgraph-thread-0001",
+        "chatShown": true,
+        "screenshot": "A-phone-chat-with-stale-thread-id.png"
+      },
+      "planCard": {
+        "heading": "Final Review: Plan v2: Synthetic legacy plan (verification fixture)",
+        "buttons": [
+          "Open Full View",
+          "Approve",
+          "Critique"
+        ],
+        "text": "Final Review: Plan v2: Synthetic legacy plan (verification fixture)\nOpen Full View\nMarkdown Plan (v2)\n— click to review\nRationale: Old LangGraph plan kept in browser history; shown read-only.\nApprove\nCritique"
+      },
+      "planCardScreenshot": "B-phone-old-plan-card.png",
+      "fullView": {
+        "title": "Draft Plan — Synthetic legacy plan (verification fixture)",
+        "buttons": [
+          "(icon)",
+          "Request Revisions",
+          "✅ Approve Plan"
+        ],
+        "text": "Draft Plan — Synthetic legacy plan (verification fixture)\nv2\nMarkdown Plan\nFixture plan\n\nRead the brief\n\nMake the change\n\nVerify it\n\nCOUNCIL RATIONALE\n\nOld LangGraph plan kept in browser history; shown read-only.\n\nRequest Revisions\n✅ Approve Plan"
+      },
+      "fullViewScreenshot": "B-phone-old-plan-full-view.png",
+      "planCardRun": {
+        "retiredRequests": [
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404"
+        ],
+        "failedRequests": [
+          "GET http://localhost:4000/api/chat/active?mode=praxis&limit=30 -> 503",
+          "GET http://localhost:4000/api/terminal/state/legacy-langgraph-thread-0001 -> 404",
+          "POST http://localhost:4000/api/operator-session/bootstrap -> 403"
+        ]
+      }
+    }
+  },
+  "failures": [
+    "desktop A: no request to a retired route",
+    "desktop A: no failed request",
+    "desktop A: stale cortex_thread_id removed",
+    "desktop B: card has no approve/critique control",
+    "desktop B: no approve/critique wording on the card",
+    "desktop B: full view has only its close control",
+    "desktop B: full view shows the plan, no approve/revise action",
+    "desktop B: no request to a retired route",
+    "desktop B: only the simulated transcript 503 failed",
+    "phone A: no request to a retired route",
+    "phone A: no failed request",
+    "phone A: stale cortex_thread_id removed",
+    "phone B: card has no approve/critique control",
+    "phone B: no approve/critique wording on the card",
+    "phone B: full view has only its close control",
+    "phone B: full view shows the plan, no approve/revise action",
+    "phone B: no request to a retired route",
+    "phone B: only the simulated transcript 503 failed"
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "base": "http://localhost:54289",
+  "label": "after",
+  "at": "2026-11-19T16:27:16.956Z",
+  "webSecurityDisabled": true,
+  "viewports": {
+    "desktop": {
+      "staleThread": {
+        "requests": 88,
+        "retiredRequests": [],
+        "failedRequests": [],
+        "canceledRequests": [],
+        "nonGetRequests": [
+          "POST http://localhost:4000/socket.io/?EIO=4&transport=polling&t=rjt5p58z&sid=1rxKM6Ao1A0vib7rAAAQ -> 200",
+          "POST http://localhost:4000/socket.io/?EIO=4&transport=polling&t=rjt5z0hh&sid=1rxKM6Ao1A0vib7rAAAQ -> 200"
+        ],
+        "threadKeyAfterLoad": null,
+        "chatShown": true,
+        "screenshot": "A-desktop-chat-with-stale-thread-id.png"
+      },
+      "planCard": {
+        "heading": "Final Review: Plan v2: Synthetic legacy plan (verification fixture)",
+        "buttons": [
+          "Open Full View"
+        ],
+        "text": "Final Review: Plan v2: Synthetic legacy plan (verification fixture)\nOpen Full View\nMarkdown Plan (v2)\n— click to review\nRationale: Old LangGraph plan kept in browser history; shown read-only."
+      },
+      "planCardScreenshot": "B-desktop-old-plan-card.png",
+      "fullView": {
+        "title": "Draft Plan — Synthetic legacy plan (verification fixture)",
+        "buttons": [
+          "(icon)"
+        ],
+        "text": "Draft Plan — Synthetic legacy plan (verification fixture)\nv2\nMarkdown Plan\nFixture plan\n\nRead the brief\n\nMake the change\n\nVerify it\n\nCOUNCIL RATIONALE\n\nOld LangGraph plan kept in browser history; shown read-only."
+      },
+      "fullViewScreenshot": "B-desktop-old-plan-full-view.png",
+      "planCardRun": {
+        "retiredRequests": [],
+        "failedRequests": [
+          "GET http://localhost:4000/api/chat/active?mode=praxis&limit=30 -> 503"
+        ]
+      }
+    },
+    "phone": {
+      "staleThread": {
+        "requests": 98,
+        "retiredRequests": [],
+        "failedRequests": [],
+        "canceledRequests": [
+          "GET http://localhost:54289/api/praxis/hitl/pending?_cb=1795105669929 (net::ERR_ABORTED)"
+        ],
+        "nonGetRequests": [
+          "POST http://localhost:4000/socket.io/?EIO=4&transport=polling&t=rkdw9hj0&sid=XK4HipHXVRuq7UwdAAAU -> 200",
+          "POST http://localhost:4000/socket.io/?EIO=4&transport=polling&t=rkdwfxc8&sid=XK4HipHXVRuq7UwdAAAU -> 200"
+        ],
+        "threadKeyAfterLoad": null,
+        "chatShown": true,
+        "screenshot": "A-phone-chat-with-stale-thread-id.png"
+      },
+      "planCard": {
+        "heading": "Final Review: Plan v2: Synthetic legacy plan (verification fixture)",
+        "buttons": [
+          "Open Full View"
+        ],
+        "text": "Final Review: Plan v2: Synthetic legacy plan (verification fixture)\nOpen Full View\nMarkdown Plan (v2)\n— click to review\nRationale: Old LangGraph plan kept in browser history; shown read-only."
+      },
+      "planCardScreenshot": "B-phone-old-plan-card.png",
+      "fullView": {
+        "title": "Draft Plan — Synthetic legacy plan (verification fixture)",
+        "buttons": [
+          "(icon)"
+        ],
+        "text": "Draft Plan — Synthetic legacy plan (verification fixture)\nv2\nMarkdown Plan\nFixture plan\n\nRead the brief\n\nMake the change\n\nVerify it\n\nCOUNCIL RATIONALE\n\nOld LangGraph plan kept in browser history; shown read-only."
+      },
+      "fullViewScreenshot": "B-phone-old-plan-full-view.png",
+      "planCardRun": {
+        "retiredRequests": [],
+        "failedRequests": [
+          "GET http://localhost:4000/api/chat/active?mode=praxis&limit=30 -> 503"
+        ]
+      }
+    }
+  },
+  "failures": []
+}
