@@ -619,6 +619,22 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         return store().listSupersessions(docId);
     }
 
+    /**
+     * settleReplaces in a savepoint of the caller's transaction: a fault in recording or applying names rolls back only
+     * the names, never the registration or review request that carries them (deliverables are how work reaches Robert).
+     */
+    function settleReplacesGuarded(docId, options) {
+        try { return { rows: store().transaction(() => settleReplaces(docId, options)), error: null }; } catch (err) {
+            console.error(`[Documents] names of what ${docId} replaces were not applied:`, err);
+            let rows = [];
+            try { rows = store().listSupersessions(docId); } catch { /* the names stay unreported; the error says so */ }
+            return {
+                rows,
+                error: { code: 'replaces_failed', message: 'The names of what this document replaces could not be recorded or applied, so nothing was retired by them. Everything else in this request succeeded; send it again to retry the names' },
+            };
+        }
+    }
+
     /** Apply the pending names of these replacing documents now; one failure leaves its names pending and the read goes on. */
     function settlePendingOf(ids) {
         for (const id of ids) {
@@ -696,8 +712,10 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         const stamp = doc.metadata?.review_closed;
         if (!isPlainObject(stamp) || typeof stamp.at !== 'string' || !stamp.at.trim()) return null;
         const supersededBy = typeof stamp.superseded_by === 'string' && stamp.superseded_by.trim() ? stamp.superseded_by.trim() : null;
+        // Put back since (review requested again, or retired afresh by a registration after a reopen): no longer in force.
+        const putBack = doc.requires_review || store().listRetirements(doc.id).some(rt => String(rt.retired_at) > stamp.at);
         return {
-            id: null, source: 'manual', state: doc.requires_review ? 'reopened' : 'retired',
+            id: null, source: 'manual', state: putBack ? 'reopened' : 'retired',
             retired_at: stamp.at, retired_by: typeof stamp.by === 'string' ? stamp.by : null,
             reason: typeof stamp.reason === 'string' && stamp.reason.trim() ? stamp.reason.trim() : 'Closed by hand without review. Not an approval.',
             replaced_by: documentRef(supersededBy), replaced_by_revision_id: null,
@@ -1199,10 +1217,10 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             }
             // The documents this registration names as replaced (contract §13), retired in this same transaction when it
             // is waiting for review and ready to view, else kept pending until it is.
-            const replaces = settleReplaces(doc.id, {
+            const named = settleReplacesGuarded(doc.id, {
                 trigger: 'registration', names: v.replaces || [], registrationId: registration.id, revisionId: revision.id, taskId: v.taskId, actorId,
             });
-            return { doc: store().getDocument(doc.id), revision, registration, documentCreated, duplicate, replaces, retirement };
+            return { doc: store().getDocument(doc.id), revision, registration, documentCreated, duplicate, replaces: named.rows, replacesError: named.error, retirement };
         });
     }
 
@@ -1238,7 +1256,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (/UNIQUE/i.test(err.message || '')) return res.status(409).json({ error: 'A concurrent registration claimed this identity; retry', code: 'registration_conflict' });
             throw err;
         }
-        const { doc, revision, registration, documentCreated, duplicate, replaces, retirement } = written;
+        const { doc, revision, registration, documentCreated, duplicate, replaces, replacesError, retirement } = written;
         return res.status(documentCreated ? 201 : 200).json({
             document: doc,
             revision: revisionMeta(revision),
@@ -1249,6 +1267,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             receipt: receiptView(registration, revision),
             // Every name this document's registrations declared, with its outcome and reasons (contract §13).
             replaces: replaces.map(supersessionView),
+            replaces_error: replacesError,
             // This document's own retirement, when the registration found it retired (kept, or reopened by new bytes).
             retirement,
         });
@@ -1316,7 +1335,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 bindDecisionItems(doc, metadata, revision.id);
                 // Names of what this document replaces (contract §13). A plain registration never requests review, so on a
                 // new document they wait until review is requested and it is ready to view.
-                const named = settleReplaces(doc.id, {
+                const named = settleReplacesGuarded(doc.id, {
                     trigger: 'registration', names: replaces.value, revisionId: revision.id, taskId: taskId || doc.task_id || null, actorId: req.user.id,
                 });
                 return { doc: store().getDocument(doc.id), revision, created: !existing, named };
@@ -1324,7 +1343,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             const { doc, revision, created, named } = registered;
             return res.status(created ? 201 : 200).json({
                 document: doc, revision: revisionMeta(revision), review_url: fmt.reviewUrlFor(doc.id),
-                review_path: fmt.reviewPathFor(doc.id), created, replaces: named.map(supersessionView),
+                review_path: fmt.reviewPathFor(doc.id), created, replaces: named.rows.map(supersessionView), replaces_error: named.error,
             });
         } catch (err) {
             if (err.status === 409) return res.status(409).json({ error: err.message, code: err.code });
@@ -1466,14 +1485,14 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             const { document, reopened, named } = store().transaction(() => {
                 const updated = store().updateDocument(doc.id, { requires_review: true, blocking_task_ids: parsed.value });
                 const reopenedRetirement = store().reopenRetirement(doc.id, req.user.id, 'request_review');
-                const replaces = settleReplaces(doc.id, { trigger: 'review_requested' });
+                const replaces = settleReplacesGuarded(doc.id, { trigger: 'review_requested' });
                 return { document: store().getDocument(updated.id), reopened: reopenedRetirement, named: replaces };
             });
             if (reopened) console.log(`[Documents] ${doc.id} reopened from retirement ${reopened.id} (replaced by ${reopened.replaced_by_document_id}) by ${req.user.id}`);
             return res.json({
                 document, review_status: store().getReviewStatus(doc.id), blocking_tasks: store().getBlockingTasks(doc.id),
                 retirement: reopened ? retirementEffect('reopened', reopened) : null,
-                replaces: named.map(supersessionView),
+                replaces: named.rows.map(supersessionView), replaces_error: named.error,
             });
         } catch (err) {
             console.error('[Documents] review requirements failed:', err);

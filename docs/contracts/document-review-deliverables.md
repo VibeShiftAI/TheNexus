@@ -1143,7 +1143,11 @@ bring it back and record the retirement as reopened with
   `{ document_id, title, exists, review_path, review_status }`, `candidates`,
   `registration_id`, `task_id` and its `retirement` summary). The declared
   form also adds `retirement` when it found the document itself retired.
-  The receipt is unchanged.
+  The receipt is unchanged. Registration and request-review responses also
+  carry `replaces_error` (null normally): a fault while recording or applying
+  names never fails the registration or request; the names roll back and
+  `replaces_error: { code: "replaces_failed", message }` says so, and sending
+  it again retries them.
 - `GET /api/documents/:id` adds `retirement` (the one in force, or null),
   `retirement_history` (newest first, reopened ones included), `replaces` (as
   above, plus manual closes that named this document) and

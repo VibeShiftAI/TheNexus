@@ -692,3 +692,41 @@ describe('review repairs (code-review gate, 2026-11-19)', () => {
         expect(next.replaces[0].reasons[0].message).not.toMatch(/0 comments/);
     });
 });
+
+describe('hardening after self-review (2026-11-19)', () => {
+    test('a fault in recording or applying names never costs the registration or the review request', async () => {
+        const old = await original();
+        jest.spyOn(console, 'error').mockImplementation(() => {});
+        const fault = jest.spyOn(store(), 'declareSupersession').mockImplementation(() => { throw new Error('synthetic names fault'); });
+        const next = await register(writeFile('brief-v2.md', V2), { key: 'launch-brief-v2', task_id: NEW_TASK, replaces: [{ deliverable_key: 'launch-brief-v1' }] });
+        expect(next.status).toBe(201);
+        expect(next.json.receipt).toMatchObject({ deliverable_key: 'launch-brief-v2', requires_review: true });
+        expect(next.json).toMatchObject({ replaces: [], replaces_error: { code: 'replaces_failed' } });
+        expect(store().getDocument(old.document.id).requires_review).toBe(true);
+        const plainNext = await plain(writeFile('plain.md', '# Plain\n'), { replaces: [{ deliverable_key: 'launch-brief-v1' }] });
+        expect(plainNext).toMatchObject({ status: 201, json: { replaces: [], replaces_error: { code: 'replaces_failed' } } });
+        fault.mockRestore();
+        // Sent again, the names apply; a clean response carries replaces_error null.
+        const retry = await register(writeFile('brief-v2.md', V2), { key: 'launch-brief-v2', task_id: NEW_TASK, replaces: [{ deliverable_key: 'launch-brief-v1' }] });
+        expect(retry.json).toMatchObject({ duplicate: true, replaces_error: null, replaces: [{ outcome: 'retired' }] });
+        // A fault while applying names on request-review still reopens the document.
+        jest.spyOn(store(), 'listSupersessions').mockImplementation(() => { throw new Error('synthetic names fault'); });
+        const reopened = await requestReview(old.document.id);
+        jest.restoreAllMocks();
+        jest.spyOn(console, 'log').mockImplementation(() => {});
+        expect(reopened.status).toBe(200);
+        expect(reopened.json).toMatchObject({ document: { requires_review: true }, retirement: { action: 'reopened' } });
+        expect(store().findOpenRetirement(old.document.id)).toBeNull();
+    });
+
+    test('a manual close put back and then retired by a registration reads as reopened, the registration\'s retirement in force', async () => {
+        const old = await original();
+        store().updateDocument(old.document.id, { requires_review: false, metadata: { review_closed: { at: '2026-11-18T21:04:00.000Z', by: 'manual', reason: 'Closed by hand.' } } });
+        expect((await requestReview(old.document.id)).status).toBe(200);
+        const next = await replacement([{ document_id: old.document.id }]);
+        expect(next.replaces[0].outcome).toBe('retired');
+        const page = await read(old.document.id);
+        expect(page.retirement).toMatchObject({ source: 'replacement', state: 'retired', replaced_by: { document_id: next.document.id } });
+        expect(page.retirement_history.map(rt => [rt.source, rt.state])).toEqual([['replacement', 'retired'], ['manual', 'reopened']]);
+    });
+});
