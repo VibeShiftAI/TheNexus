@@ -11,7 +11,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+const createApiRateLimit = require('./middleware/api-rate-limit');
 const path = require('path');
 const fs = require('fs');
 
@@ -64,12 +64,7 @@ app.use(express.json({ limit: '50mb' }));
 // Sized for the bridge dashboard: one open deck tab polls ~25 req/min across
 // its live panels, so 1000/15min browned out with two viewers (2026-07-11).
 // This is a local-operator DoS guard, not a quota — keep it generous.
-const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, max: 6000,
-    standardHeaders: true, legacyHeaders: false,
-    message: { error: 'Too many requests, please try again later.' }
-});
-app.use('/api', apiLimiter);
+app.use('/api', createApiRateLimit());
 
 // ─── Project Hub (THE LAB) ──────────────────────────────────────────────────
 // lab.vibeshiftai.com serves the hub at its root — that's the travel

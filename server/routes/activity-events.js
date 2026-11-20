@@ -58,6 +58,7 @@ function createActivityEventsRouter({ db, io }) {
                 severity: req.query.severity || null,
             }));
         } catch (error) {
+            console.warn('[ActivityEvents] GET /api/ag/events failed (HTTP 500):', error.message);
             res.status(500).json({ error: 'Failed to read events: ' + error.message });
         }
     });

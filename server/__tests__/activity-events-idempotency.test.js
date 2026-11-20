@@ -68,6 +68,20 @@ test('concurrent retries create one row', async () => {
     expect(replies.filter(x => x.status === 201)).toHaveLength(1);
     expect(io.emit).toHaveBeenCalledTimes(1);
 });
+test('a failed database read returns HTTP 500 and a later GET can read the same event', async () => {
+    const saved = await post(event());
+    raw.exec('ALTER TABLE ag_events RENAME TO unavailable_events');
+    try {
+        const failed = await fetch(base);
+        expect(failed.status).toBe(500);
+        expect((await failed.json()).error).toMatch(/no such table: ag_events/);
+    } finally {
+        raw.exec('ALTER TABLE unavailable_events RENAME TO ag_events');
+    }
+    const recovered = await fetch(base);
+    expect(recovered.status).toBe(200);
+    expect(await recovered.json()).toEqual([expect.objectContaining({ id: saved.data.id })]);
+});
 test('invalid explicit keys fail; unkeyed existing publishers remain independent', async () => {
     for (const key of ['', ' ', 23, 'x'.repeat(201)]) expect((await post(event({ idempotency_key: key }))).status).toBe(400);
     const unkeyed = event(); delete unkeyed.idempotency_key;

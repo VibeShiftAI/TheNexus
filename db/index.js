@@ -3326,13 +3326,8 @@ async function clearChatMessages(conversationId) {
 
 /** Newest events first. `since` (ISO or SQLite datetime) filters to newer rows. */
 async function getAgEvents({ limit = 50, since = null, severity = null } = {}) {
-    if (!db) return [];
-    try {
-        return readActivityEvents(db, { limit, since, severity });
-    } catch (err) {
-        console.error('[Database] Error reading ag_events:', err.message);
-        return [];
-    }
+    if (!db) throw new Error('Activity database unavailable');
+    return readActivityEvents(db, { limit, since, severity });
 }
 
 async function recordAgEvent(event = {}) {
