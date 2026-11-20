@@ -6,20 +6,20 @@
 | Date | 2026-11-20 |
 | Branch | `praxis/run/5e513530-0d18-5939-87b8-583274b5bf5e` |
 | QA baseline | `fddc44b5` |
-| Commits | `ec55f35c` (server), `5216b80a` (dashboard), `4372f1dc` (live harness), `c3aebd10` (live evidence) and the commit that adds this report |
+| Commits | `ec55f35c` (server), `5216b80a` (dashboard), `4372f1dc` (live harness), `c3aebd10` (live evidence), `e9364a1d` (this report and the contract), `cdad4ab6` (code-review fixes) and the commit that records the code review here |
 | Contract | `docs/contracts/local-operator-session.md`, section "Per-action confirmation" |
 | Evidence | `docs/reviews/2026-11-20-operator-confirmation/live-chrome.json` and `live-webview.json` |
 
 ## Outcome
 
-A decision made through the local operator session no longer records on the session alone. The covered actions are:
+Sending mail and document decisions made through the local operator session no longer record on the session alone. The covered actions are:
 
 - approving a document or requesting changes;
 - approving a document's email for sending;
 - sending a Praxis Mail draft;
 - finishing a review with the approve-after-changes grant or with decision answers.
 
-Each one now waits until Robert answers a native macOS dialog that names the exact action. The Nexus API process shows that dialog itself (`/usr/bin/osascript`), inside the same request. Browsing, reading and bootstrap stay click-free.
+Each one now waits until Robert answers a native macOS dialog that names the exact action. The Nexus API process shows that dialog itself (`/usr/bin/osascript`), inside the same request. Browsing, reading and bootstrap stay click-free. Other operator actions the local session can take keep the parent behavior and are not asked (see "Other operator actions" under Limits).
 
 The live check ran a page script in two clients: Robert's own Google Chrome (the real kernel peer check identified it) and a WebKit webview host. It shows four things:
 
@@ -34,7 +34,7 @@ None of this is live yet. It takes effect when this branch lands and the `:4000`
 
 | Item | Disposition | Rationale and evidence |
 |---|---|---|
-| Suggestion 1, objection 1: an executor edits the dashboard and drives Robert's Chrome or the desktop webview to record decisions | **Implemented** (Option A, as Robert decided at 14:19 EST) | `server/services/operator-confirmation.js` plus the four routes. A stored session alone gets 403 and records nothing. Evidence: Chrome steps S02, S03, S06 and S09; webview steps W02, W03 and W05; jest `server/__tests__/operator-confirmation.test.js:242`. |
+| Suggestion 1, objection 1: an executor edits the dashboard and drives Robert's Chrome or the desktop webview to record decisions | **Implemented** (Option A, as Robert decided at 14:19 EST) | `server/services/operator-confirmation.js` plus the four routes. A stored session alone gets 403 and records nothing. Evidence: Chrome steps S02, S03, S06 and S09; webview steps W02, W03 and W05; jest `server/__tests__/operator-confirmation.test.js:276`. |
 | Suggestion 1, objection 2: the decisions were proven only with a stubbed OS attestation, and the desktop app was never exercised | **Implemented, with two stated gaps** | **Done.** The live check uses the real peer verifier against Robert's running Chrome, not a stub (`live-chrome.json:2892` device `mac-chrome`, `:2900` Chrome's network service). It then records real decisions, sends and a delegating finish through the real routes and real osascript dialogs.<br>**Gap 1: answers.** The console was locked for the whole run, so the five answered dialogs were stand-ins (see Limits). `--attended` repeats the run with Robert's clicks.<br>**Gap 2: desktop app.** The installed desktop app only talks to the live `:4000` and `localhost:3000` (`desktop/src-tauri/src/local_operator.rs:34-43`), and the brief forbids touching live data. A WebKit host that reproduces its bootstrap stands in. The harness pin admits that host only after the real verifier has declined it (`scripts/operator-confirmation-qa/live-check.cjs:176-185`; `live-webview.json:900-901`). |
 | Option B: wall executors off from the dashboard | **Declined** | Robert rejected it in the same decision. |
 | Phone approvals | **Protected by a separate operator credential**; no change, one residual recorded | See "Phone path" below. |
@@ -47,9 +47,9 @@ None of this is live yet. It takes effect when this branch lands and the `:4000`
   - **Authority now reports the path it took.** `document-decision-authority.js` returns `via` (`local_session`, `access_session`, `operator_bearer`, `document_executor_bearer`) and the device (`:102-104`, `:118`).
   - **Each route confirms, then re-reads and consumes:**
     - document decisions and review finish (`server/routes/documents.js:1897-1956`, `:2752-2835`);
-    - document email (`server/routes/document-outgoing.js:116-135`);
-    - Praxis Mail (`server/routes/mail-draft-review.js:39-62`).
-  - **Unknown paths fail closed.** A `via` other than the local session or a never-asked path is refused with 503 (`operator-confirmation.js:161`, `:76`).
+    - document email (`server/routes/document-outgoing.js:116-139`);
+    - Praxis Mail (`server/routes/mail-draft-review.js:39-65`).
+  - **Unknown paths fail closed.** A `via` other than the local session or a never-asked path is refused with 503 (`operator-confirmation.js:178`, `:83`).
   - **Tests.** New `server/__tests__/operator-confirmation.test.js`, plus updated local-flow and agent-review tests.
 - **Dashboard (`5216b80a`)**
   - The mail and document screens say "Confirm on your Mac" while the dialog is open.
@@ -60,7 +60,13 @@ None of this is live yet. It takes effect when this branch lands and the `:4000`
   - The broker takes an `origin` label (default `localhost:3000`) so the harness dialog names its own port.
   - The mail relay log line names the confirmed version.
 - **Evidence (`c3aebd10`).** The two JSON files.
-- **Docs.** The contract section, this report and README wording.
+- **Docs (`e9364a1d`).** The contract section, this report and README wording.
+- **Code-review fixes (`cdad4ab6`).** Five fixes from the code-review gate, with four new tests and two tightened ones (see "Code review" below):
+  - the dialog footer survives any cut, and the cut says exactly how much it leaves out;
+  - a document email the store would refuse is refused before the dialog (`db/document-outgoing.js`, `checkSendable`);
+  - a client gone before the dialog would open is refused without asking;
+  - the paused refusal names what counts;
+  - a Praxis draft's HTML part is named in the dialog and hashed into the confirmation identity.
 
 ## Live evidence
 
@@ -132,38 +138,67 @@ The real verifier declined the host, as it should. The harness pin then admitted
 
 `server/__tests__/operator-confirmation.test.js` covers the same paths:
 
-- `:300`: the desktop session;
-- `:133`, `:263` and `:282`: replay and single use;
-- `:292`: a file that changes during the dialog;
-- `:362` and `:417`: a comment or an email edit that lands during the dialog.
+- `:334`: the desktop session;
+- `:133`, `:297` and `:316`: replay and single use;
+- `:326`: a file that changes during the dialog;
+- `:396` and `:451`: a comment or an email edit that lands during the dialog.
+
+The code-review fixes added `:189` (a client gone before the dialog opens), `:228` (a dialog too long for its bound), `:467` (a send the store would refuse is refused before asking) and `:486` (a draft with an HTML part).
+
+### Recorded before the code-review fixes
+
+Both live runs used the code of `c3aebd10`, before `cdad4ab6`. They still hold for the final code:
+
+- **Same dialog text.** The longest recorded dialog text is 441 characters in the Chrome run and 345 in the webview run, far below the 4000-character bound. For such a dialog the old and new code build the same bytes: the action lines, a blank line, then the footer.
+- **Same paused check.** S18 recorded the old paused wording. The harness checks only the status, the code and `nothing_recorded` (`scripts/operator-confirmation-qa/live-check.cjs:424-426`), and those did not change.
+- **Same abort path.** S15 aborts after the dialog appeared (`live-check.cjs:590-595`). That is the in-dialog path, which did not change. The new early refusal applies only to a client already gone before the dialog.
+- **Same email path.** Outgoing B has an operator copy and was never returned to Praxis (`live-check.cjs:362`), so the new before-asking check passes it. The harness Praxis draft has no HTML part (`live-check.cjs:259-261`).
+
+The run was not repeated after the fixes. By then the console was unlocked, with Robert's session on it. An unattended run would open a tab in his Chrome, put about 14 dialogs on his screen and press the answered ones through Accessibility while he works (`scripts/operator-confirmation-qa/README.md:24`, `:40`). `--attended` is left for him instead (retained suggestion 4).
 
 ## Phone path
 
 Phone approvals rest on a separate operator credential, not on the Mac session, so they are not asked on the Mac.
 
 - **Where phone approvals happen.** The Android app's own code calls no document, mail or decision route. A `git grep` over its TypeScript for `/documents`, `mailbox`, `drafts`, `approve_send`, `operator-session`, `/decisions`, `/finish` and `outgoing` found nothing. Its native tabs were retired on 2026-09-07 in favor of the dashboard shell (`Nexus-Mobile-Android/app/(tabs)/_layout.tsx:1-12`). Phone approvals are therefore made in the dashboard, inside the app's WebView.
-- **The credential lives in the app.** The app holds a Cloudflare Access service token in SecureStore (`lib/config.ts:59-75`). It trades the token natively for the `CF_Authorization` cookie, and "the credentials themselves never enter web content" (`lib/shell/session.ts:1-17`, `:32-48`). The headers are built in `lib/auth.ts:21-26`.
+- **The credential lives in the app.** The app holds a Cloudflare Access service token in SecureStore (`lib/config.ts:59-75`). It trades the token natively for the `CF_Authorization` cookie, and its source says "The credentials themselves never enter web content" (`lib/shell/session.ts:1-17`, `:32-48`). The headers are built in `lib/auth.ts:21-26`.
 - **The server keeps the paths apart.**
   - It takes the local-session path only for a request without an Access assertion (`server/services/operator-access.js:147-151`).
   - An Access device identity needs a pinned Client ID (`operator-access.js:190-194`) and is recorded as `access_device` (`document-decision-authority.js:96-104`).
-  - Its `via` is `access_session`, which is never asked (`operator-confirmation.js:46`, `:160`; `mail-draft-review.js:40`).
+  - Its `via` is `access_session`, which is never asked (`operator-confirmation.js:53`, `:177`; `mail-draft-review.js:40`).
 - **Live logs agree.** The retained live logs (`/Volumes/Projects/Praxis/data/logs/launchd-stdout.log` and `.log.1`) show 155 `operator verified (identity=device)` lines, 8 `identity=local` lines and 0 `identity=user` lines.
 - **Residual.** A separate credential is not a per-action confirmation.
   - The WebView carries the Access session on every request it makes, `/api/*` fetches from page scripts included (`lib/shell/session.ts:9-12`).
   - A script an executor added to the dashboard would therefore also run in the phone app. On a phone whose Client ID is pinned, it could record a decision as `access_device` without any dialog while Robert has the app open. The Windows travel shell is in the same position.
   - Robert's ruling accepts a separate credential for the phone, so this run records the residual instead of closing it. A confirmation outside the phone's WebView would need a change to the Android app, which this task may only read.
 
+## Code review
+
+The code-review gate (medium effort, over the branch diff) reported six findings. Five are fixed in `cdad4ab6`. The sixth predates this task; it is now stated, not changed.
+
+| # | Finding | Severity | Disposition |
+|---|---|---|---|
+| 1 | A dialog over 4000 characters was cut at the end, so "Requested by", the Cancel warning and the Ref could be lost | important | **Fixed.** The footer is added after the cut, and the cut ends with the exact number of characters left out (`server/services/operator-confirmation.js:125-133`, `:157-169`) |
+| 2 | A document email the store would refuse (stale or invalidated revision, changes requested, no operator copy) still showed the dialog first | nit | **Fixed.** `checkSendable` runs before the dialog (`server/routes/document-outgoing.js:123`, `db/document-outgoing.js`) |
+| 3 | The paused refusal said dialogs "went unanswered", though declined ones count too | nit | **Fixed** wording (`operator-confirmation.js:81`). Declines keep counting on purpose: prompts Robert did not ask for get declined, and the pause keeps a script from training him to click |
+| 4 | The HTML part of a Praxis draft was neither shown nor bound | nit | **Fixed.** The dialog says the draft has an HTML part and gives its length, and the identity carries its hash (`mail-draft-review.js:54-57`, `operator-confirmation.js:246`). Praxis already binds it: every change, HTML included, gets a new version, and approve needs that exact version (`Praxis/src/feedback/mail-drafts.ts:63`, `:67`, `:75`) |
+| 5 | A client that left before the dialog would open still got a dialog | nit | **Fixed.** It is refused as aborted without asking, and that does not count toward the pause (`operator-confirmation.js:179-184`) |
+| 6 | Other operator routes accept the local session without a dialog, and the broker header claimed more than the ruling covers | pre-existing | **Stated.** The broker header (`operator-confirmation.js:19-22`) and the contract now say the ruling covers sending mail and document decisions. The other routes are listed under Limits. Asking on them too would widen Robert's ruling (retained suggestion 5) |
+
+**Red/green.** The final test file run against `e9364a1d` (before the fixes): 5 failed, 20 passed, 25 total, one failure per fix. On `cdad4ab6`: 25 of 25. The literal output is in `docs/reviews/2026-11-20-operator-confirmation/code-review-red-green.txt`.
+
 ## Gates
 
-Rerun on the final tree (HEAD `c3aebd10` plus these docs):
+Rerun on the final tree (HEAD `cdad4ab6` plus these docs):
 
 | Gate | Result |
 |---|---|
-| Affected and MCP security suites (14) | 270 of 270 pass |
-| Full server jest | 2433 pass, 1 skipped, 2 fail. The two failures fail the same way on a detached worktree of the baseline `fddc44b5`, so they predate this work and are unrelated: `praxis-stream` "ignores X-Forwarded-For and judges loopback by the socket peer" and `studio-route` "the enrich endpoint drains un-enriched objects and reports remaining" |
+| Affected and MCP security suites (14) | 274 of 274 pass |
+| Full server jest | 2437 pass, 1 skipped, 2 fail (2440 tests). The two failures fail the same way on a detached worktree of the baseline `fddc44b5`, so they predate this work and are unrelated: `praxis-stream` "ignores X-Forwarded-For and judges loopback by the socket peer" and `studio-route` "the enrich endpoint drains un-enriched objects and reports remaining" |
 | Dashboard `npm test` | 1342 of 1344 pass. The two failures also fail on the baseline: `routing-economics` (expects "$2.525 estimate"), and `daily-journal-tabs`, which reads `../nexus-shared` relative to the worktree |
-| Dashboard typecheck | `tsc --noEmit` exit 0; `dashboard/tsconfig.json` unchanged |
+| Dashboard typecheck | `tsc --noEmit` exit 0; `dashboard/tsconfig.json` identical to the baseline |
 | Encoding | Strict UTF-8 decode, mojibake and added-line em-dash scan over every file this task changed: 0 problems; `git diff --check` clean |
+| Live check | Not rerun after the code-review fixes; see "Recorded before the code-review fixes" |
 
 ## Limits
 
@@ -172,7 +207,7 @@ Rerun on the final tree (HEAD `c3aebd10` plus these docs):
   - For the five answered dialogs, the harness therefore closed the real dialog and handed the broker the planned answer.
   - The evidence marks each one `answer_source: "stand-in (console locked)"`. Each record shows the window the window server listed before the answer and no window after it (for example `live-chrome.json:605` and the S04 record above it).
   - Those records' `action` text says "no process can press". That overstates what was tested, which was this harness's read and key event. The harness now says "the harness cannot press" (`scripts/operator-confirmation-qa/live-check.cjs:234`). The evidence files stay exactly as generated.
-  - What the stand-in leaves unproven is only the step from Robert's click to osascript printing `confirmed`. Jest covers that mapping with an injected exec (`operator-confirmation.test.js:214`).
+  - What the stand-in leaves unproven is only the step from Robert's click to osascript printing `confirmed`. Jest covers that mapping with an injected exec (`operator-confirmation.test.js:248`).
   - `--attended` repeats the run with Robert's own clicks.
 - **The installed desktop app was not driven** (see Dispositions). After landing and the `:4000` restart, Robert can check it by hand: approve any document in the Mac app, click Cancel in the dialog, and see that nothing was recorded.
 - **Accessibility.** The dialog proves a click on this Mac, not who clicked.
@@ -192,6 +227,11 @@ Rerun on the final tree (HEAD `c3aebd10` plus these docs):
   - content edits and comments;
   - agent-review choices and decision-answer drafts;
   - chat.
+- **Other operator actions.** Robert's ruling covers sending mail and document decisions. Other routes accept the local session as the operator without a dialog, so a script an executor added to the dashboard could still use them while Robert has it open:
+  - automatic starts (`server/routes/automatic-start.js:23`), project maintenance settings (`project-maintenance.js:26`), checkpoint and intake targets (`projects.js:562-567`), skill-candidate decisions (`skill-candidates.js:25`), the system map (`system-map.js:67`) and the agent-review operator actions (`document-agent-reviews.js:76-83`);
+  - operator task dispatch (`server/services/task-dispatch-proof.js:11`, mounted at `server/routes/praxis-stream.js:654`) and the "Robert filed this" task label (`operator-task-origin.js:136-138`);
+  - presentations (`server/routes/presentations.js:67`), chat (`ai-chat.js:318`) and Groundrules labeling (`server/services/groundrules-labeling/authority.js:43-48`).
+  - None of them sends mail or records a document decision. Workspace-addition sanctions need an Access assertion (`server/services/contract-change-authority.js:106`), so the local session never reaches them.
 - **Housekeeping.** Each Chrome run leaves its finished check tab open in Robert's Chrome (`http://127.0.0.1:4299/check?client=chrome`). Two such tabs were opened on 2026-11-20, and they can simply be closed.
 
 ## Retained suggestions
@@ -207,6 +247,7 @@ Not filed as tasks, per the brief:
 
    This applies to user sessions and to the device sessions of the phone app and the travel shell.
 4. **Real clicks.** Robert runs `node scripts/operator-confirmation-qa/live-check.cjs --client chrome --attended` once at the Mac for evidence with real clicks.
+5. **Other operator actions.** Decide whether the Mac confirmation should also cover the routes listed under "Other operator actions" in Limits, operator task dispatch first. Separately, Groundrules labeling records a local session as `access_user`, because only device sessions are told apart there (`server/services/groundrules-labeling/authority.js:47-48`).
 
 ## Repeat
 

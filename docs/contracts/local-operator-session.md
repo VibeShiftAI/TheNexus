@@ -64,9 +64,11 @@ assertions retain precedence and unchanged signature/profile verification.
 Local failures expose only fixed `claim-rejected` / `local-session` diagnostics.
 
 This proves a request came through the pinned operator UI, **not that a human
-personally clicked**. Since 2026-11-20 every authority-bearing decision made
-through the session also waits for Robert's answer to a native macOS dialog
-(see "Per-action confirmation" below). It does not defend an already-compromised browser,
+personally clicked**. Since 2026-11-20 sending mail and every document
+decision made through the session also wait for Robert's answer to a native
+macOS dialog (see "Per-action confirmation" below). Other operator actions the
+session is accepted for do not ask (see "Other operator actions" under that
+section's Limits). It does not defend an already-compromised browser,
 profile, extension, trusted dashboard code, UI automation of Robert's existing
 session, or unrestricted modification of the API/configuration/operator-key
 files. The entire application already depends on protecting those resources.
@@ -157,9 +159,9 @@ and limitations are retained in the task's review report and evidence JSON.
 ## Per-action confirmation (Option A, task 5e513530)
 
 Robert's ruling of 2026-11-20 (Option A): browsing, reading and bootstrap stay
-click-free, but a decision that carries authority and is made through this
-local session records nothing until Robert answers a native macOS dialog that
-names the exact action. The stored session cannot produce that answer, and
+click-free, but sending mail and every document decision made through this
+local session record nothing until Robert answers a native macOS dialog that
+names the exact action and subject. The stored session cannot produce that answer, and
 neither can page JavaScript or an executor-edited script. The stored session
 means the cookie and proof, including the desktop app's renewed proof.
 
@@ -167,8 +169,8 @@ means the cookie and proof, including the desktop app's renewed proof.
 
 | Action | Route | Dialog |
 |---|---|---|
-| Approve sending a document's email | `POST /api/documents/:id/outgoing/decision` with `approve_send`, exact draft only (`server/routes/document-outgoing.js`) | "Nexus: send this email?" `Send to <to>: "<subject>"?`, the Cc line and the message. Button **Send** |
-| Send a Praxis Mail draft | `POST /api/praxis/mailbox/drafts-review/:id` with `approve_send` (`server/routes/mail-draft-review.js`) | The same wording, built from Praxis's own draft list, never from the request |
+| Approve sending a document's email | `POST /api/documents/:id/outgoing/decision` with `approve_send`, exact draft only (`server/routes/document-outgoing.js`). A send the store would refuse (stale or invalidated revision, changes requested, no operator copy) is refused before asking | "Nexus: send this email?" `Send to <to>: "<subject>"?`, the Cc line and the message. Button **Send** |
+| Send a Praxis Mail draft | `POST /api/praxis/mailbox/drafts-review/:id` with `approve_send` (`server/routes/mail-draft-review.js`) | The same wording, built from Praxis's own draft list, never from the request. When the draft also has an HTML part, a line says so and gives its length: most mail apps show that part, and the dialog cannot render it |
 | Approve a document, or request changes | `POST /api/documents/:id/decisions` (`server/routes/documents.js`) | "Nexus: approve this document?" or "Nexus: request changes?" Title, version, revision id, content sha256 prefix, direction and note. Button **Approve** or **Request changes** |
 | Finish a review that grants approve-after-changes or carries decision answers | `POST /api/documents/reviews/:id/finish` | "Nexus: finish this review?" The grant sentence, each answer, the comment count and the summary. Button **Approve after changes** or **Send answers** |
 
@@ -178,8 +180,8 @@ means the cookie and proof, including the desktop app's renewed proof.
 
 - **Who shows it.** The API process itself runs `/usr/bin/osascript` (`display dialog`) inside the same HTTP request.
 - **Defaults.** Cancel is the default button, so Return or Escape never confirms. The dialog gives up after 120 seconds.
-- **Text.** Every string reaches the script as an argument. Control, bidirectional and zero-width characters are removed from the dialog text. Long text is shown as an excerpt that says how much of it is shown.
-- **Footer.** It names the client (Google Chrome or The Nexus app), the dashboard origin, the time, and a short reference. The response and the server log repeat that reference.
+- **Text.** Every string reaches the script as an argument. Control, bidirectional and zero-width characters are removed from the dialog text. Long text is shown as an excerpt that says how much of it is shown. If the whole text would still pass 4000 characters (a very long recipient or answer list), it is cut with a note giving the exact number of characters left out.
+- **Footer.** It always shows, after a blank line, even when the text above it was cut. It names the client (Google Chrome or The Nexus app), the dashboard origin, the time, and a short reference. The response and the server log repeat that reference.
 - **Nothing to forge.** The request carries no confirmation token, header or field, so there is nothing to forge or replay. Forged fields are ignored.
 
 ### What a confirmation is bound to
@@ -188,7 +190,7 @@ Each confirmation is bound to the canonical identity of what the dialog showed:
 
 - **Document decision:** document id, revision id, content hash, decision, selection, and the sha256 of the note.
 - **Document email:** document id, revision id, envelope hash, to, cc, subject, and the sha256 of the text.
-- **Praxis Mail:** draft id, version, to, cc, subject, and the sha256 of the body. The relay then sends only `{action: 'approve_send', version}`, and Praxis refuses any other version.
+- **Praxis Mail:** draft id, version, to, cc, subject, the sha256 of the body, and the sha256 of the HTML part if there is one. Praxis gives every change, the HTML part included, a new version. The relay then sends only `{action: 'approve_send', version}`, and Praxis refuses any other version.
 - **Review finish:** document id, review id, revision id, the grant, the answers, and the sha256 of the summary and of the comment set.
 
 After the dialog:
@@ -209,8 +211,8 @@ Nothing is recorded, the response says so (`nothing_recorded: true`), and there 
 | No answer before the dialog gave up | 403 | `operator_confirmation_timeout` |
 | The dialog could not be shown, or its process ended | 503 | `operator_confirmation_unavailable` |
 | Another confirmation is open (one at a time) | 409 | `operator_confirmation_busy` |
-| Three declined, unanswered or aborted dialogs within 10 minutes; asking pauses for 5 minutes | 429 | `operator_confirmation_paused` |
-| The client went away; the dialog closes with the request | 409 | `operator_confirmation_aborted` |
+| Three dialogs declined, left unanswered or abandoned (the client went away while one was open) within 10 minutes; asking pauses for 5 minutes | 429 | `operator_confirmation_paused` |
+| The client went away: before the dialog opened (it is never shown, and this does not count toward the pause) or while it was open (it closes with the request) | 409 | `operator_confirmation_aborted` |
 | The record changed while the dialog was open | 409 | `operator_confirmation_mismatch` |
 
 A request whose authority path is not recognized fails closed with 503.
@@ -227,6 +229,7 @@ A request whose authority path is not recognized fails closed with 503.
   - direct content edits and comments;
   - agent-review choices and decision-answer drafts;
   - other consumers of the shared authenticator, such as chat.
+- **Other operator actions.** The ruling covers sending mail and document decisions. Other routes that accept the local session as the operator keep the parent behavior and do not ask; see "Other operator actions" under Limits.
 
 ### Phone path
 
@@ -255,6 +258,11 @@ The credential lives on the phone, not in the Mac session. It is still ambient i
   - **User session.** The email one-time-PIN login, held by a browser. A modified dashboard opened through the tunnel in such a browser could record without the dialog.
   - The retained live logs on 2026-11-20 show 0 user verifications, against 155 device and 8 local.
   - Closing this needs a confirmation on the device that holds the session (outside its webview), or no decision authority for Access sessions. That is Robert's call and is retained in the task's review report.
+- **Other operator actions.** Outside the ruling, these accept the local session as the operator without a dialog, so a script an executor added to the dashboard could use them while Robert has it open:
+  - through the shared decision authority: automatic starts, project maintenance settings, checkpoint and intake targets, skill-candidate decisions, the system map, operator task dispatch, "Robert filed this" task labels, and the agent-review operator actions (`server/routes/automatic-start.js`, `project-maintenance.js`, `projects.js`, `skill-candidates.js`, `system-map.js`, `document-agent-reviews.js`; `server/services/task-dispatch-proof.js`, `operator-task-origin.js`);
+  - through the shared authenticator: presentations, chat and Groundrules labeling (`server/routes/presentations.js`, `ai-chat.js`, `server/services/groundrules-labeling/authority.js`).
+  - None of them sends mail or records a document decision. Workspace-addition sanctions (`server/services/contract-change-authority.js`) need an Access assertion, so the local session never reaches them.
+  - Asking on these too would widen the ruling. That is Robert's call and is retained in the task's review report.
 - **What the dialog shows.** A page can show anything. The dialog shows only server records (excerpts for long text), so judge by the dialog, not the page.
 
 ### Verification
@@ -262,7 +270,8 @@ The credential lives on the phone, not in the Mac session. It is still ambient i
 - **Unit tests.** `server/__tests__/operator-confirmation.test.js` covers:
   - the broker and the osascript runner (with an injected exec);
   - each route;
-  - replay, mismatch, busy, pause and abort.
+  - replay, mismatch, busy, pause and abort;
+  - refusals before asking, the long-dialog cut and the HTML-part line.
 - **Live check.** `scripts/operator-confirmation-qa/live-check.cjs` runs the real session store, kernel peer check, routes and osascript dialog against:
   - Robert's own Google Chrome;
   - a WebKit host that sets up the session the way the desktop app does.
