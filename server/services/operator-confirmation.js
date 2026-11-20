@@ -132,7 +132,8 @@ function showMacDialog({ title, message, confirmLabel, seconds, signal, run = ex
     });
 }
 
-function createOperatorConfirmations({ show = showMacDialog, seconds = WAIT_SECONDS, now = Date.now, log = console } = {}) {
+// `origin` only labels the dialog; the live-check harness passes its own port.
+function createOperatorConfirmations({ show = showMacDialog, seconds = WAIT_SECONDS, now = Date.now, log = console, origin = 'localhost:3000' } = {}) {
     let open = null;
     let unanswered = [];
     let pausedUntil = 0;
@@ -143,7 +144,7 @@ function createOperatorConfirmations({ show = showMacDialog, seconds = WAIT_SECO
         const text = [
             ...action.lines.filter(line => line !== null && line !== undefined),
             '',
-            `Requested by ${device} on localhost:3000 at ${time}.`,
+            `Requested by ${device} on ${origin} at ${time}.`,
             'If you did not just ask for this in Nexus, click Cancel.',
             `Ref ${ref}`,
         ].join('\n');

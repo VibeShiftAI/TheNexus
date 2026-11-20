@@ -5,7 +5,7 @@
  * fixture (as in local-operator-flows.test.js); the dialog is a scripted
  * stand-in that records what it was asked to show. The real osascript runner
  * is covered with an injected exec; the real dialog is exercised by
- * scripts/operator-confirmation-live-check.js. Synthetic data only.
+ * scripts/operator-confirmation-qa/live-check.cjs. Synthetic data only.
  */
 const mockPeer = { device: 'mac-chrome' };
 jest.mock('../services/local-operator-peer', () => ({

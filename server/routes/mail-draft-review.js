@@ -59,7 +59,7 @@ module.exports = function createMailDraftReviewRouter({ authorize = createDocume
                 // Praxis refuses a version other than the one confirmed, so relay exactly that.
                 if (!confirmation.consume(identity)) return res.status(409).json({ error: 'The confirmation could not be used. No mail decision was recorded.', code: 'operator_confirmation_mismatch', nothing_recorded: true });
                 body = { action: 'approve_send', version: draft.version };
-                console.log(`[MailDraftReview] approve_send relayed for ${draft.id} after operator confirmation ref=${confirmation.ref}`);
+                console.log(`[MailDraftReview] relaying approve_send for ${draft.id} version ${draft.version} after operator confirmation ref=${confirmation.ref}`);
             }
             const headers = sign(JSON.stringify({ purpose: 'mail-draft-review', id: req.params.id, body }), { surface: 'mail-drafts' });
             if (!Object.keys(headers).length) return res.status(503).json({ error: 'The operator relay is unavailable. No mail decision was recorded.' });

@@ -20,7 +20,7 @@ const sign = (key, id) => createHmac('sha256', key).update(`nexus-local-operator
 const refusal = () => ({ ok: false, category: 'claim-rejected', check: 'local-session' });
 
 // `allowed` is fixed in production; only an isolated verification harness
-// (scripts/operator-confirmation-live-check.js) passes its own loopback origin.
+// (scripts/operator-confirmation-qa/live-check.cjs) passes its own loopback origin.
 function localRequest(req, bootstrap = false, allowed = ORIGIN) {
     // Never use req.ip / forwarded headers: the global server trusts a proxy.
     if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket?.remoteAddress)) return false;
