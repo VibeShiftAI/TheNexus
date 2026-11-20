@@ -335,22 +335,34 @@ export interface ActivityEvent {
     created_at: string;
 }
 
-export async function getActivityEvents(limit = 40): Promise<ActivityEvent[]> {
+async function readDashboardList<T>(path: string): Promise<T[]> {
     const baseUrl = API_URL.replace('/projects', '');
-    const res = await authFetch(`${baseUrl}/ag/events?limit=${limit}`);
-    if (!res.ok) {
-        throw new Error("Failed to fetch activity events");
+    const url = `${baseUrl}${path}`;
+    let res: Response;
+    try {
+        res = await authFetch(url);
+    } catch (cause) {
+        const reason = cause instanceof Error ? cause.message : String(cause);
+        throw new Error(`GET ${url} failed (network: ${reason})`, { cause });
     }
-    return res.json();
+    const context = `GET ${url} (HTTP ${res.status})`;
+    if (!res.ok) throw new Error(context);
+    let rows: unknown;
+    try {
+        rows = await res.json();
+    } catch (cause) {
+        throw new Error(`${context} could not read the JSON response`, { cause });
+    }
+    if (!Array.isArray(rows)) throw new Error(`${context} expected a list`);
+    return rows;
+}
+
+export async function getActivityEvents(limit = 40): Promise<ActivityEvent[]> {
+    return readDashboardList(`/ag/events?limit=${limit}`);
 }
 
 export async function getActivity(): Promise<Activity[]> {
-    const baseUrl = API_URL.replace('/projects', '');
-    const res = await authFetch(`${baseUrl}/activity`);
-    if (!res.ok) {
-        throw new Error("Failed to fetch activity");
-    }
-    return res.json();
+    return readDashboardList('/activity');
 }
 
 export async function getProject(id: string): Promise<Project> {
@@ -383,12 +395,7 @@ export async function getProjectCommits(id: string): Promise<CommitsResponse> {
 }
 
 export async function getPins(): Promise<string[]> {
-    const baseUrl = API_URL.replace('/projects', '');
-    const res = await authFetch(`${baseUrl}/pins`);
-    if (!res.ok) {
-        throw new Error("Failed to fetch pins");
-    }
-    return res.json();
+    return readDashboardList('/pins');
 }
 
 export async function pinProject(id: string): Promise<void> {

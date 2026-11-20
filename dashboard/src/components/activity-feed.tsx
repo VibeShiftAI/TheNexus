@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useArrivalPulse } from "@/hooks/use-arrival-pulse";
 import { useRouter } from "next/navigation";
@@ -331,6 +331,32 @@ export function CommitRow({ commit, onOpenLogs }: { commit: Activity; onOpenLogs
     );
 }
 
+// Each half of the timeline refreshes independently on activity or the 60s
+// fallback poll. Only a successful read can replace that source's snapshot.
+function useActivityRows<T>(read: () => Promise<T[]>) {
+    const [rows, setRows] = useState<T[]>([]);
+    const [status, setStatus] = useState<'loading' | 'ready' | 'retrying'>('loading');
+    const started = useRef(0);
+    const settled = useRef(0);
+    useEffect(() => () => { settled.current = ++started.current; }, []);
+    useLiveRefetch(["activity"], async () => {
+        const request = ++started.current;
+        try {
+            const next = await read();
+            if (request < settled.current) return;
+            settled.current = request;
+            setRows(next);
+            setStatus('ready');
+        } catch (error) {
+            if (request < settled.current) return;
+            settled.current = request;
+            setStatus('retrying');
+            console.warn(`[Recent Activity] ${new Date().toISOString()} ${error instanceof Error ? error.message : String(error)}`);
+        }
+    });
+    return { rows, status };
+}
+
 /**
  * Recent Activity — commits AND Praxis operational events on one timeline.
  *
@@ -341,10 +367,9 @@ export function CommitRow({ commit, onOpenLogs }: { commit: Activity; onOpenLogs
  */
 export function ActivityFeed() {
     const router = useRouter();
-    const [activities, setActivities] = useState<Activity[]>([]);
-    const [events, setEvents] = useState<ActivityEvent[]>([]);
+    const { rows: activities, status: commitStatus } = useActivityRows(getActivity);
+    const { rows: events, status: eventStatus } = useActivityRows(getActivityEvents);
     const [filter, setFilter] = useState<Filter>('all');
-    const [loading, setLoading] = useState(true);
     const { evidence, refresh: refreshActionState } = useAlertActionState(events);
 
     // Navigate to the run's logs: the task Dispatch Console is the drill-down Log
@@ -356,28 +381,11 @@ export function ActivityFeed() {
         router.push(`/task/${activity.taskId}${hash}`);
     };
 
-    const cancelled = useRef(false);
-    useEffect(() => {
-        cancelled.current = false;
-        return () => { cancelled.current = true; };
-    }, []);
-
-    const load = useCallback(() => {
-        // Independent halves: a git error must not blank the event feed
-        // (and vice versa), so each settles on its own.
-        getActivity().then(rows => { if (!cancelled.current) setActivities(rows); }).catch(console.error);
-        getActivityEvents().then(rows => { if (!cancelled.current) setEvents(rows); }).catch(console.error)
-            .finally(() => { if (!cancelled.current) setLoading(false); });
-    }, []);
-
-    // Events land continuously while the day runs; commits do not. The shared
-    // live subscription refetches the moment anything happens, and the 60s
-    // fallback poll keeps commits (which produce no stream frame) current.
-    useLiveRefetch(["activity"], load);
-
     const rows = useMemo(() => mergeActivityRows(activities, events, filter), [activities, events, filter]);
-
-    const arrivals = useArrivalPulse(mergeActivityRows(activities, events, "all").map(row => row.key), !loading);
+    const visibleSources = filter === 'all' ? [commitStatus, eventStatus] : [filter === 'events' ? eventStatus : commitStatus];
+    const retrying = visibleSources.includes('retrying');
+    const loading = visibleSources.includes('loading');
+    const arrivals = useArrivalPulse(mergeActivityRows(activities, events, "all").map(row => row.key), eventStatus !== 'loading');
 
     const tab = (value: Filter, label: string, count: number) => (
         <button
@@ -409,10 +417,11 @@ export function ActivityFeed() {
                     {tab('commits', 'Commits', activities.length)}
                 </div>
             </div>
-            {loading ? (
+            {retrying && <p role="status" className="mb-2 text-xs text-slate-400">Activity updates delayed. Retrying automatically.</p>}
+            {rows.length === 0 && loading ? (
                 <div className="text-slate-500 text-sm animate-pulse">Loading activity...</div>
             ) : rows.length === 0 ? (
-                <div className="text-slate-500 text-sm">No recent activity</div>
+                !retrying && <div className="text-slate-500 text-sm">No recent activity</div>
             ) : (
                 <div className="custom-scrollbar max-h-[400px] space-y-3 overflow-y-auto overflow-x-hidden pr-1">
                     {rows.map(row => <div key={row.key} className={arrivals.has(row.key) ? 'module-new rounded-lg' : ''}>
