@@ -3,7 +3,9 @@
  * peer/code-signing check. Localhost, the local_user stub and headers alone
  * never qualify. A random, HMAC-authenticated cookie refers to a one-hour in-memory
  * session. Neither the operator key nor session tokens are logged or stored
- * in browser JS storage. See docs/contracts/local-operator-session.md.
+ * in browser JS storage. The session is for browsing and reading: a send or a
+ * document decision made through it also needs Robert's answer to a native
+ * dialog (operator-confirmation.js). See docs/contracts/local-operator-session.md.
  */
 const { createHash, createHmac, randomBytes, timingSafeEqual } = require('node:crypto');
 const { stakeholderCredential } = require('./stakeholder-authority');
@@ -17,7 +19,9 @@ const hash = value => createHash('sha256').update(value, 'utf8').digest('hex');
 const sign = (key, id) => createHmac('sha256', key).update(`nexus-local-operator/v1\n${id}`, 'utf8').digest('hex');
 const refusal = () => ({ ok: false, category: 'claim-rejected', check: 'local-session' });
 
-function localRequest(req, bootstrap = false) {
+// `allowed` is fixed in production; only an isolated verification harness
+// (scripts/operator-confirmation-live-check.js) passes its own loopback origin.
+function localRequest(req, bootstrap = false, allowed = ORIGIN) {
     // Never use req.ip / forwarded headers: the global server trusts a proxy.
     if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket?.remoteAddress)) return false;
     if (req.user?.is_service || req.get('x-praxis-bridge-token')
@@ -25,11 +29,11 @@ function localRequest(req, bootstrap = false) {
     const site = req.get('sec-fetch-site');
     if (site && site !== 'same-origin' && !(bootstrap && site === 'same-site')) return false;
     const origin = req.get('origin');
-    if (origin) return origin === ORIGIN;
+    if (origin) return origin === allowed;
     // Browsers omit Origin on same-origin GETs. Referer is sufficient ONLY for
     // reads; every mutation, including bootstrap and revocation, requires Origin.
     if (!['GET', 'HEAD'].includes(req.method)) return false;
-    try { return new URL(req.get('referer')).origin === ORIGIN; } catch { return false; }
+    try { return new URL(req.get('referer')).origin === allowed; } catch { return false; }
 }
 
 function cookieToken(req) {
@@ -48,13 +52,14 @@ function localKey() {
     return stakeholderCredential('operator');
 }
 
-function createLocalOperatorSessions({ now = Date.now, verifyPeer = createLocalOperatorPeerVerifier() } = {}) {
+function createLocalOperatorSessions({ now = Date.now, verifyPeer = createLocalOperatorPeerVerifier(), origin = ORIGIN } = {}) {
     const sessions = new Map();
+    const isLocalRequest = (req, bootstrap = false) => localRequest(req, bootstrap, origin);
     function prune() {
         for (const [id, session] of sessions) if (session.expiresAt <= now()) sessions.delete(id);
     }
     function inspect(req) {
-        if (!localRequest(req)) return refusal();
+        if (!isLocalRequest(req)) return refusal();
         const token = cookieToken(req);
         if (!token) return refusal();
         prune();
@@ -73,14 +78,16 @@ function createLocalOperatorSessions({ now = Date.now, verifyPeer = createLocalO
                 sessions.delete(hash(token));
                 return refusal();
             }
-            return { ok: true, identity: 'local', expiresAt: session.expiresAt };
+            // `device` only labels the per-action confirmation dialog; it is
+            // never an authority input (operator-confirmation.js).
+            return { ok: true, identity: 'local', expiresAt: session.expiresAt, device: session.device };
         } catch {
             sessions.delete(hash(token));
             return refusal();
         }
     }
     async function mint(req) {
-        if (!localRequest(req, true) || req.get('authorization') || req.get('cf-access-jwt-assertion')) {
+        if (!isLocalRequest(req, true) || req.get('authorization') || req.get('cf-access-jwt-assertion')) {
             throw Object.assign(new Error('Local application proof required'), { status: 403 });
         }
         const key = localKey();
@@ -107,7 +114,7 @@ function createLocalOperatorSessions({ now = Date.now, verifyPeer = createLocalO
         const token = cookieToken(req);
         if (token) sessions.delete(hash(token));
     }
-    return { inspect, mint, revoke };
+    return { inspect, mint, revoke, isLocalRequest };
 }
 
 // One server-owned store shared by bootstrap and all authenticators.

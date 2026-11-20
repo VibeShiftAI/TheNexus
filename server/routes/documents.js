@@ -83,6 +83,7 @@ const fmt = require('../services/document-review-format');
 const { createDocumentDecisionAuthority } = require('../services/document-decision-authority');
 const { parseExecutorProvenance, resolveSourceReview, buildProvenance, DELEGATING_AUTHORITIES } = require('../services/document-decision-provenance');
 const decisionItems = require('../services/document-decision-items');
+const confirmation = require('../services/operator-confirmation');
 const { LIST_STATUSES, REPLACEMENT_STATES, REPLACEMENT_OPEN_STATES } = require('../../db/document-reviews');
 const { NAME_FIELDS } = require('../../db/document-retirements');
 
@@ -316,7 +317,7 @@ function registrationIdentityPath(value, seen = new Set()) {
     return resolvedParent ? path.join(resolvedParent, path.basename(normalized)) : normalized;
 }
 
-function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumentDecisionAuthority(), proposalCompletion }) {
+function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumentDecisionAuthority(), proposalCompletion, confirmations = confirmation.operatorConfirmations }) {
     const router = express.Router();
     const store = () => db?.documentReviews;
 
@@ -1285,7 +1286,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         });
     }
 
-    router.use('/:id/outgoing', createDocumentOutgoingRouter({ store, captureRevision, authorizeDecision }));
+    router.use('/:id/outgoing', createDocumentOutgoingRouter({ store, captureRevision, authorizeDecision, confirmations }));
 
     // ── Registry ──────────────────────────────────────────────────────────
     router.post('/', async (req, res) => {
@@ -1884,13 +1885,42 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             await reconcileReplacement(doc);
             const gate = reviewability(store().getDocument(doc.id), captured.revision);
             if (!gate.ok) return notReviewable(res, gate);
+            // A decision through the local session also needs Robert's answer to
+            // a native dialog naming this exact decision (Option A, task 5e513530).
+            const direction = typeof selection?.direction === 'string' ? selection.direction : null;
+            const directionEntry = direction ? manifest.directions.find(d => d.id === direction) : null;
+            const otherSelection = selection ? Object.keys(selection).filter(key => key !== 'direction') : [];
+            const decisionIdentity = rev => ({
+                kind: 'document_decision', document_id: doc.id, revision_id: rev?.id, content_hash: rev?.content_hash,
+                decision: body.decision, selection: selection ?? null, note_sha256: confirmation.sha256(note),
+            });
+            const asked = await confirmations.confirm({ res, auth: authority, action: confirmation.documentDecisionAction({
+                identity: decisionIdentity(revision), title: doc.title || doc.id, revision, version: store().revisionDraft(revision.id)?.version,
+                decision: body.decision,
+                direction: direction && `${directionEntry?.title || directionEntry?.name || directionEntry?.label || direction} (${direction})${otherSelection.length ? `; selection also sets ${otherSelection.join(', ')}` : ''}`,
+                note,
+            }) });
+            if (!asked.ok) {
+                return res.status(asked.status).json({ error: asked.error, code: asked.code, nothing_recorded: true, ...(asked.confirmation_ref ? { confirmation_ref: asked.confirmation_ref } : {}) });
+            }
+            if (asked.required) {
+                // The wait can be long: the bytes on disk must still be the revision confirmed.
+                const again = await captureRevision(doc);
+                if (again.fileState !== 'ok') {
+                    return res.status(409).json({ error: `The document file cannot be confirmed right now (${again.fileState}); no decision was recorded`, code: 'file_unavailable', file_state: again.fileState });
+                }
+                if (again.revision.id !== revision.id) return stale(again.revision);
+            }
             let decision;
             let lostSource = null;
             let blockedBy = null;
+            let unconfirmed = false;
             try {
                 decision = store().transaction(() => {
                     const fresh = store().getDocument(doc.id);
                     if (fresh.current_revision_id !== revision.id || !fresh.requires_review) return null;
+                    // Single use, and only for the decision Robert confirmed.
+                    if (!asked.consume(decisionIdentity(store().getRevisionMeta(fresh.current_revision_id)))) { unconfirmed = true; return null; }
                     // Re-checked inside the transaction: an acceptance or a failure report landing meanwhile wins over this decision.
                     const gateNow = reviewability(fresh, revision);
                     if (!gateNow.ok) { blockedBy = gateNow; return null; }
@@ -1915,10 +1945,15 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             }
             if (lostSource) return sourceRefusal(lostSource);
             if (blockedBy) return notReviewable(res, blockedBy);
+            if (unconfirmed) {
+                const [status, code, error] = confirmation.REFUSALS.mismatch;
+                return res.status(status).json({ error, code, nothing_recorded: true });
+            }
             if (!decision) return stale(store().getRevisionMeta(store().getDocument(doc.id).current_revision_id));
             const recorder = executor ? `, recorded_by=executor ${executor.id}, source_review=${decision.provenance.source.review_id}` : '';
-            console.log(`[Documents] ${body.decision} recorded for ${doc.id} revision ${revision.id} (authority=${authority.actor.authority}${recorder})`);
-            return res.status(201).json({ decision, review_status: store().getReviewStatus(doc.id), document: store().getDocument(doc.id) });
+            const confirmed = asked.required ? `, operator confirmation ref=${asked.ref}` : '';
+            console.log(`[Documents] ${body.decision} recorded for ${doc.id} revision ${revision.id} (authority=${authority.actor.authority}${recorder}${confirmed})`);
+            return res.status(201).json({ decision, review_status: store().getReviewStatus(doc.id), document: store().getDocument(doc.id), ...(asked.required ? { confirmation_ref: asked.ref } : {}) });
         } catch (err) {
             console.error('[Documents] decision failed:', err);
             return res.status(500).json({ error: 'Failed to record decision' });
@@ -2513,7 +2548,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             res.status(403).json({ error: `${what} is Robert's own act: it needs his verified session or operator credential, not the document executor credential`, code: 'operator_required' });
             return null;
         }
-        return authority.actor;
+        // `via`/`device` say whether a finish must also be confirmed on the Mac; callers store only id and authority.
+        return { ...authority.actor, via: authority.via, device: authority.device };
     }
 
     function staleAnswers(res, { answeredRevisionId, review, currentRevisionId, nothing }) {
@@ -2673,10 +2709,12 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             // Decision answers (task 50aa5747) go out only with Robert's own proof, like the grant, and only for the current revision.
             const storedAnswers = decisionItems.storedAnswers(review);
             let submittedAuthority = null;
+            let finishActor = null;
             if (delegated || storedAnswers.length) {
                 const actor = await operatorActor(req, res, delegated ? 'Delegating approval' : 'Sending decision answers');
                 if (!actor) return;
                 submittedAuthority = actor.authority;
+                finishActor = actor;
             }
             let decisionAnswers = [];
             let answeredItems = [];
@@ -2699,6 +2737,36 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 }
                 decisionAnswers = resolved.answers.map(({ decision_id, answer }) => ({ decision_id, answer }));
                 answeredItems = decisions.items.filter(item => decisionAnswers.some(a => a.decision_id === item.id));
+            }
+            // The grant and decision answers through the local session also need
+            // Robert's answer to a native dialog naming them (Option A, task 5e513530),
+            // bound to this review's exact summary, comments and answers.
+            const finishIdentity = commentRows => ({
+                kind: 'review_finish', document_id: doc.id, review_id: review.id, revision_id: review.revision_id,
+                approve_after_changes: delegated, answers: decisionAnswers,
+                summary_sha256: confirmation.sha256(summary), comments_sha256: confirmation.sha256(JSON.stringify(commentRows)),
+            });
+            let asked = { ok: true, required: false, ref: null, consume: () => true };
+            if (finishActor) {
+                const shownComments = store().listComments(review.id);
+                asked = await confirmations.confirm({ res, auth: finishActor, action: confirmation.reviewFinishAction({
+                    identity: finishIdentity(shownComments), title: doc.title || doc.id, revisionId: review.revision_id,
+                    version: store().revisionDraft(review.revision_id)?.version, delegated, summary, commentCount: shownComments.length,
+                    answers: decisionAnswers.map(({ decision_id, answer }) => {
+                        const item = answeredItems.find(i => i.id === decision_id);
+                        return { question: item?.question || decision_id, label: item?.options?.find(o => o.id === answer)?.label || answer };
+                    }),
+                }) });
+                if (!asked.ok) {
+                    return res.status(asked.status).json({ error: asked.error, code: asked.code, nothing_recorded: true, ...(asked.confirmation_ref ? { confirmation_ref: asked.confirmation_ref } : {}) });
+                }
+                if (asked.required && storedAnswers.length) {
+                    // The wait can be long: capture the file again so a changed revision is caught below.
+                    const again = await captureRevision(doc);
+                    if (again.fileState !== 'ok') {
+                        return res.status(409).json({ error: `The document file cannot be confirmed right now (${again.fileState}); nothing was sent and your draft keeps its answers`, code: 'file_unavailable', file_state: again.fileState });
+                    }
+                }
             }
             const revision = store().getRevisionMeta(review.revision_id);
             const comments = store().listComments(review.id);
@@ -2724,6 +2792,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                     if (!again || again.status !== 'draft') return null;
                     // Answers changed in another tab after this finish read them: send nothing rather than a stale set.
                     if (JSON.stringify(decisionItems.storedAnswers(again)) !== JSON.stringify(storedAnswers)) return { answersChanged: true };
+                    // Single use, and only for the review content Robert confirmed (a comment added meanwhile refuses).
+                    if (!asked.consume(finishIdentity(store().listComments(review.id)))) return { unconfirmed: true };
                     if (decisionAnswers.length) {
                         // A registration during the awaits above (a new revision, or new items on this one) wins over the answers.
                         const now = store().getDocument(doc.id);
@@ -2744,6 +2814,10 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (submission?.answersChanged) {
                 return res.status(409).json({ error: 'Your decision answers changed in another tab while this review was being sent; reload and send again. Nothing was sent', code: 'answers_changed' });
             }
+            if (submission?.unconfirmed) {
+                const [status, code, error] = confirmation.REFUSALS.mismatch;
+                return res.status(status).json({ error, code, nothing_recorded: true });
+            }
             if (submission?.staleRevision !== undefined) {
                 return staleAnswers(res, { answeredRevisionId: review.revision_id, review, currentRevisionId: submission.staleRevision, nothing: 'nothing was sent and your draft keeps its answers and comments. Clear the answers to send the comments alone' });
             }
@@ -2757,7 +2831,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 requireDraft(now, res);
                 return;
             }
-            if (delegated) console.log(`[Documents] review ${review.id} finished with approval delegated (authority=${submittedAuthority}, submission=${submission.id})`);
+            if (delegated) console.log(`[Documents] review ${review.id} finished with approval delegated (authority=${submittedAuthority}, submission=${submission.id}${asked.required ? `, operator confirmation ref=${asked.ref}` : ''})`);
+            else if (asked.required) console.log(`[Documents] review ${review.id} finished with decision answers after operator confirmation ref=${asked.ref} (submission=${submission.id})`);
             if (delivery && typeof delivery.deliver === 'function') {
                 delivery.deliver(submission.id).catch(err => console.error(`[Documents] delivery of ${submission.id} failed:`, err?.message || err));
             }

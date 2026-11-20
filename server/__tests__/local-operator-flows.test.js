@@ -15,8 +15,11 @@ const { initializeDocumentReviews, createDocumentReviewStore } = require('../../
 const KEY = 'synthetic-operator-'.repeat(4);
 const RELAY_KEY = 'synthetic-relay-'.repeat(4);
 const ORIGIN = 'http://localhost:3000';
-let server, base, raw, root, store, doc, revision, calls, originalEnv;
+let server, base, raw, root, store, doc, revision, calls, originalEnv, prompts, answer;
 const clientProofs = new Map();
+// Option A (task 5e513530): local-session decisions wait for a native dialog;
+// this suite answers it with a scripted stand-in and records what it showed.
+const { createOperatorConfirmations } = require('../services/operator-confirmation');
 async function api(method, url, body, headers = {}) {
     const response = await fetch(base + url, { method, headers: { 'content-type': 'application/json', origin: ORIGIN, ...(headers.cookie && clientProofs.has(headers.cookie) ? { 'x-nexus-local-proof': clientProofs.get(headers.cookie) } : {}), ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
     return { status: response.status, json: await response.json(), cookie: response.headers.get('set-cookie')?.split(';')[0] };
@@ -41,10 +44,14 @@ beforeEach(async () => {
     const source = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
     vm.runInNewContext(source.slice(source.indexOf('function authenticate(req, res, next)'), source.indexOf("app.use('/api/write-leases'")), { app });
     app.use('/api/operator-session', require('../routes/operator-session')());
-    app.use('/api/documents', require('../routes/documents')({ db }));
+    prompts = []; answer = 'confirmed';
+    const confirmations = createOperatorConfirmations({ show: async prompt => { prompts.push(prompt); return answer; }, log: {} });
+    app.use('/api/documents', require('../routes/documents')({ db, confirmations }));
     calls = [];
     app.use('/api/praxis/mailbox/drafts-review', require('../routes/mail-draft-review')({
+        confirmations,
         relay: async (url, options) => {
+            if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ items: [{ id: 'md_fixture', version: 'fixture', status: 'draft', to: 'member@example.test', cc: ['copy@example.test'], subject: 'Synthetic', body: 'Not sent' }] }) };
             const proof = options.headers['X-Praxis-Operator-Provenance'];
             const parts = Object.fromEntries(proof.split(';').slice(1).map(v => v.split('=')));
             const message = JSON.stringify({ purpose: 'mail-draft-review', id: url.split('/').pop(), body: options.body });
@@ -69,11 +76,14 @@ async function bootstrap() {
     const result = await api('POST', '/api/operator-session/bootstrap', undefined);
     expect(result.status).toBe(201); clientProofs.set(result.cookie, result.json.proof); return result.cookie;
 }
-test.each(['approve', 'request_changes'])('local session records %s as a direct operator decision in the real ledger', async decision => {
+test.each(['approve', 'request_changes'])('local session records %s as a direct operator decision in the real ledger once Robert confirms it', async decision => {
     const cookie = await bootstrap();
     const result = await api('POST', `/api/documents/${doc.id}/decisions`, { revision_id: revision.id, decision, note: 'Synthetic decision' }, { cookie, authorization: 'Bearer local-dev-token' });
     expect(result.status).toBe(201);
     expect(result.json.decision).toMatchObject({ authority: 'operator_credential', recorded_by: 'operator', actor_id: 'local_user' });
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0].message).toContain(`${decision === 'approve' ? 'Approve' : 'Request changes to'} "Synthetic"?`);
+    expect(prompts[0].message).toContain(`Ref ${result.json.confirmation_ref}`);
     const read = await api('GET', `/api/documents/${doc.id}`);
     expect(read.json.current_decision.id).toBe(result.json.decision.id);
 });
@@ -81,6 +91,17 @@ test.each(['edit', 'approve_send', 'cancel'])('local session %s reaches the mail
     const cookie = await bootstrap();
     const result = await api('POST', '/api/praxis/mailbox/drafts-review/md_fixture', { action, version: 'fixture', subject: 'Synthetic', body: 'Not sent' }, { cookie });
     expect(result.status).toBe(200); expect(result.json.decision.actor).toBe('operator:mail-drafts'); expect(calls).toEqual([action]);
+    // Only the send asks Robert on the Mac; edits and cancellations stay click-free.
+    expect(prompts.map(prompt => prompt.message.split('\n')[0])).toEqual(action === 'approve_send' ? ['Send to member@example.test: "Synthetic"?'] : []);
+});
+test('local session decisions and sends are refused, with nothing recorded, when Robert declines', async () => {
+    const cookie = await bootstrap();
+    answer = 'declined';
+    const decision = await api('POST', `/api/documents/${doc.id}/decisions`, { revision_id: revision.id, decision: 'approve' }, { cookie });
+    expect(decision.status).toBe(403); expect(decision.json).toMatchObject({ code: 'operator_confirmation_declined', nothing_recorded: true });
+    expect(store.listDecisions(doc.id)).toHaveLength(0);
+    const mail = await api('POST', '/api/praxis/mailbox/drafts-review/md_fixture', { action: 'approve_send', version: 'fixture' }, { cookie });
+    expect(mail.status).toBe(403); expect(mail.json.code).toBe('operator_confirmation_declined'); expect(calls).toEqual([]);
 });
 test('shared chat authenticator accepts the signed local session and refuses it after logout', async () => {
     const cookie = await bootstrap();

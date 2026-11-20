@@ -1,6 +1,7 @@
 /** Exact-envelope review surface only. Praxis owns the delivery operation. */
 const express = require('express');
 const { requireStakeholderAuthority } = require('../services/stakeholder-authority');
+const { operatorConfirmations, mailSendAction, sha256, REFUSALS } = require('../services/operator-confirmation');
 const OPERATORS = new Set(['access_user', 'access_device', 'operator_credential']);
 const FINAL = new Set(['delivering', 'sent', 'uncertain']);
 const CONTROL = /[\u0000-\u001f\u007f]/;
@@ -46,7 +47,16 @@ function prepareInput(body) {
         ...(body.expected_envelope_hash !== undefined ? { expected_envelope_hash: body.expected_envelope_hash } : {}) };
 }
 
-function createDocumentOutgoingRouter({ store, captureRevision, authorizeDecision }) {
+// The exact message an approve_send confirmation is bound to.
+function sendIdentity(documentId, row) {
+    return row && {
+        kind: 'mail_send', source: 'document', document_id: documentId, revision_id: row.revision_id,
+        envelope_hash: row.envelope_hash, to: row.envelope?.to, cc: row.envelope?.cc, subject: row.envelope?.subject,
+        text_sha256: sha256(row.envelope?.text),
+    };
+}
+
+function createDocumentOutgoingRouter({ store, captureRevision, authorizeDecision, confirmations = operatorConfirmations }) {
     const router = express.Router({ mergeParams: true });
     function route(fn) {
         return async (req, res) => {
@@ -103,6 +113,27 @@ function createDocumentOutgoingRouter({ store, captureRevision, authorizeDecisio
         if (input.decision !== 'return_to_praxis' && input.comments !== undefined) invalid('comments are only supported when returning to Praxis');
         // A missing or superseded file must not prevent the operator cancelling.
         if (input.decision === 'approve_send') await capture(doc, input.revision_id);
+        const row = input.decision === 'approve_send' ? store().getOutgoing(doc.id) : null;
+        // Only an exact-match draft can gain a send grant (the status CHECK allows
+        // no other approvable state); decideOutgoing refuses or answers every other
+        // case unchanged, so only this one asks Robert on the Mac first.
+        if (row?.status === 'draft' && row.revision_id === input.revision_id && row.envelope_hash === input.envelope_hash) {
+            const confirmation = await confirmations.confirm({ res, auth, action: mailSendAction({
+                identity: sendIdentity(doc.id, row), to: row.envelope.to, cc: row.envelope.cc, subject: row.envelope.subject, body: row.envelope.text,
+            }) });
+            if (!confirmation.ok) {
+                return res.status(confirmation.status).json({ code: confirmation.code, error: confirmation.error, nothing_recorded: true, ...(confirmation.confirmation_ref ? { confirmation_ref: confirmation.confirmation_ref } : {}) });
+            }
+            if (confirmation.required) await capture(doc, input.revision_id);
+            // Re-read after the wait: only the exact message confirmed may be approved.
+            if (!confirmation.consume(sendIdentity(doc.id, store().getOutgoing(doc.id)))) {
+                const [status, code, error] = REFUSALS.mismatch;
+                return res.status(status).json({ code, error, nothing_recorded: true });
+            }
+            const outgoing = store().decideOutgoing(doc.id, input, auth.actor);
+            if (confirmation.required) console.log(`[DocumentOutgoing] approve_send recorded for ${doc.id} revision ${row.revision_id} after operator confirmation ref=${confirmation.ref}`);
+            return res.json({ outgoing, ...(confirmation.required ? { confirmation_ref: confirmation.ref } : {}) });
+        }
         res.json({ outgoing: store().decideOutgoing(doc.id, input, auth.actor) });
     }));
     router.post('/claim', route(async (req, res, doc) => {
@@ -125,4 +156,4 @@ function createDocumentOutgoingRouter({ store, captureRevision, authorizeDecisio
     }));
     return router;
 }
-module.exports = { createDocumentOutgoingRouter };
+module.exports = { createDocumentOutgoingRouter, sendIdentity };

@@ -53,7 +53,9 @@ const { localOperatorSessions, COOKIE } = require('./local-operator-session');
 // check only rejects obvious garbage so a typo is reported, not trusted.
 const DEVICE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$/;
 
-function createOperatorAuthenticator() {
+// `localSessions` is the one server-owned store in production; only the
+// isolated verification harness passes its own store.
+function createOperatorAuthenticator({ localSessions = localOperatorSessions } = {}) {
     const issuer = (process.env.NEXUS_OPERATOR_ACCESS_ISSUER || '').trim();
     const audience = (process.env.NEXUS_OPERATOR_ACCESS_AUD || '').trim();
     const email = (process.env.NEXUS_OPERATOR_EMAIL || '').trim().toLowerCase();
@@ -146,7 +148,7 @@ function createOperatorAuthenticator() {
         // Keep Access's validation and precedence unchanged. Only a request
         // without an Access assertion can enter the local-session path.
         if (!req.get('cf-access-jwt-assertion') && req.get('cookie')?.split(';').some(part => part.trim().startsWith(`${COOKIE}=`))) {
-            return localOperatorSessions.inspect(req);
+            return localSessions.inspect(req);
         }
         if (!configured) return { ok: false, category: 'config-missing' };
         // Executor-style credentials never ride with a human session; a request
@@ -234,6 +236,8 @@ function createOperatorAuthenticator() {
         return {
             operator: outcome.ok,
             identity: outcome.ok ? outcome.identity : null,
+            // Local sessions only: which pinned app minted it (dialog label).
+            ...(outcome.ok && outcome.device ? { device: outcome.device } : {}),
             reason: outcome.ok ? 'ok' : outcome.category,
             ...(outcome.check ? { check: outcome.check } : {}),
             assertionPresent: typeof assertion === 'string' && assertion !== '',
