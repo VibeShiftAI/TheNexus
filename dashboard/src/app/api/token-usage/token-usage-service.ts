@@ -44,6 +44,8 @@ const STAT_CONCURRENCY = 32;
 const DEFAULT_HOT_INDEX_MS = 60 * 60_000;
 /** Bytes before the committed offset that must be unchanged for an append-only resume. */
 const FINGERPRINT_BYTES = 64;
+/** Cache hits folded between event-loop yields during a sweep. */
+const YIELD_EVERY_FILES = 512;
 
 export interface DayRow {
   date: string;
@@ -396,6 +398,10 @@ async function scanSource<S>(
   const live = new Map<string, FileEntry<S>>();
   const perDay = new Map<string, number>();
   for (let k = 0; k < files.length; k++) {
+    // Unchanged files never await, so give the event loop a turn every so
+    // often: tens of thousands of cache hits (possibly paged out by the OS)
+    // must not hold up the dashboard's other requests.
+    if (k > 0 && k % YIELD_EVERY_FILES === 0) await new Promise((resolve) => setImmediate(resolve));
     const fp = files[k];
     const st = stats[k];
     if (!st || !st.isFile() || st.mtimeMs < cutoffMs) continue;
