@@ -54,6 +54,16 @@ function createDashboardRouter({ db }) {
         }
     });
 
+    // Read-only projection for the schedule sweep. Each candidate that needs
+    // reconciliation is still read again under the authoritative board lease.
+    router.post('/task-statuses', (req, res) => {
+        const ids = req.body?.ids;
+        if (!Array.isArray(ids) || !ids.every(id => typeof id === 'string' && id.length > 0)) {
+            return res.status(400).json({ error: 'Expected an array of task ids' });
+        }
+        res.json(db.getTaskStatuses(ids));
+    });
+
     router.get('/board-state', createBoardStateHandler({ db }));
 
     return router;

@@ -57,6 +57,16 @@ describe('compact board summary over real SQLite and HTTP', () => {
     expect(response.headers.get('x-test-authenticated')).toBe('yes');
     return { status: response.status, body: await response.json() };
   }
+  test('status lookup reads only the requested tasks and tolerates missing and duplicate ids', async () => {
+    await task('settled', { status: 'completed' });
+    await task('unrelated');
+    const lookup = ids => fetch(base + '/api/dashboard/task-statuses', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids }),
+    });
+    expect(await (await lookup(['settled', 'missing', 'settled'])).json()).toEqual([{ id: 'settled', status: 'completed' }]);
+    expect(await (await lookup([])).json()).toEqual([]);
+    expect((await lookup(['settled', null])).status).toBe(400);
+  });
   test('projects only routing fields, computes flags, and leaves full evidence readable', async () => {
     const original = await task('rich', {
       description: 'QA Report\n' + 'complete evidence '.repeat(5000),

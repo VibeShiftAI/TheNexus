@@ -3595,6 +3595,10 @@ module.exports = {
         });
     },
     getContextStats,
+    getTaskStatuses(ids) {
+        return db.prepare('SELECT id, status FROM tasks WHERE id IN (SELECT value FROM json_each(?))')
+            .all(JSON.stringify(ids));
+    },
     // Tracks
     getTracks,
     createTrack,

@@ -61,9 +61,6 @@ app.use(helmet());
 app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json({ limit: '50mb' }));
 
-// Sized for the bridge dashboard: one open deck tab polls ~25 req/min across
-// its live panels, so 1000/15min browned out with two viewers (2026-07-11).
-// This is a local-operator DoS guard, not a quota — keep it generous.
 app.use('/api', createApiRateLimit());
 
 // ─── Project Hub (THE LAB) ──────────────────────────────────────────────────
