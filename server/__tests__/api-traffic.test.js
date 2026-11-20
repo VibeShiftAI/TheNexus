@@ -27,6 +27,12 @@ test('a browser refusal preserves the authenticated local runtime lane and logs 
         expect(log).toHaveBeenCalledWith('[ApiRateLimit]', expect.objectContaining({
             caller: 'browser', route: '/api/tasks', reason: 'window_exhausted'
         }));
+        const healthUrl = `http://127.0.0.1:${server.address().port}/api/health`;
+        await fetch(healthUrl);
+        expect((await fetch(healthUrl, { headers: { 'x-nexus-runtime-traffic': proof } })).status).toBe(429);
+        expect(log).toHaveBeenCalledWith('[ApiRateLimit]', expect.objectContaining({
+            caller: 'praxis-runtime', route: '/api/health', lane: 'health', reason: 'window_exhausted',
+        }));
         expect(JSON.stringify(log.mock.calls)).not.toContain('private=omit');
     } finally {
         await new Promise(resolve => server.close(resolve));

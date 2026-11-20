@@ -12,16 +12,19 @@ export function createSharedPoll<T>(load: () => Promise<T>) {
 
     function refresh() {
         if (!subscribers.size || document.hidden || pending) return;
-        const request = Promise.resolve().then(load).then(
-            value => { if (pending === request) snapshot = { value, error: false }; },
-            () => { if (pending === request) snapshot = { ...snapshot, error: true }; },
-        ).finally(() => {
-            if (pending !== request) return;
+        pending = Promise.resolve().then(async () => {
+            if (!subscribers.size) return;
+            try {
+                const value = await load();
+                if (subscribers.size) snapshot = { value, error: false };
+            } catch {
+                if (subscribers.size) snapshot = { ...snapshot, error: true };
+            }
+        }).finally(() => {
             pending = undefined;
             subscribers.forEach((_, notify) => notify());
         });
-        pending = request;
-        return request;
+        return pending;
     }
 
     function setCadence() {
@@ -44,7 +47,6 @@ export function createSharedPoll<T>(load: () => Promise<T>) {
             setCadence();
             if (!subscribers.size) {
                 document.removeEventListener('visibilitychange', refresh);
-                pending = undefined;
                 snapshot = empty;
             }
         };

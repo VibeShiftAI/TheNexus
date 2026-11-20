@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { act, createElement } from 'react';
+import { act, createElement, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { withNexusReadBackoff } from '../../lib/poll-fetch.ts';
 import { HitlInboxProvider, useHitlInbox } from '../../hooks/use-hitl-inbox.ts';
@@ -63,4 +63,17 @@ test('a dated general refusal pauses other local GETs while health, writes and o
     t.mock.timers.tick(60000);
     assert.equal((await get('/api/projects')).status, 200);
     assert.equal(calls.length, 5);
+});
+
+test('a strict-mode remount keeps a single outstanding dispatch read', async t => {
+    const root = createRoot(document.createElement('div'));
+    t.after(() => act(() => root.unmount()));
+    const calls = [];
+    t.mock.method(globalThis, 'fetch', async url => {
+        calls.push(String(url));
+        return Response.json({ active: [] });
+    });
+    function Panel() { useActiveWork(); return null; }
+    await act(async () => root.render(createElement(StrictMode, null, createElement(Panel))));
+    assert.deepEqual(calls.filter(url => url.includes('/dispatches/active')), ['/api/dispatches/active?limit=5']);
 });

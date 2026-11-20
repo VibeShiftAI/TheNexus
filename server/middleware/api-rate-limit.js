@@ -39,7 +39,7 @@ function createApiRateLimit(max = WINDOW_REQUESTS) {
         handler(req, res) {
             const lane = req.method === 'GET' && req.path === '/health' ? 'health' : 'general';
             console.warn('[ApiRateLimit]', {
-                caller: lane === 'health' ? 'health-probe' : callerLabel(req),
+                caller: isLocalRuntime(req) ? 'praxis-runtime' : callerLabel(req),
                 method: req.method, route: req.baseUrl + req.path, lane, reason: 'window_exhausted',
             });
             res.set('X-Nexus-Allowance', lane).status(429).json({ error: 'Too many requests, please try again later.' });
