@@ -10,6 +10,12 @@ import {
   type DraftFolder,
   type MailDraft,
 } from "@/lib/mail-drafts";
+import { DocumentApiError } from "@/lib/document-review";
+import {
+  CONFIRM_ON_THIS_MAC,
+  CONFIRMATION_REFUSALS,
+  confirmsOnThisMac,
+} from "@/lib/local-operator-session";
 const button =
   "rounded-lg border border-slate-600 px-3 py-2 text-sm text-cyan-100 hover:border-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed";
 const field =
@@ -217,6 +223,8 @@ function DraftEditor({
   }, [draft]);
   const [comments, setComments] = useState("");
   const [busy, setBusy] = useState(false);
+  // A send on this Mac's automatic session waits for the native confirmation dialog.
+  const [confirming, setConfirming] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [feedbackPending, setFeedbackPending] = useState<string | null>(null);
   const [needsRefresh, setNeedsRefresh] = useState(false);
@@ -239,6 +247,7 @@ function DraftEditor({
   ) {
     if (busy) return;
     setBusy(true);
+    setConfirming(action === "approve_send" && confirmsOnThisMac());
     setNotice(null);
     try {
       await actOnDraft(
@@ -273,12 +282,23 @@ function DraftEditor({
       );
       await onRefresh();
     } catch (error) {
+      // A declined, unanswered or unavailable confirmation recorded nothing and
+      // left the draft as it was: say so, and allow another try without a reload.
+      if (
+        error instanceof DocumentApiError &&
+        CONFIRMATION_REFUSALS.has(error.code ?? "") &&
+        error.code !== "operator_confirmation_mismatch"
+      ) {
+        setNotice(error.message);
+        return;
+      }
       setNeedsRefresh(true);
       setNotice(
-        `${error instanceof Error ? error.message : "Request failed"}. Refresh and review the current state before another action.`,
+        `${(error instanceof Error ? error.message : "Request failed").replace(/\.$/, "")}. Refresh and review the current state before another action.`,
       );
     } finally {
       setBusy(false);
+      setConfirming(false);
     }
   }
   async function retryFeedback(savedComments = feedbackPending) {
@@ -424,6 +444,11 @@ function DraftEditor({
       {draft.blocked && (
         <p role="alert" className="text-amber-200">
           {draft.blocked}
+        </p>
+      )}
+      {confirming && (
+        <p role="status" className="text-cyan-100" data-confirm-on-mac="">
+          {CONFIRM_ON_THIS_MAC}
         </p>
       )}
       {notice && (

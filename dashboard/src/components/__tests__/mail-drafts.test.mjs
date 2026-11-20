@@ -200,6 +200,41 @@ test("document return records hold first and retries feedback without another de
     t.close();
   }
 });
+test("a declined Mac confirmation records nothing and leaves the draft ready for another try", async () => {
+  const writes = [];
+  const t = setup(async (url, options = {}) => {
+    if (options.method === "POST") {
+      writes.push(JSON.parse(options.body));
+      return response(
+        {
+          code: "operator_confirmation_declined",
+          error: "You declined the confirmation on this Mac. Nothing was recorded.",
+          nothing_recorded: true,
+        },
+        403,
+      );
+    }
+    return response({
+      items: String(url).includes("/api/documents") ? [] : [runtime],
+      counts: { drafts: 1, cancelled: 0 },
+    });
+  });
+  try {
+    await settle();
+    await click(t.c.querySelector("[data-draft-id]"));
+    await click(button(t.c, "Approve and send"));
+    assert.match(
+      t.c.textContent,
+      /You declined the confirmation on this Mac\. Nothing was recorded\./,
+    );
+    assert.doesNotMatch(t.c.textContent, /Refresh and review/);
+    assert.equal(button(t.c, "Approve and send").disabled, false);
+    assert.equal(button(t.c, "Reload current draft"), undefined);
+    assert.deepEqual(writes, [{ action: "approve_send", version: "v1" }]);
+  } finally {
+    t.close();
+  }
+});
 test("stale approval stops decisions until explicit reload", async () => {
   let writes = 0;
   const t = setup(async (url, options = {}) => {

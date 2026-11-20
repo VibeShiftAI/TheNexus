@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createLocalOperatorSessionClient, localOperatorHeaders, LOCAL_OPERATOR_PROOF_KEY } from '../local-operator-session.ts';
+import { confirmsOnThisMac, createLocalOperatorSessionClient, localOperatorHeaders, LOCAL_OPERATOR_PROOF_KEY } from '../local-operator-session.ts';
 
 function client(options) {
     const values = new Map();
@@ -59,5 +59,18 @@ test('origin proof is attached only to this dashboard API, never another localho
         for (const url of ['http://localhost:4000/api/operator-session/bootstrap', 'http://localhost:5000/api', 'https://evil.test/api', '/session/probe', '//evil.test/api', '/apix']) {
             assert.deepEqual(localOperatorHeaders(url), {});
         }
+    } finally { globalThis.window = prior; }
+});
+
+test('only this Mac\'s automatic session expects a native confirmation; the tunnel and a missing proof do not', () => {
+    const prior = globalThis.window;
+    const proof = 'z'.repeat(43);
+    try {
+        globalThis.window = { location: new URL('http://localhost:3000/mail'), localStorage: { getItem: name => name === LOCAL_OPERATOR_PROOF_KEY ? proof : null } };
+        assert.equal(confirmsOnThisMac(), true);
+        globalThis.window = { location: new URL('http://localhost:3000/mail'), localStorage: { getItem: () => null } };
+        assert.equal(confirmsOnThisMac(), false);
+        globalThis.window = { location: new URL('https://nexus.example.test/mail'), localStorage: { getItem: () => proof } };
+        assert.equal(confirmsOnThisMac(), false);
     } finally { globalThis.window = prior; }
 });
