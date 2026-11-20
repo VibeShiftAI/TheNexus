@@ -21,8 +21,9 @@
  *     served old numbers;
  *   - files are read in fixed-size chunks and only lines carrying the source's
  *     marker are decoded and parsed, so no whole file is ever held in memory;
- *   - appends are read from the last complete line (session logs are append
- *     only; inode + a boundary fingerprint catch rewrites, which reparse);
+ *   - appends are parsed from the last complete line, but only after the whole
+ *     committed prefix has been re-read and found byte-identical (SHA-256 of
+ *     bytes [0, offset) kept per file); any other change reparses the file;
  *   - the per-message dedupe index is kept only for files still being written;
  *     cache entries for deleted or aged-out files are evicted every refresh.
  */
@@ -30,21 +31,62 @@ import { promises as fs, type Stats } from "fs";
 import path from "path";
 import os from "os";
 import { execFile } from "child_process";
+import { createHash, type Hash } from "crypto";
 import { promisify } from "util";
 
 const execFileP = promisify(execFile);
 
+// Both unchanged from the original route (36f0db2e route.ts:38-39).
 export const WINDOW_DAYS = 30;
 export const RESPONSE_TTL_MS = 30_000;
-/** Read size per I/O. A process holds one such buffer per source while scanning. */
+
+// Tuning constants. None affects accounting: each only trades memory, I/O or
+// event-loop time. Sources are measurements on the real session-log tree
+// (48,914 JSONL files, 8.0 GiB; Apple M4 Max, libuv's default 4 fs threads)
+// on 2026-11-20, kept with the scripts that produced them in
+// /Volumes/Projects/OperationsEvidence/nexus-dashboard-2026-11-20/repair-6802cb06/round2/
+// (constants-basis.out.jsonl, verify-cost.out.jsonl).
+
+/**
+ * Read size per I/O and the one buffer a scan holds per source (two sources
+ * scan at once: 2 MiB, plus the longest marked line when one spans reads).
+ * Measured cold scan of a 386 MiB project directory, two rounds: 64 KiB
+ * 332-592 ms, 256 KiB 255-312 ms, 1 MiB 236-239 ms, 4 MiB 189-205 ms. 1 MiB is
+ * within 25% of 4 MiB's time at a quarter of its memory.
+ */
 const DEFAULT_CHUNK_BYTES = 1 << 20;
-/** Parallel stat() calls during the metadata sweep. */
+/**
+ * In-flight stat() calls in the metadata sweep. With 4 libuv threads serving
+ * all of the process's fs calls, this caps how many stats any other file
+ * access (a page render, the dev server) can queue behind. Measured full
+ * sweep of 48,914 files, best of two: 1 -> 536 ms, 4 -> 191 ms, 8 -> 128 ms,
+ * 16 -> 108 ms, 32 -> 95 ms, 128 -> 84 ms; past 32 the saving is about 11 ms
+ * per refresh.
+ */
 const STAT_CONCURRENCY = 32;
-/** A Claude file untouched this long drops its dedupe index; a later append reparses it. */
+/**
+ * A Claude file untouched this long drops its dedupe index and prefix digest;
+ * a later append reparses it in full (exact, just slower once). The index
+ * exists for streamed rewrites of one message id, and those land close
+ * together: across 6,118 ids in files written in the last 24 h, the first and
+ * last line of an id were p50 2.4 s, p99 38.1 s and at most 206 s apart, none
+ * over an hour. Memory, measured at 279 bytes per indexed message: 1 h held
+ * 43 files and 150 messages; 24 h would hold 2,513 files and 6,146 messages,
+ * and SHA-256 each of those files' 429 MiB on every full parse.
+ */
 const DEFAULT_HOT_INDEX_MS = 60 * 60_000;
-/** Bytes before the committed offset that must be unchanged for an append-only resume. */
-const FINGERPRINT_BYTES = 64;
-/** Cache hits folded between event-loop yields during a sweep. */
+/**
+ * Cache hits folded between event-loop yields during a sweep. Budget: each
+ * synchronous slice stays under 1 ms on a warm cache (below the 1.0-1.3 ms
+ * event-loop delay p50 of the same runs), and when cached entries have been
+ * paged out a slice still costs at most 512 page faults. Measured warm sweep
+ * of 48,369 cached files, two rounds, slice p50 / max: 64 -> 0.03-0.04 /
+ * 0.39-0.44 ms, 512 -> 0.22-0.25 / 0.52-0.55 ms, 2048 -> 0.91-0.99 /
+ * 1.36-1.41 ms, 8192 -> 3.5-3.7 / 4.3-4.5 ms. The second round's sweep took
+ * 443-474 ms at every interval and 444 ms never yielding, so yielding costs
+ * nothing measurable (the first round, run straight after the cold scan,
+ * took 1,625 ms for its first refresh and 441-618 ms for the rest).
+ */
 const YIELD_EVERY_FILES = 512;
 
 export interface DayRow {
@@ -187,11 +229,36 @@ const CODEX_SOURCE: LogSource<CodexState> = {
 
 interface ScanMeter {
   bytesRead: number;
+  /** Bytes re-read only to prove a committed prefix unchanged (part of bytesRead). */
+  verifiedBytes: number;
   /** Largest single buffer allocated for reading (a chunk or one re-read line). */
   peakHeldBytes: number;
 }
 
 const EMPTY = Buffer.alloc(0);
+
+/** Feeds bytes [start, end) to `hash` one chunk at a time; false if the file ended early. */
+async function hashRange(
+  handle: fs.FileHandle,
+  start: number,
+  end: number,
+  hash: Hash,
+  chunkBytes: number,
+  meter: ScanMeter,
+): Promise<boolean> {
+  const buf = Buffer.allocUnsafe(Math.max(1, Math.min(chunkBytes, end - start)));
+  meter.peakHeldBytes = Math.max(meter.peakHeldBytes, buf.length);
+  let pos = start;
+  while (pos < end) {
+    const { bytesRead } = await handle.read(buf, 0, Math.min(buf.length, end - pos), pos);
+    if (bytesRead === 0) return false;
+    hash.update(buf.subarray(0, bytesRead));
+    pos += bytesRead;
+    meter.bytesRead += bytesRead;
+    meter.verifiedBytes += bytesRead;
+  }
+  return true;
+}
 
 async function readRange(handle: fs.FileHandle, start: number, end: number, meter: ScanMeter): Promise<Buffer> {
   const out = Buffer.allocUnsafe(Math.max(0, end - start));
@@ -214,6 +281,11 @@ async function readRange(handle: fs.FileHandle, start: number, end: number, mete
  * bounded by the chunk size plus the longest marked line, never the file.
  * Returns the offset just past the last newline and, when the file ends in an
  * unterminated marked line, that line's text (for a provisional parse).
+ *
+ * `hash`, when given, already holds bytes [0, from); every byte read is added
+ * to it, and `committedDigest` is its digest over exactly [0, committedEnd)
+ * (snapshotted at the last newline of each chunk), which the next refresh
+ * must reproduce before it may resume at committedEnd.
  */
 async function scanLines(
   handle: fs.FileHandle,
@@ -223,7 +295,8 @@ async function scanLines(
   onLine: (line: string) => void,
   chunkBytes: number,
   meter: ScanMeter,
-): Promise<{ committedEnd: number; tail: string | null }> {
+  hash: Hash | null,
+): Promise<{ committedEnd: number; tail: string | null; committedDigest: Buffer | null }> {
   const buf = Buffer.allocUnsafe(Math.max(1, Math.min(chunkBytes, to - from)));
   meter.peakHeldBytes = Math.max(meter.peakHeldBytes, buf.length);
   const overlap = marker.length - 1;
@@ -233,6 +306,8 @@ async function scanLines(
   // Last (marker.length - 1) bytes of the current, still unmarked line, so a
   // marker split across two reads is still seen.
   let probe: Buffer = EMPTY;
+  // Hash state over [0, lineStart): lineStart only ever moves to just past a newline.
+  let committedHash = hash?.copy() ?? null;
 
   while (pos < to) {
     const { bytesRead } = await handle.read(buf, 0, Math.min(buf.length, to - pos), pos);
@@ -244,6 +319,15 @@ async function scanLines(
     const chunk = buf.subarray(0, bytesRead);
     pos += bytesRead;
     meter.bytesRead += bytesRead;
+    if (hash) {
+      const lastNl = chunk.lastIndexOf(0x0a);
+      if (lastNl === -1) hash.update(chunk);
+      else {
+        hash.update(chunk.subarray(0, lastNl + 1));
+        committedHash = hash.copy();
+        hash.update(chunk.subarray(lastNl + 1));
+      }
+    }
 
     const carried = probe;
     probe = EMPTY;
@@ -286,7 +370,7 @@ async function scanLines(
   }
 
   const tail = lineMarked && lineStart < to ? (await readRange(handle, lineStart, to, meter)).toString("utf8") : null;
-  return { committedEnd: lineStart, tail };
+  return { committedEnd: lineStart, tail, committedDigest: committedHash?.digest() ?? null };
 }
 
 // ---------------------------------------------------------------------------
@@ -298,8 +382,11 @@ interface FileEntry<S> {
   size: number;
   /** Offset just past the last complete line folded into `state`. */
   offset: number;
-  /** Bytes [offset - n, offset) as read, to prove an append-only change. */
-  fingerprint: Buffer;
+  /**
+   * SHA-256 of bytes [0, offset). A changed file resumes at `offset` only if
+   * re-hashing that whole prefix reproduces this digest; null means reparse.
+   */
+  prefixDigest: Buffer | null;
   /** Null once dropped (idle file) or after a read error: the next change reparses. */
   state: S | null;
   perDay: Record<string, number>;
@@ -325,35 +412,48 @@ async function parseFile<S>(
   counters: ParseCounters,
 ): Promise<FileEntry<S>> {
   const base = { ino: st.ino, mtimeMs: st.mtimeMs, size: st.size };
+  // An idle Claude file drops its state right after this parse (scanSource),
+  // so it can never resume and needs no prefix digest.
+  const mayResumeLater = source.retainWhenIdle || nowMs - st.mtimeMs <= settings.hotIndexMs;
   let handle: fs.FileHandle | null = null;
   try {
     handle = await fs.open(fp, "r");
-    let resume = !!prev && prev.state !== null && prev.ino === st.ino && st.size >= prev.offset;
-    if (resume && prev && prev.fingerprint.length > 0) {
-      const seen = await readRange(handle, prev.offset - prev.fingerprint.length, prev.offset, counters);
-      resume = seen.equals(prev.fingerprint);
+    // Resume only when the whole committed prefix is byte-identical. A
+    // matching inode, size or boundary sample proves nothing about the bytes
+    // before it (an earlier entry can be rewritten in place), so the prefix is
+    // re-read and hashed in full; only the appended lines are then parsed.
+    let resumed: { state: S; offset: number; hash: Hash } | null = null;
+    if (prev && prev.state !== null && prev.prefixDigest && prev.ino === st.ino && st.size >= prev.offset) {
+      const hash = createHash("sha256");
+      const complete = await hashRange(handle, 0, prev.offset, hash, settings.chunkBytes, counters);
+      if (complete && hash.copy().digest().equals(prev.prefixDigest)) {
+        resumed = { state: prev.state, offset: prev.offset, hash };
+      }
     }
-    const state = resume && prev && prev.state !== null ? prev.state : source.init();
-    const from = resume && prev ? prev.offset : 0;
-    if (resume) counters.incrementalParses++;
+    const state = resumed ? resumed.state : source.init();
+    if (resumed) counters.incrementalParses++;
     else counters.fullParses++;
-    const { committedEnd, tail } = await scanLines(
+    const { committedEnd, tail, committedDigest } = await scanLines(
       handle,
-      from,
+      resumed ? resumed.offset : 0,
       st.size,
       source.marker,
       (line) => source.commit(state, line),
       settings.chunkBytes,
       counters,
+      resumed ? resumed.hash : mayResumeLater ? createHash("sha256") : null,
     );
-    const fingerprint = Buffer.from(
-      await readRange(handle, Math.max(0, committedEnd - FINGERPRINT_BYTES), committedEnd, counters),
-    );
-    return { ...base, offset: committedEnd, fingerprint, state, perDay: source.result(state, tail, nowMs) };
+    return {
+      ...base,
+      offset: committedEnd,
+      prefixDigest: committedDigest,
+      state,
+      perDay: source.result(state, tail, nowMs),
+    };
   } catch {
     // Unreadable (vanished, permissions, I/O error): contributes nothing until
     // it changes again, as the original readFile failure did.
-    return { ...base, offset: 0, fingerprint: EMPTY, state: null, perDay: {} };
+    return { ...base, offset: 0, prefixDigest: null, state: null, perDay: {} };
   } finally {
     await handle?.close().catch(() => {});
   }
@@ -411,6 +511,7 @@ async function scanSource<S>(
     }
     if (entry.state !== null && !source.retainWhenIdle && nowMs - st.mtimeMs > settings.hotIndexMs) {
       entry.state = null;
+      entry.prefixDigest = null;
     }
     live.set(fp, entry);
     for (const [day, tokens] of Object.entries(entry.perDay)) perDay.set(day, (perDay.get(day) ?? 0) + tokens);
@@ -551,6 +652,8 @@ export interface TokenUsageMetrics {
   fullParses: number;
   incrementalParses: number;
   bytesRead: number;
+  /** Of bytesRead, the bytes re-read to prove committed prefixes unchanged. */
+  verifiedBytes: number;
   peakHeldBytes: number;
   cachedFiles: number;
   indexedFiles: number;
@@ -580,7 +683,13 @@ export function createTokenUsageService(options: TokenUsageServiceOptions): Toke
 
   const claudeCache = new Map<string, FileEntry<ClaudeState>>();
   const codexCache = new Map<string, FileEntry<CodexState>>();
-  const counters: ParseCounters = { bytesRead: 0, peakHeldBytes: 0, fullParses: 0, incrementalParses: 0 };
+  const counters: ParseCounters = {
+    bytesRead: 0,
+    verifiedBytes: 0,
+    peakHeldBytes: 0,
+    fullParses: 0,
+    incrementalParses: 0,
+  };
   let cached: { at: number; body: TokenUsageBody } | null = null;
   let inflight: Promise<TokenUsageBody> | null = null;
   let lastRefreshFailed = false;
@@ -669,6 +778,7 @@ export function createTokenUsageService(options: TokenUsageServiceOptions): Toke
         fullParses: counters.fullParses,
         incrementalParses: counters.incrementalParses,
         bytesRead: counters.bytesRead,
+        verifiedBytes: counters.verifiedBytes,
         peakHeldBytes: counters.peakHeldBytes,
         cachedFiles: claudeCache.size + codexCache.size,
         indexedFiles,

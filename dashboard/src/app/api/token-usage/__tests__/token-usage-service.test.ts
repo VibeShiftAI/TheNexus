@@ -172,12 +172,26 @@ test("line splitting is exact at every read size, including markers split across
     if (n % 11 === 0) lines.push(claudeLine({ id: `crlf_${n}`, input: 3 }) + "\r");
   }
   lines.push(claudeLine({ id: "tail_msg", input: 42 }));
-  await writeLog(path.join(h.claudeRoot, "proj-b", "adversarial.jsonl"), lines, { trailingNewline: false });
+  const adversarial = path.join(h.claudeRoot, "proj-b", "adversarial.jsonl");
+  const late = claudeLine({ id: "late", input: 9 });
+  // Finishes the unterminated tail, rewrites msg_3, then leaves a half-written line; the second piece completes it.
+  const appends = ["\n" + claudeLine({ id: "msg_3", input: 1000 }) + "\n" + late.slice(0, 30), late.slice(30) + "\n"];
 
-  const expected = await h.oracle();
   for (const chunkBytes of [1, 2, 3, 6, 7, 8, 13, 31, 64, 257, 4096, 1 << 20]) {
-    const body = await createTokenUsageService(h.options({ chunkBytes })).getUsage();
-    assert.deepEqual(body, expected, `chunkBytes=${chunkBytes}`);
+    await writeLog(adversarial, lines, { trailingNewline: false });
+    const service = createTokenUsageService(h.options({ chunkBytes, ttlMs: 0 }));
+    assert.deepEqual(await service.refresh(), await h.oracle(), `chunkBytes=${chunkBytes}`);
+    // Each append resumes only if the prefix digest snapshotted mid-chunk
+    // equals a fresh hash of the whole prefix, at every read size.
+    for (const piece of appends) {
+      await fs.appendFile(adversarial, piece);
+      const before = service.metrics();
+      const body = await service.refresh();
+      const after = service.metrics();
+      assert.deepEqual(body, await h.oracle(), `chunkBytes=${chunkBytes} after append`);
+      assert.equal(after.incrementalParses - before.incrementalParses, 1, `chunkBytes=${chunkBytes} resumed`);
+      assert.equal(after.fullParses - before.fullParses, 0, `chunkBytes=${chunkBytes} no reparse`);
+    }
   }
 });
 
@@ -294,7 +308,9 @@ test("changed files: appends, partial lines, rewrites, truncation, deletion and 
   const s1 = path.join(h.claudeRoot, "proj-a", "s1.jsonl");
   const s1Size = (await fs.stat(s1)).size;
 
-  // Append: a new message plus a streamed rewrite of msg_A (80 -> 300), read incrementally.
+  // Append: a new message plus a streamed rewrite of msg_A (80 -> 300). The
+  // whole committed prefix is re-read and hashed (never trusted from a sample),
+  // then only the appended lines are scanned and parsed.
   let before = service.metrics();
   const appended = [claudeLine({ id: "msg_F", input: 21 }), claudeLine({ id: "msg_A", input: 300 })].join("\n") + "\n";
   await fs.appendFile(s1, appended);
@@ -302,8 +318,9 @@ test("changed files: appends, partial lines, rewrites, truncation, deletion and 
   assert.equal(body.today.claudeCode, 116 - 80 + 300 + 21);
   let after = service.metrics();
   assert.equal(after.incrementalParses - before.incrementalParses, 1);
-  assert.ok(after.bytesRead - before.bytesRead < Buffer.byteLength(appended) + 256, "reads only the appended bytes");
-  assert.ok(after.bytesRead - before.bytesRead < s1Size);
+  const verified = after.verifiedBytes - before.verifiedBytes;
+  assert.equal(verified, s1Size, "the entire committed prefix is verified");
+  assert.ok(after.bytesRead - before.bytesRead - verified < Buffer.byteLength(appended) + 256, "only the appended bytes are scanned");
 
   // A line still being written (no newline yet) counts provisionally, then exactly once when finished.
   const partial = claudeLine({ id: "msg_G", input: 5 });
@@ -329,7 +346,7 @@ test("changed files: appends, partial lines, rewrites, truncation, deletion and 
   body = await refresh();
   assert.equal(body.today.claudeCode, 116 - 80 + 300 + 21 + 70 + 7);
 
-  // Rewritten in place with different, longer content: the fingerprint catches it and the file reparses.
+  // Rewritten in place with different, longer content: the prefix digest no longer matches, so it reparses.
   before = service.metrics();
   await writeLog(s1, [claudeLine({ id: "rewritten", input: 2 }), claudeUserLine("z".repeat(5000))]);
   body = await refresh();
@@ -357,6 +374,69 @@ test("changed files: appends, partial lines, rewrites, truncation, deletion and 
   assert.equal(body.today.claudeCode, 4);
   assert.equal(body.today.codex, 900);
   assert.equal(service.metrics().cachedFiles, cachedBefore - 2);
+});
+
+test("an earlier entry rewritten in place is reparsed even when size, inode and trailing bytes are unchanged", async () => {
+  const h = await harness();
+  const service = createTokenUsageService(h.options({ ttlMs: 0 }));
+  const claudeFile = path.join(h.claudeRoot, "p", "session.jsonl");
+  const codexFile = path.join(h.codexRoot, "rollout.jsonl");
+  // Long unchanged trailing content after the entry that will be rewritten,
+  // so any check that samples only the bytes near the end sees no change.
+  const trailer = [claudeUserLine("unchanged trailing content ".repeat(40))];
+  const codexTrailer = [codexOtherLine("unchanged trailing content ".repeat(40))];
+  await writeLog(claudeFile, [claudeLine({ id: "first", input: 10 }), ...trailer]);
+  await writeLog(codexFile, [codexTokenLine({ input: 100, output: 1 }), ...codexTrailer]);
+  let mtime = Date.now();
+  const touch = async (fp: string) => {
+    mtime += 1000;
+    await fs.utimes(fp, new Date(mtime), new Date(mtime));
+  };
+  let body = await service.refresh();
+  assert.equal(body.today.claudeCode, 10);
+  assert.equal(body.today.codex, 101);
+
+  // Same size, same inode, same trailing bytes; only the earlier usage differs (10 -> 90, 100 -> 900).
+  const sizes = [(await fs.stat(claudeFile)).size, (await fs.stat(codexFile)).size];
+  const inodes = [(await fs.stat(claudeFile)).ino, (await fs.stat(codexFile)).ino];
+  await fs.writeFile(claudeFile, [claudeLine({ id: "first", input: 90 }), ...trailer].join("\n") + "\n");
+  await fs.writeFile(codexFile, [codexTokenLine({ input: 900, output: 1 }), ...codexTrailer].join("\n") + "\n");
+  await touch(claudeFile);
+  await touch(codexFile);
+  assert.deepEqual([(await fs.stat(claudeFile)).size, (await fs.stat(codexFile)).size], sizes);
+  assert.deepEqual([(await fs.stat(claudeFile)).ino, (await fs.stat(codexFile)).ino], inodes);
+  let before = service.metrics();
+  body = await service.refresh();
+  let after = service.metrics();
+  assert.equal(body.today.claudeCode, 90);
+  assert.equal(body.today.codex, 901);
+  assert.deepEqual(body, await h.oracle());
+  assert.equal(after.fullParses - before.fullParses, 2, "both files reparse from the start");
+  assert.equal(after.incrementalParses - before.incrementalParses, 0);
+
+  // Rewritten in place and appended to: the size grows and the old boundary
+  // bytes still match, yet the earlier entry changed (90 -> 50) and must count.
+  const fileText = await fs.readFile(claudeFile, "utf8");
+  await fs.writeFile(
+    claudeFile,
+    fileText.replace('"input_tokens":90', '"input_tokens":50') + claudeLine({ id: "second", input: 7 }) + "\n",
+  );
+  await touch(claudeFile);
+  before = service.metrics();
+  body = await service.refresh();
+  after = service.metrics();
+  assert.equal(body.today.claudeCode, 50 + 7);
+  assert.deepEqual(body, await h.oracle());
+  assert.equal(after.fullParses - before.fullParses, 1);
+
+  // A genuine append after that still resumes, and stays exact.
+  await fs.appendFile(claudeFile, claudeLine({ id: "first", input: 60 }) + "\n");
+  before = service.metrics();
+  body = await service.refresh();
+  after = service.metrics();
+  assert.equal(after.incrementalParses - before.incrementalParses, 1);
+  assert.equal(body.today.claudeCode, 60 + 7);
+  assert.deepEqual(body, await h.oracle());
 });
 
 test("idle files drop their dedupe index and reparse exactly if they change again", async () => {
