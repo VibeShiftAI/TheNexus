@@ -19,9 +19,10 @@
  *
  * Answers: a dialog the plan leaves alone times out. A dialog the plan answers
  * is pressed through Accessibility when the screen is unlocked. While the
- * console is locked macOS lets no process answer it, so the harness closes the
- * dialog and hands the broker the planned answer; the evidence marks that as a
- * stand-in. --attended shows the plan on the page and waits for Robert's
+ * console is locked the harness cannot reach it (on 2026-11-20 neither an
+ * Accessibility read nor a key event posted to the dialog process did), so it
+ * closes the dialog and hands the broker the planned answer; the evidence marks
+ * that as a stand-in. --attended shows the plan on the page and waits for Robert's
  * clicks instead (longer dialogs, no Accessibility, no stand-in).
  *
  *   node scripts/operator-confirmation-qa/live-check.cjs [--client chrome|webview]
@@ -230,7 +231,7 @@ function show(prompt) {
             } else {
                 standIn = plan === 'confirm' ? 'confirmed' : 'declined';
                 process.kill(child.pid, 'SIGTERM');
-                record.action = `stand-in: the console is locked, so no process can press ${button}; the harness closed the dialog and handed the broker "${standIn}"`;
+                record.action = `stand-in: the console is locked, so the harness cannot press ${button}; it closed the dialog and handed the broker "${standIn}"`;
             }
         } else if (!ATTENDED && !session.locked) {
             record.accessibility = await probe('read', child.pid, 6);

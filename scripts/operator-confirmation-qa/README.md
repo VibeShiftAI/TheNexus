@@ -39,7 +39,8 @@ node scripts/operator-confirmation-qa/live-check.cjs --client chrome --attended
 - **Unanswered.** A dialog the step leaves alone times out (8 seconds by default).
 - **Unlocked screen.** A dialog the step answers is pressed through Accessibility.
   - `dialog-probe` only reads or presses dialogs from an osascript process started by the same parent as the probe, so it cannot reach the live API's dialogs.
-  - That a press works at all is a documented limit: a same-user process that holds the Accessibility permission can answer the dialog.
-- **Locked console.** macOS lets no process see the dialog's contents behind the lock screen. The harness therefore closes the dialog and hands the broker the planned answer. Each dialog record states this as `answer_source: "stand-in (console locked)"`.
+  - That such a press can work at all is a documented limit: macOS lets a same-user process that holds the Accessibility permission press buttons in other apps' windows, so such a process could answer the dialog while the screen is unlocked.
+- **Locked console.** Behind the lock screen the harness cannot reach the dialog: on 2026-11-20 an Accessibility read found none of its contents, and a key event posted to the dialog process did not answer it. The harness therefore closes the dialog and hands the broker the planned answer. Each dialog record states this as `answer_source: "stand-in (console locked)"`. (Records from those runs say "no process can press"; that overstates what was tested, and the harness now says "the harness cannot press".)
+- **Recorded runs.** Both recorded runs of 2026-11-20 had the console locked throughout, so the unlocked Accessibility press above has not been exercised live.
 - **Attended run.** Robert clicks every answer himself (`answer_source: "Robert"`).
 - **Webview while locked.** The host turns off WebKit's window-occlusion detection, so the page keeps running behind the lock screen as it would in a visible window. It also copies the page's own log lines into `host_log`.
