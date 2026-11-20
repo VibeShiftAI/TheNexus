@@ -1,0 +1,61 @@
+caller	method	route	requests
+Nexus internal	GET	/api/health	18
+Praxis runtime	POST	/api/write-leases	179
+Praxis runtime	POST	/api/praxis/events	128
+Praxis runtime	GET	/api/tasks/:id	56
+Praxis runtime	GET	/api/model-control/chat-config	34
+Praxis runtime	GET	/api/board-state	32
+Praxis runtime	GET	/api/calendar	29
+Praxis runtime	GET	/api/health	29
+Praxis runtime	GET	/api/documents/:id/outgoing	28
+Praxis runtime	GET	/api/members	28
+Praxis runtime	GET	/api/tasks	28
+Praxis runtime	GET	/api/model-control/agent-backend	17
+Praxis runtime	GET	/api/model-control/antigravity-default	17
+Praxis runtime	GET	/api/model-control/claude-default	17
+Praxis runtime	GET	/api/model-control/codex-default	17
+Praxis runtime	GET	/api/model-control/fable-availability	17
+Praxis runtime	GET	/api/model-control/thinking-levels	17
+Praxis runtime	DELETE	/api/write-leases	15
+Praxis runtime	GET	/api/members/:id	14
+Praxis runtime	GET	/api/documents/:id/replacements/:id	10
+Praxis runtime (lease triplet)	DELETE	/api/write-leases	165
+Praxis runtime (lease triplet)	GET	/api/tasks/:id	164
+Praxis runtime (lease triplet)	POST	/api/write-leases	1
+dashboard browser	GET	/api/dispatches/active	351
+dashboard browser	GET	/api/ai/chat/activity	180
+dashboard browser	GET	/api/knowledge-activity	180
+dashboard browser	GET	/api/praxis/council/sessions	166
+dashboard browser	GET	/api/praxis/hitl/pending	136
+dashboard browser	GET	/api/praxis/dispatch-state	73
+dashboard browser	GET	/api/praxis/llm-log	62
+dashboard browser	GET	/api/activity	60
+dashboard browser	GET	/api/ag/events	60
+dashboard browser	GET	/api/projects/pulse	60
+dashboard browser	GET	/api/token-usage	60
+dashboard browser	GET	/api/dispatch-insight/live-work	46
+dashboard browser	GET	/api/calendar	45
+dashboard browser	GET	/api/praxis/council/arbiter	32
+dashboard browser	GET	/api/praxis/council/benches	32
+dashboard browser	GET	/api/dispatch-insight/autonomy	31
+dashboard browser	GET	/api/board-state	18
+dashboard browser	GET	/api/documents	17
+dashboard browser	GET	/api/model-control/credentials	17
+dashboard browser	GET	/api/praxis/stats	17
+dashboard browser	GET	/api/ingestion-control/topic-map	5
+dashboard browser	GET	/api/praxis/voice-status	5
+dashboard browser	GET	/api/health	3
+dashboard browser	GET	/api/chat/active	2
+dashboard browser	GET	/api/praxis/stream/snapshot	2
+dashboard browser	GET	/api/praxis/stream	1
+mobile relay/client	GET	/api/fleet/health	18
+mobile relay/client	GET	/api/health	18
+mobile relay/client	GET	/api/studio/channels	18
+mobile relay/client	GET	/api/board-state	14
+unresolved	GET	/api/tasks/:id	4
+unresolved	POST	/api/model-control/resolve	2
+unresolved	POST	/api/ag/events	1
+unresolved	GET	/api/calendar	1
+unresolved	POST	/api/praxis/events	1
+unresolved	GET	/api/projects	1
+unresolved	POST	/api/tasks/:id/workspace-delta	1

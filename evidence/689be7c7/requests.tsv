@@ -1,0 +1,2801 @@
+offset_ms	caller	method	route
+3449	dashboard browser	GET	/api/praxis/dispatch-state
+3462	dashboard browser	GET	/api/dispatches/active
+3462	dashboard browser	GET	/api/dispatches/active
+3473	dashboard browser	GET	/api/ai/chat/activity
+3474	dashboard browser	GET	/api/dispatches/active
+3499	dashboard browser	GET	/api/knowledge-activity
+8456	dashboard browser	GET	/api/ai/chat/activity
+8468	dashboard browser	GET	/api/knowledge-activity
+12869	unresolved	POST	/api/praxis/events
+13451	dashboard browser	GET	/api/praxis/council/sessions
+13469	dashboard browser	GET	/api/praxis/council/sessions
+13470	dashboard browser	GET	/api/dispatches/active
+13472	dashboard browser	GET	/api/praxis/council/sessions
+13473	dashboard browser	GET	/api/dispatch-insight/autonomy
+13475	dashboard browser	GET	/api/dispatches/active
+13477	dashboard browser	GET	/api/praxis/llm-log
+13478	dashboard browser	GET	/api/dispatches/active
+13481	dashboard browser	GET	/api/ai/chat/activity
+13497	dashboard browser	GET	/api/knowledge-activity
+13722	dashboard browser	GET	/api/praxis/council/arbiter
+13770	dashboard browser	GET	/api/praxis/council/benches
+14613	dashboard browser	GET	/api/health
+15257	unresolved	GET	/api/tasks/:id
+17187	dashboard browser	GET	/api/praxis/stream
+18418	dashboard browser	GET	/api/ai/chat/activity
+18433	dashboard browser	GET	/api/chat/active
+18611	dashboard browser	GET	/api/knowledge-activity
+18711	dashboard browser	GET	/api/model-control/credentials
+19012	unresolved	GET	/api/tasks/:id
+19013	unresolved	POST	/api/tasks/:id/workspace-delta
+19052	unresolved	GET	/api/tasks/:id
+19054	unresolved	GET	/api/tasks/:id
+19055	unresolved	GET	/api/projects
+19070	unresolved	POST	/api/model-control/resolve
+19071	unresolved	POST	/api/model-control/resolve
+23473	dashboard browser	GET	/api/praxis/dispatch-state
+23476	dashboard browser	GET	/api/dispatches/active
+23485	dashboard browser	GET	/api/ai/chat/activity
+23486	dashboard browser	GET	/api/dispatches/active
+23488	dashboard browser	GET	/api/dispatches/active
+23490	dashboard browser	GET	/api/knowledge-activity
+24066	unresolved	POST	/api/ag/events
+27838	mobile relay/client	GET	/api/fleet/health
+27839	Nexus internal	GET	/api/health
+27840	mobile relay/client	GET	/api/health
+27840	mobile relay/client	GET	/api/studio/channels
+27860	Praxis runtime	POST	/api/praxis/events
+28482	dashboard browser	GET	/api/ai/chat/activity
+28581	dashboard browser	GET	/api/praxis/llm-log
+28582	dashboard browser	GET	/api/knowledge-activity
+29857	Praxis runtime	GET	/api/health
+33211	unresolved	GET	/api/calendar
+33464	dashboard browser	GET	/api/dispatches/active
+33467	dashboard browser	GET	/api/dispatches/active
+33468	dashboard browser	GET	/api/knowledge-activity
+33468	dashboard browser	GET	/api/dispatches/active
+33469	dashboard browser	GET	/api/ai/chat/activity
+33537	Praxis runtime (lease triplet)	POST	/api/write-leases
+33540	Praxis runtime	GET	/api/tasks/:id
+33546	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+33549	Praxis runtime	POST	/api/write-leases
+33552	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+33555	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+33559	Praxis runtime	POST	/api/write-leases
+33569	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+33576	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+33578	Praxis runtime	POST	/api/write-leases
+33579	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+33585	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+33587	Praxis runtime	POST	/api/write-leases
+33591	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+33597	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+33602	Praxis runtime	POST	/api/write-leases
+33604	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+33608	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+33610	Praxis runtime	POST	/api/write-leases
+33612	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+33616	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+33618	Praxis runtime	POST	/api/write-leases
+33621	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+33626	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+33635	Praxis runtime	POST	/api/write-leases
+33658	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+33664	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+33666	Praxis runtime	POST	/api/write-leases
+33669	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+33672	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+33674	Praxis runtime	POST	/api/write-leases
+33678	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+33683	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+33685	Praxis runtime	POST	/api/write-leases
+33687	Praxis runtime	GET	/api/tasks/:id
+33700	Praxis runtime	DELETE	/api/write-leases
+33702	Praxis runtime	GET	/api/board-state
+33935	Praxis runtime	GET	/api/documents/:id/replacements/:id
+33947	Praxis runtime	GET	/api/tasks/:id
+34049	Praxis runtime	GET	/api/calendar
+34051	Praxis runtime	POST	/api/praxis/events
+34608	dashboard browser	GET	/api/activity
+34672	dashboard browser	GET	/api/ag/events
+34725	dashboard browser	GET	/api/projects/pulse
+34897	dashboard browser	GET	/api/praxis/hitl/pending
+36186	dashboard browser	GET	/api/praxis/council/sessions
+36187	dashboard browser	GET	/api/praxis/council/sessions
+38543	dashboard browser	GET	/api/ai/chat/activity
+38555	dashboard browser	GET	/api/knowledge-activity
+42860	Praxis runtime	POST	/api/praxis/events
+43470	dashboard browser	GET	/api/praxis/dispatch-state
+43472	dashboard browser	GET	/api/ai/chat/activity
+43472	dashboard browser	GET	/api/dispatches/active
+43473	dashboard browser	GET	/api/board-state
+43655	dashboard browser	GET	/api/token-usage
+43656	dashboard browser	GET	/api/dispatches/active
+43656	dashboard browser	GET	/api/dispatch-insight/autonomy
+43656	dashboard browser	GET	/api/praxis/council/sessions
+43657	dashboard browser	GET	/api/token-usage
+43657	dashboard browser	GET	/api/praxis/council/sessions
+43657	dashboard browser	GET	/api/dispatches/active
+43657	dashboard browser	GET	/api/praxis/hitl/pending
+43657	dashboard browser	GET	/api/praxis/stats
+43660	dashboard browser	GET	/api/token-usage
+43663	dashboard browser	GET	/api/token-usage
+43663	dashboard browser	GET	/api/praxis/council/sessions
+43664	dashboard browser	GET	/api/dispatch-insight/live-work
+43664	dashboard browser	GET	/api/calendar
+43664	dashboard browser	GET	/api/praxis/hitl/pending
+43665	dashboard browser	GET	/api/praxis/hitl/pending
+43665	dashboard browser	GET	/api/ag/events
+43716	dashboard browser	GET	/api/praxis/llm-log
+43717	dashboard browser	GET	/api/projects/pulse
+43720	dashboard browser	GET	/api/activity
+43827	dashboard browser	GET	/api/documents
+43831	dashboard browser	GET	/api/praxis/hitl/pending
+43832	dashboard browser	GET	/api/knowledge-activity
+44453	dashboard browser	GET	/api/praxis/hitl/pending
+44454	dashboard browser	GET	/api/praxis/council/arbiter
+44647	dashboard browser	GET	/api/praxis/council/benches
+48503	dashboard browser	GET	/api/ai/chat/activity
+48504	dashboard browser	GET	/api/knowledge-activity
+53454	dashboard browser	GET	/api/dispatches/active
+53455	dashboard browser	GET	/api/dispatches/active
+53470	dashboard browser	GET	/api/dispatches/active
+53471	dashboard browser	GET	/api/ai/chat/activity
+53471	dashboard browser	GET	/api/knowledge-activity
+56909	Praxis runtime	GET	/api/tasks/:id
+56929	Praxis runtime	GET	/api/tasks/:id
+56952	Praxis runtime	GET	/api/model-control/chat-config
+56953	Praxis runtime	GET	/api/model-control/chat-config
+56954	Praxis runtime	GET	/api/model-control/fable-availability
+56954	Praxis runtime	GET	/api/model-control/claude-default
+56954	Praxis runtime	GET	/api/model-control/codex-default
+56954	Praxis runtime	GET	/api/model-control/antigravity-default
+56954	Praxis runtime	GET	/api/model-control/agent-backend
+56954	Praxis runtime	GET	/api/board-state
+57138	Praxis runtime	GET	/api/model-control/antigravity-default
+57139	Praxis runtime	GET	/api/model-control/agent-backend
+57139	Praxis runtime	GET	/api/model-control/chat-config
+57139	Praxis runtime	GET	/api/model-control/chat-config
+57139	Praxis runtime	GET	/api/model-control/fable-availability
+57140	Praxis runtime	GET	/api/model-control/chat-config
+57140	Praxis runtime	GET	/api/model-control/chat-config
+57140	Praxis runtime	GET	/api/model-control/fable-availability
+57140	Praxis runtime	GET	/api/model-control/claude-default
+57140	Praxis runtime	GET	/api/model-control/codex-default
+57140	Praxis runtime	GET	/api/model-control/claude-default
+57140	Praxis runtime	GET	/api/model-control/codex-default
+57141	Praxis runtime	GET	/api/model-control/antigravity-default
+57141	Praxis runtime	GET	/api/model-control/agent-backend
+57141	Praxis runtime	GET	/api/board-state
+57317	Praxis runtime	GET	/api/model-control/chat-config
+57318	Praxis runtime	GET	/api/model-control/chat-config
+57318	Praxis runtime	GET	/api/model-control/fable-availability
+57319	Praxis runtime	GET	/api/model-control/claude-default
+57320	Praxis runtime	GET	/api/model-control/codex-default
+57320	Praxis runtime	GET	/api/model-control/antigravity-default
+57321	Praxis runtime	GET	/api/model-control/agent-backend
+57321	Praxis runtime	GET	/api/board-state
+57500	Praxis runtime	GET	/api/board-state
+57680	Praxis runtime	GET	/api/model-control/chat-config
+57681	Praxis runtime	GET	/api/model-control/chat-config
+57681	Praxis runtime	GET	/api/model-control/fable-availability
+57681	Praxis runtime	GET	/api/model-control/claude-default
+57681	Praxis runtime	GET	/api/model-control/codex-default
+57682	Praxis runtime	GET	/api/model-control/antigravity-default
+57682	Praxis runtime	GET	/api/model-control/agent-backend
+57682	Praxis runtime	GET	/api/board-state
+57879	Praxis runtime	GET	/api/model-control/chat-config
+57880	Praxis runtime	GET	/api/model-control/chat-config
+57880	Praxis runtime	GET	/api/model-control/fable-availability
+57880	Praxis runtime	GET	/api/model-control/claude-default
+57881	Praxis runtime	GET	/api/model-control/codex-default
+57881	Praxis runtime	GET	/api/model-control/antigravity-default
+57881	Praxis runtime	GET	/api/model-control/agent-backend
+57881	Praxis runtime	GET	/api/board-state
+58071	Praxis runtime	GET	/api/model-control/chat-config
+58074	Praxis runtime	GET	/api/model-control/chat-config
+58075	Praxis runtime	GET	/api/model-control/fable-availability
+58075	Praxis runtime	GET	/api/model-control/claude-default
+58075	Praxis runtime	GET	/api/model-control/codex-default
+58076	Praxis runtime	GET	/api/model-control/antigravity-default
+58076	Praxis runtime	GET	/api/model-control/agent-backend
+58076	Praxis runtime	GET	/api/board-state
+58265	Praxis runtime	GET	/api/model-control/chat-config
+58266	Praxis runtime	GET	/api/model-control/chat-config
+58266	Praxis runtime	GET	/api/model-control/fable-availability
+58266	Praxis runtime	GET	/api/model-control/claude-default
+58267	Praxis runtime	GET	/api/model-control/codex-default
+58267	Praxis runtime	GET	/api/model-control/antigravity-default
+58267	Praxis runtime	GET	/api/model-control/agent-backend
+58267	Praxis runtime	GET	/api/board-state
+58459	Praxis runtime	GET	/api/model-control/chat-config
+58459	Praxis runtime	GET	/api/model-control/chat-config
+58460	Praxis runtime	GET	/api/model-control/fable-availability
+58460	Praxis runtime	GET	/api/model-control/claude-default
+58460	Praxis runtime	GET	/api/model-control/codex-default
+58460	Praxis runtime	GET	/api/model-control/antigravity-default
+58460	Praxis runtime	GET	/api/model-control/agent-backend
+58460	Praxis runtime	GET	/api/board-state
+58649	dashboard browser	GET	/api/ai/chat/activity
+58652	dashboard browser	GET	/api/praxis/llm-log
+58653	dashboard browser	GET	/api/knowledge-activity
+58653	Praxis runtime	GET	/api/model-control/chat-config
+58654	Praxis runtime	GET	/api/model-control/chat-config
+58654	Praxis runtime	GET	/api/model-control/fable-availability
+58655	Praxis runtime	GET	/api/model-control/claude-default
+58655	Praxis runtime	GET	/api/model-control/codex-default
+58655	Praxis runtime	GET	/api/model-control/antigravity-default
+58655	Praxis runtime	GET	/api/model-control/agent-backend
+58655	Praxis runtime	GET	/api/board-state
+58851	Praxis runtime	GET	/api/model-control/thinking-levels
+58851	Praxis runtime	POST	/api/praxis/events
+58854	Praxis runtime	GET	/api/model-control/thinking-levels
+58854	Praxis runtime	GET	/api/model-control/chat-config
+58856	Praxis runtime	GET	/api/model-control/chat-config
+58857	Praxis runtime	GET	/api/model-control/fable-availability
+58858	Praxis runtime	GET	/api/model-control/claude-default
+58858	Praxis runtime	GET	/api/model-control/codex-default
+58859	Praxis runtime	GET	/api/model-control/antigravity-default
+58859	Praxis runtime	GET	/api/model-control/agent-backend
+58859	Praxis runtime	GET	/api/board-state
+59044	Praxis runtime	GET	/api/model-control/chat-config
+59046	Praxis runtime	GET	/api/model-control/chat-config
+59046	Praxis runtime	GET	/api/model-control/fable-availability
+59046	Praxis runtime	GET	/api/model-control/claude-default
+59047	Praxis runtime	GET	/api/model-control/codex-default
+59047	Praxis runtime	GET	/api/model-control/antigravity-default
+59047	Praxis runtime	GET	/api/model-control/agent-backend
+59047	Praxis runtime	GET	/api/board-state
+59241	Praxis runtime	GET	/api/model-control/chat-config
+59243	Praxis runtime	GET	/api/model-control/chat-config
+59244	Praxis runtime	GET	/api/model-control/fable-availability
+59244	Praxis runtime	GET	/api/model-control/claude-default
+59244	Praxis runtime	GET	/api/model-control/codex-default
+59245	Praxis runtime	GET	/api/model-control/antigravity-default
+59245	Praxis runtime	GET	/api/model-control/agent-backend
+59245	Praxis runtime	GET	/api/board-state
+59443	Praxis runtime	GET	/api/model-control/chat-config
+59444	Praxis runtime	GET	/api/model-control/chat-config
+59445	Praxis runtime	GET	/api/model-control/fable-availability
+59446	Praxis runtime	GET	/api/model-control/claude-default
+59446	Praxis runtime	GET	/api/model-control/codex-default
+59446	Praxis runtime	GET	/api/model-control/antigravity-default
+59446	Praxis runtime	GET	/api/model-control/agent-backend
+59446	Praxis runtime	GET	/api/board-state
+59643	Praxis runtime	GET	/api/model-control/thinking-levels
+59644	Praxis runtime	GET	/api/model-control/thinking-levels
+59645	Praxis runtime	GET	/api/model-control/chat-config
+59645	Praxis runtime	GET	/api/model-control/chat-config
+59645	Praxis runtime	GET	/api/model-control/fable-availability
+59646	Praxis runtime	GET	/api/model-control/claude-default
+59646	Praxis runtime	GET	/api/model-control/codex-default
+59647	Praxis runtime	GET	/api/model-control/antigravity-default
+59647	Praxis runtime	GET	/api/model-control/agent-backend
+59647	Praxis runtime	GET	/api/board-state
+59845	Praxis runtime	GET	/api/model-control/thinking-levels
+59845	Praxis runtime	GET	/api/model-control/thinking-levels
+59846	Praxis runtime	GET	/api/model-control/chat-config
+59846	Praxis runtime	GET	/api/model-control/chat-config
+59847	Praxis runtime	GET	/api/model-control/fable-availability
+59847	Praxis runtime	GET	/api/model-control/claude-default
+59847	Praxis runtime	GET	/api/model-control/codex-default
+59847	Praxis runtime	GET	/api/model-control/antigravity-default
+59848	Praxis runtime	GET	/api/model-control/agent-backend
+59848	Praxis runtime	GET	/api/board-state
+60043	Praxis runtime	GET	/api/health
+60044	Praxis runtime	GET	/api/model-control/thinking-levels
+60044	mobile relay/client	GET	/api/board-state
+60237	Praxis runtime	GET	/api/model-control/thinking-levels
+60238	Praxis runtime	GET	/api/model-control/thinking-levels
+60278	Praxis runtime	GET	/api/model-control/thinking-levels
+60561	Praxis runtime	GET	/api/model-control/thinking-levels
+60620	Praxis runtime	GET	/api/model-control/thinking-levels
+60675	Praxis runtime	GET	/api/model-control/thinking-levels
+60934	Praxis runtime	GET	/api/model-control/thinking-levels
+60994	Praxis runtime	GET	/api/model-control/thinking-levels
+61048	Praxis runtime	GET	/api/model-control/thinking-levels
+63455	dashboard browser	GET	/api/dispatches/active
+63467	dashboard browser	GET	/api/dispatches/active
+63468	dashboard browser	GET	/api/praxis/dispatch-state
+63468	dashboard browser	GET	/api/dispatches/active
+63468	dashboard browser	GET	/api/ai/chat/activity
+63480	dashboard browser	GET	/api/knowledge-activity
+68464	dashboard browser	GET	/api/ai/chat/activity
+68477	dashboard browser	GET	/api/knowledge-activity
+73466	dashboard browser	GET	/api/dispatch-insight/autonomy
+73467	dashboard browser	GET	/api/praxis/council/sessions
+73467	dashboard browser	GET	/api/dispatches/active
+73467	dashboard browser	GET	/api/dispatches/active
+73490	dashboard browser	GET	/api/dispatches/active
+73491	dashboard browser	GET	/api/praxis/council/sessions
+73491	dashboard browser	GET	/api/ai/chat/activity
+73491	dashboard browser	GET	/api/praxis/council/sessions
+73491	dashboard browser	GET	/api/praxis/llm-log
+73515	dashboard browser	GET	/api/knowledge-activity
+73659	Praxis runtime	POST	/api/praxis/events
+73800	dashboard browser	GET	/api/praxis/council/arbiter
+73883	dashboard browser	GET	/api/praxis/council/benches
+78463	dashboard browser	GET	/api/ai/chat/activity
+78483	dashboard browser	GET	/api/knowledge-activity
+78698	dashboard browser	GET	/api/model-control/credentials
+83449	dashboard browser	GET	/api/praxis/dispatch-state
+83457	dashboard browser	GET	/api/dispatches/active
+83458	dashboard browser	GET	/api/dispatches/active
+83459	dashboard browser	GET	/api/dispatches/active
+83471	dashboard browser	GET	/api/ai/chat/activity
+83499	dashboard browser	GET	/api/knowledge-activity
+88461	dashboard browser	GET	/api/ai/chat/activity
+88461	dashboard browser	GET	/api/praxis/llm-log
+88486	dashboard browser	GET	/api/knowledge-activity
+88661	Praxis runtime	POST	/api/praxis/events
+89645	mobile relay/client	GET	/api/fleet/health
+89646	Nexus internal	GET	/api/health
+89651	mobile relay/client	GET	/api/health
+89651	mobile relay/client	GET	/api/studio/channels
+91052	Praxis runtime	GET	/api/health
+93214	Praxis runtime	GET	/api/calendar
+93532	Praxis runtime	POST	/api/write-leases
+93533	Praxis runtime	GET	/api/tasks/:id
+93536	Praxis runtime	DELETE	/api/write-leases
+93537	Praxis runtime	POST	/api/write-leases
+93538	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+93540	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+93541	Praxis runtime	POST	/api/write-leases
+93542	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+93544	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+93545	Praxis runtime	POST	/api/write-leases
+93546	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+93548	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+93582	Praxis runtime	POST	/api/write-leases
+93583	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+93585	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+93586	Praxis runtime	POST	/api/write-leases
+93587	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+93589	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+93590	Praxis runtime	POST	/api/write-leases
+93591	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+93593	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+93593	dashboard browser	GET	/api/dispatches/active
+93594	dashboard browser	GET	/api/dispatches/active
+93594	dashboard browser	GET	/api/knowledge-activity
+93595	Praxis runtime	POST	/api/write-leases
+93595	dashboard browser	GET	/api/ai/chat/activity
+93596	dashboard browser	GET	/api/dispatches/active
+93596	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+93598	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+93599	Praxis runtime	POST	/api/write-leases
+93600	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+93602	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+93603	Praxis runtime	POST	/api/write-leases
+93604	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+93606	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+93607	Praxis runtime	POST	/api/write-leases
+93607	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+93610	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+93611	Praxis runtime	POST	/api/write-leases
+93612	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+93615	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+93616	Praxis runtime	GET	/api/board-state
+93887	Praxis runtime	GET	/api/calendar
+93888	Praxis runtime	POST	/api/praxis/events
+94450	dashboard browser	GET	/api/activity
+94499	dashboard browser	GET	/api/ag/events
+94544	dashboard browser	GET	/api/projects/pulse
+94758	dashboard browser	GET	/api/praxis/hitl/pending
+96026	dashboard browser	GET	/api/praxis/council/sessions
+96036	dashboard browser	GET	/api/praxis/council/sessions
+98037	Praxis runtime	GET	/api/documents/:id/outgoing
+98045	Praxis runtime	GET	/api/documents/:id/outgoing
+98051	Praxis runtime	GET	/api/documents/:id/outgoing
+98056	Praxis runtime	GET	/api/documents/:id/outgoing
+98459	dashboard browser	GET	/api/ai/chat/activity
+98470	dashboard browser	GET	/api/knowledge-activity
+98493	Praxis runtime	GET	/api/members
+98845	Praxis runtime	GET	/api/members/:id
+98854	Praxis runtime	GET	/api/tasks
+98913	Praxis runtime	GET	/api/members/:id
+98914	Praxis runtime	GET	/api/tasks
+98924	Praxis runtime	GET	/api/tasks
+98926	Praxis runtime	GET	/api/tasks
+103463	dashboard browser	GET	/api/praxis/council/sessions
+103467	dashboard browser	GET	/api/praxis/dispatch-state
+103558	dashboard browser	GET	/api/dispatches/active
+103559	dashboard browser	GET	/api/dispatch-insight/autonomy
+103560	dashboard browser	GET	/api/token-usage
+103560	dashboard browser	GET	/api/dispatches/active
+103560	dashboard browser	GET	/api/token-usage
+103560	dashboard browser	GET	/api/praxis/hitl/pending
+103560	dashboard browser	GET	/api/board-state
+103738	dashboard browser	GET	/api/dispatches/active
+103738	dashboard browser	GET	/api/praxis/council/sessions
+103739	dashboard browser	GET	/api/praxis/stats
+103740	dashboard browser	GET	/api/documents
+103746	dashboard browser	GET	/api/token-usage
+103747	dashboard browser	GET	/api/ai/chat/activity
+103747	dashboard browser	GET	/api/praxis/llm-log
+103747	dashboard browser	GET	/api/dispatch-insight/live-work
+103748	dashboard browser	GET	/api/praxis/hitl/pending
+103748	dashboard browser	GET	/api/token-usage
+103748	dashboard browser	GET	/api/calendar
+103748	dashboard browser	GET	/api/ag/events
+103800	dashboard browser	GET	/api/activity
+103901	dashboard browser	GET	/api/projects/pulse
+103904	dashboard browser	GET	/api/praxis/hitl/pending
+103905	dashboard browser	GET	/api/praxis/council/sessions
+103906	dashboard browser	GET	/api/knowledge-activity
+103907	dashboard browser	GET	/api/praxis/hitl/pending
+103907	Praxis runtime	POST	/api/praxis/events
+104242	dashboard browser	GET	/api/praxis/hitl/pending
+104662	dashboard browser	GET	/api/praxis/council/arbiter
+104944	dashboard browser	GET	/api/praxis/council/benches
+108483	dashboard browser	GET	/api/ai/chat/activity
+108485	dashboard browser	GET	/api/knowledge-activity
+111123	Praxis runtime	GET	/api/members
+111124	Praxis runtime	GET	/api/members
+111124	Praxis runtime	GET	/api/members
+113517	dashboard browser	GET	/api/dispatches/active
+113530	dashboard browser	GET	/api/dispatches/active
+113532	dashboard browser	GET	/api/ai/chat/activity
+113534	dashboard browser	GET	/api/knowledge-activity
+113538	dashboard browser	GET	/api/dispatches/active
+116964	Praxis runtime	GET	/api/tasks/:id
+117014	Praxis runtime	GET	/api/tasks/:id
+118478	dashboard browser	GET	/api/ai/chat/activity
+118480	dashboard browser	GET	/api/knowledge-activity
+118492	dashboard browser	GET	/api/praxis/llm-log
+118666	Praxis runtime	POST	/api/praxis/events
+121095	Praxis runtime	GET	/api/health
+123503	dashboard browser	GET	/api/praxis/dispatch-state
+123511	dashboard browser	GET	/api/dispatches/active
+123512	dashboard browser	GET	/api/dispatches/active
+123513	dashboard browser	GET	/api/dispatches/active
+123513	dashboard browser	GET	/api/knowledge-activity
+123513	dashboard browser	GET	/api/ai/chat/activity
+127977	mobile relay/client	GET	/api/board-state
+128463	dashboard browser	GET	/api/ai/chat/activity
+128478	dashboard browser	GET	/api/knowledge-activity
+133474	dashboard browser	GET	/api/praxis/council/sessions
+133476	dashboard browser	GET	/api/dispatches/active
+133476	dashboard browser	GET	/api/dispatches/active
+133477	dashboard browser	GET	/api/ai/chat/activity
+133477	dashboard browser	GET	/api/praxis/council/sessions
+133478	dashboard browser	GET	/api/praxis/council/sessions
+133478	dashboard browser	GET	/api/dispatches/active
+133478	dashboard browser	GET	/api/dispatch-insight/autonomy
+133486	dashboard browser	GET	/api/knowledge-activity
+133487	dashboard browser	GET	/api/praxis/llm-log
+133669	Praxis runtime	POST	/api/praxis/events
+133698	dashboard browser	GET	/api/praxis/council/arbiter
+133963	dashboard browser	GET	/api/praxis/council/benches
+138469	dashboard browser	GET	/api/ai/chat/activity
+138471	dashboard browser	GET	/api/knowledge-activity
+138711	dashboard browser	GET	/api/model-control/credentials
+143458	dashboard browser	GET	/api/praxis/dispatch-state
+143462	dashboard browser	GET	/api/dispatches/active
+143471	dashboard browser	GET	/api/dispatches/active
+143473	dashboard browser	GET	/api/ai/chat/activity
+143475	dashboard browser	GET	/api/dispatches/active
+143508	dashboard browser	GET	/api/knowledge-activity
+148497	dashboard browser	GET	/api/ai/chat/activity
+148498	dashboard browser	GET	/api/praxis/llm-log
+148499	dashboard browser	GET	/api/knowledge-activity
+148671	Praxis runtime	POST	/api/praxis/events
+151169	Praxis runtime	GET	/api/health
+153228	Praxis runtime	GET	/api/calendar
+153329	Praxis runtime	GET	/api/documents/:id/replacements/:id
+153338	Praxis runtime	GET	/api/tasks/:id
+153461	dashboard browser	GET	/api/dispatches/active
+153462	dashboard browser	GET	/api/dispatches/active
+153462	dashboard browser	GET	/api/ai/chat/activity
+153462	dashboard browser	GET	/api/dispatches/active
+153473	dashboard browser	GET	/api/knowledge-activity
+153491	mobile relay/client	GET	/api/fleet/health
+153492	mobile relay/client	GET	/api/health
+153492	Nexus internal	GET	/api/health
+153493	mobile relay/client	GET	/api/studio/channels
+153536	Praxis runtime	POST	/api/write-leases
+153537	Praxis runtime	GET	/api/tasks/:id
+153539	Praxis runtime	DELETE	/api/write-leases
+153540	Praxis runtime	POST	/api/write-leases
+153541	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+153543	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+153544	Praxis runtime	POST	/api/write-leases
+153545	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+153547	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+153548	Praxis runtime	POST	/api/write-leases
+153549	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+153551	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+153552	Praxis runtime	POST	/api/write-leases
+153553	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+153555	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+153556	Praxis runtime	POST	/api/write-leases
+153557	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+153559	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+153560	Praxis runtime	POST	/api/write-leases
+153561	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+153563	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+153564	Praxis runtime	POST	/api/write-leases
+153564	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+153566	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+153567	Praxis runtime	POST	/api/write-leases
+153568	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+153569	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+153570	Praxis runtime	POST	/api/write-leases
+153571	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+153572	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+153573	Praxis runtime	POST	/api/write-leases
+153574	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+153575	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+153576	Praxis runtime	POST	/api/write-leases
+153577	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+153579	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+153579	Praxis runtime	GET	/api/board-state
+153834	Praxis runtime	GET	/api/calendar
+153836	Praxis runtime	POST	/api/praxis/events
+154056	mobile relay/client	GET	/api/fleet/health
+154058	mobile relay/client	GET	/api/health
+154058	mobile relay/client	GET	/api/board-state
+154251	Nexus internal	GET	/api/health
+154252	mobile relay/client	GET	/api/studio/channels
+154452	dashboard browser	GET	/api/activity
+154538	dashboard browser	GET	/api/ag/events
+154580	dashboard browser	GET	/api/projects/pulse
+154745	dashboard browser	GET	/api/praxis/hitl/pending
+156036	dashboard browser	GET	/api/praxis/council/sessions
+156045	dashboard browser	GET	/api/praxis/council/sessions
+158608	dashboard browser	GET	/api/knowledge-activity
+158612	dashboard browser	GET	/api/ai/chat/activity
+163454	dashboard browser	GET	/api/praxis/dispatch-state
+163457	dashboard browser	GET	/api/praxis/council/sessions
+163461	dashboard browser	GET	/api/praxis/hitl/pending
+163462	dashboard browser	GET	/api/dispatch-insight/autonomy
+163463	dashboard browser	GET	/api/dispatches/active
+163474	dashboard browser	GET	/api/token-usage
+163476	dashboard browser	GET	/api/praxis/llm-log
+163477	dashboard browser	GET	/api/dispatches/active
+163480	dashboard browser	GET	/api/board-state
+163681	dashboard browser	GET	/api/calendar
+163686	dashboard browser	GET	/api/token-usage
+163686	dashboard browser	GET	/api/dispatch-insight/live-work
+163687	dashboard browser	GET	/api/ai/chat/activity
+163687	dashboard browser	GET	/api/ingestion-control/topic-map
+163687	dashboard browser	GET	/api/praxis/council/sessions
+163688	dashboard browser	GET	/api/praxis/stats
+163689	dashboard browser	GET	/api/token-usage
+163690	dashboard browser	GET	/api/token-usage
+163690	dashboard browser	GET	/api/praxis/council/sessions
+163690	dashboard browser	GET	/api/dispatches/active
+163690	dashboard browser	GET	/api/ag/events
+163741	dashboard browser	GET	/api/praxis/hitl/pending
+163741	dashboard browser	GET	/api/activity
+163844	dashboard browser	GET	/api/praxis/hitl/pending
+163844	dashboard browser	GET	/api/documents
+163848	dashboard browser	GET	/api/praxis/hitl/pending
+163850	dashboard browser	GET	/api/praxis/voice-status
+163850	dashboard browser	GET	/api/knowledge-activity
+163850	dashboard browser	GET	/api/projects/pulse
+163854	Praxis runtime	POST	/api/praxis/events
+164390	dashboard browser	GET	/api/praxis/council/arbiter
+164634	dashboard browser	GET	/api/praxis/hitl/pending
+164764	dashboard browser	GET	/api/praxis/council/benches
+168568	dashboard browser	GET	/api/ai/chat/activity
+168584	dashboard browser	GET	/api/knowledge-activity
+173460	dashboard browser	GET	/api/dispatches/active
+173469	dashboard browser	GET	/api/dispatches/active
+173478	dashboard browser	GET	/api/dispatches/active
+173480	dashboard browser	GET	/api/ai/chat/activity
+173481	dashboard browser	GET	/api/knowledge-activity
+177054	Praxis runtime	GET	/api/tasks/:id
+177102	Praxis runtime	GET	/api/tasks/:id
+178528	dashboard browser	GET	/api/ai/chat/activity
+178538	dashboard browser	GET	/api/knowledge-activity
+178540	dashboard browser	GET	/api/praxis/llm-log
+178675	Praxis runtime	POST	/api/praxis/events
+181244	Praxis runtime	GET	/api/health
+183459	dashboard browser	GET	/api/praxis/dispatch-state
+183471	dashboard browser	GET	/api/dispatches/active
+183472	dashboard browser	GET	/api/ai/chat/activity
+183473	dashboard browser	GET	/api/dispatches/active
+183473	dashboard browser	GET	/api/dispatches/active
+183492	dashboard browser	GET	/api/knowledge-activity
+188498	dashboard browser	GET	/api/ai/chat/activity
+188502	dashboard browser	GET	/api/knowledge-activity
+193464	dashboard browser	GET	/api/praxis/council/sessions
+193468	dashboard browser	GET	/api/dispatches/active
+193471	dashboard browser	GET	/api/dispatch-insight/autonomy
+193474	dashboard browser	GET	/api/praxis/council/sessions
+193475	dashboard browser	GET	/api/dispatches/active
+193478	dashboard browser	GET	/api/ai/chat/activity
+193479	dashboard browser	GET	/api/dispatches/active
+193482	dashboard browser	GET	/api/praxis/council/sessions
+193488	dashboard browser	GET	/api/knowledge-activity
+193491	dashboard browser	GET	/api/praxis/llm-log
+193677	Praxis runtime	POST	/api/praxis/events
+193903	dashboard browser	GET	/api/praxis/council/arbiter
+193954	dashboard browser	GET	/api/praxis/council/benches
+198461	dashboard browser	GET	/api/ai/chat/activity
+198474	dashboard browser	GET	/api/knowledge-activity
+198705	dashboard browser	GET	/api/model-control/credentials
+203470	dashboard browser	GET	/api/dispatches/active
+203477	dashboard browser	GET	/api/praxis/dispatch-state
+203485	dashboard browser	GET	/api/dispatches/active
+203487	dashboard browser	GET	/api/ai/chat/activity
+203488	dashboard browser	GET	/api/dispatches/active
+203492	dashboard browser	GET	/api/knowledge-activity
+208464	dashboard browser	GET	/api/ai/chat/activity
+208476	dashboard browser	GET	/api/praxis/llm-log
+208489	dashboard browser	GET	/api/knowledge-activity
+208680	Praxis runtime	POST	/api/praxis/events
+211326	Praxis runtime	GET	/api/health
+213227	Praxis runtime	GET	/api/calendar
+213335	Praxis runtime	GET	/api/documents/:id/replacements/:id
+213346	Praxis runtime	GET	/api/tasks/:id
+213459	dashboard browser	GET	/api/dispatches/active
+213465	dashboard browser	GET	/api/dispatches/active
+213465	dashboard browser	GET	/api/dispatches/active
+213473	dashboard browser	GET	/api/ai/chat/activity
+213473	dashboard browser	GET	/api/knowledge-activity
+213539	Praxis runtime	POST	/api/write-leases
+213540	Praxis runtime	GET	/api/tasks/:id
+213542	Praxis runtime	DELETE	/api/write-leases
+213543	Praxis runtime	POST	/api/write-leases
+213544	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+213546	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+213547	Praxis runtime	POST	/api/write-leases
+213548	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+213550	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+213551	Praxis runtime	POST	/api/write-leases
+213552	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+213555	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+213555	Praxis runtime	POST	/api/write-leases
+213556	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+213558	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+213559	Praxis runtime	POST	/api/write-leases
+213560	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+213561	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+213562	Praxis runtime	POST	/api/write-leases
+213563	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+213565	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+213566	Praxis runtime	POST	/api/write-leases
+213567	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+213569	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+213569	Praxis runtime	POST	/api/write-leases
+213570	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+213572	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+213573	Praxis runtime	POST	/api/write-leases
+213573	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+213575	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+213575	Praxis runtime	POST	/api/write-leases
+213576	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+213578	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+213578	Praxis runtime	POST	/api/write-leases
+213579	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+213581	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+213581	Praxis runtime	GET	/api/board-state
+213838	Praxis runtime	GET	/api/calendar
+213839	Praxis runtime	POST	/api/praxis/events
+214396	dashboard browser	GET	/api/activity
+214477	dashboard browser	GET	/api/ag/events
+214518	dashboard browser	GET	/api/projects/pulse
+214732	dashboard browser	GET	/api/praxis/hitl/pending
+215985	dashboard browser	GET	/api/praxis/council/sessions
+215986	dashboard browser	GET	/api/praxis/council/sessions
+217171	mobile relay/client	GET	/api/fleet/health
+217177	Nexus internal	GET	/api/health
+217185	mobile relay/client	GET	/api/health
+217187	mobile relay/client	GET	/api/studio/channels
+218098	Praxis runtime	GET	/api/documents/:id/outgoing
+218106	Praxis runtime	GET	/api/documents/:id/outgoing
+218112	Praxis runtime	GET	/api/documents/:id/outgoing
+218118	Praxis runtime	GET	/api/documents/:id/outgoing
+218377	Praxis runtime	GET	/api/members
+218459	dashboard browser	GET	/api/ai/chat/activity
+218471	dashboard browser	GET	/api/knowledge-activity
+218626	Praxis runtime	GET	/api/members/:id
+218634	Praxis runtime	GET	/api/tasks
+218690	Praxis runtime	GET	/api/members/:id
+218691	Praxis runtime	GET	/api/tasks
+218700	Praxis runtime	GET	/api/tasks
+218703	Praxis runtime	GET	/api/tasks
+223198	mobile relay/client	GET	/api/board-state
+223472	dashboard browser	GET	/api/praxis/dispatch-state
+223474	dashboard browser	GET	/api/praxis/council/sessions
+223474	dashboard browser	GET	/api/token-usage
+223474	dashboard browser	GET	/api/token-usage
+223474	dashboard browser	GET	/api/praxis/hitl/pending
+223475	dashboard browser	GET	/api/praxis/council/sessions
+223475	dashboard browser	GET	/api/token-usage
+223475	dashboard browser	GET	/api/board-state
+223661	dashboard browser	GET	/api/dispatch-insight/autonomy
+223662	dashboard browser	GET	/api/dispatches/active
+223663	dashboard browser	GET	/api/praxis/council/sessions
+223663	dashboard browser	GET	/api/ai/chat/activity
+223663	dashboard browser	GET	/api/dispatches/active
+223663	dashboard browser	GET	/api/token-usage
+223663	dashboard browser	GET	/api/praxis/stats
+223664	dashboard browser	GET	/api/activity
+223722	dashboard browser	GET	/api/dispatches/active
+223723	dashboard browser	GET	/api/praxis/llm-log
+223723	dashboard browser	GET	/api/calendar
+223723	dashboard browser	GET	/api/praxis/hitl/pending
+223723	dashboard browser	GET	/api/projects/pulse
+223727	dashboard browser	GET	/api/dispatch-insight/live-work
+223727	dashboard browser	GET	/api/ag/events
+223779	dashboard browser	GET	/api/praxis/hitl/pending
+223779	dashboard browser	GET	/api/documents
+223784	dashboard browser	GET	/api/knowledge-activity
+223785	dashboard browser	GET	/api/praxis/hitl/pending
+223785	Praxis runtime	POST	/api/praxis/events
+223993	dashboard browser	GET	/api/praxis/council/arbiter
+224270	dashboard browser	GET	/api/praxis/hitl/pending
+224281	dashboard browser	GET	/api/praxis/council/benches
+228463	dashboard browser	GET	/api/ai/chat/activity
+228480	dashboard browser	GET	/api/knowledge-activity
+231932	Praxis runtime	GET	/api/members
+231937	Praxis runtime	GET	/api/members
+231939	Praxis runtime	GET	/api/members
+233456	dashboard browser	GET	/api/dispatches/active
+233458	dashboard browser	GET	/api/dispatches/active
+233471	dashboard browser	GET	/api/dispatches/active
+233472	dashboard browser	GET	/api/ai/chat/activity
+233582	dashboard browser	GET	/api/knowledge-activity
+237141	Praxis runtime	GET	/api/tasks/:id
+237188	Praxis runtime	GET	/api/tasks/:id
+238476	dashboard browser	GET	/api/ai/chat/activity
+238490	dashboard browser	GET	/api/knowledge-activity
+238490	dashboard browser	GET	/api/praxis/llm-log
+238682	Praxis runtime	POST	/api/praxis/events
+238982	Praxis runtime	POST	/api/praxis/events
+238983	Praxis runtime	POST	/api/praxis/events
+239667	dashboard browser	GET	/api/dispatches/active
+239671	dashboard browser	GET	/api/praxis/dispatch-state
+239683	dashboard browser	GET	/api/dispatches/active
+239685	dashboard browser	GET	/api/dispatches/active
+239704	dashboard browser	GET	/api/dispatch-insight/live-work
+239723	dashboard browser	GET	/api/activity
+239776	dashboard browser	GET	/api/calendar
+239777	dashboard browser	GET	/api/projects/pulse
+239782	dashboard browser	GET	/api/ag/events
+241259	dashboard browser	GET	/api/praxis/council/sessions
+241261	dashboard browser	GET	/api/praxis/council/sessions
+241380	Praxis runtime	GET	/api/health
+241447	dashboard browser	GET	/api/praxis/hitl/pending
+243564	dashboard browser	GET	/api/praxis/dispatch-state
+243565	dashboard browser	GET	/api/dispatches/active
+243566	dashboard browser	GET	/api/dispatches/active
+243566	dashboard browser	GET	/api/dispatches/active
+243566	dashboard browser	GET	/api/ai/chat/activity
+243566	dashboard browser	GET	/api/knowledge-activity
+248020	Praxis runtime	POST	/api/praxis/events
+248022	Praxis runtime	POST	/api/praxis/events
+248520	dashboard browser	GET	/api/ai/chat/activity
+248520	dashboard browser	GET	/api/knowledge-activity
+248897	dashboard browser	GET	/api/praxis/dispatch-state
+248903	dashboard browser	GET	/api/dispatches/active
+248906	dashboard browser	GET	/api/dispatch-insight/live-work
+248908	dashboard browser	GET	/api/calendar
+248910	dashboard browser	GET	/api/activity
+248988	dashboard browser	GET	/api/ag/events
+249029	dashboard browser	GET	/api/dispatches/active
+249030	dashboard browser	GET	/api/projects/pulse
+249033	dashboard browser	GET	/api/dispatches/active
+249512	dashboard browser	GET	/api/praxis/hitl/pending
+250470	dashboard browser	GET	/api/praxis/council/sessions
+250479	dashboard browser	GET	/api/praxis/council/sessions
+253503	dashboard browser	GET	/api/praxis/council/sessions
+253503	dashboard browser	GET	/api/dispatch-insight/autonomy
+253504	dashboard browser	GET	/api/dispatches/active
+253504	dashboard browser	GET	/api/dispatches/active
+253505	dashboard browser	GET	/api/praxis/council/sessions
+253505	dashboard browser	GET	/api/dispatches/active
+253505	dashboard browser	GET	/api/praxis/council/sessions
+253505	dashboard browser	GET	/api/praxis/llm-log
+253506	dashboard browser	GET	/api/ai/chat/activity
+253513	dashboard browser	GET	/api/knowledge-activity
+253684	Praxis runtime	POST	/api/praxis/events
+253819	dashboard browser	GET	/api/praxis/council/arbiter
+253907	dashboard browser	GET	/api/praxis/council/benches
+253998	Praxis runtime	POST	/api/praxis/events
+253999	Praxis runtime	POST	/api/praxis/events
+254691	dashboard browser	GET	/api/praxis/dispatch-state
+254692	dashboard browser	GET	/api/dispatches/active
+254693	dashboard browser	GET	/api/dispatches/active
+254694	dashboard browser	GET	/api/dispatches/active
+254707	dashboard browser	GET	/api/dispatch-insight/live-work
+254707	dashboard browser	GET	/api/calendar
+254707	dashboard browser	GET	/api/activity
+254764	dashboard browser	GET	/api/ag/events
+254811	dashboard browser	GET	/api/projects/pulse
+254977	dashboard browser	GET	/api/praxis/hitl/pending
+256295	dashboard browser	GET	/api/praxis/council/sessions
+256296	dashboard browser	GET	/api/praxis/council/sessions
+258464	dashboard browser	GET	/api/ai/chat/activity
+258472	dashboard browser	GET	/api/knowledge-activity
+258755	dashboard browser	GET	/api/model-control/credentials
+263033	Praxis runtime	POST	/api/praxis/events
+263037	Praxis runtime	POST	/api/praxis/events
+263477	dashboard browser	GET	/api/praxis/dispatch-state
+263478	dashboard browser	GET	/api/dispatches/active
+263480	dashboard browser	GET	/api/ai/chat/activity
+263481	dashboard browser	GET	/api/knowledge-activity
+263482	dashboard browser	GET	/api/dispatches/active
+263483	dashboard browser	GET	/api/dispatches/active
+263720	dashboard browser	GET	/api/dispatches/active
+263723	dashboard browser	GET	/api/dispatches/active
+263725	dashboard browser	GET	/api/dispatches/active
+263728	dashboard browser	GET	/api/calendar
+263729	dashboard browser	GET	/api/dispatch-insight/live-work
+263731	dashboard browser	GET	/api/ag/events
+263813	dashboard browser	GET	/api/activity
+263855	dashboard browser	GET	/api/praxis/dispatch-state
+263856	dashboard browser	GET	/api/projects/pulse
+263987	dashboard browser	GET	/api/praxis/hitl/pending
+265320	dashboard browser	GET	/api/praxis/council/sessions
+265323	dashboard browser	GET	/api/praxis/council/sessions
+267518	Praxis runtime	POST	/api/praxis/events
+267519	Praxis runtime	POST	/api/praxis/events
+268186	dashboard browser	GET	/api/praxis/dispatch-state
+268186	dashboard browser	GET	/api/dispatches/active
+268187	dashboard browser	GET	/api/dispatches/active
+268198	dashboard browser	GET	/api/dispatches/active
+268199	dashboard browser	GET	/api/dispatch-insight/live-work
+268199	dashboard browser	GET	/api/calendar
+268207	dashboard browser	GET	/api/activity
+268258	dashboard browser	GET	/api/ag/events
+268305	dashboard browser	GET	/api/projects/pulse
+268482	dashboard browser	GET	/api/praxis/llm-log
+268482	dashboard browser	GET	/api/ai/chat/activity
+268482	dashboard browser	GET	/api/knowledge-activity
+268582	dashboard browser	GET	/api/praxis/hitl/pending
+268687	Praxis runtime	POST	/api/praxis/events
+269037	Praxis runtime	POST	/api/praxis/events
+269040	Praxis runtime	POST	/api/praxis/events
+269755	dashboard browser	GET	/api/praxis/dispatch-state
+269759	dashboard browser	GET	/api/dispatches/active
+269764	dashboard browser	GET	/api/dispatches/active
+269765	dashboard browser	GET	/api/calendar
+269770	dashboard browser	GET	/api/dispatch-insight/live-work
+269838	dashboard browser	GET	/api/dispatches/active
+269841	dashboard browser	GET	/api/ag/events
+269884	dashboard browser	GET	/api/activity
+269927	dashboard browser	GET	/api/projects/pulse
+270951	dashboard browser	GET	/api/praxis/hitl/pending
+271329	dashboard browser	GET	/api/praxis/council/sessions
+271331	dashboard browser	GET	/api/praxis/council/sessions
+271413	Praxis runtime	GET	/api/health
+273246	Praxis runtime	GET	/api/calendar
+273359	Praxis runtime	GET	/api/documents/:id/replacements/:id
+273367	Praxis runtime	GET	/api/tasks/:id
+273462	dashboard browser	GET	/api/dispatches/active
+273463	dashboard browser	GET	/api/dispatches/active
+273473	dashboard browser	GET	/api/ai/chat/activity
+273473	dashboard browser	GET	/api/dispatches/active
+273483	dashboard browser	GET	/api/knowledge-activity
+273542	Praxis runtime	POST	/api/write-leases
+273543	Praxis runtime	GET	/api/tasks/:id
+273546	Praxis runtime	DELETE	/api/write-leases
+273546	Praxis runtime	POST	/api/write-leases
+273547	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+273549	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+273550	Praxis runtime	POST	/api/write-leases
+273551	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+273553	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+273554	Praxis runtime	POST	/api/write-leases
+273554	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+273556	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+273558	Praxis runtime	POST	/api/write-leases
+273558	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+273560	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+273561	Praxis runtime	POST	/api/write-leases
+273562	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+273564	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+273565	Praxis runtime	POST	/api/write-leases
+273565	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+273567	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+273568	Praxis runtime	POST	/api/write-leases
+273568	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+273570	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+273571	Praxis runtime	POST	/api/write-leases
+273571	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+273573	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+273574	Praxis runtime	POST	/api/write-leases
+273574	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+273576	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+273576	Praxis runtime	POST	/api/write-leases
+273577	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+273579	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+273580	Praxis runtime	POST	/api/write-leases
+273580	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+273582	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+273583	Praxis runtime	GET	/api/board-state
+273828	Praxis runtime	GET	/api/calendar
+273832	Praxis runtime	POST	/api/praxis/events
+274478	dashboard browser	GET	/api/ag/events
+274568	dashboard browser	GET	/api/activity
+274613	dashboard browser	GET	/api/projects/pulse
+274716	dashboard browser	GET	/api/praxis/hitl/pending
+276048	dashboard browser	GET	/api/praxis/council/sessions
+276060	dashboard browser	GET	/api/praxis/council/sessions
+278462	dashboard browser	GET	/api/ai/chat/activity
+278474	dashboard browser	GET	/api/knowledge-activity
+278697	mobile relay/client	GET	/api/fleet/health
+278705	mobile relay/client	GET	/api/health
+278707	mobile relay/client	GET	/api/studio/channels
+278709	Nexus internal	GET	/api/health
+283473	dashboard browser	GET	/api/praxis/council/sessions
+283475	dashboard browser	GET	/api/board-state
+283689	dashboard browser	GET	/api/token-usage
+283690	dashboard browser	GET	/api/praxis/hitl/pending
+283690	dashboard browser	GET	/api/dispatches/active
+283691	dashboard browser	GET	/api/token-usage
+283692	dashboard browser	GET	/api/dispatch-insight/autonomy
+283692	dashboard browser	GET	/api/praxis/dispatch-state
+283692	dashboard browser	GET	/api/dispatches/active
+283692	dashboard browser	GET	/api/token-usage
+283693	dashboard browser	GET	/api/praxis/stats
+283693	dashboard browser	GET	/api/token-usage
+283693	dashboard browser	GET	/api/praxis/council/sessions
+283694	dashboard browser	GET	/api/dispatches/active
+283694	dashboard browser	GET	/api/praxis/council/sessions
+283694	dashboard browser	GET	/api/praxis/llm-log
+283694	dashboard browser	GET	/api/activity
+283760	dashboard browser	GET	/api/ag/events
+283810	dashboard browser	GET	/api/praxis/hitl/pending
+283811	dashboard browser	GET	/api/praxis/hitl/pending
+283812	dashboard browser	GET	/api/dispatch-insight/live-work
+283812	dashboard browser	GET	/api/calendar
+283812	dashboard browser	GET	/api/praxis/hitl/pending
+283812	dashboard browser	GET	/api/knowledge-activity
+283813	dashboard browser	GET	/api/documents
+283817	dashboard browser	GET	/api/projects/pulse
+283821	dashboard browser	GET	/api/ai/chat/activity
+283821	Praxis runtime	POST	/api/praxis/events
+284260	dashboard browser	GET	/api/praxis/council/arbiter
+284494	dashboard browser	GET	/api/praxis/hitl/pending
+284661	dashboard browser	GET	/api/praxis/council/benches
+288470	dashboard browser	GET	/api/ai/chat/activity
+288471	dashboard browser	GET	/api/knowledge-activity
+293472	dashboard browser	GET	/api/dispatches/active
+293478	dashboard browser	GET	/api/dispatches/active
+293480	dashboard browser	GET	/api/dispatches/active
+293482	dashboard browser	GET	/api/ai/chat/activity
+293485	dashboard browser	GET	/api/knowledge-activity
+297231	Praxis runtime	GET	/api/tasks/:id
+297284	Praxis runtime	GET	/api/tasks/:id
+298472	dashboard browser	GET	/api/ai/chat/activity
+298487	dashboard browser	GET	/api/praxis/llm-log
+298489	dashboard browser	GET	/api/knowledge-activity
+298692	Praxis runtime	POST	/api/praxis/events
+301448	Praxis runtime	GET	/api/health
+301529	dashboard browser	GET	/api/praxis/dispatch-state
+301530	dashboard browser	GET	/api/dispatch-insight/autonomy
+301530	dashboard browser	GET	/api/praxis/council/sessions
+301530	dashboard browser	GET	/api/praxis/llm-log
+301531	dashboard browser	GET	/api/model-control/credentials
+301582	dashboard browser	GET	/api/praxis/hitl/pending
+301624	dashboard browser	GET	/api/board-state
+301803	dashboard browser	GET	/api/praxis/stats
+301803	dashboard browser	GET	/api/dispatch-insight/live-work
+301804	dashboard browser	GET	/api/praxis/hitl/pending
+301809	dashboard browser	GET	/api/activity
+301899	dashboard browser	GET	/api/calendar
+301908	dashboard browser	GET	/api/ag/events
+301953	dashboard browser	GET	/api/praxis/hitl/pending
+301955	dashboard browser	GET	/api/documents
+301964	dashboard browser	GET	/api/projects/pulse
+301968	dashboard browser	GET	/api/praxis/hitl/pending
+301969	dashboard browser	GET	/api/praxis/voice-status
+301973	dashboard browser	GET	/api/ingestion-control/topic-map
+303460	dashboard browser	GET	/api/praxis/dispatch-state
+303460	dashboard browser	GET	/api/dispatches/active
+303462	dashboard browser	GET	/api/dispatches/active
+303472	dashboard browser	GET	/api/dispatches/active
+303483	dashboard browser	GET	/api/knowledge-activity
+303484	dashboard browser	GET	/api/ai/chat/activity
+306585	mobile relay/client	GET	/api/board-state
+308553	dashboard browser	GET	/api/ai/chat/activity
+308571	dashboard browser	GET	/api/knowledge-activity
+313465	dashboard browser	GET	/api/praxis/council/sessions
+313473	dashboard browser	GET	/api/dispatches/active
+313476	dashboard browser	GET	/api/praxis/council/sessions
+313477	dashboard browser	GET	/api/dispatch-insight/autonomy
+313479	dashboard browser	GET	/api/dispatches/active
+313481	dashboard browser	GET	/api/ai/chat/activity
+313483	dashboard browser	GET	/api/praxis/council/sessions
+313484	dashboard browser	GET	/api/dispatches/active
+313494	dashboard browser	GET	/api/praxis/llm-log
+313564	dashboard browser	GET	/api/knowledge-activity
+313698	Praxis runtime	POST	/api/praxis/events
+314190	dashboard browser	GET	/api/praxis/council/arbiter
+314329	dashboard browser	GET	/api/praxis/council/benches
+318524	dashboard browser	GET	/api/ai/chat/activity
+318543	dashboard browser	GET	/api/knowledge-activity
+318708	dashboard browser	GET	/api/model-control/credentials
+323463	dashboard browser	GET	/api/dispatches/active
+323465	dashboard browser	GET	/api/praxis/dispatch-state
+323466	dashboard browser	GET	/api/dispatches/active
+323467	dashboard browser	GET	/api/dispatches/active
+323472	dashboard browser	GET	/api/ai/chat/activity
+323490	dashboard browser	GET	/api/knowledge-activity
+328482	dashboard browser	GET	/api/praxis/llm-log
+328484	dashboard browser	GET	/api/ai/chat/activity
+328491	dashboard browser	GET	/api/knowledge-activity
+328696	Praxis runtime	POST	/api/praxis/events
+331543	Praxis runtime	GET	/api/health
+333237	Praxis runtime	GET	/api/calendar
+333475	dashboard browser	GET	/api/dispatches/active
+333475	dashboard browser	GET	/api/dispatches/active
+333475	dashboard browser	GET	/api/ai/chat/activity
+333476	dashboard browser	GET	/api/dispatches/active
+333484	dashboard browser	GET	/api/knowledge-activity
+333545	Praxis runtime	POST	/api/write-leases
+333546	Praxis runtime	GET	/api/tasks/:id
+333548	Praxis runtime	DELETE	/api/write-leases
+333549	Praxis runtime	POST	/api/write-leases
+333550	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+333552	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+333553	Praxis runtime	POST	/api/write-leases
+333554	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+333556	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+333557	Praxis runtime	POST	/api/write-leases
+333557	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+333559	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+333563	Praxis runtime	POST	/api/write-leases
+333564	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+333566	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+333567	Praxis runtime	POST	/api/write-leases
+333568	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+333570	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+333571	Praxis runtime	POST	/api/write-leases
+333572	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+333574	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+333574	Praxis runtime	POST	/api/write-leases
+333575	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+333577	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+333578	Praxis runtime	POST	/api/write-leases
+333578	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+333580	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+333581	Praxis runtime	POST	/api/write-leases
+333581	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+333583	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+333584	Praxis runtime	POST	/api/write-leases
+333584	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+333586	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+333586	Praxis runtime	POST	/api/write-leases
+333587	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+333589	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+333590	Praxis runtime	GET	/api/board-state
+333840	Praxis runtime	GET	/api/calendar
+333841	Praxis runtime	POST	/api/praxis/events
+334406	dashboard browser	GET	/api/activity
+334493	dashboard browser	GET	/api/ag/events
+334535	dashboard browser	GET	/api/projects/pulse
+334770	dashboard browser	GET	/api/praxis/hitl/pending
+336016	dashboard browser	GET	/api/praxis/council/sessions
+336016	dashboard browser	GET	/api/praxis/council/sessions
+338461	dashboard browser	GET	/api/ai/chat/activity
+338472	Praxis runtime	GET	/api/documents/:id/outgoing
+338480	dashboard browser	GET	/api/knowledge-activity
+338481	Praxis runtime	GET	/api/documents/:id/outgoing
+338487	Praxis runtime	GET	/api/documents/:id/outgoing
+338493	Praxis runtime	GET	/api/documents/:id/outgoing
+338732	Praxis runtime	GET	/api/members
+338977	Praxis runtime	GET	/api/members/:id
+338983	Praxis runtime	GET	/api/tasks
+339038	Praxis runtime	GET	/api/members/:id
+339039	Praxis runtime	GET	/api/tasks
+339048	Praxis runtime	GET	/api/tasks
+339051	Praxis runtime	GET	/api/tasks
+339788	mobile relay/client	GET	/api/fleet/health
+339793	mobile relay/client	GET	/api/health
+339795	mobile relay/client	GET	/api/studio/channels
+339798	Nexus internal	GET	/api/health
+343477	dashboard browser	GET	/api/praxis/dispatch-state
+343480	dashboard browser	GET	/api/token-usage
+343483	dashboard browser	GET	/api/dispatches/active
+343497	dashboard browser	GET	/api/activity
+343576	dashboard browser	GET	/api/token-usage
+343578	dashboard browser	GET	/api/praxis/council/sessions
+343578	dashboard browser	GET	/api/dispatch-insight/autonomy
+343579	dashboard browser	GET	/api/praxis/council/sessions
+343579	dashboard browser	GET	/api/token-usage
+343579	dashboard browser	GET	/api/board-state
+343789	dashboard browser	GET	/api/praxis/hitl/pending
+343790	dashboard browser	GET	/api/dispatches/active
+343792	dashboard browser	GET	/api/dispatches/active
+343792	dashboard browser	GET	/api/praxis/llm-log
+343793	dashboard browser	GET	/api/token-usage
+343795	dashboard browser	GET	/api/calendar
+343795	dashboard browser	GET	/api/praxis/council/sessions
+343796	dashboard browser	GET	/api/ag/events
+343843	dashboard browser	GET	/api/ai/chat/activity
+343844	dashboard browser	GET	/api/dispatch-insight/live-work
+343845	dashboard browser	GET	/api/praxis/hitl/pending
+343845	dashboard browser	GET	/api/praxis/hitl/pending
+343845	dashboard browser	GET	/api/praxis/stats
+343846	dashboard browser	GET	/api/knowledge-activity
+343846	dashboard browser	GET	/api/projects/pulse
+343850	dashboard browser	GET	/api/documents
+343853	dashboard browser	GET	/api/praxis/hitl/pending
+343854	Praxis runtime	POST	/api/praxis/events
+344313	dashboard browser	GET	/api/praxis/council/arbiter
+344397	dashboard browser	GET	/api/praxis/hitl/pending
+344757	dashboard browser	GET	/api/praxis/council/benches
+348462	dashboard browser	GET	/api/ai/chat/activity
+348478	dashboard browser	GET	/api/knowledge-activity
+352229	Praxis runtime	GET	/api/members
+352232	Praxis runtime	GET	/api/members
+352234	Praxis runtime	GET	/api/members
+353476	dashboard browser	GET	/api/dispatches/active
+353482	dashboard browser	GET	/api/dispatches/active
+353484	dashboard browser	GET	/api/dispatches/active
+353486	dashboard browser	GET	/api/ai/chat/activity
+353505	dashboard browser	GET	/api/knowledge-activity
+357314	Praxis runtime	GET	/api/tasks/:id
+357346	Praxis runtime	GET	/api/tasks/:id
+358481	dashboard browser	GET	/api/praxis/llm-log
+358484	dashboard browser	GET	/api/ai/chat/activity
+358510	dashboard browser	GET	/api/knowledge-activity
+358698	Praxis runtime	POST	/api/praxis/events
+361617	Praxis runtime	GET	/api/health
+363613	dashboard browser	GET	/api/dispatches/active
+363615	dashboard browser	GET	/api/dispatches/active
+363616	dashboard browser	GET	/api/dispatches/active
+363616	dashboard browser	GET	/api/praxis/dispatch-state
+363617	dashboard browser	GET	/api/knowledge-activity
+363618	dashboard browser	GET	/api/ai/chat/activity
+368489	dashboard browser	GET	/api/ai/chat/activity
+368490	dashboard browser	GET	/api/knowledge-activity
+373463	dashboard browser	GET	/api/praxis/council/sessions
+373466	dashboard browser	GET	/api/dispatches/active
+373475	dashboard browser	GET	/api/praxis/llm-log
+373477	dashboard browser	GET	/api/dispatches/active
+373480	dashboard browser	GET	/api/praxis/council/sessions
+373481	dashboard browser	GET	/api/dispatches/active
+373483	dashboard browser	GET	/api/dispatch-insight/autonomy
+373484	dashboard browser	GET	/api/praxis/council/sessions
+373487	dashboard browser	GET	/api/ai/chat/activity
+373570	dashboard browser	GET	/api/knowledge-activity
+373698	Praxis runtime	POST	/api/praxis/events
+373870	dashboard browser	GET	/api/praxis/council/arbiter
+373938	dashboard browser	GET	/api/praxis/council/benches
+378481	dashboard browser	GET	/api/ai/chat/activity
+378495	dashboard browser	GET	/api/knowledge-activity
+378716	dashboard browser	GET	/api/model-control/credentials
+378958	mobile relay/client	GET	/api/board-state
+383538	dashboard browser	GET	/api/dispatches/active
+383542	dashboard browser	GET	/api/dispatches/active
+383545	dashboard browser	GET	/api/ai/chat/activity
+383546	dashboard browser	GET	/api/dispatches/active
+383547	dashboard browser	GET	/api/praxis/dispatch-state
+383553	dashboard browser	GET	/api/knowledge-activity
+388473	dashboard browser	GET	/api/ai/chat/activity
+388475	dashboard browser	GET	/api/praxis/llm-log
+388495	dashboard browser	GET	/api/knowledge-activity
+388701	Praxis runtime	POST	/api/praxis/events
+391696	Praxis runtime	GET	/api/health
+393236	Praxis runtime	GET	/api/calendar
+393323	Praxis runtime	GET	/api/documents/:id/replacements/:id
+393330	Praxis runtime	GET	/api/tasks/:id
+393493	dashboard browser	GET	/api/dispatches/active
+393494	dashboard browser	GET	/api/dispatches/active
+393494	dashboard browser	GET	/api/ai/chat/activity
+393494	dashboard browser	GET	/api/dispatches/active
+393495	dashboard browser	GET	/api/knowledge-activity
+393546	Praxis runtime	POST	/api/write-leases
+393547	Praxis runtime	GET	/api/tasks/:id
+393550	Praxis runtime	DELETE	/api/write-leases
+393551	Praxis runtime	POST	/api/write-leases
+393552	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+393554	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+393555	Praxis runtime	POST	/api/write-leases
+393555	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+393558	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+393559	Praxis runtime	POST	/api/write-leases
+393559	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+393562	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+393563	Praxis runtime	POST	/api/write-leases
+393564	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+393565	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+393566	Praxis runtime	POST	/api/write-leases
+393567	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+393569	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+393569	Praxis runtime	POST	/api/write-leases
+393570	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+393572	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+393572	Praxis runtime	POST	/api/write-leases
+393573	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+393575	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+393576	Praxis runtime	POST	/api/write-leases
+393576	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+393578	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+393579	Praxis runtime	POST	/api/write-leases
+393579	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+393581	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+393582	Praxis runtime	POST	/api/write-leases
+393582	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+393584	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+393585	Praxis runtime	POST	/api/write-leases
+393585	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+393588	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+393588	Praxis runtime	GET	/api/board-state
+393839	Praxis runtime	GET	/api/calendar
+393840	Praxis runtime	POST	/api/praxis/events
+394410	dashboard browser	GET	/api/ag/events
+394496	dashboard browser	GET	/api/activity
+394539	dashboard browser	GET	/api/projects/pulse
+394715	dashboard browser	GET	/api/praxis/hitl/pending
+395973	dashboard browser	GET	/api/praxis/council/sessions
+395989	dashboard browser	GET	/api/praxis/council/sessions
+398478	dashboard browser	GET	/api/ai/chat/activity
+398496	dashboard browser	GET	/api/knowledge-activity
+400323	mobile relay/client	GET	/api/fleet/health
+400328	Nexus internal	GET	/api/health
+400334	mobile relay/client	GET	/api/health
+400341	mobile relay/client	GET	/api/studio/channels
+403475	dashboard browser	GET	/api/praxis/council/sessions
+403478	dashboard browser	GET	/api/praxis/dispatch-state
+403480	dashboard browser	GET	/api/dispatches/active
+403487	dashboard browser	GET	/api/board-state
+403684	dashboard browser	GET	/api/praxis/llm-log
+403688	dashboard browser	GET	/api/praxis/hitl/pending
+403688	dashboard browser	GET	/api/praxis/council/sessions
+403689	dashboard browser	GET	/api/token-usage
+403689	dashboard browser	GET	/api/dispatch-insight/autonomy
+403689	dashboard browser	GET	/api/token-usage
+403690	dashboard browser	GET	/api/dispatches/active
+403691	dashboard browser	GET	/api/token-usage
+403692	dashboard browser	GET	/api/dispatches/active
+403692	dashboard browser	GET	/api/praxis/council/sessions
+403692	dashboard browser	GET	/api/ai/chat/activity
+403692	dashboard browser	GET	/api/praxis/stats
+403693	dashboard browser	GET	/api/documents
+403696	dashboard browser	GET	/api/dispatch-insight/live-work
+403696	dashboard browser	GET	/api/activity
+403756	dashboard browser	GET	/api/knowledge-activity
+403756	dashboard browser	GET	/api/calendar
+403757	dashboard browser	GET	/api/token-usage
+403757	dashboard browser	GET	/api/praxis/hitl/pending
+403757	dashboard browser	GET	/api/praxis/hitl/pending
+403757	dashboard browser	GET	/api/praxis/hitl/pending
+403758	dashboard browser	GET	/api/ag/events
+403853	dashboard browser	GET	/api/projects/pulse
+403857	Praxis runtime	POST	/api/praxis/events
+404192	dashboard browser	GET	/api/praxis/council/arbiter
+404506	dashboard browser	GET	/api/praxis/hitl/pending
+404511	dashboard browser	GET	/api/praxis/council/benches
+408479	dashboard browser	GET	/api/ai/chat/activity
+408482	dashboard browser	GET	/api/knowledge-activity
+413491	dashboard browser	GET	/api/ai/chat/activity
+413495	dashboard browser	GET	/api/dispatches/active
+413500	dashboard browser	GET	/api/dispatches/active
+413502	dashboard browser	GET	/api/knowledge-activity
+413509	dashboard browser	GET	/api/dispatches/active
+417383	Praxis runtime	GET	/api/tasks/:id
+417433	Praxis runtime	GET	/api/tasks/:id
+418661	dashboard browser	GET	/api/ai/chat/activity
+418674	dashboard browser	GET	/api/praxis/llm-log
+418676	dashboard browser	GET	/api/knowledge-activity
+418764	Praxis runtime	POST	/api/praxis/events
+421779	Praxis runtime	GET	/api/health
+423468	dashboard browser	GET	/api/praxis/dispatch-state
+423477	dashboard browser	GET	/api/dispatches/active
+423478	dashboard browser	GET	/api/dispatches/active
+423479	dashboard browser	GET	/api/ai/chat/activity
+423479	dashboard browser	GET	/api/dispatches/active
+423488	dashboard browser	GET	/api/knowledge-activity
+427060	Praxis runtime	GET	/api/model-control/chat-config
+427061	Praxis runtime	GET	/api/model-control/chat-config
+427062	Praxis runtime	GET	/api/model-control/fable-availability
+427062	Praxis runtime	GET	/api/model-control/claude-default
+427062	Praxis runtime	GET	/api/model-control/codex-default
+427062	Praxis runtime	GET	/api/model-control/antigravity-default
+427063	Praxis runtime	GET	/api/model-control/agent-backend
+427063	Praxis runtime	GET	/api/board-state
+427792	Praxis runtime	GET	/api/model-control/thinking-levels
+428474	dashboard browser	GET	/api/ai/chat/activity
+428490	dashboard browser	GET	/api/knowledge-activity
+433473	dashboard browser	GET	/api/dispatches/active
+433476	dashboard browser	GET	/api/praxis/council/sessions
+433479	dashboard browser	GET	/api/praxis/council/sessions
+433480	dashboard browser	GET	/api/dispatches/active
+433482	dashboard browser	GET	/api/dispatch-insight/autonomy
+433482	dashboard browser	GET	/api/praxis/council/sessions
+433490	dashboard browser	GET	/api/dispatches/active
+433502	dashboard browser	GET	/api/ai/chat/activity
+433502	dashboard browser	GET	/api/praxis/llm-log
+433517	dashboard browser	GET	/api/knowledge-activity
+433704	dashboard browser	GET	/api/praxis/council/arbiter
+433767	Praxis runtime	POST	/api/praxis/events
+433772	dashboard browser	GET	/api/praxis/council/benches
+438481	dashboard browser	GET	/api/knowledge-activity
+438488	dashboard browser	GET	/api/ai/chat/activity
+438748	dashboard browser	GET	/api/model-control/credentials
+443475	dashboard browser	GET	/api/dispatches/active
+443479	dashboard browser	GET	/api/praxis/dispatch-state
+443482	dashboard browser	GET	/api/ai/chat/activity
+443484	dashboard browser	GET	/api/dispatches/active
+443486	dashboard browser	GET	/api/dispatches/active
+443521	dashboard browser	GET	/api/knowledge-activity
+448543	dashboard browser	GET	/api/ai/chat/activity
+448558	dashboard browser	GET	/api/praxis/llm-log
+448560	dashboard browser	GET	/api/knowledge-activity
+448770	Praxis runtime	POST	/api/praxis/events
+451853	Praxis runtime	GET	/api/health
+453244	Praxis runtime	GET	/api/calendar
+453353	Praxis runtime	GET	/api/documents/:id/replacements/:id
+453361	Praxis runtime	GET	/api/tasks/:id
+453375	mobile relay/client	GET	/api/board-state
+453557	dashboard browser	GET	/api/ai/chat/activity
+453558	dashboard browser	GET	/api/dispatches/active
+453558	Praxis runtime	POST	/api/write-leases
+453558	dashboard browser	GET	/api/dispatches/active
+453559	Praxis runtime	GET	/api/tasks/:id
+453560	dashboard browser	GET	/api/dispatches/active
+453560	dashboard browser	GET	/api/knowledge-activity
+453561	Praxis runtime	DELETE	/api/write-leases
+453562	Praxis runtime	POST	/api/write-leases
+453563	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+453565	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+453566	Praxis runtime	POST	/api/write-leases
+453567	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+453568	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+453569	Praxis runtime	POST	/api/write-leases
+453570	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+453572	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+453573	Praxis runtime	POST	/api/write-leases
+453574	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+453576	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+453577	Praxis runtime	POST	/api/write-leases
+453577	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+453579	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+453580	Praxis runtime	POST	/api/write-leases
+453581	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+453582	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+453583	Praxis runtime	POST	/api/write-leases
+453584	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+453585	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+453586	Praxis runtime	POST	/api/write-leases
+453587	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+453588	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+453589	Praxis runtime	POST	/api/write-leases
+453589	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+453591	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+453592	Praxis runtime	POST	/api/write-leases
+453592	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+453594	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+453594	Praxis runtime	POST	/api/write-leases
+453595	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+453597	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+453597	Praxis runtime	GET	/api/board-state
+453840	Praxis runtime	GET	/api/calendar
+453841	Praxis runtime	POST	/api/praxis/events
+454424	dashboard browser	GET	/api/projects/pulse
+454510	dashboard browser	GET	/api/activity
+454553	dashboard browser	GET	/api/ag/events
+454838	dashboard browser	GET	/api/praxis/hitl/pending
+455993	dashboard browser	GET	/api/praxis/council/sessions
+455995	dashboard browser	GET	/api/praxis/council/sessions
+458508	dashboard browser	GET	/api/knowledge-activity
+458514	dashboard browser	GET	/api/ai/chat/activity
+459235	Praxis runtime	GET	/api/documents/:id/outgoing
+459244	Praxis runtime	GET	/api/documents/:id/outgoing
+459251	Praxis runtime	GET	/api/documents/:id/outgoing
+459257	Praxis runtime	GET	/api/documents/:id/outgoing
+459741	Praxis runtime	GET	/api/members
+460080	Praxis runtime	GET	/api/members/:id
+460095	Praxis runtime	GET	/api/tasks
+460150	Praxis runtime	GET	/api/members/:id
+460151	Praxis runtime	GET	/api/tasks
+460161	Praxis runtime	GET	/api/tasks
+460163	Praxis runtime	GET	/api/tasks
+461148	mobile relay/client	GET	/api/fleet/health
+461152	mobile relay/client	GET	/api/health
+461153	mobile relay/client	GET	/api/studio/channels
+461154	Nexus internal	GET	/api/health
+463474	dashboard browser	GET	/api/praxis/council/sessions
+463477	dashboard browser	GET	/api/praxis/dispatch-state
+463481	dashboard browser	GET	/api/dispatches/active
+463487	dashboard browser	GET	/api/praxis/hitl/pending
+463488	dashboard browser	GET	/api/token-usage
+463490	dashboard browser	GET	/api/dispatch-insight/autonomy
+463491	dashboard browser	GET	/api/board-state
+463695	dashboard browser	GET	/api/praxis/stats
+463699	dashboard browser	GET	/api/dispatches/active
+463700	dashboard browser	GET	/api/token-usage
+463701	dashboard browser	GET	/api/ingestion-control/topic-map
+463701	dashboard browser	GET	/api/dispatches/active
+463703	dashboard browser	GET	/api/token-usage
+463705	dashboard browser	GET	/api/praxis/council/sessions
+463705	dashboard browser	GET	/api/ai/chat/activity
+463706	dashboard browser	GET	/api/praxis/council/sessions
+463706	dashboard browser	GET	/api/dispatch-insight/live-work
+463706	dashboard browser	GET	/api/token-usage
+463706	dashboard browser	GET	/api/praxis/llm-log
+463706	dashboard browser	GET	/api/praxis/hitl/pending
+463707	dashboard browser	GET	/api/praxis/hitl/pending
+463707	dashboard browser	GET	/api/documents
+463711	dashboard browser	GET	/api/calendar
+463711	dashboard browser	GET	/api/ag/events
+463761	dashboard browser	GET	/api/projects/pulse
+463765	dashboard browser	GET	/api/activity
+463866	dashboard browser	GET	/api/praxis/hitl/pending
+463867	dashboard browser	GET	/api/knowledge-activity
+463868	dashboard browser	GET	/api/praxis/voice-status
+463869	Praxis runtime	POST	/api/praxis/events
+464423	dashboard browser	GET	/api/praxis/council/arbiter
+464650	dashboard browser	GET	/api/praxis/council/benches
+464806	dashboard browser	GET	/api/praxis/hitl/pending
+466196	mobile relay/client	GET	/api/board-state
+466415	mobile relay/client	GET	/api/fleet/health
+466417	mobile relay/client	GET	/api/health
+466417	mobile relay/client	GET	/api/studio/channels
+466417	Nexus internal	GET	/api/health
+468490	dashboard browser	GET	/api/ai/chat/activity
+468506	dashboard browser	GET	/api/knowledge-activity
+473507	dashboard browser	GET	/api/dispatches/active
+473513	dashboard browser	GET	/api/dispatches/active
+473531	dashboard browser	GET	/api/ai/chat/activity
+473533	dashboard browser	GET	/api/knowledge-activity
+473538	dashboard browser	GET	/api/dispatches/active
+473842	Praxis runtime	GET	/api/members
+473845	Praxis runtime	GET	/api/members
+473846	Praxis runtime	GET	/api/members
+477478	Praxis runtime	GET	/api/tasks/:id
+477525	Praxis runtime	GET	/api/tasks/:id
+478507	dashboard browser	GET	/api/ai/chat/activity
+478510	dashboard browser	GET	/api/praxis/llm-log
+478525	dashboard browser	GET	/api/knowledge-activity
+478777	Praxis runtime	POST	/api/praxis/events
+481898	Praxis runtime	GET	/api/health
+483475	dashboard browser	GET	/api/praxis/dispatch-state
+483476	dashboard browser	GET	/api/ai/chat/activity
+483476	dashboard browser	GET	/api/dispatches/active
+483476	dashboard browser	GET	/api/dispatches/active
+483477	dashboard browser	GET	/api/dispatches/active
+483514	dashboard browser	GET	/api/knowledge-activity
+488475	dashboard browser	GET	/api/ai/chat/activity
+488496	dashboard browser	GET	/api/knowledge-activity
+493474	dashboard browser	GET	/api/praxis/council/sessions
+493478	dashboard browser	GET	/api/dispatch-insight/autonomy
+493479	dashboard browser	GET	/api/ai/chat/activity
+493481	dashboard browser	GET	/api/dispatches/active
+493483	dashboard browser	GET	/api/praxis/council/sessions
+493485	dashboard browser	GET	/api/dispatches/active
+493488	dashboard browser	GET	/api/dispatches/active
+493491	dashboard browser	GET	/api/praxis/llm-log
+493492	dashboard browser	GET	/api/praxis/council/sessions
+493515	dashboard browser	GET	/api/knowledge-activity
+493769	dashboard browser	GET	/api/praxis/council/arbiter
+493774	Praxis runtime	POST	/api/praxis/events
+493941	dashboard browser	GET	/api/praxis/council/benches
+495819	Praxis runtime	POST	/api/praxis/events
+495820	Praxis runtime	POST	/api/praxis/events
+496375	dashboard browser	GET	/api/praxis/dispatch-state
+496376	dashboard browser	GET	/api/dispatches/active
+496376	dashboard browser	GET	/api/dispatches/active
+496377	dashboard browser	GET	/api/dispatches/active
+496399	dashboard browser	GET	/api/dispatch-insight/live-work
+496399	dashboard browser	GET	/api/calendar
+496399	dashboard browser	GET	/api/activity
+496448	dashboard browser	GET	/api/ag/events
+496492	dashboard browser	GET	/api/projects/pulse
+496794	dashboard browser	GET	/api/praxis/hitl/pending
+498002	dashboard browser	GET	/api/praxis/council/sessions
+498006	dashboard browser	GET	/api/praxis/council/sessions
+498469	dashboard browser	GET	/api/ai/chat/activity
+498481	dashboard browser	GET	/api/knowledge-activity
+498740	dashboard browser	GET	/api/model-control/credentials
+501857	Praxis runtime	POST	/api/praxis/events
+501860	Praxis runtime	POST	/api/praxis/events
+502617	dashboard browser	GET	/api/dispatches/active
+502619	dashboard browser	GET	/api/dispatches/active
+502619	dashboard browser	GET	/api/praxis/dispatch-state
+502620	dashboard browser	GET	/api/projects/pulse
+502702	dashboard browser	GET	/api/dispatches/active
+502702	dashboard browser	GET	/api/dispatch-insight/live-work
+503466	dashboard browser	GET	/api/dispatches/active
+503468	dashboard browser	GET	/api/praxis/dispatch-state
+503475	dashboard browser	GET	/api/dispatches/active
+503477	dashboard browser	GET	/api/dispatches/active
+503478	dashboard browser	GET	/api/ai/chat/activity
+503486	dashboard browser	GET	/api/knowledge-activity
+504131	dashboard browser	GET	/api/praxis/council/sessions
+504143	dashboard browser	GET	/api/praxis/council/sessions
+508476	dashboard browser	GET	/api/praxis/llm-log
+508478	dashboard browser	GET	/api/ai/chat/activity
+508494	dashboard browser	GET	/api/knowledge-activity
+508778	Praxis runtime	POST	/api/praxis/events
+511934	Praxis runtime	GET	/api/health
+513259	Praxis runtime	GET	/api/calendar
+513381	Praxis runtime	GET	/api/documents/:id/replacements/:id
+513388	Praxis runtime	GET	/api/tasks/:id
+513462	dashboard browser	GET	/api/dispatches/active
+513463	dashboard browser	GET	/api/dispatches/active
+513555	Praxis runtime	POST	/api/write-leases
+513557	Praxis runtime	GET	/api/tasks/:id
+513558	dashboard browser	GET	/api/dispatches/active
+513559	dashboard browser	GET	/api/ai/chat/activity
+513559	Praxis runtime	DELETE	/api/write-leases
+513560	Praxis runtime	POST	/api/write-leases
+513561	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+513563	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+513564	Praxis runtime	POST	/api/write-leases
+513565	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+513566	dashboard browser	GET	/api/knowledge-activity
+513567	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+513568	Praxis runtime	POST	/api/write-leases
+513568	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+513571	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+513572	Praxis runtime	POST	/api/write-leases
+513573	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+513575	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+513576	Praxis runtime	POST	/api/write-leases
+513577	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+513579	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+513580	Praxis runtime	POST	/api/write-leases
+513580	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+513582	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+513583	Praxis runtime	POST	/api/write-leases
+513584	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+513586	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+513587	Praxis runtime	POST	/api/write-leases
+513587	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+513589	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+513590	Praxis runtime	POST	/api/write-leases
+513591	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+513593	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+513593	Praxis runtime	POST	/api/write-leases
+513594	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+513599	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+513600	Praxis runtime	POST	/api/write-leases
+513600	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+513602	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+513603	Praxis runtime	GET	/api/board-state
+513858	Praxis runtime	GET	/api/calendar
+513859	Praxis runtime	POST	/api/praxis/events
+514442	dashboard browser	GET	/api/projects/pulse
+514464	dashboard browser	GET	/api/activity
+514532	dashboard browser	GET	/api/ag/events
+514813	dashboard browser	GET	/api/praxis/hitl/pending
+515369	Praxis runtime	POST	/api/praxis/events
+515371	Praxis runtime	POST	/api/praxis/events
+516036	dashboard browser	GET	/api/praxis/dispatch-state
+516040	dashboard browser	GET	/api/dispatches/active
+516046	dashboard browser	GET	/api/dispatches/active
+516048	dashboard browser	GET	/api/dispatches/active
+516050	dashboard browser	GET	/api/dispatch-insight/live-work
+516052	dashboard browser	GET	/api/ag/events
+516127	dashboard browser	GET	/api/calendar
+516127	dashboard browser	GET	/api/activity
+516171	dashboard browser	GET	/api/projects/pulse
+516490	dashboard browser	GET	/api/praxis/hitl/pending
+517623	dashboard browser	GET	/api/praxis/council/sessions
+517634	dashboard browser	GET	/api/praxis/council/sessions
+518470	dashboard browser	GET	/api/ai/chat/activity
+518484	dashboard browser	GET	/api/knowledge-activity
+519892	Praxis runtime	POST	/api/praxis/events
+519895	Praxis runtime	POST	/api/praxis/events
+520564	dashboard browser	GET	/api/praxis/dispatch-state
+520566	dashboard browser	GET	/api/dispatches/active
+520574	dashboard browser	GET	/api/dispatches/active
+520576	dashboard browser	GET	/api/dispatches/active
+520578	dashboard browser	GET	/api/dispatch-insight/live-work
+520579	dashboard browser	GET	/api/calendar
+520581	dashboard browser	GET	/api/ag/events
+520653	dashboard browser	GET	/api/projects/pulse
+520657	dashboard browser	GET	/api/activity
+520904	dashboard browser	GET	/api/praxis/hitl/pending
+522163	dashboard browser	GET	/api/praxis/council/sessions
+522175	dashboard browser	GET	/api/praxis/council/sessions
+523524	dashboard browser	GET	/api/praxis/council/sessions
+523527	dashboard browser	GET	/api/dispatches/active
+523532	dashboard browser	GET	/api/praxis/dispatch-state
+523534	dashboard browser	GET	/api/token-usage
+523535	dashboard browser	GET	/api/dispatch-insight/autonomy
+523537	dashboard browser	GET	/api/praxis/hitl/pending
+523538	dashboard browser	GET	/api/board-state
+523737	dashboard browser	GET	/api/activity
+523785	dashboard browser	GET	/api/token-usage
+523786	dashboard browser	GET	/api/praxis/stats
+523787	dashboard browser	GET	/api/ai/chat/activity
+523787	dashboard browser	GET	/api/token-usage
+523787	dashboard browser	GET	/api/dispatch-insight/live-work
+523787	dashboard browser	GET	/api/praxis/llm-log
+523788	dashboard browser	GET	/api/praxis/council/sessions
+523788	dashboard browser	GET	/api/calendar
+523788	dashboard browser	GET	/api/praxis/council/sessions
+523788	dashboard browser	GET	/api/token-usage
+523788	dashboard browser	GET	/api/dispatches/active
+523789	dashboard browser	GET	/api/dispatches/active
+523789	dashboard browser	GET	/api/praxis/hitl/pending
+523790	dashboard browser	GET	/api/projects/pulse
+523793	dashboard browser	GET	/api/praxis/hitl/pending
+523794	dashboard browser	GET	/api/ag/events
+523847	dashboard browser	GET	/api/knowledge-activity
+523847	dashboard browser	GET	/api/documents
+523851	dashboard browser	GET	/api/praxis/hitl/pending
+523852	mobile relay/client	GET	/api/fleet/health
+523852	mobile relay/client	GET	/api/studio/channels
+523853	mobile relay/client	GET	/api/health
+523853	Praxis runtime	POST	/api/praxis/events
+523854	Nexus internal	GET	/api/health
+524376	Praxis runtime	POST	/api/praxis/events
+524377	Praxis runtime	POST	/api/praxis/events
+524943	dashboard browser	GET	/api/praxis/council/arbiter
+525094	dashboard browser	GET	/api/praxis/dispatch-state
+525105	dashboard browser	GET	/api/praxis/hitl/pending
+525105	dashboard browser	GET	/api/dispatches/active
+525106	dashboard browser	GET	/api/dispatches/active
+525106	dashboard browser	GET	/api/dispatches/active
+525106	dashboard browser	GET	/api/dispatch-insight/live-work
+525147	dashboard browser	GET	/api/calendar
+525149	dashboard browser	GET	/api/ag/events
+525193	dashboard browser	GET	/api/activity
+525235	dashboard browser	GET	/api/projects/pulse
+525238	dashboard browser	GET	/api/praxis/council/benches
+526161	dashboard browser	GET	/api/praxis/hitl/pending
+526667	dashboard browser	GET	/api/praxis/council/sessions
+526677	dashboard browser	GET	/api/praxis/council/sessions
+528490	dashboard browser	GET	/api/knowledge-activity
+528492	dashboard browser	GET	/api/ai/chat/activity
+531906	Praxis runtime	POST	/api/praxis/events
+531913	Praxis runtime	POST	/api/praxis/events
+532480	dashboard browser	GET	/api/dispatches/active
+532486	dashboard browser	GET	/api/praxis/dispatch-state
+532490	dashboard browser	GET	/api/dispatches/active
+532495	dashboard browser	GET	/api/dispatch-insight/live-work
+532497	dashboard browser	GET	/api/dispatches/active
+532500	dashboard browser	GET	/api/calendar
+532503	dashboard browser	GET	/api/projects/pulse
+532516	dashboard browser	GET	/api/activity
+532580	dashboard browser	GET	/api/ag/events
+532964	dashboard browser	GET	/api/praxis/hitl/pending
+533201	mobile relay/client	GET	/api/board-state
+533412	Praxis runtime	POST	/api/praxis/events
+533413	Praxis runtime	POST	/api/praxis/events
+533490	dashboard browser	GET	/api/dispatches/active
+533490	dashboard browser	GET	/api/dispatches/active
+533491	dashboard browser	GET	/api/dispatches/active
+533498	dashboard browser	GET	/api/knowledge-activity
+533499	dashboard browser	GET	/api/ai/chat/activity
+534159	dashboard browser	GET	/api/dispatches/active
+534163	dashboard browser	GET	/api/dispatches/active
+534165	dashboard browser	GET	/api/praxis/dispatch-state
+534167	dashboard browser	GET	/api/dispatches/active
+534179	dashboard browser	GET	/api/dispatch-insight/live-work
+534244	dashboard browser	GET	/api/calendar
+534244	dashboard browser	GET	/api/ag/events
+534286	dashboard browser	GET	/api/activity
+534329	dashboard browser	GET	/api/projects/pulse
+535066	dashboard browser	GET	/api/praxis/hitl/pending
+535774	dashboard browser	GET	/api/praxis/council/sessions
+535777	dashboard browser	GET	/api/praxis/council/sessions
+537556	Praxis runtime	GET	/api/tasks/:id
+537583	Praxis runtime	GET	/api/tasks/:id
+538478	dashboard browser	GET	/api/ai/chat/activity
+538492	dashboard browser	GET	/api/knowledge-activity
+538493	dashboard browser	GET	/api/praxis/llm-log
+538782	Praxis runtime	POST	/api/praxis/events
+542000	Praxis runtime	GET	/api/health
+543468	dashboard browser	GET	/api/praxis/dispatch-state
+543469	dashboard browser	GET	/api/dispatches/active
+543475	dashboard browser	GET	/api/dispatches/active
+543476	dashboard browser	GET	/api/dispatches/active
+543497	dashboard browser	GET	/api/ai/chat/activity
+543513	dashboard browser	GET	/api/knowledge-activity
+545399	Praxis runtime	POST	/api/praxis/events
+545400	Praxis runtime	POST	/api/praxis/events
+545952	dashboard browser	GET	/api/dispatches/active
+545968	dashboard browser	GET	/api/praxis/dispatch-state
+545970	dashboard browser	GET	/api/dispatches/active
+545976	dashboard browser	GET	/api/dispatches/active
+545979	dashboard browser	GET	/api/calendar
+545982	dashboard browser	GET	/api/dispatch-insight/live-work
+545983	dashboard browser	GET	/api/ag/events
+546067	dashboard browser	GET	/api/activity
+546112	dashboard browser	GET	/api/projects/pulse
+546315	dashboard browser	GET	/api/praxis/hitl/pending
+547636	dashboard browser	GET	/api/praxis/council/sessions
+547638	dashboard browser	GET	/api/praxis/council/sessions
+548479	dashboard browser	GET	/api/ai/chat/activity
+548491	dashboard browser	GET	/api/knowledge-activity
+551403	Praxis runtime	POST	/api/praxis/events
+551404	Praxis runtime	POST	/api/praxis/events
+552140	dashboard browser	GET	/api/praxis/dispatch-state
+552141	dashboard browser	GET	/api/dispatches/active
+552142	dashboard browser	GET	/api/dispatches/active
+552151	dashboard browser	GET	/api/dispatches/active
+552152	dashboard browser	GET	/api/dispatch-insight/live-work
+552153	dashboard browser	GET	/api/ag/events
+552206	dashboard browser	GET	/api/projects/pulse
+552272	dashboard browser	GET	/api/activity
+552570	dashboard browser	GET	/api/calendar
+552630	dashboard browser	GET	/api/praxis/hitl/pending
+553471	dashboard browser	GET	/api/dispatches/active
+553472	dashboard browser	GET	/api/praxis/council/sessions
+553472	dashboard browser	GET	/api/dispatch-insight/autonomy
+553472	dashboard browser	GET	/api/dispatches/active
+553473	dashboard browser	GET	/api/praxis/council/sessions
+553473	dashboard browser	GET	/api/dispatches/active
+553473	dashboard browser	GET	/api/praxis/council/sessions
+553480	dashboard browser	GET	/api/ai/chat/activity
+553519	dashboard browser	GET	/api/knowledge-activity
+553521	dashboard browser	GET	/api/praxis/llm-log
+553742	dashboard browser	GET	/api/praxis/council/sessions
+553757	dashboard browser	GET	/api/praxis/council/sessions
+553782	Praxis runtime	POST	/api/praxis/events
+553981	dashboard browser	GET	/api/praxis/council/arbiter
+554036	dashboard browser	GET	/api/praxis/council/benches
+558482	dashboard browser	GET	/api/ai/chat/activity
+558493	dashboard browser	GET	/api/knowledge-activity
+558719	dashboard browser	GET	/api/model-control/credentials
+563467	dashboard browser	GET	/api/praxis/dispatch-state
+563467	dashboard browser	GET	/api/ai/chat/activity
+563468	dashboard browser	GET	/api/dispatches/active
+563468	dashboard browser	GET	/api/dispatches/active
+563481	dashboard browser	GET	/api/dispatches/active
+563492	dashboard browser	GET	/api/knowledge-activity
+568607	dashboard browser	GET	/api/ai/chat/activity
+568616	dashboard browser	GET	/api/knowledge-activity
+568616	dashboard browser	GET	/api/praxis/llm-log
+568786	Praxis runtime	POST	/api/praxis/events
+572082	Praxis runtime	GET	/api/health
+573240	Praxis runtime	GET	/api/calendar
+573513	dashboard browser	GET	/api/dispatches/active
+573514	dashboard browser	GET	/api/ai/chat/activity
+573514	dashboard browser	GET	/api/knowledge-activity
+573515	dashboard browser	GET	/api/dispatches/active
+573515	dashboard browser	GET	/api/dispatches/active
+573556	Praxis runtime	POST	/api/write-leases
+573558	Praxis runtime	GET	/api/tasks/:id
+573560	Praxis runtime	DELETE	/api/write-leases
+573561	Praxis runtime	POST	/api/write-leases
+573562	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+573565	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+573566	Praxis runtime	POST	/api/write-leases
+573567	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+573569	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+573570	Praxis runtime	POST	/api/write-leases
+573571	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+573574	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+573575	Praxis runtime	POST	/api/write-leases
+573575	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+573578	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+573578	Praxis runtime	POST	/api/write-leases
+573579	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+573581	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+573582	Praxis runtime	POST	/api/write-leases
+573583	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+573585	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+573586	Praxis runtime	POST	/api/write-leases
+573587	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+573589	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+573590	Praxis runtime	POST	/api/write-leases
+573591	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+573592	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+573593	Praxis runtime	POST	/api/write-leases
+573594	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+573596	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+573596	Praxis runtime	POST	/api/write-leases
+573597	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+573599	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+573600	Praxis runtime	POST	/api/write-leases
+573601	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+573603	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+573604	Praxis runtime	GET	/api/board-state
+573873	Praxis runtime	GET	/api/calendar
+573874	Praxis runtime	POST	/api/praxis/events
+574474	dashboard browser	GET	/api/ag/events
+574519	dashboard browser	GET	/api/activity
+574569	dashboard browser	GET	/api/projects/pulse
+574700	dashboard browser	GET	/api/praxis/hitl/pending
+576060	dashboard browser	GET	/api/praxis/council/sessions
+576062	dashboard browser	GET	/api/praxis/council/sessions
+578404	Praxis runtime	GET	/api/documents/:id/outgoing
+578411	Praxis runtime	GET	/api/documents/:id/outgoing
+578417	Praxis runtime	GET	/api/documents/:id/outgoing
+578424	Praxis runtime	GET	/api/documents/:id/outgoing
+578474	dashboard browser	GET	/api/ai/chat/activity
+578572	dashboard browser	GET	/api/knowledge-activity
+578678	Praxis runtime	GET	/api/members
+578895	Praxis runtime	GET	/api/members/:id
+578896	Praxis runtime	GET	/api/tasks
+578922	Praxis runtime	GET	/api/members/:id
+578923	Praxis runtime	GET	/api/tasks
+578931	Praxis runtime	GET	/api/tasks
+578933	Praxis runtime	GET	/api/tasks
+583586	dashboard browser	GET	/api/praxis/dispatch-state
+583586	dashboard browser	GET	/api/dispatches/active
+583587	dashboard browser	GET	/api/token-usage
+583589	dashboard browser	GET	/api/dispatches/active
+583589	dashboard browser	GET	/api/dispatch-insight/autonomy
+583589	dashboard browser	GET	/api/token-usage
+583589	dashboard browser	GET	/api/praxis/hitl/pending
+583590	dashboard browser	GET	/api/praxis/council/sessions
+583590	dashboard browser	GET	/api/praxis/council/sessions
+583590	dashboard browser	GET	/api/ai/chat/activity
+583590	dashboard browser	GET	/api/token-usage
+583590	dashboard browser	GET	/api/board-state
+583800	dashboard browser	GET	/api/dispatches/active
+583802	dashboard browser	GET	/api/praxis/stats
+583802	dashboard browser	GET	/api/token-usage
+583803	dashboard browser	GET	/api/praxis/council/sessions
+583803	dashboard browser	GET	/api/praxis/hitl/pending
+583807	dashboard browser	GET	/api/praxis/hitl/pending
+583807	dashboard browser	GET	/api/ag/events
+583859	dashboard browser	GET	/api/praxis/hitl/pending
+583859	dashboard browser	GET	/api/activity
+583914	dashboard browser	GET	/api/knowledge-activity
+583915	dashboard browser	GET	/api/documents
+583919	dashboard browser	GET	/api/calendar
+583919	dashboard browser	GET	/api/dispatch-insight/live-work
+583919	dashboard browser	GET	/api/praxis/llm-log
+583919	dashboard browser	GET	/api/projects/pulse
+583923	Praxis runtime	POST	/api/praxis/events
+584128	dashboard browser	GET	/api/praxis/council/arbiter
+584357	dashboard browser	GET	/api/praxis/hitl/pending
+584368	dashboard browser	GET	/api/praxis/council/benches
+587264	mobile relay/client	GET	/api/fleet/health
+587265	mobile relay/client	GET	/api/health
+587265	Nexus internal	GET	/api/health
+587282	mobile relay/client	GET	/api/studio/channels
+588548	dashboard browser	GET	/api/ai/chat/activity
+588549	dashboard browser	GET	/api/knowledge-activity
+591954	Praxis runtime	GET	/api/members
+591955	Praxis runtime	GET	/api/members
+591956	Praxis runtime	GET	/api/members
+593475	dashboard browser	GET	/api/dispatches/active
+593476	dashboard browser	GET	/api/ai/chat/activity
+593476	dashboard browser	GET	/api/dispatches/active
+593476	dashboard browser	GET	/api/knowledge-activity
+593477	dashboard browser	GET	/api/dispatches/active
+597187	mobile relay/client	GET	/api/board-state
+597609	Praxis runtime	GET	/api/tasks/:id
+597628	Praxis runtime	GET	/api/tasks/:id
+598494	dashboard browser	GET	/api/praxis/llm-log
+598494	dashboard browser	GET	/api/ai/chat/activity
+598495	dashboard browser	GET	/api/knowledge-activity
+598789	Praxis runtime	POST	/api/praxis/events
+602121	Praxis runtime	GET	/api/health
+603477	dashboard browser	GET	/api/dispatches/active
+603477	dashboard browser	GET	/api/praxis/dispatch-state
+603477	dashboard browser	GET	/api/dispatches/active
+603478	dashboard browser	GET	/api/dispatches/active
+603493	dashboard browser	GET	/api/ai/chat/activity
+603512	dashboard browser	GET	/api/knowledge-activity
+608485	dashboard browser	GET	/api/ai/chat/activity
+608486	dashboard browser	GET	/api/knowledge-activity
+613470	dashboard browser	GET	/api/dispatches/active
+613471	dashboard browser	GET	/api/dispatch-insight/autonomy
+613471	dashboard browser	GET	/api/praxis/council/sessions
+613472	dashboard browser	GET	/api/dispatches/active
+613472	dashboard browser	GET	/api/ai/chat/activity
+613472	dashboard browser	GET	/api/praxis/council/sessions
+613473	dashboard browser	GET	/api/dispatches/active
+613473	dashboard browser	GET	/api/praxis/council/sessions
+613479	dashboard browser	GET	/api/praxis/llm-log
+613507	dashboard browser	GET	/api/knowledge-activity
+613792	Praxis runtime	POST	/api/praxis/events
+613828	dashboard browser	GET	/api/praxis/council/arbiter
+613992	dashboard browser	GET	/api/praxis/council/benches
+618478	dashboard browser	GET	/api/ai/chat/activity
+618479	dashboard browser	GET	/api/knowledge-activity
+618713	dashboard browser	GET	/api/model-control/credentials
+623474	dashboard browser	GET	/api/praxis/dispatch-state
+623484	dashboard browser	GET	/api/dispatches/active
+623487	dashboard browser	GET	/api/dispatches/active
+623488	dashboard browser	GET	/api/dispatches/active
+623492	dashboard browser	GET	/api/ai/chat/activity
+623512	dashboard browser	GET	/api/knowledge-activity
+628475	dashboard browser	GET	/api/ai/chat/activity
+628488	dashboard browser	GET	/api/praxis/llm-log
+628503	dashboard browser	GET	/api/knowledge-activity
+628798	Praxis runtime	POST	/api/praxis/events
+632159	Praxis runtime	GET	/api/health
+633254	Praxis runtime	GET	/api/calendar
+633361	Praxis runtime	GET	/api/documents/:id/replacements/:id
+633371	Praxis runtime	GET	/api/tasks/:id
+633471	dashboard browser	GET	/api/dispatches/active
+633472	dashboard browser	GET	/api/dispatches/active
+633483	dashboard browser	GET	/api/dispatches/active
+633483	dashboard browser	GET	/api/ai/chat/activity
+633495	dashboard browser	GET	/api/knowledge-activity
+633558	Praxis runtime	POST	/api/write-leases
+633561	Praxis runtime	GET	/api/tasks/:id
+633564	Praxis runtime	DELETE	/api/write-leases
+633565	Praxis runtime	POST	/api/write-leases
+633566	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+633567	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+633568	Praxis runtime	POST	/api/write-leases
+633569	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+633571	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+633572	Praxis runtime	POST	/api/write-leases
+633573	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+633575	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+633576	Praxis runtime	POST	/api/write-leases
+633577	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+633579	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+633580	Praxis runtime	POST	/api/write-leases
+633581	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+633582	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+633583	Praxis runtime	POST	/api/write-leases
+633584	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+633585	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+633586	Praxis runtime	POST	/api/write-leases
+633587	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+633589	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+633589	Praxis runtime	POST	/api/write-leases
+633590	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+633592	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+633592	Praxis runtime	POST	/api/write-leases
+633593	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+633594	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+633595	Praxis runtime	POST	/api/write-leases
+633596	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+633597	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+633598	Praxis runtime	POST	/api/write-leases
+633598	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+633600	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+633601	Praxis runtime	GET	/api/board-state
+633850	Praxis runtime	GET	/api/calendar
+633851	Praxis runtime	POST	/api/praxis/events
+634434	dashboard browser	GET	/api/projects/pulse
+634525	dashboard browser	GET	/api/activity
+634569	dashboard browser	GET	/api/ag/events
+634856	dashboard browser	GET	/api/praxis/hitl/pending
+636025	dashboard browser	GET	/api/praxis/council/sessions
+636027	dashboard browser	GET	/api/praxis/council/sessions
+638476	dashboard browser	GET	/api/ai/chat/activity
+638501	dashboard browser	GET	/api/knowledge-activity
+643472	dashboard browser	GET	/api/praxis/dispatch-state
+643478	dashboard browser	GET	/api/praxis/hitl/pending
+643479	dashboard browser	GET	/api/dispatches/active
+643488	dashboard browser	GET	/api/token-usage
+643490	dashboard browser	GET	/api/token-usage
+643492	dashboard browser	GET	/api/praxis/council/sessions
+643494	dashboard browser	GET	/api/ai/chat/activity
+643496	dashboard browser	GET	/api/calendar
+643497	dashboard browser	GET	/api/board-state
+643714	dashboard browser	GET	/api/activity
+643764	dashboard browser	GET	/api/documents
+643768	dashboard browser	GET	/api/token-usage
+643769	dashboard browser	GET	/api/praxis/hitl/pending
+643769	dashboard browser	GET	/api/dispatch-insight/live-work
+643769	dashboard browser	GET	/api/token-usage
+643770	dashboard browser	GET	/api/praxis/llm-log
+643770	dashboard browser	GET	/api/praxis/council/sessions
+643770	dashboard browser	GET	/api/dispatches/active
+643770	dashboard browser	GET	/api/dispatch-insight/autonomy
+643771	dashboard browser	GET	/api/dispatches/active
+643771	dashboard browser	GET	/api/praxis/council/sessions
+643771	dashboard browser	GET	/api/praxis/stats
+643771	dashboard browser	GET	/api/ag/events
+643819	dashboard browser	GET	/api/projects/pulse
+643822	dashboard browser	GET	/api/praxis/hitl/pending
+643823	dashboard browser	GET	/api/knowledge-activity
+643824	dashboard browser	GET	/api/praxis/hitl/pending
+643830	Praxis runtime	POST	/api/praxis/events
+644385	dashboard browser	GET	/api/praxis/hitl/pending
+644470	dashboard browser	GET	/api/praxis/council/arbiter
+644662	dashboard browser	GET	/api/praxis/council/benches
+647559	mobile relay/client	GET	/api/fleet/health
+647564	mobile relay/client	GET	/api/studio/channels
+647567	mobile relay/client	GET	/api/health
+647568	Nexus internal	GET	/api/health
+648483	dashboard browser	GET	/api/ai/chat/activity
+648498	dashboard browser	GET	/api/knowledge-activity
+653548	dashboard browser	GET	/api/dispatches/active
+653554	dashboard browser	GET	/api/dispatches/active
+653556	dashboard browser	GET	/api/knowledge-activity
+653562	dashboard browser	GET	/api/ai/chat/activity
+653563	dashboard browser	GET	/api/dispatches/active
+655066	Praxis runtime	POST	/api/praxis/events
+655068	Praxis runtime	POST	/api/praxis/events
+655782	dashboard browser	GET	/api/dispatches/active
+655788	dashboard browser	GET	/api/dispatches/active
+655790	dashboard browser	GET	/api/calendar
+655794	dashboard browser	GET	/api/praxis/dispatch-state
+655795	dashboard browser	GET	/api/dispatch-insight/live-work
+655797	dashboard browser	GET	/api/dispatches/active
+655800	dashboard browser	GET	/api/activity
+655871	dashboard browser	GET	/api/ag/events
+655915	dashboard browser	GET	/api/projects/pulse
+656714	dashboard browser	GET	/api/praxis/hitl/pending
+657425	dashboard browser	GET	/api/praxis/council/sessions
+657433	dashboard browser	GET	/api/praxis/council/sessions
+657654	Praxis runtime	GET	/api/tasks/:id
+657682	Praxis runtime	GET	/api/tasks/:id
+658054	mobile relay/client	GET	/api/board-state
+658471	dashboard browser	GET	/api/ai/chat/activity
+658488	dashboard browser	GET	/api/knowledge-activity
+658489	dashboard browser	GET	/api/praxis/llm-log
+658833	Praxis runtime	POST	/api/praxis/events
+662233	Praxis runtime	GET	/api/health
+663512	dashboard browser	GET	/api/dispatches/active
+663513	dashboard browser	GET	/api/dispatches/active
+663514	dashboard browser	GET	/api/dispatches/active
+663514	dashboard browser	GET	/api/praxis/dispatch-state
+663514	dashboard browser	GET	/api/knowledge-activity
+663528	dashboard browser	GET	/api/ai/chat/activity
+668476	dashboard browser	GET	/api/ai/chat/activity
+668492	dashboard browser	GET	/api/knowledge-activity
+673471	dashboard browser	GET	/api/praxis/council/sessions
+673480	dashboard browser	GET	/api/praxis/council/sessions
+673482	dashboard browser	GET	/api/dispatches/active
+673486	dashboard browser	GET	/api/dispatch-insight/autonomy
+673487	dashboard browser	GET	/api/praxis/council/sessions
+673489	dashboard browser	GET	/api/dispatches/active
+673492	dashboard browser	GET	/api/praxis/llm-log
+673493	dashboard browser	GET	/api/ai/chat/activity
+673496	dashboard browser	GET	/api/dispatches/active
+673526	dashboard browser	GET	/api/knowledge-activity
+673836	Praxis runtime	POST	/api/praxis/events
+673849	dashboard browser	GET	/api/praxis/council/arbiter
+674010	dashboard browser	GET	/api/praxis/council/benches
+678482	dashboard browser	GET	/api/ai/chat/activity
+678484	dashboard browser	GET	/api/knowledge-activity
+678738	dashboard browser	GET	/api/model-control/credentials
+682075	Praxis runtime	POST	/api/praxis/events
+682076	Praxis runtime	POST	/api/praxis/events
+682956	dashboard browser	GET	/api/praxis/dispatch-state
+682976	dashboard browser	GET	/api/dispatches/active
+682980	dashboard browser	GET	/api/dispatch-insight/live-work
+682981	dashboard browser	GET	/api/dispatches/active
+682983	dashboard browser	GET	/api/dispatches/active
+682984	dashboard browser	GET	/api/calendar
+682986	dashboard browser	GET	/api/activity
+683052	dashboard browser	GET	/api/ag/events
+683097	dashboard browser	GET	/api/projects/pulse
+683334	dashboard browser	GET	/api/praxis/hitl/pending
+683471	dashboard browser	GET	/api/praxis/dispatch-state
+683472	dashboard browser	GET	/api/dispatches/active
+683473	dashboard browser	GET	/api/ai/chat/activity
+683473	dashboard browser	GET	/api/dispatches/active
+683475	dashboard browser	GET	/api/dispatches/active
+683499	dashboard browser	GET	/api/knowledge-activity
+684588	dashboard browser	GET	/api/praxis/council/sessions
+684589	dashboard browser	GET	/api/praxis/council/sessions
+688085	Praxis runtime	POST	/api/praxis/events
+688086	Praxis runtime	POST	/api/praxis/events
+688579	dashboard browser	GET	/api/ai/chat/activity
+688673	dashboard browser	GET	/api/knowledge-activity
+688679	dashboard browser	GET	/api/praxis/llm-log
+688832	dashboard browser	GET	/api/praxis/dispatch-state
+688833	dashboard browser	GET	/api/dispatches/active
+688840	dashboard browser	GET	/api/dispatches/active
+688840	dashboard browser	GET	/api/dispatches/active
+688840	dashboard browser	GET	/api/dispatch-insight/live-work
+688841	dashboard browser	GET	/api/calendar
+688843	Praxis runtime	POST	/api/praxis/events
+688902	dashboard browser	GET	/api/projects/pulse
+688905	dashboard browser	GET	/api/activity
+688987	dashboard browser	GET	/api/ag/events
+689418	dashboard browser	GET	/api/praxis/hitl/pending
+690428	dashboard browser	GET	/api/praxis/council/sessions
+690440	dashboard browser	GET	/api/praxis/council/sessions
+692311	Praxis runtime	GET	/api/health
+693254	Praxis runtime	GET	/api/calendar
+693476	dashboard browser	GET	/api/dispatches/active
+693478	dashboard browser	GET	/api/dispatches/active
+693478	dashboard browser	GET	/api/dispatches/active
+693478	dashboard browser	GET	/api/ai/chat/activity
+693489	dashboard browser	GET	/api/knowledge-activity
+693560	Praxis runtime	POST	/api/write-leases
+693561	Praxis runtime	GET	/api/tasks/:id
+693563	Praxis runtime	DELETE	/api/write-leases
+693564	Praxis runtime	POST	/api/write-leases
+693565	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+693567	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+693567	Praxis runtime	POST	/api/write-leases
+693568	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+693570	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+693570	Praxis runtime	POST	/api/write-leases
+693571	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+693574	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+693575	Praxis runtime	POST	/api/write-leases
+693575	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+693577	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+693578	Praxis runtime	POST	/api/write-leases
+693578	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+693580	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+693581	Praxis runtime	POST	/api/write-leases
+693581	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+693583	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+693583	Praxis runtime	POST	/api/write-leases
+693584	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+693586	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+693586	Praxis runtime	POST	/api/write-leases
+693587	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+693588	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+693589	Praxis runtime	POST	/api/write-leases
+693590	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+693591	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+693592	Praxis runtime	POST	/api/write-leases
+693593	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+693594	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+693595	Praxis runtime	POST	/api/write-leases
+693596	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+693598	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+693598	Praxis runtime	GET	/api/board-state
+693843	Praxis runtime	GET	/api/calendar
+693848	Praxis runtime	POST	/api/praxis/events
+694457	dashboard browser	GET	/api/activity
+694512	dashboard browser	GET	/api/ag/events
+694555	dashboard browser	GET	/api/projects/pulse
+694982	dashboard browser	GET	/api/praxis/hitl/pending
+695605	Praxis runtime	POST	/api/praxis/events
+695606	Praxis runtime	POST	/api/praxis/events
+696325	dashboard browser	GET	/api/praxis/dispatch-state
+696325	dashboard browser	GET	/api/dispatches/active
+696326	dashboard browser	GET	/api/dispatches/active
+696326	dashboard browser	GET	/api/dispatches/active
+696327	dashboard browser	GET	/api/calendar
+696327	dashboard browser	GET	/api/dispatch-insight/live-work
+696328	dashboard browser	GET	/api/activity
+696386	dashboard browser	GET	/api/ag/events
+696430	dashboard browser	GET	/api/projects/pulse
+696836	dashboard browser	GET	/api/praxis/hitl/pending
+697882	dashboard browser	GET	/api/praxis/council/sessions
+697884	dashboard browser	GET	/api/praxis/council/sessions
+698447	Praxis runtime	GET	/api/documents/:id/outgoing
+698457	Praxis runtime	GET	/api/documents/:id/outgoing
+698463	Praxis runtime	GET	/api/documents/:id/outgoing
+698470	Praxis runtime	GET	/api/documents/:id/outgoing
+698476	dashboard browser	GET	/api/ai/chat/activity
+698485	dashboard browser	GET	/api/knowledge-activity
+698722	Praxis runtime	GET	/api/members
+698953	Praxis runtime	GET	/api/members/:id
+698961	Praxis runtime	GET	/api/tasks
+699015	Praxis runtime	GET	/api/members/:id
+699017	Praxis runtime	GET	/api/tasks
+699026	Praxis runtime	GET	/api/tasks
+699028	Praxis runtime	GET	/api/tasks
+703471	dashboard browser	GET	/api/praxis/council/sessions
+703479	dashboard browser	GET	/api/praxis/dispatch-state
+703483	dashboard browser	GET	/api/dispatch-insight/autonomy
+703486	dashboard browser	GET	/api/token-usage
+703488	dashboard browser	GET	/api/dispatches/active
+703498	dashboard browser	GET	/api/calendar
+703500	dashboard browser	GET	/api/token-usage
+703501	dashboard browser	GET	/api/board-state
+703702	dashboard browser	GET	/api/projects/pulse
+703711	dashboard browser	GET	/api/praxis/hitl/pending
+703711	dashboard browser	GET	/api/dispatches/active
+703712	dashboard browser	GET	/api/token-usage
+703713	dashboard browser	GET	/api/dispatches/active
+703714	dashboard browser	GET	/api/praxis/council/sessions
+703714	dashboard browser	GET	/api/token-usage
+703714	dashboard browser	GET	/api/praxis/llm-log
+703714	dashboard browser	GET	/api/dispatch-insight/live-work
+703714	dashboard browser	GET	/api/ai/chat/activity
+703715	dashboard browser	GET	/api/praxis/council/sessions
+703715	dashboard browser	GET	/api/praxis/stats
+703715	dashboard browser	GET	/api/ag/events
+703764	dashboard browser	GET	/api/praxis/hitl/pending
+703764	dashboard browser	GET	/api/activity
+703866	dashboard browser	GET	/api/praxis/hitl/pending
+703867	dashboard browser	GET	/api/praxis/hitl/pending
+703867	dashboard browser	GET	/api/documents
+703872	dashboard browser	GET	/api/knowledge-activity
+703873	Praxis runtime	POST	/api/praxis/events
+704124	dashboard browser	GET	/api/praxis/council/arbiter
+704278	dashboard browser	GET	/api/praxis/hitl/pending
+704418	dashboard browser	GET	/api/praxis/council/benches
+708495	dashboard browser	GET	/api/ai/chat/activity
+708599	dashboard browser	GET	/api/knowledge-activity
+711253	mobile relay/client	GET	/api/fleet/health
+711259	mobile relay/client	GET	/api/health
+711261	mobile relay/client	GET	/api/studio/channels
+711261	Nexus internal	GET	/api/health
+712037	Praxis runtime	GET	/api/members
+712039	Praxis runtime	GET	/api/members
+712040	Praxis runtime	GET	/api/members
+713477	dashboard browser	GET	/api/dispatches/active
+713484	dashboard browser	GET	/api/ai/chat/activity
+713485	dashboard browser	GET	/api/dispatches/active
+713487	dashboard browser	GET	/api/dispatches/active
+713489	dashboard browser	GET	/api/knowledge-activity
+717720	Praxis runtime	GET	/api/tasks/:id
+717762	Praxis runtime	GET	/api/tasks/:id
+718574	dashboard browser	GET	/api/ai/chat/activity
+718578	dashboard browser	GET	/api/knowledge-activity
+718580	dashboard browser	GET	/api/praxis/llm-log
+718848	Praxis runtime	POST	/api/praxis/events
+722384	Praxis runtime	GET	/api/health
+723524	dashboard browser	GET	/api/praxis/dispatch-state
+723536	dashboard browser	GET	/api/dispatches/active
+723537	dashboard browser	GET	/api/dispatches/active
+723537	dashboard browser	GET	/api/knowledge-activity
+723538	dashboard browser	GET	/api/ai/chat/activity
+723538	dashboard browser	GET	/api/dispatches/active
+728522	dashboard browser	GET	/api/ai/chat/activity
+728532	dashboard browser	GET	/api/knowledge-activity
+732334	mobile relay/client	GET	/api/board-state
+733469	dashboard browser	GET	/api/praxis/council/sessions
+733471	dashboard browser	GET	/api/dispatch-insight/autonomy
+733471	dashboard browser	GET	/api/dispatches/active
+733473	dashboard browser	GET	/api/dispatches/active
+733482	dashboard browser	GET	/api/ai/chat/activity
+733483	dashboard browser	GET	/api/praxis/council/sessions
+733484	dashboard browser	GET	/api/dispatches/active
+733485	dashboard browser	GET	/api/praxis/council/sessions
+733485	dashboard browser	GET	/api/knowledge-activity
+733487	dashboard browser	GET	/api/praxis/llm-log
+733763	dashboard browser	GET	/api/praxis/council/arbiter
+733815	dashboard browser	GET	/api/praxis/council/benches
+733849	Praxis runtime	POST	/api/praxis/events
+738482	dashboard browser	GET	/api/ai/chat/activity
+738497	dashboard browser	GET	/api/knowledge-activity
+738720	dashboard browser	GET	/api/model-control/credentials
+743530	dashboard browser	GET	/api/praxis/dispatch-state
+743532	dashboard browser	GET	/api/dispatches/active
+743535	dashboard browser	GET	/api/dispatches/active
+743537	dashboard browser	GET	/api/dispatches/active
+743547	dashboard browser	GET	/api/knowledge-activity
+743618	dashboard browser	GET	/api/ai/chat/activity
+748490	dashboard browser	GET	/api/praxis/llm-log
+748492	dashboard browser	GET	/api/ai/chat/activity
+748494	dashboard browser	GET	/api/knowledge-activity
+748853	Praxis runtime	POST	/api/praxis/events
+749649	Praxis runtime	POST	/api/praxis/events
+749650	Praxis runtime	POST	/api/praxis/events
+750349	dashboard browser	GET	/api/praxis/dispatch-state
+750350	dashboard browser	GET	/api/dispatches/active
+750351	dashboard browser	GET	/api/dispatches/active
+750365	dashboard browser	GET	/api/calendar
+750366	dashboard browser	GET	/api/dispatches/active
+750375	dashboard browser	GET	/api/activity
+750431	dashboard browser	GET	/api/dispatch-insight/live-work
+750434	dashboard browser	GET	/api/ag/events
+750544	dashboard browser	GET	/api/projects/pulse
+751077	dashboard browser	GET	/api/praxis/hitl/pending
+751954	dashboard browser	GET	/api/praxis/council/sessions
+751967	dashboard browser	GET	/api/praxis/council/sessions
+752434	Praxis runtime	GET	/api/health
+753258	Praxis runtime	GET	/api/calendar
+753376	Praxis runtime	GET	/api/documents/:id/replacements/:id
+753385	Praxis runtime	GET	/api/tasks/:id
+753480	dashboard browser	GET	/api/dispatches/active
+753491	dashboard browser	GET	/api/ai/chat/activity
+753491	dashboard browser	GET	/api/dispatches/active
+753492	dashboard browser	GET	/api/dispatches/active
+753492	dashboard browser	GET	/api/knowledge-activity
+753567	Praxis runtime	POST	/api/write-leases
+753569	Praxis runtime	GET	/api/tasks/:id
+753571	Praxis runtime	DELETE	/api/write-leases
+753573	Praxis runtime	POST	/api/write-leases
+753574	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+753576	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+753577	Praxis runtime	POST	/api/write-leases
+753578	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+753581	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+753582	Praxis runtime	POST	/api/write-leases
+753584	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+753586	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+753587	Praxis runtime	POST	/api/write-leases
+753588	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+753590	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+753591	Praxis runtime	POST	/api/write-leases
+753592	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+753594	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+753595	Praxis runtime	POST	/api/write-leases
+753596	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+753597	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+753598	Praxis runtime	POST	/api/write-leases
+753599	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+753600	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+753601	Praxis runtime	POST	/api/write-leases
+753602	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+753603	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+753604	Praxis runtime	POST	/api/write-leases
+753605	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+753606	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+753607	Praxis runtime	POST	/api/write-leases
+753608	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+753609	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+753610	Praxis runtime	POST	/api/write-leases
+753611	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+753613	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+753613	Praxis runtime	GET	/api/board-state
+753854	Praxis runtime	GET	/api/calendar
+753855	Praxis runtime	POST	/api/praxis/events
+754449	dashboard browser	GET	/api/activity
+754523	dashboard browser	GET	/api/projects/pulse
+754527	dashboard browser	GET	/api/ag/events
+754898	dashboard browser	GET	/api/praxis/hitl/pending
+756027	dashboard browser	GET	/api/praxis/council/sessions
+756028	dashboard browser	GET	/api/praxis/council/sessions
+758485	dashboard browser	GET	/api/ai/chat/activity
+758497	dashboard browser	GET	/api/knowledge-activity
+763171	Praxis runtime	POST	/api/praxis/events
+763172	Praxis runtime	POST	/api/praxis/events
+763659	dashboard browser	GET	/api/praxis/dispatch-state
+763661	dashboard browser	GET	/api/praxis/hitl/pending
+763661	dashboard browser	GET	/api/dispatch-insight/autonomy
+763662	dashboard browser	GET	/api/praxis/council/sessions
+763663	dashboard browser	GET	/api/board-state
+763882	Praxis runtime	POST	/api/praxis/events
+763883	dashboard browser	GET	/api/praxis/council/sessions
+763883	dashboard browser	GET	/api/dispatches/active
+763884	dashboard browser	GET	/api/token-usage
+763886	dashboard browser	GET	/api/praxis/hitl/pending
+763886	dashboard browser	GET	/api/token-usage
+763887	dashboard browser	GET	/api/praxis/stats
+763887	dashboard browser	GET	/api/praxis/council/sessions
+763888	dashboard browser	GET	/api/ingestion-control/topic-map
+763888	dashboard browser	GET	/api/dispatches/active
+763888	dashboard browser	GET	/api/dispatches/active
+763889	dashboard browser	GET	/api/token-usage
+763889	dashboard browser	GET	/api/token-usage
+763889	dashboard browser	GET	/api/ai/chat/activity
+763890	dashboard browser	GET	/api/praxis/llm-log
+763890	dashboard browser	GET	/api/dispatch-insight/live-work
+763890	dashboard browser	GET	/api/calendar
+763891	dashboard browser	GET	/api/documents
+763894	dashboard browser	GET	/api/praxis/hitl/pending
+763895	dashboard browser	GET	/api/praxis/hitl/pending
+763895	dashboard browser	GET	/api/activity
+763954	dashboard browser	GET	/api/ag/events
+764053	dashboard browser	GET	/api/projects/pulse
+764058	dashboard browser	GET	/api/praxis/voice-status
+764059	dashboard browser	GET	/api/knowledge-activity
+764176	dashboard browser	GET	/api/dispatches/active
+764177	dashboard browser	GET	/api/dispatches/active
+764177	dashboard browser	GET	/api/dispatches/active
+764178	dashboard browser	GET	/api/activity
+764229	dashboard browser	GET	/api/calendar
+764230	dashboard browser	GET	/api/ag/events
+764279	dashboard browser	GET	/api/projects/pulse
+764283	dashboard browser	GET	/api/dispatch-insight/live-work
+764478	dashboard browser	GET	/api/praxis/council/arbiter
+764662	Praxis runtime	POST	/api/praxis/events
+764663	Praxis runtime	POST	/api/praxis/events
+764710	dashboard browser	GET	/api/praxis/hitl/pending
+765045	dashboard browser	GET	/api/praxis/council/benches
+765087	dashboard browser	GET	/api/praxis/hitl/pending
+765289	dashboard browser	GET	/api/praxis/dispatch-state
+765296	dashboard browser	GET	/api/dispatches/active
+765297	dashboard browser	GET	/api/dispatches/active
+765298	dashboard browser	GET	/api/dispatch-insight/live-work
+765341	dashboard browser	GET	/api/calendar
+765341	dashboard browser	GET	/api/dispatches/active
+765342	dashboard browser	GET	/api/activity
+765390	dashboard browser	GET	/api/ag/events
+765441	dashboard browser	GET	/api/projects/pulse
+765944	dashboard browser	GET	/api/praxis/hitl/pending
+766902	dashboard browser	GET	/api/praxis/council/sessions
+766955	dashboard browser	GET	/api/praxis/council/sessions
+768490	dashboard browser	GET	/api/ai/chat/activity
+768503	dashboard browser	GET	/api/knowledge-activity
+769168	Praxis runtime	POST	/api/praxis/events
+769169	Praxis runtime	POST	/api/praxis/events
+770074	dashboard browser	GET	/api/praxis/dispatch-state
+770076	dashboard browser	GET	/api/dispatches/active
+770077	dashboard browser	GET	/api/calendar
+770079	dashboard browser	GET	/api/dispatches/active
+770088	dashboard browser	GET	/api/dispatches/active
+770089	dashboard browser	GET	/api/dispatch-insight/live-work
+770090	dashboard browser	GET	/api/ag/events
+770156	dashboard browser	GET	/api/activity
+770209	dashboard browser	GET	/api/projects/pulse
+770825	dashboard browser	GET	/api/praxis/hitl/pending
+771654	dashboard browser	GET	/api/praxis/council/sessions
+771655	dashboard browser	GET	/api/praxis/council/sessions
+772328	mobile relay/client	GET	/api/fleet/health
+772330	Nexus internal	GET	/api/health
+772342	mobile relay/client	GET	/api/health
+772342	mobile relay/client	GET	/api/studio/channels
+773489	dashboard browser	GET	/api/dispatches/active
+773491	dashboard browser	GET	/api/dispatches/active
+773503	dashboard browser	GET	/api/dispatches/active
+773504	dashboard browser	GET	/api/ai/chat/activity
+773504	dashboard browser	GET	/api/knowledge-activity
+777796	Praxis runtime	GET	/api/tasks/:id
+777836	Praxis runtime	GET	/api/tasks/:id
+778211	Praxis runtime	POST	/api/praxis/events
+778213	Praxis runtime	POST	/api/praxis/events
+778659	dashboard browser	GET	/api/praxis/llm-log
+778660	dashboard browser	GET	/api/ai/chat/activity
+778682	dashboard browser	GET	/api/knowledge-activity
+778855	Praxis runtime	POST	/api/praxis/events
+778856	dashboard browser	GET	/api/praxis/dispatch-state
+778857	dashboard browser	GET	/api/dispatches/active
+778858	dashboard browser	GET	/api/dispatches/active
+778859	dashboard browser	GET	/api/projects/pulse
+778868	dashboard browser	GET	/api/calendar
+778868	dashboard browser	GET	/api/activity
+778921	dashboard browser	GET	/api/dispatch-insight/live-work
+778922	dashboard browser	GET	/api/ag/events
+778970	dashboard browser	GET	/api/dispatches/active
+779265	dashboard browser	GET	/api/praxis/hitl/pending
+780448	dashboard browser	GET	/api/praxis/council/sessions
+780449	dashboard browser	GET	/api/praxis/council/sessions
+781136	mobile relay/client	GET	/api/board-state
+781353	mobile relay/client	GET	/api/health
+781354	mobile relay/client	GET	/api/studio/channels
+781355	mobile relay/client	GET	/api/fleet/health
+781356	Nexus internal	GET	/api/health
+782513	Praxis runtime	GET	/api/health
+782682	Praxis runtime	POST	/api/praxis/events
+782683	Praxis runtime	POST	/api/praxis/events
+783374	dashboard browser	GET	/api/praxis/dispatch-state
+783384	dashboard browser	GET	/api/dispatches/active
+783386	dashboard browser	GET	/api/dispatches/active
+783387	dashboard browser	GET	/api/dispatches/active
+783388	dashboard browser	GET	/api/calendar
+783389	dashboard browser	GET	/api/dispatch-insight/live-work
+783394	dashboard browser	GET	/api/activity
+783450	dashboard browser	GET	/api/ag/events
+783500	dashboard browser	GET	/api/projects/pulse
+783503	dashboard browser	GET	/api/dispatches/active
+783504	dashboard browser	GET	/api/dispatches/active
+783504	dashboard browser	GET	/api/dispatches/active
+783575	dashboard browser	GET	/api/ai/chat/activity
+783576	dashboard browser	GET	/api/knowledge-activity
+783799	dashboard browser	GET	/api/praxis/hitl/pending
+784974	dashboard browser	GET	/api/praxis/council/sessions
+784975	dashboard browser	GET	/api/praxis/council/sessions
+788476	dashboard browser	GET	/api/ai/chat/activity
+788488	dashboard browser	GET	/api/knowledge-activity
+788693	Praxis runtime	POST	/api/praxis/events
+788694	Praxis runtime	POST	/api/praxis/events
+789343	dashboard browser	GET	/api/dispatches/active
+789346	dashboard browser	GET	/api/dispatches/active
+789347	dashboard browser	GET	/api/praxis/dispatch-state
+789348	dashboard browser	GET	/api/dispatches/active
+789349	dashboard browser	GET	/api/dispatch-insight/live-work
+789355	dashboard browser	GET	/api/calendar
+789356	dashboard browser	GET	/api/ag/events
+789418	dashboard browser	GET	/api/activity
+789468	dashboard browser	GET	/api/projects/pulse
+789587	dashboard browser	GET	/api/praxis/hitl/pending
+790977	dashboard browser	GET	/api/praxis/council/sessions
+791044	dashboard browser	GET	/api/praxis/council/sessions
+793539	dashboard browser	GET	/api/praxis/council/sessions
+793540	dashboard browser	GET	/api/dispatches/active
+793544	dashboard browser	GET	/api/dispatch-insight/autonomy
+793546	dashboard browser	GET	/api/dispatches/active
+793547	dashboard browser	GET	/api/praxis/council/sessions
+793550	dashboard browser	GET	/api/knowledge-activity
+793551	dashboard browser	GET	/api/ai/chat/activity
+793553	dashboard browser	GET	/api/praxis/council/sessions
+793554	dashboard browser	GET	/api/dispatches/active
+793556	dashboard browser	GET	/api/praxis/llm-log
+793798	dashboard browser	GET	/api/praxis/council/arbiter
+793857	Praxis runtime	POST	/api/praxis/events
+793894	dashboard browser	GET	/api/praxis/council/benches
+798475	dashboard browser	GET	/api/ai/chat/activity
+798489	dashboard browser	GET	/api/knowledge-activity
+798780	dashboard browser	GET	/api/model-control/credentials
+803494	dashboard browser	GET	/api/praxis/dispatch-state
+803496	dashboard browser	GET	/api/dispatches/active
+803497	dashboard browser	GET	/api/dispatches/active
+803504	dashboard browser	GET	/api/dispatches/active
+803505	dashboard browser	GET	/api/ai/chat/activity
+803516	dashboard browser	GET	/api/knowledge-activity
+808474	dashboard browser	GET	/api/ai/chat/activity
+808499	dashboard browser	GET	/api/knowledge-activity
+808501	dashboard browser	GET	/api/praxis/llm-log
+808860	Praxis runtime	POST	/api/praxis/events
+812563	Praxis runtime	GET	/api/health
+813246	Praxis runtime	GET	/api/calendar
+813489	dashboard browser	GET	/api/dispatches/active
+813490	dashboard browser	GET	/api/dispatches/active
+813490	dashboard browser	GET	/api/ai/chat/activity
+813490	dashboard browser	GET	/api/dispatches/active
+813516	dashboard browser	GET	/api/knowledge-activity
+813568	Praxis runtime	POST	/api/write-leases
+813570	Praxis runtime	GET	/api/tasks/:id
+813572	Praxis runtime	DELETE	/api/write-leases
+813573	Praxis runtime	POST	/api/write-leases
+813574	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+813576	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+813577	Praxis runtime	POST	/api/write-leases
+813578	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+813580	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+813581	Praxis runtime	POST	/api/write-leases
+813582	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+813584	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+813585	Praxis runtime	POST	/api/write-leases
+813586	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+813588	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+813589	Praxis runtime	POST	/api/write-leases
+813590	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+813592	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+813593	Praxis runtime	POST	/api/write-leases
+813593	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+813595	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+813596	Praxis runtime	POST	/api/write-leases
+813597	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+813599	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+813599	Praxis runtime	POST	/api/write-leases
+813600	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+813602	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+813603	Praxis runtime	POST	/api/write-leases
+813604	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+813605	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+813606	Praxis runtime	POST	/api/write-leases
+813607	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+813609	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+813610	Praxis runtime	POST	/api/write-leases
+813611	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+813613	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+813613	Praxis runtime	GET	/api/board-state
+813888	Praxis runtime	GET	/api/calendar
+813889	Praxis runtime	POST	/api/praxis/events
+814797	dashboard browser	GET	/api/projects/pulse
+814862	dashboard browser	GET	/api/activity
+814913	dashboard browser	GET	/api/ag/events
+815316	dashboard browser	GET	/api/praxis/hitl/pending
+816136	dashboard browser	GET	/api/praxis/council/sessions
+816137	dashboard browser	GET	/api/praxis/council/sessions
+818482	dashboard browser	GET	/api/ai/chat/activity
+818482	dashboard browser	GET	/api/knowledge-activity
+819024	Praxis runtime	GET	/api/documents/:id/outgoing
+819033	Praxis runtime	GET	/api/documents/:id/outgoing
+819039	Praxis runtime	GET	/api/documents/:id/outgoing
+819045	Praxis runtime	GET	/api/documents/:id/outgoing
+819278	Praxis runtime	GET	/api/members
+819573	Praxis runtime	GET	/api/members/:id
+819575	Praxis runtime	GET	/api/tasks
+819606	Praxis runtime	GET	/api/members/:id
+819607	Praxis runtime	GET	/api/tasks
+819614	Praxis runtime	GET	/api/tasks
+819616	Praxis runtime	GET	/api/tasks
+823475	dashboard browser	GET	/api/praxis/dispatch-state
+823481	dashboard browser	GET	/api/praxis/council/sessions
+823482	dashboard browser	GET	/api/dispatches/active
+823484	dashboard browser	GET	/api/praxis/hitl/pending
+823485	dashboard browser	GET	/api/token-usage
+823485	dashboard browser	GET	/api/token-usage
+823486	dashboard browser	GET	/api/board-state
+823695	dashboard browser	GET	/api/token-usage
+823699	dashboard browser	GET	/api/dispatch-insight/autonomy
+823700	dashboard browser	GET	/api/praxis/council/sessions
+823700	dashboard browser	GET	/api/dispatches/active
+823702	dashboard browser	GET	/api/dispatches/active
+823703	dashboard browser	GET	/api/praxis/council/sessions
+823703	dashboard browser	GET	/api/ai/chat/activity
+823704	dashboard browser	GET	/api/praxis/stats
+823704	dashboard browser	GET	/api/token-usage
+823704	dashboard browser	GET	/api/praxis/llm-log
+823704	dashboard browser	GET	/api/activity
+823758	dashboard browser	GET	/api/dispatch-insight/live-work
+823758	dashboard browser	GET	/api/calendar
+823758	dashboard browser	GET	/api/praxis/hitl/pending
+823759	dashboard browser	GET	/api/ag/events
+823808	dashboard browser	GET	/api/projects/pulse
+823812	dashboard browser	GET	/api/praxis/hitl/pending
+823813	dashboard browser	GET	/api/documents
+823817	dashboard browser	GET	/api/praxis/hitl/pending
+823818	dashboard browser	GET	/api/knowledge-activity
+823897	Praxis runtime	POST	/api/praxis/events
+824239	dashboard browser	GET	/api/praxis/council/arbiter
+824359	dashboard browser	GET	/api/praxis/hitl/pending
+824497	dashboard browser	GET	/api/praxis/council/benches
+828493	dashboard browser	GET	/api/ai/chat/activity
+828494	dashboard browser	GET	/api/knowledge-activity
+832440	Praxis runtime	GET	/api/members
+832441	Praxis runtime	GET	/api/members
+832442	Praxis runtime	GET	/api/members
+833481	dashboard browser	GET	/api/dispatches/active
+833483	dashboard browser	GET	/api/ai/chat/activity
+833484	dashboard browser	GET	/api/knowledge-activity
+833486	dashboard browser	GET	/api/dispatches/active
+833487	dashboard browser	GET	/api/dispatches/active
+835619	mobile relay/client	GET	/api/fleet/health
+835621	mobile relay/client	GET	/api/health
+835622	mobile relay/client	GET	/api/studio/channels
+835623	Nexus internal	GET	/api/health
+837862	Praxis runtime	GET	/api/tasks/:id
+837893	Praxis runtime	GET	/api/tasks/:id
+838486	dashboard browser	GET	/api/ai/chat/activity
+838487	dashboard browser	GET	/api/praxis/llm-log
+838530	dashboard browser	GET	/api/knowledge-activity
+838861	Praxis runtime	POST	/api/praxis/events
+842123	mobile relay/client	GET	/api/board-state
+842617	Praxis runtime	GET	/api/health
+843479	dashboard browser	GET	/api/praxis/dispatch-state
+843496	dashboard browser	GET	/api/dispatches/active
+843496	dashboard browser	GET	/api/dispatches/active
+843496	dashboard browser	GET	/api/dispatches/active
+843509	dashboard browser	GET	/api/ai/chat/activity
+843522	dashboard browser	GET	/api/knowledge-activity
+848481	dashboard browser	GET	/api/ai/chat/activity
+848494	dashboard browser	GET	/api/knowledge-activity
+853469	dashboard browser	GET	/api/praxis/council/sessions
+853479	dashboard browser	GET	/api/dispatch-insight/autonomy
+853480	dashboard browser	GET	/api/dispatches/active
+853481	dashboard browser	GET	/api/praxis/council/sessions
+853482	dashboard browser	GET	/api/dispatches/active
+853497	dashboard browser	GET	/api/praxis/council/sessions
+853497	dashboard browser	GET	/api/dispatches/active
+853499	dashboard browser	GET	/api/ai/chat/activity
+853499	dashboard browser	GET	/api/praxis/llm-log
+853525	dashboard browser	GET	/api/knowledge-activity
+853736	dashboard browser	GET	/api/praxis/council/arbiter
+853865	Praxis runtime	POST	/api/praxis/events
+853869	dashboard browser	GET	/api/praxis/council/benches
+858543	dashboard browser	GET	/api/ai/chat/activity
+858556	dashboard browser	GET	/api/knowledge-activity
+858721	dashboard browser	GET	/api/model-control/credentials
+863560	dashboard browser	GET	/api/praxis/dispatch-state
+863562	dashboard browser	GET	/api/dispatches/active
+863562	dashboard browser	GET	/api/dispatches/active
+863574	dashboard browser	GET	/api/dispatches/active
+863575	dashboard browser	GET	/api/ai/chat/activity
+863577	dashboard browser	GET	/api/knowledge-activity
+868516	dashboard browser	GET	/api/ai/chat/activity
+868517	dashboard browser	GET	/api/praxis/llm-log
+868518	dashboard browser	GET	/api/knowledge-activity
+868867	Praxis runtime	POST	/api/praxis/events
+872668	Praxis runtime	GET	/api/health
+873247	Praxis runtime	GET	/api/calendar
+873333	Praxis runtime	GET	/api/documents/:id/replacements/:id
+873342	Praxis runtime	GET	/api/tasks/:id
+873491	dashboard browser	GET	/api/dispatches/active
+873491	dashboard browser	GET	/api/dispatches/active
+873501	dashboard browser	GET	/api/ai/chat/activity
+873502	dashboard browser	GET	/api/knowledge-activity
+873515	dashboard browser	GET	/api/dispatches/active
+873572	Praxis runtime	POST	/api/write-leases
+873573	Praxis runtime	GET	/api/tasks/:id
+873576	Praxis runtime	DELETE	/api/write-leases
+873577	Praxis runtime	POST	/api/write-leases
+873578	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+873581	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+873582	Praxis runtime	POST	/api/write-leases
+873582	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+873585	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+873586	Praxis runtime	POST	/api/write-leases
+873586	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+873589	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+873590	Praxis runtime	POST	/api/write-leases
+873592	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+873594	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+873595	Praxis runtime	POST	/api/write-leases
+873596	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+873598	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+873598	Praxis runtime	POST	/api/write-leases
+873599	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+873601	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+873602	Praxis runtime	POST	/api/write-leases
+873603	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+873605	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+873606	Praxis runtime	POST	/api/write-leases
+873606	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+873608	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+873609	Praxis runtime	POST	/api/write-leases
+873610	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+873612	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+873613	Praxis runtime	POST	/api/write-leases
+873614	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+873616	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+873617	Praxis runtime	POST	/api/write-leases
+873617	Praxis runtime (lease triplet)	GET	/api/tasks/:id
+873620	Praxis runtime (lease triplet)	DELETE	/api/write-leases
+873621	Praxis runtime	GET	/api/board-state
+873894	Praxis runtime	GET	/api/calendar
+873895	Praxis runtime	POST	/api/praxis/events
+874514	dashboard browser	GET	/api/activity
+874581	dashboard browser	GET	/api/ag/events
+874823	dashboard browser	GET	/api/praxis/hitl/pending
+876051	dashboard browser	GET	/api/praxis/council/sessions
+876052	dashboard browser	GET	/api/praxis/council/sessions
+878477	dashboard browser	GET	/api/ai/chat/activity
+878486	dashboard browser	GET	/api/knowledge-activity
+883529	dashboard browser	GET	/api/praxis/dispatch-state
+883531	dashboard browser	GET	/api/praxis/stats
+883532	dashboard browser	GET	/api/praxis/hitl/pending
+883533	dashboard browser	GET	/api/praxis/council/sessions
+883534	dashboard browser	GET	/api/praxis/llm-log
+883535	dashboard browser	GET	/api/praxis/hitl/pending
+883536	dashboard browser	GET	/api/praxis/council/sessions
+883537	dashboard browser	GET	/api/calendar
+883539	dashboard browser	GET	/api/praxis/council/sessions
+883540	dashboard browser	GET	/api/ai/chat/activity
+883541	dashboard browser	GET	/api/board-state
+883757	dashboard browser	GET	/api/documents
+883760	dashboard browser	GET	/api/projects/pulse
+883816	dashboard browser	GET	/api/activity
+883867	dashboard browser	GET	/api/praxis/hitl/pending
+883867	dashboard browser	GET	/api/ag/events
+883917	dashboard browser	GET	/api/token-usage
+883918	dashboard browser	GET	/api/dispatch-insight/live-work
+883919	dashboard browser	GET	/api/token-usage
+883919	dashboard browser	GET	/api/dispatches/active
+883920	dashboard browser	GET	/api/dispatch-insight/autonomy
+883920	dashboard browser	GET	/api/dispatches/active
+883921	dashboard browser	GET	/api/dispatches/active
+883921	dashboard browser	GET	/api/token-usage
+883921	dashboard browser	GET	/api/token-usage
+883921	dashboard browser	GET	/api/knowledge-activity
+883922	dashboard browser	GET	/api/praxis/hitl/pending
+883922	Praxis runtime	POST	/api/praxis/events
+884250	dashboard browser	GET	/api/praxis/council/arbiter
+884408	dashboard browser	GET	/api/praxis/hitl/pending
+884439	dashboard browser	GET	/api/praxis/council/benches
+888478	dashboard browser	GET	/api/knowledge-activity
+888479	dashboard browser	GET	/api/ai/chat/activity
+890974	dashboard browser	GET	/api/health
+891213	dashboard browser	GET	/api/praxis/llm-log
+891213	dashboard browser	GET	/api/praxis/council/sessions
+891215	dashboard browser	GET	/api/model-control/credentials
+891261	dashboard browser	GET	/api/praxis/hitl/pending
+891274	dashboard browser	GET	/api/praxis/stats
+891280	dashboard browser	GET	/api/dispatch-insight/live-work
+891281	dashboard browser	GET	/api/calendar
+891282	dashboard browser	GET	/api/praxis/hitl/pending
+891285	dashboard browser	GET	/api/activity
+891389	dashboard browser	GET	/api/ag/events
+891440	dashboard browser	GET	/api/praxis/hitl/pending
+891441	dashboard browser	GET	/api/documents
+891447	dashboard browser	GET	/api/praxis/hitl/pending
+891447	dashboard browser	GET	/api/projects/pulse
+891451	dashboard browser	GET	/api/praxis/voice-status
+891452	dashboard browser	GET	/api/ingestion-control/topic-map
+891458	dashboard browser	GET	/api/praxis/dispatch-state
+891459	dashboard browser	GET	/api/calendar
+891461	dashboard browser	GET	/api/dispatch-insight/live-work
+891515	dashboard browser	GET	/api/praxis/council/arbiter
+891809	dashboard browser	GET	/api/chat/active
+891828	dashboard browser	GET	/api/activity
+891876	dashboard browser	GET	/api/ag/events
+891921	dashboard browser	GET	/api/projects/pulse
+891924	dashboard browser	GET	/api/praxis/stream/snapshot
+892063	dashboard browser	GET	/api/praxis/hitl/pending
+892103	dashboard browser	GET	/api/praxis/council/arbiter
+892111	dashboard browser	GET	/api/praxis/council/benches
+892336	Praxis runtime	POST	/api/praxis/events
+892337	Praxis runtime	POST	/api/praxis/events
+892641	dashboard browser	GET	/api/praxis/hitl/pending
+892900	dashboard browser	GET	/api/dispatches/active
+892902	dashboard browser	GET	/api/dispatches/active
+892903	dashboard browser	GET	/api/praxis/dispatch-state
+892913	dashboard browser	GET	/api/dispatches/active
+892914	dashboard browser	GET	/api/ag/events
+892969	dashboard browser	GET	/api/projects/pulse
+892974	dashboard browser	GET	/api/dispatch-insight/live-work
+893018	dashboard browser	GET	/api/activity
+893066	dashboard browser	GET	/api/calendar
+893167	dashboard browser	GET	/api/praxis/hitl/pending
+893235	dashboard browser	GET	/api/praxis/hitl/pending
+893236	dashboard browser	GET	/api/board-state
+893428	dashboard browser	GET	/api/praxis/hitl/pending
+893428	dashboard browser	GET	/api/praxis/hitl/pending
+893430	dashboard browser	GET	/api/praxis/hitl/pending
+893431	dashboard browser	GET	/api/health
+893476	dashboard browser	GET	/api/praxis/council/benches
+893483	dashboard browser	GET	/api/dispatches/active
+893484	dashboard browser	GET	/api/dispatches/active
+893523	dashboard browser	GET	/api/dispatches/active
+893523	dashboard browser	GET	/api/knowledge-activity
+893524	dashboard browser	GET	/api/ai/chat/activity
+893529	dashboard browser	GET	/api/praxis/stream/snapshot
+893684	dashboard browser	GET	/api/praxis/hitl/pending
+894206	dashboard browser	GET	/api/praxis/dispatch-state
+894207	dashboard browser	GET	/api/praxis/hitl/pending
+894208	dashboard browser	GET	/api/board-state
+894397	dashboard browser	GET	/api/dispatch-insight/live-work
+894398	dashboard browser	GET	/api/praxis/hitl/pending
+894405	dashboard browser	GET	/api/activity
+894501	dashboard browser	GET	/api/praxis/council/sessions
+894502	dashboard browser	GET	/api/praxis/council/sessions
+894502	dashboard browser	GET	/api/calendar
+894502	dashboard browser	GET	/api/ag/events
+894553	dashboard browser	GET	/api/praxis/hitl/pending
+894554	dashboard browser	GET	/api/projects/pulse
+894560	dashboard browser	GET	/api/praxis/hitl/pending
+895233	dashboard browser	GET	/api/praxis/hitl/pending
+897918	Praxis runtime	GET	/api/tasks/:id
+897949	Praxis runtime	GET	/api/tasks/:id
+898474	dashboard browser	GET	/api/ai/chat/activity
+898491	dashboard browser	GET	/api/knowledge-activity
+898492	dashboard browser	GET	/api/praxis/llm-log
+898871	Praxis runtime	POST	/api/praxis/events
+899060	mobile relay/client	GET	/api/fleet/health
+899062	mobile relay/client	GET	/api/health
+899064	mobile relay/client	GET	/api/studio/channels
+899065	Nexus internal	GET	/api/health
