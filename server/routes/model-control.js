@@ -290,7 +290,7 @@ function createModelControlRouter({ db, syncModelSources, callAI, io }) {
             const { praxisFetch } = require('../services/praxis-client');
             praxisFetch('/api/state-doc/refresh', {
                 method: 'POST',
-                body: { reason: `model-control: ${reason}` },
+                body: { reason: `model-control: ${reason}`, defer: true },
                 timeoutMs: 15000,
             }).catch(() => { /* Praxis down or restarting — the heartbeat catches up */ });
         } catch {

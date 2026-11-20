@@ -1,3 +1,4 @@
+jest.mock('../services/praxis-client', () => ({ ...jest.requireActual('../services/praxis-client'), praxisFetch: jest.fn(async () => ({ ok: true })) }));
 const express = require('express');
 const http = require('http');
 const fs = require('fs');

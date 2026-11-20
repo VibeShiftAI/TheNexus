@@ -9,11 +9,7 @@
  *   - /api/documents/*              the real documents router;
  *   - /api/projects/<fixture id>/*  the real tasks router (feature comments);
  *     both on a temporary SQLite database (NEXUS_DB_PATH in a fresh temp dir);
- *   - anything else                 passed through unchanged to the API the
- *     dashboard uses when NEXT_PUBLIC_API_URL is unset (the contract's default
- *     nexus endpoint), so the rest of the page loads as it does without this
- *     script. Those are the page's ordinary reads; the fixture writes never
- *     leave the temp database.
+ *   - anything else is forwarded to the caller's isolated local test API.
  *
  * Fixture: one project rooted in the temp dir, one task, one Markdown document
  * registered for review, and one feature comment inserted with the facade's
@@ -51,6 +47,13 @@ const closedPort = () => new Promise((resolve) => {
 });
 
 (async () => {
+    const configured = process.env.CHECK_UPSTREAM_API;
+    if (!configured) throw new Error("Set CHECK_UPSTREAM_API to an isolated Nexus API on a test port.");
+    const upstream = new URL(configured);
+    if (upstream.protocol !== "http:" || !["localhost", "127.0.0.1"].includes(upstream.hostname) ||
+        !upstream.port || upstream.port === "4000") {
+        throw new Error("CHECK_UPSTREAM_API requires a loopback test port separate from the shared API on 4000.");
+    }
     // realpath: the documents router checks a project root lexically before
     // resolving it, and macOS /tmp is a symlink to /private/tmp.
     const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "nexus-retired-api-")));
@@ -61,7 +64,6 @@ const closedPort = () => new Promise((resolve) => {
     process.env.PRAXIS_URL = `http://127.0.0.1:${await closedPort()}`;
 
     const express = fromRoot("express");
-    const { resolveEndpoints } = fromRoot("@praxis/contract");
     const db = require(path.join(ROOT, "db"));
     const createDocumentsRouter = require(path.join(ROOT, "server", "routes", "documents"));
     const createTasksRouter = require(path.join(ROOT, "server", "routes", "tasks"));
@@ -83,7 +85,6 @@ const closedPort = () => new Promise((resolve) => {
         callAI: unavailable, validateInitiativeRequest: unavailable, pushService: null,
     }));
 
-    const upstream = new URL(resolveEndpoints({}).nexus);
     const passThrough = (req, res) => {
         const up = http.request({ host: upstream.hostname, port: upstream.port, method: req.method, path: req.originalUrl, headers: req.headers }, (answer) => {
             res.writeHead(answer.statusCode, answer.headers);

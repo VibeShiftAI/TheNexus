@@ -7,8 +7,8 @@
  * One foreground process owns the stack and tears it down by process group:
  *   - scripts/retired-backends-check-api.cjs: the real documents and tasks
  *     routers on a temporary SQLite database for the comment fixtures; every
- *     other /api path is passed through to the default API (live :4000), so
- *     the rest of the page reads what it always reads;
+ *     other /api path is passed through to CHECK_UPSTREAM_API, an isolated
+ *     local Nexus instance supplied for the check;
  *   - `next dev --webpack` from CHECK_DASHBOARD (default: this checkout) on an
  *     OS-assigned port, NEXT_PUBLIC_API_URL pointing at that API, dist dir
  *     .next-verify-retired. Webpack, not Turbopack: a Praxis worktree links
@@ -16,11 +16,8 @@
  *     symlink that leaves the repo root;
  *   - headless Chrome over CDP.
  *
- * The chat provider calls http://localhost:4000 directly whenever the page
- * host is localhost (cortex-provider.tsx apiBase), and the live API's CORS
- * list only admits :3000, so the tab runs with --disable-web-security. That
- * changes nothing the check measures; it only lets a second origin read what
- * :3000 reads.
+ * Historical clients hardcode the shared localhost port for chat and sockets.
+ * Chrome maps those connections to the same isolated upstream as the proxy.
  *
  * No step waits a fixed time. Readiness comes from the children themselves
  * (the API's CHECK_READY line, next dev's "Ready in" line, Chrome's "DevTools
@@ -62,6 +59,7 @@
  *   own; on the baseline tree it lists /api/terminal/state, because that tree
  *   keeps the stale thread id A leaves in storage).
  *
+ *   export CHECK_UPSTREAM_API=http://127.0.0.1:<isolated-api-port>
  *   node scripts/retired-backends-browser-check.mjs
  *   CHECK_LABEL=before CHECK_DASHBOARD=<baseline>/dashboard CHECK_SERVER_ROOT=<baseline> node scripts/retired-backends-browser-check.mjs
  *   CHECK_COMPARE=<out>/before/report.json node scripts/retired-backends-browser-check.mjs
@@ -190,13 +188,15 @@ console.log(`CHECK_API ${fixture.api} (db/server from ${fixture.serverRoot}; oth
 const devPort = await freePort();
 tsconfigSnapshot = fs.readFileSync(path.join(DASHBOARD, "tsconfig.json"));
 const dev = start("next-dev", "npx", ["next", "dev", "--webpack", "-p", String(devPort)],
-  { cwd: DASHBOARD, env: { ...process.env, NEXT_DIST_DIR: distDir, NEXT_PUBLIC_API_URL: fixture.api } }, /\bReady in\b/);
+  { cwd: DASHBOARD, env: { ...process.env, NEXT_DIST_DIR: distDir, NEXUS_API_URL: fixture.api, NEXT_PUBLIC_API_URL: fixture.api } }, /\bReady in\b/);
 try { await dev.ready; } catch (err) { await abort(err.message); }
 const BASE = `http://localhost:${devPort}`;
 console.log(`CHECK_BASE ${BASE} (${LABEL}; dashboard ${DASHBOARD})`);
 
 profile = fs.mkdtempSync(path.join(os.tmpdir(), "nexus-retired-chrome-"));
-const chrome = start("chrome", CHROME, ["--headless=new", "--remote-debugging-port=0", `--user-data-dir=${profile}`,
+const isolatedPeer = new URL(fixture.upstream).host;
+const chrome = start("chrome", CHROME, [
+  `--host-resolver-rules=MAP localhost:4000 ${isolatedPeer}, MAP 127.0.0.1:4000 ${isolatedPeer}`,"--headless=new", "--remote-debugging-port=0", `--user-data-dir=${profile}`,
   "--no-first-run", "--disable-gpu", "--hide-scrollbars", ...(process.env.CHECK_WEB_SECURITY === "1" ? [] : ["--disable-web-security"]),
   "--autoplay-policy=user-gesture-required", "about:blank"], {}, /DevTools listening on (ws:\/\/\S+)/);
 let browserWs;
