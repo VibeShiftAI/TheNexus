@@ -3,9 +3,10 @@ import { useCallback, useSyncExternalStore } from 'react';
 // One timer and one outstanding read per resource in this page, even when
 // consumers mount at different times. Stop when the last panel unmounts.
 export function createSharedPoll<T>(load: () => Promise<T>) {
-    const empty = { value: null as T | null, error: false };
+    type Cadence = number | ((value: T | null) => number);
+    const empty = { value: null as T | null, failures: 0 };
     let snapshot = empty;
-    const subscribers = new Map<() => void, number>();
+    const subscribers = new Map<() => void, Cadence>();
     let timer: ReturnType<typeof setInterval> | undefined;
     let interval = 0;
     let pending: Promise<void> | undefined;
@@ -13,30 +14,33 @@ export function createSharedPoll<T>(load: () => Promise<T>) {
     function refresh() {
         if (!subscribers.size || document.hidden || pending) return;
         pending = Promise.resolve().then(async () => {
-            if (!subscribers.size) return;
+            if (!subscribers.size || document.hidden) return;
             try {
                 const value = await load();
-                if (subscribers.size) snapshot = { value, error: false };
+                if (subscribers.size) snapshot = { value, failures: 0 };
             } catch {
-                if (subscribers.size) snapshot = { ...snapshot, error: true };
+                if (subscribers.size) snapshot = { ...snapshot, failures: snapshot.failures + 1 };
             }
         }).finally(() => {
             pending = undefined;
+            setCadence();
             subscribers.forEach((_, notify) => notify());
         });
         return pending;
     }
 
     function setCadence() {
-        const next = subscribers.size ? Math.min(...subscribers.values()) : 0;
+        const intervals = Array.from(subscribers.values(), cadence =>
+            typeof cadence === 'function' ? cadence(snapshot.value) : cadence);
+        const next = intervals.length ? Math.min(...intervals) : 0;
         if (next === interval) return;
         clearInterval(timer);
         interval = next;
         if (interval) timer = setInterval(refresh, interval);
     }
 
-    function subscribe(notify: () => void, ms: number) {
-        subscribers.set(notify, ms);
+    function subscribe(notify: () => void, cadence: Cadence) {
+        subscribers.set(notify, cadence);
         setCadence();
         if (subscribers.size === 1) {
             document.addEventListener('visibilitychange', refresh);
@@ -53,8 +57,8 @@ export function createSharedPoll<T>(load: () => Promise<T>) {
     }
     return {
         refresh,
-        useSnapshot(ms: number) {
-            const listen = useCallback((notify: () => void) => subscribe(notify, ms), [ms]);
+        useSnapshot(cadence: Cadence) {
+            const listen = useCallback((notify: () => void) => subscribe(notify, cadence), [cadence]);
             return useSyncExternalStore(listen, () => snapshot, () => empty);
         },
     };

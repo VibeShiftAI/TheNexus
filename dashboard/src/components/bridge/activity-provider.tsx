@@ -7,7 +7,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useLiveBoardState } from "@/components/live-board-state";
+import { refreshCouncilSessions } from "@/hooks/use-council-sessions";
+import { useLiveRefetch, useLiveBoardState } from "@/components/live-board-state";
 import { useDispatchState } from "@/hooks/use-dispatch-state";
 import {
   deriveBridgeActivity,
@@ -25,6 +26,11 @@ const EMPTY = deriveBridgeActivity({
 const Context = createContext({ ...EMPTY, now: 0 });
 export function BridgeActivityProvider({ children }: { children: ReactNode }) {
   const live = useLiveBoardState();
+  // One council-frame listener for all visible bridge readers. Their shared
+  // poll owns the initial read, visibility changes and the fallback timer.
+  useLiveRefetch(["council"], refreshCouncilSessions, {
+    immediate: false, fallbackPollMs: 0, debounceMs: 2000,
+  });
   const dispatch = useDispatchState();
   const [knowledge, setKnowledge] = useState<KnowledgeSnapshot | null>(null);
   const [clockTick, setNow] = useState(0);

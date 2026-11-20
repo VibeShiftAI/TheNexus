@@ -23,6 +23,7 @@ import { useChatActivity } from "@/hooks/use-chat-activity";
 import { useBridgeActivity } from "./activity-provider";
 import { getBoardLaneId } from "@/lib/task-board";
 import { isDayWellUnderway } from "@/lib/day-underway";
+import { useCouncilSessions } from "@/hooks/use-council-sessions";
 import { useDispatchState } from "@/hooks/use-dispatch-state";
 import { deriveCliLane } from "@/lib/cli-lane";
 import type {
@@ -32,7 +33,6 @@ import type {
   FleetPosture,
 } from "@/lib/nexus";
 import {
-  getCouncilSessions,
   getCouncilBenches,
   type CouncilBenchState,
   getCouncilArbiter,
@@ -236,8 +236,9 @@ export function DispatchStation() {
   // Council chamber: poll the session store fast while a council sits,
   // lazily otherwise (mirrors the /council page cadence).
   const [benches, setBenches] = useState<CouncilBenchState | null>(null);
-  const [councilUpdatedAt, setCouncilUpdatedAt] = useState(0);
-  const [councilSessions, setCouncilSessions] = useState<CouncilSessionSummary[] | null>(null);
+  const { value: council } = useCouncilSessions({ followLive: true });
+  const councilUpdatedAt = council?.fetchedAt ?? 0;
+  const councilSessions = council?.sessions;
   const liveCouncil = useMemo(
     () => councilSessions?.find(isLiveSession) ?? null,
     [councilSessions],
@@ -249,15 +250,11 @@ export function DispatchStation() {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      try {
-        const data = await getCouncilSessions(12);
-        if (active) { setCouncilSessions(data.sessions); setCouncilUpdatedAt(Date.now()); }
-      } catch {
-        // Council telemetry is best-effort; the section hides itself.
-      }
+      if (document.hidden) return;
       try {
         const arb = await getCouncilArbiter();
-        if (active) setArbiter(arb);
+        if (!active || document.hidden) return;
+        setArbiter(arb);
         const roster = await getCouncilBenches();
         if (active) setBenches(roster);
       } catch {
@@ -266,9 +263,11 @@ export function DispatchStation() {
     };
     load();
     const t = setInterval(load, councilSitting ? 5_000 : 30_000);
+    document.addEventListener("visibilitychange", load);
     return () => {
       active = false;
       clearInterval(t);
+      document.removeEventListener("visibilitychange", load);
     };
   }, [councilSitting]);
 
