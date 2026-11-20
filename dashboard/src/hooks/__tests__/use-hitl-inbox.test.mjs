@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { useHitlInbox } from '../use-hitl-inbox.ts';
+import { useHitlInbox, HitlInboxProvider } from '../use-hitl-inbox.ts';
 import { LiveBoardStateProvider } from '../../components/live-board-state.tsx';
 import { __setPraxisStreamStoreForTests } from '../use-praxis-stream.ts';
 const request = { id: 'q1', question: 'Approve?', reason: 'explicit_request', requestedAt: '2026-10-06T00:00:00Z' };
@@ -10,7 +10,7 @@ async function fixture(fetcher) {
   const original = globalThis.fetch; globalThis.fetch = fetcher;
   let state; function Harness() { state = useHitlInbox(); return null; }
   const el = document.createElement('div'); document.body.append(el); const root = createRoot(el);
-  await act(async () => root.render(React.createElement(Harness)));
+  await act(async () => root.render(React.createElement(HitlInboxProvider, null, React.createElement(Harness))));
   return { get state() { return state; }, async close() { await act(async () => root.unmount()); el.remove(); globalThis.fetch = original; } };
 }
 test('a delayed snapshot cannot resurrect a successfully answered question', async () => {
@@ -61,7 +61,7 @@ test('mounting under a retained HITL frame still loads unrelated pending request
       let state; function Harness() { state = useHitlInbox(); return null; }
       const el = document.createElement('div'); document.body.append(el); const root = createRoot(el);
       try {
-        await act(async () => root.render(React.createElement(LiveBoardStateProvider, null, React.createElement(Harness))));
+        await act(async () => root.render(React.createElement(LiveBoardStateProvider, null, React.createElement(HitlInboxProvider, null, React.createElement(Harness)))));
         assert.equal(state.pendingRequests.some(item => item.id === other.id), true, event.type);
         assert.equal(state.refreshing, false);
       } finally { await act(async () => root.unmount()); el.remove(); t.mock.timers.tick(6000); }

@@ -8,7 +8,7 @@
  * DayRow.total. The accounting, caching and scan rules live in
  * ./token-usage-service.ts; this file is only the HTTP seam.
  *
- * Every bridge widget polls this route (five per page), so it must stay cheap
+ * Bridge widgets share a poll within each page. This route must stay cheap
  * under concurrency: all requests share one refresh, a stale body answers
  * immediately while that refresh runs, and the scan never holds a whole
  * session log in memory. Incident 2026-11-20: overlapping full scans took

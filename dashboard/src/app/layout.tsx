@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { DisplayScaleProvider } from "@/components/display-scale";
+import { HitlInboxProvider } from "@/hooks/use-hitl-inbox";
 import { BridgeActivityProvider } from "@/components/bridge/activity-provider";
 import { CortexProvider } from "@/components/cortex-provider";
 import { GlobalVoiceDock } from "@/components/global-voice-dock";
@@ -50,6 +51,7 @@ export default function RootLayout({
           <DisplayScaleProvider>
           <CortexProvider>
             <LiveBoardStateProvider>
+            <HitlInboxProvider>
             <BridgeActivityProvider>
             <main style={{ flex: 1 }}>
               {children}
@@ -72,6 +74,7 @@ export default function RootLayout({
             <GlobalVoiceDock />
             <TravelPresentationLauncher />
             </BridgeActivityProvider>
+            </HitlInboxProvider>
             </LiveBoardStateProvider>
           </CortexProvider>
           </DisplayScaleProvider>

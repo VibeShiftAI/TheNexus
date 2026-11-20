@@ -37,17 +37,11 @@ export function setAmbientIdleMinutes(minutes: number) {
 }
 
 export function AmbientMode() {
-  const { presence, recentEvents } = useLiveBoardState();
-  const core = useCoreState();
-  const work = useActiveWork();
-  const { usage } = useTokenUsage();
   const [active, setActive] = useState(false);
   const [clock, setClock] = useState("");
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const lastInputRef = useRef(Date.now());
   const mouseTravelRef = useRef(0);
-
-  const latestLine = recentEvents.find((e) => e.type === "presence.changed" || e.type === "executor.progress" || e.type === "task.completed");
 
   // Clock tick while active
   useEffect(() => {
@@ -143,14 +137,6 @@ export function AmbientMode() {
     };
   }, [active]);
 
-  const stats = (
-    [
-      { label: "scheduled", value: presence?.scheduledTaskCount },
-      { label: "done today", value: presence?.completedTasksToday },
-      { label: "tokens today", value: usage ? fmtTokens(usage.today.total) : undefined },
-    ] as { label: string; value: number | string | null | undefined }[]
-  ).filter((s): s is { label: string; value: number | string } => s.value != null);
-
   return (
     <>
       <button
@@ -168,47 +154,67 @@ export function AmbientMode() {
       {/* Portal to <body>: the header's backdrop-filter creates a containing
           block, which would trap a fixed overlay inside the 64px header. */}
       {active && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-[100] flex cursor-none flex-col items-center justify-center bg-black">
-          <div className="text-7xl font-bold tabular-nums tracking-tight text-slate-200">{clock}</div>
-          <div className="mt-1 text-sm text-slate-500">
-            {new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
-          </div>
-
-          <div className="my-8">
-            <CoreCanvas state={core} size={340} />
-          </div>
-
-          <div className={`text-xl font-semibold ${core.textClass}`}>{core.label}</div>
-          <div className="mt-1 max-w-lg truncate px-6 text-sm text-slate-500">
-            {core.council ? core.council.topic : work.taskLabel ?? presence?.summary ?? "—"}
-          </div>
-          {core.workers.filter((w) => w.state === "active").length > 0 && (
-            <div className="mt-1 text-xs text-slate-600">
-              {core.workers
-                .filter((w) => w.state === "active")
-                .map((w) => w.label)
-                .join(" · ")}{" "}
-              working
-            </div>
-          )}
-
-          {stats.length > 0 && (
-            <div className="mt-6 flex gap-8">
-              {stats.map((s) => (
-                <div key={s.label} className="text-center">
-                  <div className="text-2xl font-bold tabular-nums text-slate-300">{s.value}</div>
-                  <div className="text-[10px] uppercase tracking-widest text-slate-600">{s.label}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="absolute bottom-6 max-w-3xl truncate px-6 font-mono text-[11px] text-slate-700">
-            {latestLine ? `${new Date(latestLine.at).toLocaleTimeString()} · ${latestLine.type}` : "standing by"}
-          </div>
-        </div>,
+        <AmbientOverlay clock={clock} />,
         document.body
       )}
     </>
+  );
+}
+
+function AmbientOverlay({ clock }: { clock: string }) {
+  const { presence, recentEvents } = useLiveBoardState();
+  const core = useCoreState();
+  const work = useActiveWork();
+  const { usage } = useTokenUsage();
+  const latestLine = recentEvents.find((e) => e.type === "presence.changed" || e.type === "executor.progress" || e.type === "task.completed");
+
+  const stats = (
+    [
+      { label: "scheduled", value: presence?.scheduledTaskCount },
+      { label: "done today", value: presence?.completedTasksToday },
+      { label: "tokens today", value: usage ? fmtTokens(usage.today.total) : undefined },
+    ] as { label: string; value: number | string | null | undefined }[]
+  ).filter((s): s is { label: string; value: number | string } => s.value != null);
+
+  return (
+    <div className="fixed inset-0 z-[100] flex cursor-none flex-col items-center justify-center bg-black">
+      <div className="text-7xl font-bold tabular-nums tracking-tight text-slate-200">{clock}</div>
+      <div className="mt-1 text-sm text-slate-500">
+        {new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
+      </div>
+
+      <div className="my-8">
+        <CoreCanvas state={core} size={340} />
+      </div>
+
+      <div className={`text-xl font-semibold ${core.textClass}`}>{core.label}</div>
+      <div className="mt-1 max-w-lg truncate px-6 text-sm text-slate-500">
+        {core.council ? core.council.topic : work.taskLabel ?? presence?.summary ?? "—"}
+      </div>
+      {core.workers.filter((w) => w.state === "active").length > 0 && (
+        <div className="mt-1 text-xs text-slate-600">
+          {core.workers
+            .filter((w) => w.state === "active")
+            .map((w) => w.label)
+            .join(" · ")}{" "}
+          working
+        </div>
+      )}
+
+      {stats.length > 0 && (
+        <div className="mt-6 flex gap-8">
+          {stats.map((s) => (
+            <div key={s.label} className="text-center">
+              <div className="text-2xl font-bold tabular-nums text-slate-300">{s.value}</div>
+              <div className="text-[10px] uppercase tracking-widest text-slate-600">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="absolute bottom-6 max-w-3xl truncate px-6 font-mono text-[11px] text-slate-700">
+        {latestLine ? `${new Date(latestLine.at).toLocaleTimeString()} · ${latestLine.type}` : "standing by"}
+      </div>
+    </div>
   );
 }

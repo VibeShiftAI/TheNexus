@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, createElement, useContext, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { HITLRequest, HITLResolution } from "@praxis/contract";
 import { useLiveBoardState, useLiveRefetch } from "@/components/live-board-state";
 import { isAlertRequestExpired } from "@/lib/alert-action";
@@ -34,7 +34,20 @@ async function describeResolveFailure(response: Response): Promise<string> {
   return `Resolve failed with ${response.status}`;
 }
 
+const InboxContext = createContext<ReturnType<typeof useInboxState> | null>(null);
+
+export function HitlInboxProvider({ children }: { children?: ReactNode }) {
+  const inbox = useInboxState();
+  return createElement(InboxContext.Provider, { value: inbox }, children);
+}
+
 export function useHitlInbox() {
+  const inbox = useContext(InboxContext);
+  if (!inbox) throw new Error("useHitlInbox requires HitlInboxProvider");
+  return inbox;
+}
+
+function useInboxState() {
   const { recentEvents } = useLiveBoardState();
   const [requests, setRequests] = useState<HITLRequest[]>([]);
   const [loading, setLoading] = useState(true);

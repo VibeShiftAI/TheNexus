@@ -149,11 +149,13 @@ export async function loadAlertEvidence(events: readonly AlertEvent[], fetcher: 
       return await res.json();
     } catch { return undefined; }
   };
-  const snapshot = await read('/api/praxis/hitl/pending') as { requests?: unknown } | undefined;
-  if (Array.isArray(snapshot?.requests)) {
-    evidence.pendingKnown = true;
-    evidence.pending = snapshot.requests.filter(isAlertRequest);
-    for (const request of evidence.pending) evidence.hitls[request.id] = request;
+  if (events.some(event => event.requires_action && alertHitlId(event))) {
+    const snapshot = await read('/api/praxis/hitl/pending') as { requests?: unknown } | undefined;
+    if (Array.isArray(snapshot?.requests)) {
+      evidence.pendingKnown = true;
+      evidence.pending = snapshot.requests.filter(isAlertRequest);
+      for (const request of evidence.pending) evidence.hitls[request.id] = request;
+    }
   }
   const reads = new Map<string, () => Promise<void>>();
   for (const event of events) {

@@ -21,9 +21,10 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useLiveBoardState, useLiveRefetch } from "@/components/live-board-state";
 import { useCrewActivity } from "./use-crew-activity";
+import { createSharedPoll } from './shared-poll';
 import type { PresenceActivity } from "@praxis/contract";
 import { resolveUsageSource, type UsageSource } from "@/lib/usage-source";
 
@@ -88,41 +89,19 @@ export interface ActiveWork {
   connected: boolean;
 }
 
+const activeDispatches = createSharedPoll(async () => {
+  const res = await fetch("/api/dispatches/active?limit=5", { cache: "no-store" });
+  if (!res.ok) throw new Error(`active dispatches HTTP ${res.status}`);
+  return ((await res.json()) as ActiveResponse).active ?? [];
+});
+
 export function useActiveWork(): ActiveWork {
   // P3-30 phase 2: presence and connectedness come from the ONE shared live
   // subscription rather than this hook's own EventSource.
   const { presence, connected } = useLiveBoardState();
   const { crew } = useCrewActivity();
-  const [active, setActive] = useState<ActiveDispatch[] | null>(null);
-
-  const load = useCallback(async () => {
-    if (typeof document !== "undefined" && document.hidden) return;
-    try {
-      const res = await fetch("/api/dispatches/active?limit=5", { cache: "no-store" });
-      if (!res.ok) return;
-      const data = (await res.json()) as ActiveResponse;
-      setActive(data.active ?? []);
-    } catch {
-      /* strip degrades to presence + crew only */
-    }
-  }, []);
-
-  // Event-driven: a dispatch row appears/disappears on the task lifecycle, so
-  // the strip now updates on the frame instead of up to POLL_MS late. The
-  // fallback poll stays — /api/dispatches/active also moves for reasons that
-  // produce no Praxis frame (token totals written mid-run), and a dead
-  // transport must degrade to slow rather than to frozen.
-  useLiveRefetch(["task", "dispatch"], load, { fallbackPollMs: POLL_MS });
-
-  // Refetch when the tab comes back: the poll above skips hidden tabs, so the
-  // first thing a returning viewer sees would otherwise be up to POLL_MS stale.
-  useEffect(() => {
-    const onVisible = () => {
-      if (typeof document !== "undefined" && !document.hidden) load();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [load]);
+  const { value: active } = activeDispatches.useSnapshot(POLL_MS);
+  useLiveRefetch(["task", "dispatch"], activeDispatches.refresh, { immediate: false, fallbackPollMs: 0 });
 
   return useMemo(() => {
     const activity: PresenceActivity = connected ? (presence?.activity ?? "offline") : "offline";

@@ -91,3 +91,12 @@ test('read budget is capped and shared request/task IDs are deduplicated', async
   assert.equal(new Set(calls).size, calls.length);
   assert.ok(max <= 4);
 });
+
+test('activity without a linked human request needs no pending-inbox read', async () => {
+  const calls: string[] = [];
+  await loadAlertEvidence([event({ requires_action: 0 })], async url => {
+    calls.push(url);
+    return Response.json({ requests: [] });
+  });
+  assert.deepEqual(calls, []);
+});

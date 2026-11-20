@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { HitlInboxProvider } from "../../hooks/use-hitl-inbox.ts";
 import InboxPage from '../../app/inbox/page.tsx';
 
 test('old inbox link fetches its resolved request beyond the recent-history window and displays the whole answer', async () => {
@@ -16,7 +17,7 @@ test('old inbox link fetches its resolved request beyond the recent-history wind
   const container = document.createElement('div'); document.body.append(container);
   const root = createRoot(container);
   try {
-    await act(async () => root.render(React.createElement(InboxPage)));
+    await act(async () => root.render(React.createElement(HitlInboxProvider, null, React.createElement(InboxPage))));
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 10)); });
     assert.ok(calls.some(url => url.includes('/hitl/old-request')));
     assert.match(container.textContent, /Request closed/);
@@ -52,7 +53,7 @@ test('a background inbox refresh preserves the mounted answer and its typed draf
   const container = document.createElement('div'); document.body.append(container);
   const root = createRoot(container);
   try {
-    await act(async () => root.render(React.createElement(InboxPage)));
+    await act(async () => root.render(React.createElement(HitlInboxProvider, null, React.createElement(InboxPage))));
     const textarea = container.querySelector('textarea');
     assert.ok(textarea);
     await act(async () => {
