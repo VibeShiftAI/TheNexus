@@ -1,0 +1,3198 @@
+{
+  "task": "5e513530-0d18-5939-87b8-583274b5bf5e",
+  "generated_at": "2026-11-20T20:56:06.936Z",
+  "command": "node scripts/operator-confirmation-qa/live-check.cjs --client chrome",
+  "client": "chrome",
+  "attended": false,
+  "origin": "http://127.0.0.1:4299",
+  "wait_seconds": 8,
+  "isolation": {
+    "data": "a temporary directory and SQLite database, removed after the run",
+    "keys": "random throwaway keys generated for this run; the real operator and document keys were never read",
+    "praxis": "an in-process stand-in that checks the body-bound relay signature and the version, and sends nothing",
+    "live_services": "the live :3000 dashboard and :4000 API were not contacted"
+  },
+  "dialog_script": [
+    "on run argv",
+    "  set theTitle to item 1 of argv",
+    "  set theMessage to item 2 of argv",
+    "  set confirmLabel to item 3 of argv",
+    "  set waitSeconds to (item 4 of argv) as integer",
+    "  activate",
+    "  try",
+    "    set answer to display dialog theMessage with title theTitle buttons {\"Cancel\", confirmLabel} default button \"Cancel\" cancel button \"Cancel\" with icon caution giving up after waitSeconds",
+    "  on error number -128",
+    "    return \"declined\"",
+    "  end try",
+    "  if gave up of answer then return \"timeout\"",
+    "  if button returned of answer is confirmLabel then return \"confirmed\"",
+    "  return \"declined\"",
+    "end run"
+  ],
+  "steps": [
+    {
+      "id": "S01",
+      "label": "Browse and read with the open session",
+      "plans": [],
+      "sent": {
+        "id": "S01",
+        "label": "Browse and read with the open session",
+        "kind": "sequence",
+        "instruction": "Unattended run: no Mac dialog is expected for this step.",
+        "requests": [
+          {
+            "method": "GET",
+            "url": "/api/documents"
+          },
+          {
+            "method": "GET",
+            "url": "/api/documents/fab806fe-10fb-496b-8a6a-a36355949432"
+          },
+          {
+            "method": "GET",
+            "url": "/api/documents/fab806fe-10fb-496b-8a6a-a36355949432/history"
+          },
+          {
+            "method": "GET",
+            "url": "/api/documents/55149f12-017f-471b-8baa-7d8fb4885be4/outgoing"
+          },
+          {
+            "method": "GET",
+            "url": "/api/praxis/mailbox/drafts-review?folder=drafts"
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 200,
+          "fields": [
+            "documents",
+            "total",
+            "limit",
+            "offset",
+            "has_more",
+            "status"
+          ]
+        },
+        {
+          "status": 200,
+          "fields": [
+            "document",
+            "media_type",
+            "mime_type",
+            "asset_count",
+            "editable",
+            "preview_asset_key",
+            "readiness_path",
+            "blocking_tasks",
+            "revision",
+            "content",
+            "assets",
+            "manifest",
+            "readiness",
+            "file_state",
+            "file_error",
+            "source",
+            "outgoing",
+            "review",
+            "decision_items",
+            "inline_comments",
+            "review_status",
+            "current_decision",
+            "replacement",
+            "reviewable",
+            "retirement",
+            "retirement_history",
+            "replaces",
+            "named_as_replaced",
+            "version",
+            "viewer",
+            "links"
+          ]
+        },
+        {
+          "status": 200,
+          "fields": [
+            "document_id",
+            "current_revision_id",
+            "current_version",
+            "review_status",
+            "reviewable",
+            "revisions",
+            "drafts",
+            "capture_count",
+            "draft_count",
+            "decisions",
+            "edits",
+            "registrations",
+            "reviews",
+            "replacements"
+          ]
+        },
+        {
+          "status": 200,
+          "fields": [
+            "outgoing"
+          ]
+        },
+        {
+          "status": 200,
+          "fields": [
+            "items",
+            "counts"
+          ]
+        }
+      ],
+      "dialogs": [],
+      "checks": [
+        {
+          "name": "every read answered 200",
+          "pass": true,
+          "detail": [
+            200,
+            200,
+            200,
+            200,
+            200
+          ]
+        },
+        {
+          "name": "no dialog was shown",
+          "pass": true,
+          "detail": 0
+        }
+      ]
+    },
+    {
+      "id": "S02",
+      "label": "Approve document A with the stored proof alone; nobody answers",
+      "plans": [
+        "none"
+      ],
+      "sent": {
+        "id": "S02",
+        "label": "Approve document A with the stored proof alone; nobody answers",
+        "kind": "sequence",
+        "instruction": "Unattended run: leave the Mac dialog alone; it closes by itself after 8 seconds.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/fab806fe-10fb-496b-8a6a-a36355949432/decisions",
+            "body": {
+              "revision_id": "9c1d1a01-adb5-44d2-93f5-ad615aeee728",
+              "decision": "approve",
+              "note": "Stored proof only."
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 403,
+          "json": {
+            "error": "The confirmation on this Mac was not answered in time. Nothing was recorded.",
+            "code": "operator_confirmation_timeout",
+            "nothing_recorded": true,
+            "confirmation_ref": "bf0fc7f0"
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "n": 1,
+          "step": "S02",
+          "at": "2026-11-20T20:56:08.677Z",
+          "plan": "none",
+          "title": "Nexus: approve this document?",
+          "confirm_label": "Approve",
+          "seconds": 8,
+          "message": "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 9c1d1a01-adb5-44d2-93f5-ad615aeee728, content sha256 7a867be4439b, captured 2026-11-20T20:56:07.755Z.\nNote:\nStored proof only.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:56:08.\nIf you did not just ask for this in Nexus, click Cancel.\nRef bf0fc7f0",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 34256,
+            "argv_strings": [
+              "Nexus: approve this document?",
+              "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 9c1d1a01-adb5-44d2-93f5-ad615aeee728, content sha256 7a867be4439b, captured 2026-11-20T20:56:07.755Z.\nNote:\nStored proof only.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:56:08.\nIf you did not just ask for this in Nexus, click Cancel.\nRef bf0fc7f0",
+              "Approve",
+              "8"
+            ]
+          },
+          "window": {
+            "bounds": {
+              "Height": 324,
+              "Width": 420,
+              "X": 750,
+              "Y": 189
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 34256,
+            "window_id": 5583
+          },
+          "console_locked": true,
+          "dialog_process_outcome": "timeout",
+          "outcome": "timeout",
+          "answer_source": "none: left unanswered"
+        }
+      ],
+      "checks": [
+        {
+          "name": "refused 403 operator_confirmation_timeout, nothing recorded",
+          "pass": true,
+          "detail": {
+            "status": 403,
+            "code": "operator_confirmation_timeout",
+            "nothing_recorded": true
+          }
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 324,
+              "Width": 420,
+              "X": 750,
+              "Y": 189
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 34256,
+            "window_id": 5583
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: approve this document?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Approve \"Harness check A: synthetic brief (task 5e513530)\"?",
+            "/[Rr]evision 9c1d1a01-adb5-44d2-93f5-ad615aeee728, content sha256 7a867be4439b/"
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Approve"
+        },
+        {
+          "name": "osascript received exactly this title and text as argv",
+          "pass": true
+        },
+        {
+          "name": "the dialog says who asked (Google Chrome on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "the dialog Ref matches the API answer",
+          "pass": true,
+          "detail": {
+            "dialog": "bf0fc7f0",
+            "api": "bf0fc7f0"
+          }
+        },
+        {
+          "name": "the dialog outcome was timeout",
+          "pass": true,
+          "detail": {
+            "outcome": "timeout",
+            "source": "none: left unanswered"
+          }
+        },
+        {
+          "name": "the document has no decision",
+          "pass": true,
+          "detail": 0
+        }
+      ]
+    },
+    {
+      "id": "S03",
+      "label": "Approve document A with forged confirmation fields and headers; nobody answers",
+      "plans": [
+        "none"
+      ],
+      "sent": {
+        "id": "S03",
+        "label": "Approve document A with forged confirmation fields and headers; nobody answers",
+        "kind": "sequence",
+        "instruction": "Unattended run: leave the Mac dialog alone; it closes by itself after 8 seconds.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/fab806fe-10fb-496b-8a6a-a36355949432/decisions",
+            "body": {
+              "revision_id": "9c1d1a01-adb5-44d2-93f5-ad615aeee728",
+              "decision": "approve",
+              "note": "Forged confirmation.",
+              "confirmed": true,
+              "confirmation": "confirmed",
+              "operator_confirmation": {
+                "ok": true,
+                "ref": "bf0fc7f0"
+              },
+              "confirmation_ref": "bf0fc7f0",
+              "via": "access_session",
+              "authority": "access_user"
+            },
+            "headers": {
+              "x-nexus-confirmation": "confirmed",
+              "x-nexus-operator-confirmation": "bf0fc7f0",
+              "x-nexus-confirmed": "1"
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 403,
+          "json": {
+            "error": "The confirmation on this Mac was not answered in time. Nothing was recorded.",
+            "code": "operator_confirmation_timeout",
+            "nothing_recorded": true,
+            "confirmation_ref": "33e82138"
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "n": 2,
+          "step": "S03",
+          "at": "2026-11-20T20:56:19.270Z",
+          "plan": "none",
+          "title": "Nexus: approve this document?",
+          "confirm_label": "Approve",
+          "seconds": 8,
+          "message": "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 9c1d1a01-adb5-44d2-93f5-ad615aeee728, content sha256 7a867be4439b, captured 2026-11-20T20:56:07.755Z.\nNote:\nForged confirmation.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:56:19.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 33e82138",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 34274,
+            "argv_strings": [
+              "Nexus: approve this document?",
+              "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 9c1d1a01-adb5-44d2-93f5-ad615aeee728, content sha256 7a867be4439b, captured 2026-11-20T20:56:07.755Z.\nNote:\nForged confirmation.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:56:19.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 33e82138",
+              "Approve",
+              "8"
+            ]
+          },
+          "window": {
+            "bounds": {
+              "Height": 324,
+              "Width": 420,
+              "X": 750,
+              "Y": 189
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 34274,
+            "window_id": 5584
+          },
+          "console_locked": true,
+          "dialog_process_outcome": "timeout",
+          "outcome": "timeout",
+          "answer_source": "none: left unanswered"
+        }
+      ],
+      "checks": [
+        {
+          "name": "refused 403 operator_confirmation_timeout, nothing recorded",
+          "pass": true,
+          "detail": {
+            "status": 403,
+            "code": "operator_confirmation_timeout",
+            "nothing_recorded": true
+          }
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 324,
+              "Width": 420,
+              "X": 750,
+              "Y": 189
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 34274,
+            "window_id": 5584
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: approve this document?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Approve \"Harness check A: synthetic brief (task 5e513530)\"?",
+            "/[Rr]evision 9c1d1a01-adb5-44d2-93f5-ad615aeee728, content sha256 7a867be4439b/"
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Approve"
+        },
+        {
+          "name": "osascript received exactly this title and text as argv",
+          "pass": true
+        },
+        {
+          "name": "the dialog says who asked (Google Chrome on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "the dialog Ref matches the API answer",
+          "pass": true,
+          "detail": {
+            "dialog": "33e82138",
+            "api": "33e82138"
+          }
+        },
+        {
+          "name": "the dialog outcome was timeout",
+          "pass": true,
+          "detail": {
+            "outcome": "timeout",
+            "source": "none: left unanswered"
+          }
+        },
+        {
+          "name": "document A has no decision",
+          "pass": true,
+          "detail": 0
+        }
+      ]
+    },
+    {
+      "id": "S04",
+      "label": "Approve document A and confirm in the Mac dialog",
+      "plans": [
+        "confirm"
+      ],
+      "sent": {
+        "id": "S04",
+        "label": "Approve document A and confirm in the Mac dialog",
+        "kind": "sequence",
+        "instruction": "Unattended run: the harness confirms this dialog.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/fab806fe-10fb-496b-8a6a-a36355949432/decisions",
+            "body": {
+              "revision_id": "9c1d1a01-adb5-44d2-93f5-ad615aeee728",
+              "decision": "approve",
+              "note": "Confirmed in the Mac dialog.",
+              "client_decision_id": "harness-a-1"
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 201,
+          "json": {
+            "decision": {
+              "id": "ad3ead55-0119-4766-8daf-ded58a47b61b",
+              "document_id": "fab806fe-10fb-496b-8a6a-a36355949432",
+              "revision_id": "9c1d1a01-adb5-44d2-93f5-ad615aeee728",
+              "content_hash": "7a867be4439b0e69c7f90a6beef1066a4457fa4afa0f019bb915c362d82e12a6",
+              "decision": "approve",
+              "actor_id": "local_user",
+              "authority": "operator_credential",
+              "note": "Confirmed in the Mac dialog.",
+              "client_decision_id": "harness-a-1",
+              "intended_action": "none",
+              "created_at": "2026-11-20T20:56:32.065Z",
+              "recorded_by": "operator",
+              "provenance": null,
+              "selection": null
+            },
+            "review_status": "approved",
+            "document": {
+              "id": "fab806fe-10fb-496b-8a6a-a36355949432",
+              "title": "Harness check A: synthetic brief (task 5e513530)",
+              "path": "/private/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-opconf-live-hMwgRd/harness-a.md",
+              "root_project_id": "harness-project",
+              "project_id": "harness-project",
+              "task_id": "harness-task",
+              "kind": "document",
+              "metadata": {},
+              "current_revision_id": "9c1d1a01-adb5-44d2-93f5-ad615aeee728",
+              "registered_by": "local_user",
+              "created_at": "2026-11-20T20:56:07.755Z",
+              "updated_at": "2026-11-20T20:56:07.755Z",
+              "deliverable_key": "harness-a",
+              "purpose": "Purpose not provided.",
+              "blocking_task_ids": [],
+              "requires_review": true,
+              "intended_action": "none",
+              "media_type": "markdown",
+              "mime_type": "text/markdown"
+            },
+            "confirmation_ref": "50c6e6fc"
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "n": 3,
+          "step": "S04",
+          "at": "2026-11-20T20:56:29.867Z",
+          "plan": "confirm",
+          "title": "Nexus: approve this document?",
+          "confirm_label": "Approve",
+          "seconds": 8,
+          "message": "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 9c1d1a01-adb5-44d2-93f5-ad615aeee728, content sha256 7a867be4439b, captured 2026-11-20T20:56:07.755Z.\nNote:\nConfirmed in the Mac dialog.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:56:29.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 50c6e6fc",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 34922,
+            "argv_strings": [
+              "Nexus: approve this document?",
+              "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 9c1d1a01-adb5-44d2-93f5-ad615aeee728, content sha256 7a867be4439b, captured 2026-11-20T20:56:07.755Z.\nNote:\nConfirmed in the Mac dialog.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:56:29.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 50c6e6fc",
+              "Approve",
+              "8"
+            ]
+          },
+          "window": {
+            "bounds": {
+              "Height": 318,
+              "Width": 414,
+              "X": 753,
+              "Y": 192
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 34922,
+            "window_id": 5585
+          },
+          "console_locked": true,
+          "action": "stand-in: the console is locked, so no process can press Approve; the harness closed the dialog and handed the broker \"confirmed\"",
+          "dialog_process_outcome": "unavailable",
+          "window_after": {
+            "found": false,
+            "mode": "window",
+            "pid": 34922
+          },
+          "outcome": "confirmed",
+          "answer_source": "stand-in (console locked)"
+        }
+      ],
+      "checks": [
+        {
+          "name": "recorded 201",
+          "pass": true,
+          "detail": 201
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 318,
+              "Width": 414,
+              "X": 753,
+              "Y": 192
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 34922,
+            "window_id": 5585
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: approve this document?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Approve \"Harness check A: synthetic brief (task 5e513530)\"?",
+            "/[Rr]evision 9c1d1a01-adb5-44d2-93f5-ad615aeee728, content sha256 7a867be4439b/",
+            "Note:",
+            "Confirmed in the Mac dialog."
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Approve"
+        },
+        {
+          "name": "osascript received exactly this title and text as argv",
+          "pass": true
+        },
+        {
+          "name": "the dialog says who asked (Google Chrome on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "the dialog Ref matches the API answer",
+          "pass": true,
+          "detail": {
+            "dialog": "50c6e6fc",
+            "api": "50c6e6fc"
+          }
+        },
+        {
+          "name": "the dialog outcome was confirmed",
+          "pass": true,
+          "detail": {
+            "outcome": "confirmed",
+            "source": "stand-in (console locked)"
+          }
+        },
+        {
+          "name": "exactly one decision on the document",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the record is the confirmed identity",
+          "pass": true,
+          "detail": {
+            "revision_id": "9c1d1a01-adb5-44d2-93f5-ad615aeee728",
+            "content_hash": "7a867be4439b0e69c7f90a6beef1066a4457fa4afa0f019bb915c362d82e12a6",
+            "decision": "approve",
+            "note": "Confirmed in the Mac dialog.",
+            "client_decision_id": "harness-a-1"
+          }
+        },
+        {
+          "name": "recorded on Robert's operator credential through the local session",
+          "pass": true,
+          "detail": {
+            "authority": "operator_credential",
+            "actor_id": "local_user",
+            "recorded_by": "operator"
+          }
+        },
+        {
+          "name": "the server logged the record with the dialog Ref",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "S05",
+      "label": "Replay the confirmed request, then repeat it without its idempotency key; nobody answers",
+      "plans": [
+        "none"
+      ],
+      "sent": {
+        "id": "S05",
+        "label": "Replay the confirmed request, then repeat it without its idempotency key; nobody answers",
+        "kind": "sequence",
+        "instruction": "Unattended run: leave the Mac dialog alone; it closes by itself after 8 seconds.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/fab806fe-10fb-496b-8a6a-a36355949432/decisions",
+            "body": {
+              "revision_id": "9c1d1a01-adb5-44d2-93f5-ad615aeee728",
+              "decision": "approve",
+              "note": "Confirmed in the Mac dialog.",
+              "client_decision_id": "harness-a-1"
+            }
+          },
+          {
+            "method": "POST",
+            "url": "/api/documents/fab806fe-10fb-496b-8a6a-a36355949432/decisions",
+            "body": {
+              "revision_id": "9c1d1a01-adb5-44d2-93f5-ad615aeee728",
+              "decision": "approve",
+              "note": "Confirmed in the Mac dialog."
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 200,
+          "json": {
+            "decision": {
+              "id": "ad3ead55-0119-4766-8daf-ded58a47b61b",
+              "document_id": "fab806fe-10fb-496b-8a6a-a36355949432",
+              "revision_id": "9c1d1a01-adb5-44d2-93f5-ad615aeee728",
+              "content_hash": "7a867be4439b0e69c7f90a6beef1066a4457fa4afa0f019bb915c362d82e12a6",
+              "decision": "approve",
+              "actor_id": "local_user",
+              "authority": "operator_credential",
+              "note": "Confirmed in the Mac dialog.",
+              "client_decision_id": "harness-a-1",
+              "intended_action": "none",
+              "created_at": "2026-11-20T20:56:32.065Z",
+              "recorded_by": "operator",
+              "provenance": null,
+              "selection": null
+            },
+            "duplicate": true,
+            "review_status": "approved"
+          }
+        },
+        {
+          "status": 403,
+          "json": {
+            "error": "The confirmation on this Mac was not answered in time. Nothing was recorded.",
+            "code": "operator_confirmation_timeout",
+            "nothing_recorded": true,
+            "confirmation_ref": "317a3b7d"
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "n": 4,
+          "step": "S05",
+          "at": "2026-11-20T20:56:32.330Z",
+          "plan": "none",
+          "title": "Nexus: approve this document?",
+          "confirm_label": "Approve",
+          "seconds": 8,
+          "message": "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 9c1d1a01-adb5-44d2-93f5-ad615aeee728, content sha256 7a867be4439b, captured 2026-11-20T20:56:07.755Z.\nNote:\nConfirmed in the Mac dialog.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:56:32.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 317a3b7d",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 34957,
+            "argv_strings": [
+              "Nexus: approve this document?",
+              "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 9c1d1a01-adb5-44d2-93f5-ad615aeee728, content sha256 7a867be4439b, captured 2026-11-20T20:56:07.755Z.\nNote:\nConfirmed in the Mac dialog.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:56:32.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 317a3b7d",
+              "Approve",
+              "8"
+            ]
+          },
+          "window": {
+            "bounds": {
+              "Height": 318,
+              "Width": 414,
+              "X": 753,
+              "Y": 192
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 34957,
+            "window_id": 5586
+          },
+          "console_locked": true,
+          "dialog_process_outcome": "timeout",
+          "outcome": "timeout",
+          "answer_source": "none: left unanswered"
+        }
+      ],
+      "checks": [
+        {
+          "name": "the exact replay returns the same record, marked duplicate, before any dialog",
+          "pass": true,
+          "detail": {
+            "status": 200,
+            "duplicate": true
+          }
+        },
+        {
+          "name": "refused 403 operator_confirmation_timeout, nothing recorded",
+          "pass": true,
+          "detail": {
+            "status": 403,
+            "code": "operator_confirmation_timeout",
+            "nothing_recorded": true
+          }
+        },
+        {
+          "name": "the earlier confirmation was not reused: the repeat asked again",
+          "pass": true,
+          "detail": {
+            "dialogs": [
+              "317a3b7d"
+            ],
+            "confirmed": "50c6e6fc"
+          }
+        },
+        {
+          "name": "still exactly one decision on document A",
+          "pass": true,
+          "detail": 1
+        }
+      ]
+    },
+    {
+      "id": "S06",
+      "label": "Approve sending document B's email with the stored proof alone; nobody answers",
+      "plans": [
+        "none"
+      ],
+      "sent": {
+        "id": "S06",
+        "label": "Approve sending document B's email with the stored proof alone; nobody answers",
+        "kind": "sequence",
+        "instruction": "Unattended run: leave the Mac dialog alone; it closes by itself after 8 seconds.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/55149f12-017f-471b-8baa-7d8fb4885be4/outgoing/decision",
+            "body": {
+              "decision": "approve_send",
+              "revision_id": "1f2d38c5-d797-46f8-a8b2-84c522572681",
+              "envelope_hash": "c20b9f2169750f793192b41b24017285bbcfcad1e2486469121d4dce2076bb8e"
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 403,
+          "json": {
+            "code": "operator_confirmation_timeout",
+            "error": "The confirmation on this Mac was not answered in time. Nothing was recorded.",
+            "nothing_recorded": true,
+            "confirmation_ref": "8e7a8621"
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "n": 5,
+          "step": "S06",
+          "at": "2026-11-20T20:56:42.891Z",
+          "plan": "none",
+          "title": "Nexus: send this email?",
+          "confirm_label": "Send",
+          "seconds": 8,
+          "message": "Send to harness-recipient@example.test: \"Harness check: synthetic message, nothing is sent\"?\nCc: harness-copy@example.test\n\nMessage:\nSynthetic body for the operator confirmation live check.\nNothing is sent.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:56:42.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 8e7a8621",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 34975,
+            "argv_strings": [
+              "Nexus: send this email?",
+              "Send to harness-recipient@example.test: \"Harness check: synthetic message, nothing is sent\"?\nCc: harness-copy@example.test\n\nMessage:\nSynthetic body for the operator confirmation live check.\nNothing is sent.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:56:42.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 8e7a8621",
+              "Send",
+              "8"
+            ]
+          },
+          "window": {
+            "bounds": {
+              "Height": 356,
+              "Width": 420,
+              "X": 750,
+              "Y": 181
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 34975,
+            "window_id": 5587
+          },
+          "console_locked": true,
+          "dialog_process_outcome": "timeout",
+          "outcome": "timeout",
+          "answer_source": "none: left unanswered"
+        }
+      ],
+      "checks": [
+        {
+          "name": "refused 403 operator_confirmation_timeout, nothing recorded",
+          "pass": true,
+          "detail": {
+            "status": 403,
+            "code": "operator_confirmation_timeout",
+            "nothing_recorded": true
+          }
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 356,
+              "Width": 420,
+              "X": 750,
+              "Y": 181
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 34975,
+            "window_id": 5587
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: send this email?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Send to harness-recipient@example.test: \"Harness check: synthetic message, nothing is sent\"?",
+            "Cc: harness-copy@example.test"
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Send"
+        },
+        {
+          "name": "osascript received exactly this title and text as argv",
+          "pass": true
+        },
+        {
+          "name": "the dialog says who asked (Google Chrome on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "the dialog Ref matches the API answer",
+          "pass": true,
+          "detail": {
+            "dialog": "8e7a8621",
+            "api": "8e7a8621"
+          }
+        },
+        {
+          "name": "the dialog outcome was timeout",
+          "pass": true,
+          "detail": {
+            "outcome": "timeout",
+            "source": "none: left unanswered"
+          }
+        },
+        {
+          "name": "the email is still a draft with no send grant",
+          "pass": true,
+          "detail": {
+            "status": "draft"
+          }
+        }
+      ]
+    },
+    {
+      "id": "S07",
+      "label": "Approve sending document B's email and confirm in the Mac dialog",
+      "plans": [
+        "confirm"
+      ],
+      "sent": {
+        "id": "S07",
+        "label": "Approve sending document B's email and confirm in the Mac dialog",
+        "kind": "sequence",
+        "instruction": "Unattended run: the harness confirms this dialog.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/55149f12-017f-471b-8baa-7d8fb4885be4/outgoing/decision",
+            "body": {
+              "decision": "approve_send",
+              "revision_id": "1f2d38c5-d797-46f8-a8b2-84c522572681",
+              "envelope_hash": "c20b9f2169750f793192b41b24017285bbcfcad1e2486469121d4dce2076bb8e"
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 200,
+          "json": {
+            "outgoing": {
+              "document_id": "55149f12-017f-471b-8baa-7d8fb4885be4",
+              "delivery_id": "974e8a99-e3df-481b-b5e5-5b43fb5fa717",
+              "revision_id": "1f2d38c5-d797-46f8-a8b2-84c522572681",
+              "content_hash": "13a27d91d86ef76556ce9f28a49b740c77fb6eeda37325d1a0a59a9b111c818c",
+              "envelope_hash": "c20b9f2169750f793192b41b24017285bbcfcad1e2486469121d4dce2076bb8e",
+              "envelope": {
+                "to": "harness-recipient@example.test",
+                "cc": [
+                  "harness-copy@example.test"
+                ],
+                "subject": "Harness check: synthetic message, nothing is sent",
+                "text": "Synthetic body for the operator confirmation live check.\nNothing is sent.",
+                "attachments": []
+              },
+              "provenance": {
+                "member_id": "harness-member",
+                "project_id": "harness-project",
+                "task_id": "harness-task",
+                "source_refs": [
+                  "harness:synthetic-source"
+                ]
+              },
+              "status": "approved",
+              "grant": {
+                "decision": "approve_send",
+                "actor_id": "local_user",
+                "authority": "operator_credential",
+                "approved_at": "2026-11-20T20:56:55.704Z",
+                "document_id": "55149f12-017f-471b-8baa-7d8fb4885be4",
+                "revision_id": "1f2d38c5-d797-46f8-a8b2-84c522572681",
+                "content_hash": "13a27d91d86ef76556ce9f28a49b740c77fb6eeda37325d1a0a59a9b111c818c",
+                "envelope_hash": "c20b9f2169750f793192b41b24017285bbcfcad1e2486469121d4dce2076bb8e",
+                "envelope": {
+                  "to": "harness-recipient@example.test",
+                  "cc": [
+                    "harness-copy@example.test"
+                  ],
+                  "subject": "Harness check: synthetic message, nothing is sent",
+                  "text": "Synthetic body for the operator confirmation live check.\nNothing is sent.",
+                  "attachments": []
+                },
+                "provenance": {
+                  "member_id": "harness-member",
+                  "project_id": "harness-project",
+                  "task_id": "harness-task",
+                  "source_refs": [
+                    "harness:synthetic-source"
+                  ]
+                },
+                "delivery_id": "974e8a99-e3df-481b-b5e5-5b43fb5fa717"
+              },
+              "invalidated_at": null,
+              "invalidation_reason": null,
+              "claimed_at": null,
+              "receipt": null,
+              "created_at": "2026-11-20T20:56:07.772Z",
+              "updated_at": "2026-11-20T20:56:55.704Z",
+              "operator_edit": null,
+              "feedback": null
+            },
+            "confirmation_ref": "027d912f"
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "n": 6,
+          "step": "S07",
+          "at": "2026-11-20T20:56:53.481Z",
+          "plan": "confirm",
+          "title": "Nexus: send this email?",
+          "confirm_label": "Send",
+          "seconds": 8,
+          "message": "Send to harness-recipient@example.test: \"Harness check: synthetic message, nothing is sent\"?\nCc: harness-copy@example.test\n\nMessage:\nSynthetic body for the operator confirmation live check.\nNothing is sent.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:56:53.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 027d912f",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 35024,
+            "argv_strings": [
+              "Nexus: send this email?",
+              "Send to harness-recipient@example.test: \"Harness check: synthetic message, nothing is sent\"?\nCc: harness-copy@example.test\n\nMessage:\nSynthetic body for the operator confirmation live check.\nNothing is sent.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:56:53.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 027d912f",
+              "Send",
+              "8"
+            ]
+          },
+          "window": {
+            "bounds": {
+              "Height": 352,
+              "Width": 416,
+              "X": 752,
+              "Y": 183
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35024,
+            "window_id": 5588
+          },
+          "console_locked": true,
+          "action": "stand-in: the console is locked, so no process can press Send; the harness closed the dialog and handed the broker \"confirmed\"",
+          "dialog_process_outcome": "unavailable",
+          "window_after": {
+            "found": false,
+            "mode": "window",
+            "pid": 35024
+          },
+          "outcome": "confirmed",
+          "answer_source": "stand-in (console locked)"
+        }
+      ],
+      "checks": [
+        {
+          "name": "approved 200",
+          "pass": true,
+          "detail": 200
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 352,
+              "Width": 416,
+              "X": 752,
+              "Y": 183
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35024,
+            "window_id": 5588
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: send this email?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Send to harness-recipient@example.test: \"Harness check: synthetic message, nothing is sent\"?",
+            "Cc: harness-copy@example.test",
+            "Message:",
+            "Synthetic body for the operator confirmation live check.\nNothing is sent."
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Send"
+        },
+        {
+          "name": "osascript received exactly this title and text as argv",
+          "pass": true
+        },
+        {
+          "name": "the dialog says who asked (Google Chrome on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "the dialog Ref matches the API answer",
+          "pass": true,
+          "detail": {
+            "dialog": "027d912f",
+            "api": "027d912f"
+          }
+        },
+        {
+          "name": "the dialog outcome was confirmed",
+          "pass": true,
+          "detail": {
+            "outcome": "confirmed",
+            "source": "stand-in (console locked)"
+          }
+        },
+        {
+          "name": "the send grant is for exactly the confirmed envelope",
+          "pass": true,
+          "detail": {
+            "envelope_hash": "c20b9f2169750f793192b41b24017285bbcfcad1e2486469121d4dce2076bb8e",
+            "authority": "operator_credential"
+          }
+        },
+        {
+          "name": "exactly one approval event",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the server logged the approval with the dialog Ref",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "S08",
+      "label": "Replay the approved send",
+      "plans": [],
+      "sent": {
+        "id": "S08",
+        "label": "Replay the approved send",
+        "kind": "sequence",
+        "instruction": "Unattended run: no Mac dialog is expected for this step.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/55149f12-017f-471b-8baa-7d8fb4885be4/outgoing/decision",
+            "body": {
+              "decision": "approve_send",
+              "revision_id": "1f2d38c5-d797-46f8-a8b2-84c522572681",
+              "envelope_hash": "c20b9f2169750f793192b41b24017285bbcfcad1e2486469121d4dce2076bb8e"
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 200,
+          "json": {
+            "outgoing": {
+              "document_id": "55149f12-017f-471b-8baa-7d8fb4885be4",
+              "delivery_id": "974e8a99-e3df-481b-b5e5-5b43fb5fa717",
+              "revision_id": "1f2d38c5-d797-46f8-a8b2-84c522572681",
+              "content_hash": "13a27d91d86ef76556ce9f28a49b740c77fb6eeda37325d1a0a59a9b111c818c",
+              "envelope_hash": "c20b9f2169750f793192b41b24017285bbcfcad1e2486469121d4dce2076bb8e",
+              "envelope": {
+                "to": "harness-recipient@example.test",
+                "cc": [
+                  "harness-copy@example.test"
+                ],
+                "subject": "Harness check: synthetic message, nothing is sent",
+                "text": "Synthetic body for the operator confirmation live check.\nNothing is sent.",
+                "attachments": []
+              },
+              "provenance": {
+                "member_id": "harness-member",
+                "project_id": "harness-project",
+                "task_id": "harness-task",
+                "source_refs": [
+                  "harness:synthetic-source"
+                ]
+              },
+              "status": "approved",
+              "grant": {
+                "decision": "approve_send",
+                "actor_id": "local_user",
+                "authority": "operator_credential",
+                "approved_at": "2026-11-20T20:56:55.704Z",
+                "document_id": "55149f12-017f-471b-8baa-7d8fb4885be4",
+                "revision_id": "1f2d38c5-d797-46f8-a8b2-84c522572681",
+                "content_hash": "13a27d91d86ef76556ce9f28a49b740c77fb6eeda37325d1a0a59a9b111c818c",
+                "envelope_hash": "c20b9f2169750f793192b41b24017285bbcfcad1e2486469121d4dce2076bb8e",
+                "envelope": {
+                  "to": "harness-recipient@example.test",
+                  "cc": [
+                    "harness-copy@example.test"
+                  ],
+                  "subject": "Harness check: synthetic message, nothing is sent",
+                  "text": "Synthetic body for the operator confirmation live check.\nNothing is sent.",
+                  "attachments": []
+                },
+                "provenance": {
+                  "member_id": "harness-member",
+                  "project_id": "harness-project",
+                  "task_id": "harness-task",
+                  "source_refs": [
+                    "harness:synthetic-source"
+                  ]
+                },
+                "delivery_id": "974e8a99-e3df-481b-b5e5-5b43fb5fa717"
+              },
+              "invalidated_at": null,
+              "invalidation_reason": null,
+              "claimed_at": null,
+              "receipt": null,
+              "created_at": "2026-11-20T20:56:07.772Z",
+              "updated_at": "2026-11-20T20:56:55.704Z",
+              "operator_edit": null,
+              "feedback": null
+            }
+          }
+        }
+      ],
+      "dialogs": [],
+      "checks": [
+        {
+          "name": "answered 200 with the same approval",
+          "pass": true,
+          "detail": 200
+        },
+        {
+          "name": "no dialog was shown",
+          "pass": true,
+          "detail": 0
+        },
+        {
+          "name": "still exactly one approval event",
+          "pass": true,
+          "detail": 1
+        }
+      ]
+    },
+    {
+      "id": "S09",
+      "label": "Send the Praxis Mail draft with the stored proof alone and forged recipient fields; nobody answers",
+      "plans": [
+        "none"
+      ],
+      "sent": {
+        "id": "S09",
+        "label": "Send the Praxis Mail draft with the stored proof alone and forged recipient fields; nobody answers",
+        "kind": "sequence",
+        "instruction": "Unattended run: leave the Mac dialog alone; it closes by itself after 8 seconds.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/praxis/mailbox/drafts-review/md_harness",
+            "body": {
+              "action": "approve_send",
+              "version": "v1",
+              "to": "attacker@example.test",
+              "cc": [
+                "attacker-copy@example.test"
+              ],
+              "subject": "Forged subject",
+              "body": "Forged body"
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 403,
+          "json": {
+            "error": "The confirmation on this Mac was not answered in time. Nothing was recorded.",
+            "code": "operator_confirmation_timeout",
+            "nothing_recorded": true,
+            "confirmation_ref": "f315ef13"
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "n": 7,
+          "step": "S09",
+          "at": "2026-11-20T20:56:56.242Z",
+          "plan": "none",
+          "title": "Nexus: send this email?",
+          "confirm_label": "Send",
+          "seconds": 8,
+          "message": "Send to harness-member@example.test: \"Harness check: synthetic Praxis draft, nothing is sent\"?\nCc: none\n\nMessage:\nSynthetic Praxis Mail body for the operator confirmation live check.\nNothing is sent.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:56:56.\nIf you did not just ask for this in Nexus, click Cancel.\nRef f315ef13",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 35030,
+            "argv_strings": [
+              "Nexus: send this email?",
+              "Send to harness-member@example.test: \"Harness check: synthetic Praxis draft, nothing is sent\"?\nCc: none\n\nMessage:\nSynthetic Praxis Mail body for the operator confirmation live check.\nNothing is sent.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:56:56.\nIf you did not just ask for this in Nexus, click Cancel.\nRef f315ef13",
+              "Send",
+              "8"
+            ]
+          },
+          "window": {
+            "bounds": {
+              "Height": 356,
+              "Width": 420,
+              "X": 750,
+              "Y": 181
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35030,
+            "window_id": 5589
+          },
+          "console_locked": true,
+          "dialog_process_outcome": "timeout",
+          "outcome": "timeout",
+          "answer_source": "none: left unanswered"
+        }
+      ],
+      "checks": [
+        {
+          "name": "refused 403 operator_confirmation_timeout, nothing recorded",
+          "pass": true,
+          "detail": {
+            "status": 403,
+            "code": "operator_confirmation_timeout",
+            "nothing_recorded": true
+          }
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 356,
+              "Width": 420,
+              "X": 750,
+              "Y": 181
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35030,
+            "window_id": 5589
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: send this email?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Send to harness-member@example.test: \"Harness check: synthetic Praxis draft, nothing is sent\"?",
+            "Cc: none"
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Send"
+        },
+        {
+          "name": "osascript received exactly this title and text as argv",
+          "pass": true
+        },
+        {
+          "name": "the dialog says who asked (Google Chrome on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "the dialog shows none of the forged request values",
+          "pass": true,
+          "detail": [
+            "attacker@example.test",
+            "attacker-copy@example.test",
+            "Forged"
+          ]
+        },
+        {
+          "name": "the dialog Ref matches the API answer",
+          "pass": true,
+          "detail": {
+            "dialog": "f315ef13",
+            "api": "f315ef13"
+          }
+        },
+        {
+          "name": "the dialog outcome was timeout",
+          "pass": true,
+          "detail": {
+            "outcome": "timeout",
+            "source": "none: left unanswered"
+          }
+        },
+        {
+          "name": "nothing reached Praxis",
+          "pass": true,
+          "detail": 0
+        }
+      ]
+    },
+    {
+      "id": "S10",
+      "label": "Send the Praxis Mail draft (same forged request) and confirm in the Mac dialog",
+      "plans": [
+        "confirm"
+      ],
+      "sent": {
+        "id": "S10",
+        "label": "Send the Praxis Mail draft (same forged request) and confirm in the Mac dialog",
+        "kind": "sequence",
+        "instruction": "Unattended run: the harness confirms this dialog.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/praxis/mailbox/drafts-review/md_harness",
+            "body": {
+              "action": "approve_send",
+              "version": "v1",
+              "to": "attacker@example.test",
+              "cc": [
+                "attacker-copy@example.test"
+              ],
+              "subject": "Forged subject",
+              "body": "Forged body"
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 200,
+          "json": {
+            "draft": {
+              "id": "md_harness",
+              "version": "v2-sent",
+              "status": "sent",
+              "to": "harness-member@example.test",
+              "cc": [],
+              "subject": "Harness check: synthetic Praxis draft, nothing is sent",
+              "body": "Synthetic Praxis Mail body for the operator confirmation live check.\nNothing is sent."
+            }
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "n": 8,
+          "step": "S10",
+          "at": "2026-11-20T20:57:06.821Z",
+          "plan": "confirm",
+          "title": "Nexus: send this email?",
+          "confirm_label": "Send",
+          "seconds": 8,
+          "message": "Send to harness-member@example.test: \"Harness check: synthetic Praxis draft, nothing is sent\"?\nCc: none\n\nMessage:\nSynthetic Praxis Mail body for the operator confirmation live check.\nNothing is sent.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:57:06.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 206124ed",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 35079,
+            "argv_strings": [
+              "Nexus: send this email?",
+              "Send to harness-member@example.test: \"Harness check: synthetic Praxis draft, nothing is sent\"?\nCc: none\n\nMessage:\nSynthetic Praxis Mail body for the operator confirmation live check.\nNothing is sent.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:57:06.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 206124ed",
+              "Send",
+              "8"
+            ]
+          },
+          "window": {
+            "bounds": {
+              "Height": 350,
+              "Width": 414,
+              "X": 753,
+              "Y": 184
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35079,
+            "window_id": 5590
+          },
+          "console_locked": true,
+          "action": "stand-in: the console is locked, so no process can press Send; the harness closed the dialog and handed the broker \"confirmed\"",
+          "dialog_process_outcome": "unavailable",
+          "window_after": {
+            "found": false,
+            "mode": "window",
+            "pid": 35079
+          },
+          "outcome": "confirmed",
+          "answer_source": "stand-in (console locked)"
+        }
+      ],
+      "checks": [
+        {
+          "name": "Praxis accepted the send 200",
+          "pass": true,
+          "detail": 200
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 350,
+              "Width": 414,
+              "X": 753,
+              "Y": 184
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35079,
+            "window_id": 5590
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: send this email?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Send to harness-member@example.test: \"Harness check: synthetic Praxis draft, nothing is sent\"?",
+            "Cc: none"
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Send"
+        },
+        {
+          "name": "osascript received exactly this title and text as argv",
+          "pass": true
+        },
+        {
+          "name": "the dialog says who asked (Google Chrome on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "the dialog shows none of the forged request values",
+          "pass": true,
+          "detail": [
+            "attacker@example.test",
+            "attacker-copy@example.test",
+            "Forged"
+          ]
+        },
+        {
+          "name": "the dialog outcome was confirmed",
+          "pass": true,
+          "detail": {
+            "outcome": "confirmed",
+            "source": "stand-in (console locked)"
+          }
+        },
+        {
+          "name": "exactly one signed relay, carrying only the confirmed version",
+          "pass": true,
+          "detail": [
+            {
+              "action": "approve_send",
+              "version": "v1"
+            }
+          ]
+        },
+        {
+          "name": "the server logged the relay with the dialog Ref",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "S11",
+      "label": "Replay the confirmed Praxis Mail send",
+      "plans": [],
+      "sent": {
+        "id": "S11",
+        "label": "Replay the confirmed Praxis Mail send",
+        "kind": "sequence",
+        "instruction": "Unattended run: no Mac dialog is expected for this step.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/praxis/mailbox/drafts-review/md_harness",
+            "body": {
+              "action": "approve_send",
+              "version": "v1",
+              "to": "attacker@example.test",
+              "cc": [
+                "attacker-copy@example.test"
+              ],
+              "subject": "Forged subject",
+              "body": "Forged body"
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 409,
+          "json": {
+            "error": "This draft is no longer waiting for review; reload Praxis Mail. No mail decision was recorded.",
+            "nothing_recorded": true
+          }
+        }
+      ],
+      "dialogs": [],
+      "checks": [
+        {
+          "name": "refused 409 before any dialog, nothing recorded",
+          "pass": true,
+          "detail": {
+            "status": 409,
+            "error": "This draft is no longer waiting for review; reload Praxis Mail. No mail decision was recorded."
+          }
+        },
+        {
+          "name": "no dialog was shown",
+          "pass": true,
+          "detail": 0
+        },
+        {
+          "name": "still exactly one relay",
+          "pass": true,
+          "detail": 1
+        }
+      ]
+    },
+    {
+      "id": "S12",
+      "label": "Finish the review of document C with the approve-after-changes grant; decline in the Mac dialog",
+      "plans": [
+        "decline"
+      ],
+      "sent": {
+        "id": "S12",
+        "label": "Finish the review of document C with the approve-after-changes grant; decline in the Mac dialog",
+        "kind": "sequence",
+        "instruction": "Unattended run: the harness answers Cancel.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/reviews/1d8b42f2-18b3-480a-a340-93ac8a9b3a29/finish",
+            "body": {
+              "approve_after_changes": true,
+              "summary": "Approve once the second paragraph is tightened."
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 403,
+          "json": {
+            "error": "You declined the confirmation on this Mac. Nothing was recorded.",
+            "code": "operator_confirmation_declined",
+            "nothing_recorded": true,
+            "confirmation_ref": "03613b19"
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "n": 9,
+          "step": "S12",
+          "at": "2026-11-20T20:57:09.561Z",
+          "plan": "decline",
+          "title": "Nexus: finish this review?",
+          "confirm_label": "Approve after changes",
+          "seconds": 8,
+          "message": "Finish your review of \"Harness check C: synthetic review (task 5e513530)\" (version 1, revision 39011e5c-07df-4f64-a21b-2a44bcd9b285)?\nThis lets the executor that applies your changes record your approval of the revised version.\nComments in this review: 1.\nSummary:\nApprove once the second paragraph is tightened.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:57:09.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 03613b19",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 35095,
+            "argv_strings": [
+              "Nexus: finish this review?",
+              "Finish your review of \"Harness check C: synthetic review (task 5e513530)\" (version 1, revision 39011e5c-07df-4f64-a21b-2a44bcd9b285)?\nThis lets the executor that applies your changes record your approval of the revised version.\nComments in this review: 1.\nSummary:\nApprove once the second paragraph is tightened.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:57:09.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 03613b19",
+              "Approve after changes",
+              "8"
+            ]
+          },
+          "window": {
+            "bounds": {
+              "Height": 340,
+              "Width": 420,
+              "X": 750,
+              "Y": 185
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35095,
+            "window_id": 5591
+          },
+          "console_locked": true,
+          "action": "stand-in: the console is locked, so no process can press Cancel; the harness closed the dialog and handed the broker \"declined\"",
+          "dialog_process_outcome": "unavailable",
+          "window_after": {
+            "found": false,
+            "mode": "window",
+            "pid": 35095
+          },
+          "outcome": "declined",
+          "answer_source": "stand-in (console locked)"
+        }
+      ],
+      "checks": [
+        {
+          "name": "refused 403 operator_confirmation_declined, nothing recorded",
+          "pass": true,
+          "detail": {
+            "status": 403,
+            "code": "operator_confirmation_declined",
+            "nothing_recorded": true
+          }
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 340,
+              "Width": 420,
+              "X": 750,
+              "Y": 185
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35095,
+            "window_id": 5591
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: finish this review?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Finish your review of \"Harness check C: synthetic review (task 5e513530)\"",
+            "This lets the executor that applies your changes record your approval of the revised version.",
+            "Comments in this review: 1.",
+            "Summary:",
+            "Approve once the second paragraph is tightened."
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Approve after changes"
+        },
+        {
+          "name": "osascript received exactly this title and text as argv",
+          "pass": true
+        },
+        {
+          "name": "the dialog says who asked (Google Chrome on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "the dialog Ref matches the API answer",
+          "pass": true,
+          "detail": {
+            "dialog": "03613b19",
+            "api": "03613b19"
+          }
+        },
+        {
+          "name": "the dialog outcome was declined",
+          "pass": true,
+          "detail": {
+            "outcome": "declined",
+            "source": "stand-in (console locked)"
+          }
+        },
+        {
+          "name": "the review is still a draft without the grant",
+          "pass": true,
+          "detail": {
+            "status": "draft",
+            "approval_delegated": false
+          }
+        },
+        {
+          "name": "no submission exists",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "S13",
+      "label": "Finish the same review with the grant and confirm in the Mac dialog",
+      "plans": [
+        "confirm"
+      ],
+      "sent": {
+        "id": "S13",
+        "label": "Finish the same review with the grant and confirm in the Mac dialog",
+        "kind": "sequence",
+        "instruction": "Unattended run: the harness confirms this dialog.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/reviews/1d8b42f2-18b3-480a-a340-93ac8a9b3a29/finish",
+            "body": {
+              "approve_after_changes": true,
+              "summary": "Approve once the second paragraph is tightened."
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 202,
+          "json": {
+            "review": {
+              "id": "1d8b42f2-18b3-480a-a340-93ac8a9b3a29",
+              "document_id": "eeedb470-c0af-41b2-915c-7737171df30d",
+              "revision_id": "39011e5c-07df-4f64-a21b-2a44bcd9b285",
+              "reviewer_id": "local_user",
+              "status": "submitted",
+              "summary": "Approve once the second paragraph is tightened.",
+              "created_at": "2026-11-20T20:56:07.774Z",
+              "updated_at": "2026-11-20T20:57:14.735Z",
+              "submitted_at": "2026-11-20T20:57:14.734Z",
+              "submitted_authority": "operator_credential",
+              "approval_delegated": true,
+              "closed_at": null,
+              "closed_reason": null,
+              "replacement_id": null,
+              "is_current_revision": true,
+              "comments": [
+                {
+                  "id": "ac146035-a702-4663-8074-58cc9ea13bb6",
+                  "review_id": "1d8b42f2-18b3-480a-a340-93ac8a9b3a29",
+                  "author": {
+                    "id": "local_user",
+                    "authority": "reviewer"
+                  },
+                  "provenance": null,
+                  "suggestion": null,
+                  "kind": "document",
+                  "start_line": null,
+                  "end_line": null,
+                  "block_hash": null,
+                  "quote": null,
+                  "selection": null,
+                  "body": "Synthetic comment: tighten the second paragraph.",
+                  "anchor_target": null,
+                  "target_label": null,
+                  "parent_id": null,
+                  "resolved": false,
+                  "resolved_at": null,
+                  "created_at": "2026-11-20T20:56:07.777Z",
+                  "updated_at": "2026-11-20T20:56:07.777Z",
+                  "client_id": null,
+                  "anchor": {
+                    "state": "document"
+                  }
+                }
+              ],
+              "decision_answers": [],
+              "stale_answers": [],
+              "pinned_revision": {
+                "id": "39011e5c-07df-4f64-a21b-2a44bcd9b285",
+                "document_id": "eeedb470-c0af-41b2-915c-7737171df30d",
+                "content_hash": "ee70a7471ebe4d4cf77c90109de1c2eaafe7550ba6a8c88576b55d28e1e3d70c",
+                "byte_length": 135,
+                "line_count": 4,
+                "file_mtime": "2026-11-20T20:56:07.765Z",
+                "captured_at": "2026-11-20T20:56:07.766Z",
+                "media_type": "markdown",
+                "mime_type": "text/markdown",
+                "source": "capture",
+                "edited_by": null,
+                "asset_count": 1,
+                "width": null,
+                "height": null,
+                "manifest": null,
+                "version": 1,
+                "draft_id": "eeedb470-c0af-41b2-915c-7737171df30d:draft:1",
+                "capture_number": 1,
+                "is_delivered": true,
+                "is_current": true
+              },
+              "document_changed": false,
+              "submission": {
+                "id": "f7c3e32b-2274-47fe-8834-803ef56d0590",
+                "review_id": "1d8b42f2-18b3-480a-a340-93ac8a9b3a29",
+                "document_id": "eeedb470-c0af-41b2-915c-7737171df30d",
+                "revision_id": "39011e5c-07df-4f64-a21b-2a44bcd9b285",
+                "delivery_status": "queued",
+                "delivery_attempts": 0,
+                "next_attempt_at": "2026-11-20T20:57:14.735Z",
+                "last_error": null,
+                "delivered_at": null,
+                "receipt": null,
+                "review_url": "https://nexus.vibeshiftai.com/documents/eeedb470-c0af-41b2-915c-7737171df30d",
+                "created_at": "2026-11-20T20:57:14.735Z",
+                "updated_at": "2026-11-20T20:57:14.735Z"
+              }
+            },
+            "submission": {
+              "id": "f7c3e32b-2274-47fe-8834-803ef56d0590",
+              "review_id": "1d8b42f2-18b3-480a-a340-93ac8a9b3a29",
+              "document_id": "eeedb470-c0af-41b2-915c-7737171df30d",
+              "revision_id": "39011e5c-07df-4f64-a21b-2a44bcd9b285",
+              "delivery_status": "queued",
+              "delivery_attempts": 0,
+              "next_attempt_at": "2026-11-20T20:57:14.735Z",
+              "last_error": null,
+              "delivered_at": null,
+              "receipt": null,
+              "review_url": "https://nexus.vibeshiftai.com/documents/eeedb470-c0af-41b2-915c-7737171df30d",
+              "created_at": "2026-11-20T20:57:14.735Z",
+              "updated_at": "2026-11-20T20:57:14.735Z"
+            }
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "n": 10,
+          "step": "S13",
+          "at": "2026-11-20T20:57:12.345Z",
+          "plan": "confirm",
+          "title": "Nexus: finish this review?",
+          "confirm_label": "Approve after changes",
+          "seconds": 8,
+          "message": "Finish your review of \"Harness check C: synthetic review (task 5e513530)\" (version 1, revision 39011e5c-07df-4f64-a21b-2a44bcd9b285)?\nThis lets the executor that applies your changes record your approval of the revised version.\nComments in this review: 1.\nSummary:\nApprove once the second paragraph is tightened.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:57:12.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 5fb0afec",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 35102,
+            "argv_strings": [
+              "Nexus: finish this review?",
+              "Finish your review of \"Harness check C: synthetic review (task 5e513530)\" (version 1, revision 39011e5c-07df-4f64-a21b-2a44bcd9b285)?\nThis lets the executor that applies your changes record your approval of the revised version.\nComments in this review: 1.\nSummary:\nApprove once the second paragraph is tightened.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:57:12.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 5fb0afec",
+              "Approve after changes",
+              "8"
+            ]
+          },
+          "window": {
+            "bounds": {
+              "Height": 340,
+              "Width": 420,
+              "X": 750,
+              "Y": 185
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35102,
+            "window_id": 5592
+          },
+          "console_locked": true,
+          "action": "stand-in: the console is locked, so no process can press Approve after changes; the harness closed the dialog and handed the broker \"confirmed\"",
+          "dialog_process_outcome": "unavailable",
+          "window_after": {
+            "found": false,
+            "mode": "window",
+            "pid": 35102
+          },
+          "outcome": "confirmed",
+          "answer_source": "stand-in (console locked)"
+        }
+      ],
+      "checks": [
+        {
+          "name": "finished 202",
+          "pass": true,
+          "detail": 202
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 340,
+              "Width": 420,
+              "X": 750,
+              "Y": 185
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35102,
+            "window_id": 5592
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: finish this review?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Finish your review of \"Harness check C: synthetic review (task 5e513530)\"",
+            "This lets the executor that applies your changes record your approval of the revised version.",
+            "Comments in this review: 1.",
+            "Summary:",
+            "Approve once the second paragraph is tightened."
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Approve after changes"
+        },
+        {
+          "name": "osascript received exactly this title and text as argv",
+          "pass": true
+        },
+        {
+          "name": "the dialog says who asked (Google Chrome on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "the dialog outcome was confirmed",
+          "pass": true,
+          "detail": {
+            "outcome": "confirmed",
+            "source": "stand-in (console locked)"
+          }
+        },
+        {
+          "name": "the review is submitted once, with the grant, on Robert's operator credential",
+          "pass": true,
+          "detail": {
+            "status": "submitted",
+            "approval_delegated": true,
+            "submitted_authority": "operator_credential",
+            "submission": "f7c3e32b-2274-47fe-8834-803ef56d0590"
+          }
+        },
+        {
+          "name": "the server logged the finish with the dialog Ref",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "S14",
+      "label": "Approve document D while the dialog process ends before any answer",
+      "plans": [
+        "kill"
+      ],
+      "sent": {
+        "id": "S14",
+        "label": "Approve document D while the dialog process ends before any answer",
+        "kind": "sequence",
+        "instruction": "Unattended run: the harness ends this Mac dialog itself; do not click.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/a9366fe3-e02a-4c1e-956c-6e3c367fd06f/decisions",
+            "body": {
+              "revision_id": "26d92fe9-c7bc-4dba-9080-4504f973d396",
+              "decision": "approve",
+              "note": "The dialog process ends."
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 503,
+          "json": {
+            "error": "The confirmation dialog could not be shown on this Mac. Nothing was recorded.",
+            "code": "operator_confirmation_unavailable",
+            "nothing_recorded": true,
+            "confirmation_ref": "b4ab0ebe"
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "n": 11,
+          "step": "S14",
+          "at": "2026-11-20T20:57:15.009Z",
+          "plan": "kill",
+          "title": "Nexus: approve this document?",
+          "confirm_label": "Approve",
+          "seconds": 8,
+          "message": "Approve \"Harness check D: synthetic brief (task 5e513530)\"?\nVersion 1, revision 26d92fe9-c7bc-4dba-9080-4504f973d396, content sha256 60145d02d58e, captured 2026-11-20T20:56:07.769Z.\nNote:\nThe dialog process ends.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:57:15.\nIf you did not just ask for this in Nexus, click Cancel.\nRef b4ab0ebe",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 35108,
+            "argv_strings": [
+              "Nexus: approve this document?",
+              "Approve \"Harness check D: synthetic brief (task 5e513530)\"?\nVersion 1, revision 26d92fe9-c7bc-4dba-9080-4504f973d396, content sha256 60145d02d58e, captured 2026-11-20T20:56:07.769Z.\nNote:\nThe dialog process ends.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:57:15.\nIf you did not just ask for this in Nexus, click Cancel.\nRef b4ab0ebe",
+              "Approve",
+              "8"
+            ]
+          },
+          "window": {
+            "bounds": {
+              "Height": 338,
+              "Width": 418,
+              "X": 751,
+              "Y": 186
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35108,
+            "window_id": 5593
+          },
+          "console_locked": true,
+          "action": "the harness ended the dialog process (SIGKILL) before any answer",
+          "dialog_process_outcome": "unavailable",
+          "window_after": {
+            "found": false,
+            "mode": "window",
+            "pid": 35108
+          },
+          "outcome": "unavailable",
+          "answer_source": "none: dialog process ended"
+        }
+      ],
+      "checks": [
+        {
+          "name": "refused 503 operator_confirmation_unavailable, nothing recorded",
+          "pass": true,
+          "detail": {
+            "status": 503,
+            "code": "operator_confirmation_unavailable",
+            "nothing_recorded": true
+          }
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 338,
+              "Width": 418,
+              "X": 751,
+              "Y": 186
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35108,
+            "window_id": 5593
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: approve this document?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Approve \"Harness check D: synthetic brief (task 5e513530)\"?",
+            "/[Rr]evision 26d92fe9-c7bc-4dba-9080-4504f973d396, content sha256 60145d02d58e/"
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Approve"
+        },
+        {
+          "name": "osascript received exactly this title and text as argv",
+          "pass": true
+        },
+        {
+          "name": "the dialog says who asked (Google Chrome on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "the dialog Ref matches the API answer",
+          "pass": true,
+          "detail": {
+            "dialog": "b4ab0ebe",
+            "api": "b4ab0ebe"
+          }
+        },
+        {
+          "name": "the dialog outcome was unavailable",
+          "pass": true,
+          "detail": {
+            "outcome": "unavailable",
+            "source": "none: dialog process ended"
+          }
+        },
+        {
+          "name": "the dialog is gone",
+          "pass": true,
+          "detail": {
+            "found": false,
+            "mode": "window",
+            "pid": 35108
+          }
+        },
+        {
+          "name": "no fallback: document D has no decision",
+          "pass": true,
+          "detail": 0
+        }
+      ]
+    },
+    {
+      "id": "S15",
+      "label": "Approve document D, then the page aborts while the dialog is open",
+      "plans": [
+        "none"
+      ],
+      "sent": {
+        "id": "S15",
+        "label": "Approve document D, then the page aborts while the dialog is open",
+        "kind": "abort",
+        "instruction": "Unattended run: leave the Mac dialog alone; the page gives up and the dialog closes with it.",
+        "request": {
+          "method": "POST",
+          "url": "/api/documents/a9366fe3-e02a-4c1e-956c-6e3c367fd06f/decisions",
+          "body": {
+            "revision_id": "26d92fe9-c7bc-4dba-9080-4504f973d396",
+            "decision": "approve",
+            "note": "The page gives up."
+          }
+        }
+      },
+      "result": {
+        "visible": {
+          "visible": true,
+          "window_id": 5594
+        },
+        "result": {
+          "aborted": true,
+          "name": "AbortError"
+        }
+      },
+      "dialogs": [
+        {
+          "n": 12,
+          "step": "S15",
+          "at": "2026-11-20T20:57:17.548Z",
+          "plan": "none",
+          "title": "Nexus: approve this document?",
+          "confirm_label": "Approve",
+          "seconds": 8,
+          "message": "Approve \"Harness check D: synthetic brief (task 5e513530)\"?\nVersion 1, revision 26d92fe9-c7bc-4dba-9080-4504f973d396, content sha256 60145d02d58e, captured 2026-11-20T20:56:07.769Z.\nNote:\nThe page gives up.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:57:17.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 1c56f4e6",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 35118,
+            "argv_strings": [
+              "Nexus: approve this document?",
+              "Approve \"Harness check D: synthetic brief (task 5e513530)\"?\nVersion 1, revision 26d92fe9-c7bc-4dba-9080-4504f973d396, content sha256 60145d02d58e, captured 2026-11-20T20:56:07.769Z.\nNote:\nThe page gives up.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:57:17.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 1c56f4e6",
+              "Approve",
+              "8"
+            ]
+          },
+          "window": {
+            "bounds": {
+              "Height": 334,
+              "Width": 412,
+              "X": 754,
+              "Y": 188
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35118,
+            "window_id": 5594
+          },
+          "console_locked": true,
+          "dialog_process_outcome": "aborted",
+          "window_after": {
+            "found": false,
+            "mode": "window",
+            "pid": 35118
+          },
+          "outcome": "aborted",
+          "answer_source": "none: the page aborted the request"
+        }
+      ],
+      "checks": [
+        {
+          "name": "the page saw its request aborted after the dialog appeared",
+          "pass": true,
+          "detail": {
+            "visible": {
+              "visible": true,
+              "window_id": 5594
+            },
+            "result": {
+              "aborted": true,
+              "name": "AbortError"
+            }
+          }
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 334,
+              "Width": 412,
+              "X": 754,
+              "Y": 188
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35118,
+            "window_id": 5594
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: approve this document?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Approve \"Harness check D: synthetic brief (task 5e513530)\"?",
+            "/[Rr]evision 26d92fe9-c7bc-4dba-9080-4504f973d396, content sha256 60145d02d58e/"
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Approve"
+        },
+        {
+          "name": "osascript received exactly this title and text as argv",
+          "pass": true
+        },
+        {
+          "name": "the dialog says who asked (Google Chrome on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "the dialog outcome was aborted",
+          "pass": true,
+          "detail": {
+            "outcome": "aborted",
+            "source": "none: the page aborted the request"
+          }
+        },
+        {
+          "name": "the dialog closed with the request",
+          "pass": true,
+          "detail": {
+            "found": false,
+            "mode": "window",
+            "pid": 35118
+          }
+        },
+        {
+          "name": "the server logged the aborted confirmation",
+          "pass": true
+        },
+        {
+          "name": "document D has no decision",
+          "pass": true,
+          "detail": 0
+        }
+      ]
+    },
+    {
+      "id": "S16",
+      "label": "Approve document D twice at once; nobody answers the first dialog",
+      "plans": [
+        "none"
+      ],
+      "sent": {
+        "id": "S16",
+        "label": "Approve document D twice at once; nobody answers the first dialog",
+        "kind": "busy",
+        "instruction": "Unattended run: leave the first Mac dialog alone; the second request is refused while it is open.",
+        "first": {
+          "method": "POST",
+          "url": "/api/documents/a9366fe3-e02a-4c1e-956c-6e3c367fd06f/decisions",
+          "body": {
+            "revision_id": "26d92fe9-c7bc-4dba-9080-4504f973d396",
+            "decision": "approve",
+            "note": "First request."
+          }
+        },
+        "second": {
+          "method": "POST",
+          "url": "/api/documents/a9366fe3-e02a-4c1e-956c-6e3c367fd06f/decisions",
+          "body": {
+            "revision_id": "26d92fe9-c7bc-4dba-9080-4504f973d396",
+            "decision": "request_changes",
+            "note": "Second request while the first dialog is open."
+          }
+        }
+      },
+      "result": {
+        "visible": {
+          "visible": true,
+          "window_id": 5595
+        },
+        "first": {
+          "status": 403,
+          "json": {
+            "error": "The confirmation on this Mac was not answered in time. Nothing was recorded.",
+            "code": "operator_confirmation_timeout",
+            "nothing_recorded": true,
+            "confirmation_ref": "f3f4291a"
+          }
+        },
+        "second": {
+          "status": 409,
+          "json": {
+            "error": "Another confirmation dialog is already open on this Mac; answer it first. Nothing was recorded.",
+            "code": "operator_confirmation_busy",
+            "nothing_recorded": true
+          }
+        }
+      },
+      "dialogs": [
+        {
+          "n": 13,
+          "step": "S16",
+          "at": "2026-11-20T20:57:19.997Z",
+          "plan": "none",
+          "title": "Nexus: approve this document?",
+          "confirm_label": "Approve",
+          "seconds": 8,
+          "message": "Approve \"Harness check D: synthetic brief (task 5e513530)\"?\nVersion 1, revision 26d92fe9-c7bc-4dba-9080-4504f973d396, content sha256 60145d02d58e, captured 2026-11-20T20:56:07.769Z.\nNote:\nFirst request.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:57:19.\nIf you did not just ask for this in Nexus, click Cancel.\nRef f3f4291a",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 35124,
+            "argv_strings": [
+              "Nexus: approve this document?",
+              "Approve \"Harness check D: synthetic brief (task 5e513530)\"?\nVersion 1, revision 26d92fe9-c7bc-4dba-9080-4504f973d396, content sha256 60145d02d58e, captured 2026-11-20T20:56:07.769Z.\nNote:\nFirst request.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:57:19.\nIf you did not just ask for this in Nexus, click Cancel.\nRef f3f4291a",
+              "Approve",
+              "8"
+            ]
+          },
+          "window": {
+            "bounds": {
+              "Height": 340,
+              "Width": 420,
+              "X": 750,
+              "Y": 185
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35124,
+            "window_id": 5595
+          },
+          "console_locked": true,
+          "dialog_process_outcome": "timeout",
+          "outcome": "timeout",
+          "answer_source": "none: left unanswered"
+        }
+      ],
+      "checks": [
+        {
+          "name": "refused 403 operator_confirmation_timeout, nothing recorded",
+          "pass": true,
+          "detail": {
+            "status": 403,
+            "code": "operator_confirmation_timeout",
+            "nothing_recorded": true
+          }
+        },
+        {
+          "name": "refused 409 operator_confirmation_busy, nothing recorded",
+          "pass": true,
+          "detail": {
+            "status": 409,
+            "code": "operator_confirmation_busy",
+            "nothing_recorded": true
+          }
+        },
+        {
+          "name": "one dialog at a time",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "document D has no decision",
+          "pass": true,
+          "detail": 0
+        }
+      ]
+    },
+    {
+      "id": "S17",
+      "label": "Request changes on document D; a third dialog in a row goes unanswered",
+      "plans": [
+        "none"
+      ],
+      "sent": {
+        "id": "S17",
+        "label": "Request changes on document D; a third dialog in a row goes unanswered",
+        "kind": "sequence",
+        "instruction": "Unattended run: leave the Mac dialog alone; it closes by itself after 8 seconds.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/a9366fe3-e02a-4c1e-956c-6e3c367fd06f/decisions",
+            "body": {
+              "revision_id": "26d92fe9-c7bc-4dba-9080-4504f973d396",
+              "decision": "request_changes",
+              "note": "Third unanswered dialog."
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 403,
+          "json": {
+            "error": "The confirmation on this Mac was not answered in time. Nothing was recorded.",
+            "code": "operator_confirmation_timeout",
+            "nothing_recorded": true,
+            "confirmation_ref": "efe438d6"
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "n": 14,
+          "step": "S17",
+          "at": "2026-11-20T20:57:30.586Z",
+          "plan": "none",
+          "title": "Nexus: request changes?",
+          "confirm_label": "Request changes",
+          "seconds": 8,
+          "message": "Request changes to \"Harness check D: synthetic brief (task 5e513530)\"?\nVersion 1, revision 26d92fe9-c7bc-4dba-9080-4504f973d396, content sha256 60145d02d58e, captured 2026-11-20T20:56:07.769Z.\nNote:\nThird unanswered dialog.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:57:30.\nIf you did not just ask for this in Nexus, click Cancel.\nRef efe438d6",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 35768,
+            "argv_strings": [
+              "Nexus: request changes?",
+              "Request changes to \"Harness check D: synthetic brief (task 5e513530)\"?\nVersion 1, revision 26d92fe9-c7bc-4dba-9080-4504f973d396, content sha256 60145d02d58e, captured 2026-11-20T20:56:07.769Z.\nNote:\nThird unanswered dialog.\n\nRequested by Google Chrome on 127.0.0.1:4299 at 15:57:30.\nIf you did not just ask for this in Nexus, click Cancel.\nRef efe438d6",
+              "Request changes",
+              "8"
+            ]
+          },
+          "window": {
+            "bounds": {
+              "Height": 334,
+              "Width": 414,
+              "X": 753,
+              "Y": 188
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35768,
+            "window_id": 5596
+          },
+          "console_locked": true,
+          "dialog_process_outcome": "timeout",
+          "outcome": "timeout",
+          "answer_source": "none: left unanswered"
+        }
+      ],
+      "checks": [
+        {
+          "name": "refused 403 operator_confirmation_timeout, nothing recorded",
+          "pass": true,
+          "detail": {
+            "status": 403,
+            "code": "operator_confirmation_timeout",
+            "nothing_recorded": true
+          }
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 334,
+              "Width": 414,
+              "X": 753,
+              "Y": 188
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 35768,
+            "window_id": 5596
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: request changes?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Request changes to \"Harness check D: synthetic brief (task 5e513530)\"?",
+            "/[Rr]evision 26d92fe9-c7bc-4dba-9080-4504f973d396, content sha256 60145d02d58e/"
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Request changes"
+        },
+        {
+          "name": "osascript received exactly this title and text as argv",
+          "pass": true
+        },
+        {
+          "name": "the dialog says who asked (Google Chrome on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "the dialog Ref matches the API answer",
+          "pass": true,
+          "detail": {
+            "dialog": "efe438d6",
+            "api": "efe438d6"
+          }
+        },
+        {
+          "name": "the dialog outcome was timeout",
+          "pass": true,
+          "detail": {
+            "outcome": "timeout",
+            "source": "none: left unanswered"
+          }
+        },
+        {
+          "name": "document D has no decision",
+          "pass": true,
+          "detail": 0
+        }
+      ]
+    },
+    {
+      "id": "S18",
+      "label": "Approve document D right after three unanswered dialogs",
+      "plans": [],
+      "sent": {
+        "id": "S18",
+        "label": "Approve document D right after three unanswered dialogs",
+        "kind": "sequence",
+        "instruction": "Unattended run: no Mac dialog is expected for this step.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/a9366fe3-e02a-4c1e-956c-6e3c367fd06f/decisions",
+            "body": {
+              "revision_id": "26d92fe9-c7bc-4dba-9080-4504f973d396",
+              "decision": "approve",
+              "note": "Asked again right away."
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 429,
+          "json": {
+            "error": "Confirmations on this Mac are paused for five minutes after several went unanswered. Nothing was recorded.",
+            "code": "operator_confirmation_paused",
+            "nothing_recorded": true
+          }
+        }
+      ],
+      "dialogs": [],
+      "checks": [
+        {
+          "name": "refused 429 operator_confirmation_paused, nothing recorded",
+          "pass": true,
+          "detail": {
+            "status": 429,
+            "code": "operator_confirmation_paused",
+            "nothing_recorded": true
+          }
+        },
+        {
+          "name": "no dialog was shown",
+          "pass": true,
+          "detail": 0
+        },
+        {
+          "name": "document D has no decision",
+          "pass": true,
+          "detail": 0
+        }
+      ]
+    }
+  ],
+  "console_at_start": {
+    "at": "2026-11-20T20:56:07.778Z",
+    "locked": true,
+    "mode": "session",
+    "on_console": true,
+    "idle_seconds": 1884
+  },
+  "client_launch": {
+    "command": "open -a \"Google Chrome\" http://127.0.0.1:4299/check?client=chrome",
+    "exit": 0
+  },
+  "boot": {
+    "page": {
+      "client": "chrome",
+      "origin": "http://127.0.0.1:4299",
+      "session_before": {
+        "status": 200,
+        "operator": false
+      },
+      "bootstrap": {
+        "status": 201,
+        "operator": true,
+        "proof_received": true
+      },
+      "proof_stored": true,
+      "session_after": {
+        "status": 200,
+        "operator": true
+      }
+    },
+    "bootstraps": [
+      {
+        "at": "2026-11-20T20:56:08.378Z",
+        "device": "mac-chrome",
+        "pin": "real verifier: kernel peer, code signature, interactive launch, console user",
+        "peer": {
+          "owner": {
+            "pid": 73516,
+            "ppid": 73507,
+            "uid": 501,
+            "executable": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/157.0.8103.79/Helpers/Google Chrome Helper (Aperitif).app/Contents/MacOS/Google Chrome Helper (Aperitif)",
+            "type": "network.mojom.NetworkService"
+          },
+          "parent": {
+            "pid": 73507,
+            "ppid": 1,
+            "uid": 501,
+            "executable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            "type": "main",
+            "args": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome --no-startup-window --origin-trial-disabled-features=CanvasTextNg|WebAssemblyCustomDescriptors"
+          }
+        }
+      }
+    ],
+    "checks": [
+      {
+        "name": "the session opened without a click or form",
+        "pass": true,
+        "detail": {
+          "session_after": {
+            "status": 200,
+            "operator": true
+          },
+          "proof_stored": true
+        }
+      },
+      {
+        "name": "before the bootstrap the page had no operator session",
+        "pass": true,
+        "detail": {
+          "status": 200,
+          "operator": false
+        }
+      },
+      {
+        "name": "the bootstrap answered 201 with a proof",
+        "pass": true,
+        "detail": {
+          "status": 201,
+          "operator": true,
+          "proof_received": true
+        }
+      },
+      {
+        "name": "the real kernel peer check identified Robert's Google Chrome",
+        "pass": true,
+        "detail": {
+          "device": "mac-chrome",
+          "pin": "real verifier: kernel peer, code signature, interactive launch, console user"
+        }
+      },
+      {
+        "name": "the connection came from Chrome's network service",
+        "pass": true,
+        "detail": {
+          "pid": 73516,
+          "ppid": 73507,
+          "uid": 501,
+          "executable": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/157.0.8103.79/Helpers/Google Chrome Helper (Aperitif).app/Contents/MacOS/Google Chrome Helper (Aperitif)",
+          "type": "network.mojom.NetworkService"
+        }
+      },
+      {
+        "name": "its parent is the interactive Google Chrome",
+        "pass": true,
+        "detail": {
+          "pid": 73507,
+          "ppid": 1,
+          "uid": 501,
+          "executable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+          "type": "main",
+          "args": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome --no-startup-window --origin-trial-disabled-features=CanvasTextNg|WebAssemblyCustomDescriptors"
+        }
+      },
+      {
+        "name": "exactly one bootstrap",
+        "pass": true,
+        "detail": 1
+      },
+      {
+        "name": "no dialog during bootstrap",
+        "pass": true,
+        "detail": 0
+      }
+    ]
+  },
+  "end": {
+    "revoked": 200,
+    "proof_removed": true
+  },
+  "console_at_end": {
+    "at": "2026-11-20T20:57:41.444Z",
+    "locked": true,
+    "mode": "session",
+    "on_console": true,
+    "idle_seconds": 1978
+  },
+  "final_state": {
+    "documents": {
+      "A": {
+        "id": "fab806fe-10fb-496b-8a6a-a36355949432",
+        "title": "Harness check A: synthetic brief (task 5e513530)",
+        "revision_id": "9c1d1a01-adb5-44d2-93f5-ad615aeee728",
+        "content_hash": "7a867be4439b0e69c7f90a6beef1066a4457fa4afa0f019bb915c362d82e12a6"
+      },
+      "B": {
+        "id": "55149f12-017f-471b-8baa-7d8fb4885be4",
+        "title": "Harness check B: synthetic invitation (task 5e513530)",
+        "revision_id": "1f2d38c5-d797-46f8-a8b2-84c522572681",
+        "content_hash": "13a27d91d86ef76556ce9f28a49b740c77fb6eeda37325d1a0a59a9b111c818c"
+      },
+      "C": {
+        "id": "eeedb470-c0af-41b2-915c-7737171df30d",
+        "title": "Harness check C: synthetic review (task 5e513530)",
+        "revision_id": "39011e5c-07df-4f64-a21b-2a44bcd9b285",
+        "content_hash": "ee70a7471ebe4d4cf77c90109de1c2eaafe7550ba6a8c88576b55d28e1e3d70c"
+      },
+      "D": {
+        "id": "a9366fe3-e02a-4c1e-956c-6e3c367fd06f",
+        "title": "Harness check D: synthetic brief (task 5e513530)",
+        "revision_id": "26d92fe9-c7bc-4dba-9080-4504f973d396",
+        "content_hash": "60145d02d58e939de5def21c9af878747ade5f72bbeb75964bb9a414f5d843cb"
+      }
+    },
+    "decisions": {
+      "A": [
+        {
+          "id": "ad3ead55-0119-4766-8daf-ded58a47b61b",
+          "revision_id": "9c1d1a01-adb5-44d2-93f5-ad615aeee728",
+          "content_hash": "7a867be4439b0e69c7f90a6beef1066a4457fa4afa0f019bb915c362d82e12a6",
+          "decision": "approve",
+          "note": "Confirmed in the Mac dialog.",
+          "actor_id": "local_user",
+          "authority": "operator_credential",
+          "recorded_by": "operator",
+          "client_decision_id": "harness-a-1",
+          "created_at": "2026-11-20T20:56:32.065Z"
+        }
+      ],
+      "D": []
+    },
+    "outgoing_B": {
+      "status": "approved",
+      "envelope_hash": "c20b9f2169750f793192b41b24017285bbcfcad1e2486469121d4dce2076bb8e",
+      "grant": {
+        "authority": "operator_credential",
+        "envelope_hash": "c20b9f2169750f793192b41b24017285bbcfcad1e2486469121d4dce2076bb8e",
+        "approved_at": "2026-11-20T20:56:55.704Z"
+      }
+    },
+    "outgoing_B_events": [
+      {
+        "event": "prepared",
+        "authority": "runtime_credential",
+        "created_at": "2026-11-20T20:56:07.772Z"
+      },
+      {
+        "event": "approved",
+        "authority": "operator_credential",
+        "created_at": "2026-11-20T20:56:55.704Z"
+      }
+    ],
+    "review_C": {
+      "status": "submitted",
+      "approval_delegated": true,
+      "submitted_authority": "operator_credential",
+      "submission": "f7c3e32b-2274-47fe-8834-803ef56d0590"
+    },
+    "praxis_relays": [
+      {
+        "at": "2026-11-20T20:57:09.019Z",
+        "id": "md_harness",
+        "body": {
+          "action": "approve_send",
+          "version": "v1"
+        },
+        "signature_valid": true
+      }
+    ],
+    "praxis_drafts": [
+      {
+        "id": "md_harness",
+        "status": "sent",
+        "version": "v2-sent",
+        "to": "harness-member@example.test"
+      }
+    ]
+  },
+  "dialogs_total": 14,
+  "server_log": [
+    {
+      "at": "2026-11-20T20:56:06.914Z",
+      "level": "warn",
+      "line": "[OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)"
+    },
+    {
+      "at": "2026-11-20T20:56:18.987Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] timeout document_decision ref=bf0fc7f0 device=mac-chrome"
+    },
+    {
+      "at": "2026-11-20T20:56:29.586Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] timeout document_decision ref=33e82138 device=mac-chrome"
+    },
+    {
+      "at": "2026-11-20T20:56:32.064Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] confirmed document_decision ref=50c6e6fc device=mac-chrome"
+    },
+    {
+      "at": "2026-11-20T20:56:32.065Z",
+      "level": "log",
+      "line": "[Documents] approve recorded for fab806fe-10fb-496b-8a6a-a36355949432 revision 9c1d1a01-adb5-44d2-93f5-ad615aeee728 (authority=operator_credential, operator confirmation ref=50c6e6fc)"
+    },
+    {
+      "at": "2026-11-20T20:56:42.613Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] timeout document_decision ref=317a3b7d device=mac-chrome"
+    },
+    {
+      "at": "2026-11-20T20:56:53.203Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] timeout mail_send ref=8e7a8621 device=mac-chrome"
+    },
+    {
+      "at": "2026-11-20T20:56:55.703Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] confirmed mail_send ref=027d912f device=mac-chrome"
+    },
+    {
+      "at": "2026-11-20T20:56:55.705Z",
+      "level": "log",
+      "line": "[DocumentOutgoing] approve_send recorded for 55149f12-017f-471b-8baa-7d8fb4885be4 revision 1f2d38c5-d797-46f8-a8b2-84c522572681 after operator confirmation ref=027d912f"
+    },
+    {
+      "at": "2026-11-20T20:57:06.550Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] timeout mail_send ref=f315ef13 device=mac-chrome"
+    },
+    {
+      "at": "2026-11-20T20:57:09.019Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] confirmed mail_send ref=206124ed device=mac-chrome"
+    },
+    {
+      "at": "2026-11-20T20:57:09.019Z",
+      "level": "log",
+      "line": "[MailDraftReview] relaying approve_send for md_harness version v1 after operator confirmation ref=206124ed"
+    },
+    {
+      "at": "2026-11-20T20:57:12.065Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] declined review_finish ref=03613b19 device=mac-chrome"
+    },
+    {
+      "at": "2026-11-20T20:57:14.734Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] confirmed review_finish ref=5fb0afec device=mac-chrome"
+    },
+    {
+      "at": "2026-11-20T20:57:14.736Z",
+      "level": "log",
+      "line": "[Documents] review 1d8b42f2-18b3-480a-a340-93ac8a9b3a29 finished with approval delegated (authority=operator_credential, submission=f7c3e32b-2274-47fe-8834-803ef56d0590, operator confirmation ref=5fb0afec)"
+    },
+    {
+      "at": "2026-11-20T20:57:17.280Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] unavailable document_decision ref=b4ab0ebe device=mac-chrome"
+    },
+    {
+      "at": "2026-11-20T20:57:19.731Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] aborted document_decision ref=1c56f4e6 device=mac-chrome"
+    },
+    {
+      "at": "2026-11-20T20:57:30.310Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] timeout document_decision ref=f3f4291a device=mac-chrome"
+    },
+    {
+      "at": "2026-11-20T20:57:40.901Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] timeout document_decision ref=efe438d6 device=mac-chrome"
+    }
+  ],
+  "summary": {
+    "steps": 18,
+    "dialogs": 14,
+    "dialog_answers": {
+      "none: left unanswered": 7,
+      "stand-in (console locked)": 5,
+      "none: dialog process ended": 1,
+      "none: the page aborted the request": 1
+    },
+    "checks": 169,
+    "passed": 169,
+    "failed": []
+  }
+}
