@@ -1,5 +1,5 @@
 /**
- * /api/token-usage — daily token throughput across every engine on the box.
+ * /api/token-usage: daily token throughput across every engine on the box.
  *
  * Praxis logs tokens=null for CLI dispatches (subscription seats aren't
  * token-billed), so the real numbers come from each CLI's own session logs

@@ -448,7 +448,7 @@ export async function scanLedger(days: number, db: string): Promise<LedgerTotals
 // Antigravity emits no real token telemetry, so its only number is the char/4
 // estimate the Nexus server backfills into task_dispatches on dispatch close
 // (tokens_estimated=1). Failure (DB missing / locked) yields an empty map, so
-// antigravity reports null and the UI shows "—".
+// antigravity reports null and the UI shows its dash placeholder.
 export async function scanAntigravityEstimate(days: number): Promise<Map<string, number>> {
   const perDay = new Map<string, number>();
   const db = process.env.NEXUS_DB_PATH || path.resolve(process.cwd(), "..", "nexus.db");
