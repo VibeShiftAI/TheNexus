@@ -224,7 +224,12 @@ export function ProjectComms({
 
   // Key on the serialized blobs so an unrelated project reload never resets in-progress edits.
   const settingsKey = JSON.stringify(project.comms_settings ?? {});
-  const saved = useMemo<ProjectCommsSettings>(() => parseCommsSettings(JSON.parse(settingsKey)), [settingsKey]);
+  // Saving rebuilds the settings from `saved`, so carry every stored field this page has no
+  // control for (weekly_content, for one): a save here must never drop it.
+  const saved = useMemo<ProjectCommsSettings>(() => {
+    const stored: unknown = JSON.parse(settingsKey);
+    return { ...(stored && typeof stored === "object" ? stored : {}), ...parseCommsSettings(stored) };
+  }, [settingsKey]);
   const templateKey = JSON.stringify(project.report_template ?? {});
   const template = useMemo<ReportTemplate | null>(() => {
     const raw: unknown = JSON.parse(templateKey);
