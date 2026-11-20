@@ -165,7 +165,9 @@ describe('confirmation broker', () => {
             await next;
         }
         expect(show).toHaveBeenCalledTimes(3);
-        expect(await broker.confirm({ res: res(), auth, action: action() })).toMatchObject({ ok: false, status: 429, code: 'operator_confirmation_paused' });
+        // Deliberate declines count too (unwanted prompts are declined), and the reason says so.
+        expect(await broker.confirm({ res: res(), auth, action: action() })).toMatchObject({ ok: false, status: 429, code: 'operator_confirmation_paused',
+            error: 'Confirmations on this Mac are paused for five minutes after three were declined, left unanswered or abandoned within ten minutes. Nothing was recorded.' });
         expect(show).toHaveBeenCalledTimes(3);
         clock += 5 * 60 * 1000 + 1;
         const after = broker.confirm({ res: res(), auth, action: action() });
@@ -182,6 +184,20 @@ describe('confirmation broker', () => {
         await waitFor(() => show.mock.calls.length === 1);
         response.emit('close');
         expect(await pending).toMatchObject({ ok: false, code: 'operator_confirmation_aborted', nothing_recorded: true });
+    });
+
+    test('a client that left before the dialog would open is refused as aborted without asking, and that does not count toward the pause', async () => {
+        const show = jest.fn(async () => 'confirmed');
+        const broker = confirmation.createOperatorConfirmations({ show, log: {} });
+        const auth = { via: 'local_session' };
+        // What Node reports once the client has gone: the response or its socket is destroyed.
+        for (const gone of [{ destroyed: true }, { socket: { destroyed: true } }, { destroyed: true }]) {
+            expect(await broker.confirm({ res: Object.assign(res(), gone), auth, action: action() }))
+                .toMatchObject({ ok: false, status: 409, code: 'operator_confirmation_aborted', nothing_recorded: true });
+        }
+        expect(show).not.toHaveBeenCalled();
+        expect(await broker.confirm({ res: res(), auth, action: action() })).toMatchObject({ ok: true, required: true });
+        expect(show).toHaveBeenCalledTimes(1);
     });
 
     test('a failing or unexpected dialog answer is unavailable, never a fallback', async () => {
@@ -205,10 +221,28 @@ describe('confirmation broker', () => {
         expect(lines[0]).toBe('Send to member@example.test: "Invoice fdp.exe"?');
         expect(lines[1]).toBe('Cc: copy@example.test, second@example.test');
         expect(prompt.message).toContain('Message (first 800 of 1000 characters; the rest is in Nexus):');
-        expect(prompt.message).toContain('Requested by The Nexus app on localhost:3000 at ');
-        expect(prompt.message).toContain('If you did not just ask for this in Nexus, click Cancel.');
-        expect(prompt.message).toMatch(/\nRef [0-9a-f]{8}$/);
+        expect(prompt.message).toMatch(/ \[\.\.\.\]\n\nRequested by The Nexus app on localhost:3000 at \d{2}:\d{2}:\d{2}\.\nIf you did not just ask for this in Nexus, click Cancel\.\nRef [0-9a-f]{8}$/);
         expect([...prompt.message].some(char => [0x202e, 0x200b].includes(char.codePointAt(0)))).toBe(false);
+    });
+
+    test('a request too long for the dialog keeps who asked, the warning and the Ref, and says exactly how much it leaves out', async () => {
+        const show = jest.fn(async () => 'declined');
+        const broker = confirmation.createOperatorConfirmations({ show, log: {} });
+        const answers = Array.from({ length: 30 }, (_, i) => ({ question: `Question ${i} ${'q'.repeat(140)}`, label: `Answer ${i} ${'a'.repeat(180)}` }));
+        const finish = confirmation.reviewFinishAction({
+            identity: { kind: 'review_finish' }, title: 'Brief', revisionId: 'r1', version: 2, delegated: false, answers, summary: 's'.repeat(400), commentCount: 3,
+        });
+        await broker.confirm({ res: res(), auth: { via: 'local_session', device: 'mac-chrome' }, action: finish });
+        const { message } = show.mock.calls[0][0];
+        const full = finish.lines.filter(line => line !== null && line !== undefined).join('\n');
+        expect(full.length).toBeGreaterThan(4000);
+        expect(message.length).toBeLessThanOrEqual(4000);
+        const [note, count] = message.match(/\n\[(\d+) more characters of this request are not shown here; Nexus shows all of it\]/);
+        const shown = message.slice(0, message.indexOf(note));
+        expect(full.startsWith(shown)).toBe(true);
+        expect(shown.length + Number(count)).toBe(full.length);
+        expect(shown).toContain('Decision answers (30):');
+        expect(message.slice(message.indexOf(note) + note.length)).toMatch(/^\n\nRequested by Google Chrome on localhost:3000 at \d{2}:\d{2}:\d{2}\.\nIf you did not just ask for this in Nexus, click Cancel\.\nRef [0-9a-f]{8}$/);
     });
 
     test('the osascript runner passes every server string as argv, defaults to Cancel and maps each outcome', async () => {
@@ -428,6 +462,45 @@ describe('sending email through the local session', () => {
         const result = await api('POST', `/api/documents/${target.id}/outgoing/decision`, { decision: 'approve_send', revision_id: outgoing.revision_id, envelope_hash: outgoing.envelope_hash }, { cookie });
         expect(result.status).toBe(409); expect(result.json).toMatchObject({ code: 'operator_confirmation_mismatch', nothing_recorded: true });
         expect(store.getOutgoing(target.id)).toMatchObject({ status: 'draft', grant: null });
+    });
+
+    test('document outgoing: a send the store would refuse is refused before asking', async () => {
+        const outgoingDoc = path.join(root, 'outgoing.md');
+        fs.writeFileSync(outgoingDoc, '# Outgoing draft\n', 'utf8');
+        const { document: target, revision: targetRevision } = (await api('POST', '/api/documents', { path: outgoingDoc, title: 'Outgoing', project_id: 'project-1', task_id: 'task-1', deliverable: { key: 'synthetic-outgoing', purpose: 'Review invitation', requires_review: true, intended_action: 'send' } })).json;
+        const outgoing = (await api('PUT', `/api/documents/${target.id}/outgoing`, { revision_id: targetRevision.id, envelope: { ...envelope, cc: [] }, provenance }, { authorization: `Bearer ${RUNTIME_KEY}` })).json.outgoing;
+        const cookie = await bootstrap();
+        const approve = row => api('POST', `/api/documents/${target.id}/outgoing/decision`, { decision: 'approve_send', revision_id: row.revision_id, envelope_hash: row.envelope_hash }, { cookie });
+        const noCopy = await approve(outgoing);
+        expect(noCopy.status).toBe(409); expect(noCopy.json.code).toBe('operator_copy_missing');
+        // Returning the message to Praxis stays click-free; approving it before Praxis revises it is refused unasked.
+        const returned = await api('POST', `/api/documents/${target.id}/outgoing/decision`, { decision: 'return_to_praxis', revision_id: outgoing.revision_id, envelope_hash: outgoing.envelope_hash, comments: 'Add the operator copy.' }, { cookie });
+        expect(returned.status).toBe(200);
+        const changes = await approve(returned.json.outgoing);
+        expect(changes.status).toBe(409); expect(changes.json.code).toBe('changes_requested');
+        expect(prompts).toHaveLength(0);
+        expect(store.getOutgoing(target.id)).toMatchObject({ status: 'draft', grant: null });
+        expect(store.listOutgoingEvents(target.id).filter(event => event.event === 'approved')).toHaveLength(0);
+    });
+
+    test('Praxis mail: a draft with an HTML part says so in the dialog', async () => {
+        const cookie = await bootstrap();
+        const send = () => api('POST', '/api/praxis/mailbox/drafts-review/md_fixture', { action: 'approve_send', version: 'v1' }, { cookie });
+        // A whitespace-only HTML part (Praxis rejects those) is no HTML part.
+        drafts.get('md_fixture').html = ' \n\t ';
+        answers.push('declined');
+        expect((await send()).status).toBe(403);
+        expect(prompts[0].message.split('\n').slice(0, 3)).toEqual(['Send to member@example.test: "Quarterly update [md1]"?', 'Cc: copy@example.test', '']);
+        const html = '<p>Hello member,</p><p>Exact body.</p>';
+        drafts.get('md_fixture').html = html;
+        answers.push('declined');
+        const declined = await send();
+        expect(declined.status).toBe(403); expect(declined.json).toMatchObject({ code: 'operator_confirmation_declined', nothing_recorded: true });
+        expect(prompts[1].message.split('\n').slice(0, 3)).toEqual([
+            'Send to member@example.test: "Quarterly update [md1]"?', 'Cc: copy@example.test',
+            `This email also has an HTML part (${html.length} characters). Most mail apps show that part instead of the text below; the draft in Nexus shows it.`,
+        ]);
+        expect(relayed).toEqual([]);
     });
 
     test('Praxis mail: the dialog names recipient and subject from Praxis; declined relays nothing; confirmed relays exactly the confirmed version once', async () => {

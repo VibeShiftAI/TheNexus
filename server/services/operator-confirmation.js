@@ -6,7 +6,7 @@
  * bootstrap click-free, but its cookie and origin-stored proof live in the
  * browser or webview, so any page JavaScript served from localhost:3000 can
  * use them, including a script an executor added to dashboard/src. A session
- * alone therefore no longer records anything that carries authority. Sending
+ * alone therefore no longer sends mail or records a document decision. Sending
  * an email (approve_send on both mail surfaces) and every document decision
  * (approve, request changes, and finishing a review with the
  * approve-after-changes grant or with decision answers) made through the
@@ -16,18 +16,22 @@
  * records and names the exact action and subject. No client can produce,
  * carry or replay the answer: there is no token, header or body field for it.
  * Each confirmation is bound to one canonical action identity and is consumed
- * once by the write it authorizes; a retry asks again.
+ * once by the write it authorizes; a retry asks again. The ruling covers sends
+ * and document decisions only: other operator actions that accept the local
+ * session (automatic-start, skill candidates, project, labeling and chat
+ * routes) keep the parent behavior and are not asked.
  *
  * Declined, timed out, unavailable (not macOS, or osascript failed), busy (one
- * dialog at a time), paused (several unanswered dialogs in a row) or aborted
- * (the client went away) all refuse with a reason and record nothing. There is
+ * dialog at a time), paused (three declined, unanswered or abandoned dialogs
+ * within ten minutes) or aborted (the client went away, before or during the
+ * dialog) all refuse with a reason and record nothing. There is
  * no fallback. A verified Cloudflare Access session (tunnel browser, phone
  * shell, travel shell) and the operator bearer are separate credentials and
  * are not asked. An authority result that does not say which path it came
  * from is refused (fail closed).
  *
  * Limits: the dialog proves a click on a native window, not who clicked. A
- * process of the same macOS user that holds the Accessibility permission can
+ * process of the same macOS user that holds the Accessibility permission could
  * press it, and a same-user process can read the operator key file directly.
  * See docs/contracts/local-operator-session.md, "Per-action confirmation".
  */
@@ -42,6 +46,9 @@ const CONSUME_WITHIN_MS = 60 * 1000;
 const PAUSE_AFTER = 3;
 const PAUSE_WINDOW_MS = 10 * 60 * 1000;
 const PAUSE_MS = 5 * 60 * 1000;
+// Upper bound on dialog text. Each action's excerpts are shorter, so only an
+// unusually long recipient or answer list reaches it.
+const MESSAGE_MAX = 4000;
 // Paths that carry their own operator credential and are never asked.
 const NOT_ASKED = new Set(['access_session', 'operator_bearer', 'document_executor_bearer']);
 const DEVICES = { 'mac-chrome': 'Google Chrome', 'mac-desktop': 'The Nexus app' };
@@ -71,7 +78,7 @@ const REFUSALS = {
     timeout: [403, 'operator_confirmation_timeout', 'The confirmation on this Mac was not answered in time. Nothing was recorded.'],
     unavailable: [503, 'operator_confirmation_unavailable', 'The confirmation dialog could not be shown on this Mac. Nothing was recorded.'],
     busy: [409, 'operator_confirmation_busy', 'Another confirmation dialog is already open on this Mac; answer it first. Nothing was recorded.'],
-    paused: [429, 'operator_confirmation_paused', 'Confirmations on this Mac are paused for five minutes after several went unanswered. Nothing was recorded.'],
+    paused: [429, 'operator_confirmation_paused', 'Confirmations on this Mac are paused for five minutes after three were declined, left unanswered or abandoned within ten minutes. Nothing was recorded.'],
     aborted: [409, 'operator_confirmation_aborted', 'The request ended before the confirmation was answered. Nothing was recorded.'],
     unverified: [503, 'operator_confirmation_unavailable', 'This decision path cannot be confirmed, so nothing was recorded.'],
     mismatch: [409, 'operator_confirmation_mismatch', 'What would be recorded no longer matches what you confirmed. Nothing was recorded; reload and try again.'],
@@ -115,6 +122,15 @@ function excerpt(label, value, max) {
     if (text.length <= max) return [`${label}:`, text];
     return [`${label} (first ${max} of ${text.length} characters; the rest is in Nexus):`, `${text.slice(0, max)} [...]`];
 }
+const omitted = count => `\n[${count} more characters of this request are not shown here; Nexus shows all of it]`;
+/** Cut `text` to at most `max` characters, saying exactly how many were left out. */
+function shorten(text, max) {
+    if (text.length <= max) return text;
+    // The note for the full length is never shorter than the note actually used.
+    let keep = Math.max(0, max - omitted(text.length).length);
+    if (keep > 0 && /[\uD800-\uDBFF]/.test(text[keep - 1])) keep -= 1; // never split a surrogate pair
+    return `${text.slice(0, keep)}${omitted(text.length - keep)}`;
+}
 
 function showMacDialog({ title, message, confirmLabel, seconds, signal, run = execFile, platform = process.platform }) {
     if (platform !== 'darwin') return Promise.resolve('unavailable');
@@ -141,14 +157,15 @@ function createOperatorConfirmations({ show = showMacDialog, seconds = WAIT_SECO
     function message(action, auth, ref) {
         const time = new Date(now()).toLocaleTimeString('en-US', { hour12: false });
         const device = DEVICES[auth?.device] || 'a local application';
-        const text = [
-            ...action.lines.filter(line => line !== null && line !== undefined),
-            '',
+        const body = action.lines.filter(line => line !== null && line !== undefined).join('\n');
+        // Added after any cut, so who asked, the warning and the Ref always show
+        // (after a blank line).
+        const footer = `\n\n${[
             `Requested by ${device} on ${origin} at ${time}.`,
             'If you did not just ask for this in Nexus, click Cancel.',
             `Ref ${ref}`,
-        ].join('\n');
-        return text.length > 4000 ? `${text.slice(0, 4000)} [...]` : text;
+        ].join('\n')}`;
+        return `${shorten(body, MESSAGE_MAX - footer.length)}${footer}`;
     }
 
     /**
@@ -159,6 +176,12 @@ function createOperatorConfirmations({ show = showMacDialog, seconds = WAIT_SECO
     async function confirm({ res, auth, action }) {
         if (NOT_ASKED.has(auth?.via)) return { ok: true, required: false, ref: null, consume: () => true };
         if (auth?.via !== 'local_session') return refusal('unverified');
+        // A client that left before the dialog would open (during a capture or
+        // a Praxis read) is not asked at all; this does not count toward the pause.
+        if (res?.destroyed || res?.socket?.destroyed) {
+            log.log?.(`[OperatorConfirmation] aborted ${action.kind} before asking device=${auth?.device || 'unknown'}`);
+            return refusal('aborted');
+        }
         if (now() < pausedUntil) return refusal('paused');
         if (open) return refusal('busy');
         const ref = randomBytes(4).toString('hex');
@@ -212,12 +235,15 @@ function createOperatorConfirmations({ show = showMacDialog, seconds = WAIT_SECO
 
 // ── Dialog wording, built only from server records ─────────────────────────
 
-function mailSendAction({ identity, to, cc, subject, body }) {
+function mailSendAction({ identity, to, cc, subject, body, html }) {
+    const hasHtml = typeof html === 'string' && html.trim() !== '';
     return {
         kind: 'mail_send', identity, title: 'Nexus: send this email?', confirmLabel: 'Send',
         lines: [
             `Send to ${oneLine(to, 320)}: "${oneLine(subject, 300)}"?`,
             `Cc: ${Array.isArray(cc) && cc.length ? cc.map(address => oneLine(address, 320)).join(', ') : 'none'}`,
+            // Mail apps usually show the HTML part, which the dialog cannot render.
+            hasHtml ? `This email also has an HTML part (${html.length} characters). Most mail apps show that part instead of the text below; the draft in Nexus shows it.` : null,
             '',
             ...excerpt('Message', body, 800),
         ],

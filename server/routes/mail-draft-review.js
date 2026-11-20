@@ -51,8 +51,10 @@ module.exports = function createMailDraftReviewRouter({ authorize = createDocume
                 if (draft.version !== body.version) return res.status(409).json({ error: 'Draft changed; reload the current version. No mail decision was recorded.', nothing_recorded: true });
                 if (draft.status !== 'draft') return res.status(409).json({ error: `Draft is ${draft.status}; it cannot be sent. No mail decision was recorded.`, nothing_recorded: true });
                 if (draft.blocked) return res.status(409).json({ error: `${draft.blocked} No mail decision was recorded.`, nothing_recorded: true });
-                const identity = { kind: 'mail_send', source: 'praxis', draft_id: draft.id, version: draft.version, to: draft.to, cc: draft.cc, subject: draft.subject, body_sha256: sha256(draft.body) };
-                confirmation = await confirmations.confirm({ res, auth, action: mailSendAction({ identity, to: draft.to, cc: draft.cc, subject: draft.subject, body: draft.body }) });
+                // Praxis gives every change, the HTML part included, a new version.
+                const html = typeof draft.html === 'string' && draft.html.trim() ? draft.html : null;
+                const identity = { kind: 'mail_send', source: 'praxis', draft_id: draft.id, version: draft.version, to: draft.to, cc: draft.cc, subject: draft.subject, body_sha256: sha256(draft.body), html_sha256: html === null ? null : sha256(html) };
+                confirmation = await confirmations.confirm({ res, auth, action: mailSendAction({ identity, to: draft.to, cc: draft.cc, subject: draft.subject, body: draft.body, html }) });
                 if (!confirmation.ok) {
                     return res.status(confirmation.status).json({ error: confirmation.error, code: confirmation.code, nothing_recorded: true, ...(confirmation.confirmation_ref ? { confirmation_ref: confirmation.confirmation_ref } : {}) });
                 }

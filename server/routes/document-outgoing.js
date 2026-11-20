@@ -118,6 +118,9 @@ function createDocumentOutgoingRouter({ store, captureRevision, authorizeDecisio
         // no other approvable state); decideOutgoing refuses or answers every other
         // case unchanged, so only this one asks Robert on the Mac first.
         if (row?.status === 'draft' && row.revision_id === input.revision_id && row.envelope_hash === input.envelope_hash) {
+            // A send the store would refuse (stale or invalidated revision,
+            // changes requested, no operator copy) is refused before asking.
+            store().checkSendable(doc.id);
             const confirmation = await confirmations.confirm({ res, auth, action: mailSendAction({
                 identity: sendIdentity(doc.id, row), to: row.envelope.to, cc: row.envelope.cc, subject: row.envelope.subject, body: row.envelope.text,
             }) });
