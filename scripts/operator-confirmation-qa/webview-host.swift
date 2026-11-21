@@ -12,7 +12,8 @@
 // stay inside this process: nothing secret is passed on the command line or
 // printed. live-check.cjs starts this binary and pins its process in place of
 // the desktop app's code-signature pin, because the installed app only talks
-// to the live :4000.
+// to the live :4000. It stands in for the desktop app; it is not the app, so
+// its runs are component evidence for the webview path.
 import AppKit
 import Foundation
 import WebKit
@@ -38,10 +39,12 @@ let originText = "http://127.0.0.1:\(port)"
 let proofCharacters = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-")
 
 /// The native bootstrap: a plain HTTP request from this process, exactly one
-/// session cookie and a well-formed proof, or nothing.
+/// session cookie and a well-formed proof, or nothing. It waits for an answer
+/// as long as the desktop app's own bootstrap read does (12 seconds,
+/// desktop/src-tauri/src/local_operator.rs, `set_read_timeout`).
 func bootstrap(_ done: @escaping (HTTPCookie?, String?) -> Void) {
     let url = URL(string: "\(originText)/api/operator-session/bootstrap")!
-    var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
+    var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 12)
     request.httpMethod = "POST"
     request.setValue(originText, forHTTPHeaderField: "Origin")
     request.httpBody = Data()
@@ -102,12 +105,16 @@ final class Host: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         webView.load(URLRequest(url: page))
         // Copy the page's own log lines (step ids and response codes, nothing
         // secret) into this process's log for the evidence. Reading it also
-        // keeps the page process awake between steps.
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in self?.mirrorPageLog() }
-        // The harness ends this process; this only stops an orphan.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 25 * 60) {
-            log("stopping after 25 minutes")
-            exit(3)
+        // keeps the page process awake between steps. The harness ends this
+        // process when it finishes; if the harness itself is gone (this
+        // process was handed to launchd), stop too, however long the run was.
+        let harness = getppid()
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            if getppid() != harness {
+                log("the harness that started this host is gone; stopping")
+                exit(3)
+            }
+            self?.mirrorPageLog()
         }
     }
 

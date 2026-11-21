@@ -15,7 +15,7 @@
 <p>Verification harness for task 5e513530. This page talks only to an isolated test server on this port, with
 synthetic documents and mail; nothing real is read, approved or sent. Its script plays a script an executor added to
 a dashboard page: it opens the local session without a click, then tries to record decisions and sends with what the
-browser stores.</p>
+browser stores. Nothing here answers the Mac dialogs: only a click on a dialog does.</p>
 <p id="instruction"></p>
 <pre id="log"></pre>
 <script>
@@ -53,30 +53,58 @@ const hostReady = new Promise(resolve => window.addEventListener('nexus:local-op
     });
     return response.json();
   }
-  const brief = r => (r && r.status !== undefined ? `${r.status}${r.json && r.json.code ? ` ${r.json.code}` : ''}` : JSON.stringify(r));
+  const brief = r => (r && r.aborted ? 'gave up (request aborted)'
+    : r && r.result ? brief(r.result)
+    : r && r.status !== undefined ? `${r.status}${r.json && r.json.code ? ` ${r.json.code}` : ''}` : JSON.stringify(r));
   const summarize = result => (Array.isArray(result) ? result.map(brief).join(', ')
-    : result && result.first ? `first ${brief(result.first)}, second ${brief(result.second)}`
-    : result && result.result ? brief(result.result) : brief(result));
+    : result && result.first ? `first ${brief(result.first)}, second ${brief(result.second)}` : brief(result));
+  const aborted = error => ({ aborted: true, name: error && error.name });
+  // Resolves when this request's Mac dialog is on screen, or when the request is
+  // answered without one (refused before asking). The page never answers a
+  // dialog; it can only stop waiting for it.
+  const dialogOrAnswer = pending => Promise.race([
+    harness('/harness/wait-dialog'),
+    pending.then(() => ({ visible: false, answered_first: true })),
+  ]);
+  async function giveUp(request) {
+    const controller = new AbortController();
+    const pending = api(request.method, request.url, request.body, request.headers || {}, controller.signal).catch(aborted);
+    const visible = await dialogOrAnswer(pending);
+    if (visible.visible) {
+      // A held dialog stays unanswered until the harness has watched it long enough.
+      if (request.hold) await harness('/harness/release');
+      controller.abort();
+    }
+    return { visible, result: await pending };
+  }
 
   async function run(step) {
+    if (step.kind === 'start') {
+      // Attended runs only: nothing asks before Robert says he is ready.
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = 'Start the attended check';
+      button.style.cssText = 'font: inherit; font-weight: 600; padding: 8px 16px; margin: 0 0 12px;';
+      logEl.before(button);
+      await new Promise(resolve => button.addEventListener('click', resolve, { once: true }));
+      button.remove();
+      return { started: true };
+    }
     if (step.kind === 'sequence') {
       const out = [];
-      for (const request of step.requests) out.push(await api(request.method, request.url, request.body, request.headers || {}));
+      for (const request of step.requests) {
+        out.push(request.abort ? await giveUp(request) : await api(request.method, request.url, request.body, request.headers || {}));
+      }
       return out;
     }
     if (step.kind === 'busy') {
-      const first = api(step.first.method, step.first.url, step.first.body);
-      const visible = await harness('/harness/wait-dialog');
-      const second = await api(step.second.method, step.second.url, step.second.body);
-      return { visible, first: await first, second };
-    }
-    if (step.kind === 'abort') {
+      // The first request's dialog stays open while the second is tried; then the page gives up on the first.
       const controller = new AbortController();
-      const pending = api(step.request.method, step.request.url, step.request.body, {}, controller.signal)
-        .catch(error => ({ aborted: true, name: error && error.name }));
-      const visible = await harness('/harness/wait-dialog');
+      const first = api(step.first.method, step.first.url, step.first.body, {}, controller.signal).catch(aborted);
+      const visible = await dialogOrAnswer(first);
+      const second = await api(step.second.method, step.second.url, step.second.body);
       controller.abort();
-      return { visible, result: await pending };
+      return { visible, first: await first, second };
     }
     return { error: `unknown step kind ${step.kind}` };
   }

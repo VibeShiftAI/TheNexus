@@ -1,0 +1,2063 @@
+{
+  "task": "5e513530-0d18-5939-87b8-583274b5bf5e",
+  "generated_at": "2026-11-20T23:27:19.760Z",
+  "command": "node scripts/operator-confirmation-qa/live-check.cjs --client webview --attended",
+  "client": "webview",
+  "attended": true,
+  "origin": "http://127.0.0.1:4299",
+  "source": {
+    "head": "8cf041e98fdadfa26c96f6c3ad47f4ed6626704f",
+    "uncommitted_files_under_test": [
+      " M scripts/operator-confirmation-qa/check-page.html",
+      " M scripts/operator-confirmation-qa/dialog-probe.swift",
+      " M scripts/operator-confirmation-qa/live-check.cjs",
+      " M scripts/operator-confirmation-qa/webview-host.swift",
+      " M server/routes/mail-draft-review.js",
+      " M server/services/operator-confirmation.js"
+    ],
+    "sha256": {
+      "server/services/operator-confirmation.js": "ad10090b36ac1b2de28c72d75ead46ab1ee4cb66f373655daaaebab63fe8a9a1",
+      "server/services/local-operator-session.js": "52b610df14010f6e6c96061a07054a7c82db6d8dba02924a3f88292b41fdc545",
+      "server/services/local-operator-peer.js": "11cc733c1ebdf7262d881975f6daca89f9a5b42074914282d8170f09bee04027",
+      "server/services/operator-access.js": "0518b0b53d3ac929b3b97248f7932cc3769a15e06041a415579a8560cfaebe3a",
+      "server/services/document-decision-authority.js": "2c92d0e35ffa938e046d5add5dfb634adc39c7ad3406f6fc49b8f5c3ce0ba6f2",
+      "server/routes/documents.js": "dbf2d9e36d1f1abf80133a5ced7559a99a47c830a47080d6e69ca5d31f3b7633",
+      "server/routes/document-outgoing.js": "93ce229206ab84755cc73df73e663977e9752f9505a065c5fa631f508dbf73d1",
+      "server/routes/mail-draft-review.js": "fa2fc9ea55afb06d0deb07838d543ce3323d1c8d5f4f7fcda2b04d25baedac10",
+      "server/routes/operator-session.js": "8b6edec71ecbf60c5195485bcf11fd0c6e9c6886414432b7b3490aed8a251e4a",
+      "db/document-reviews.js": "f27cc280c958fc484caeea35343049cca7b3f9a535cdc530267d4b5360b097b8",
+      "db/document-outgoing.js": "87c54371cdea16f1297051953e779e574171d988002d325cb913cc863a838414",
+      "scripts/operator-confirmation-qa/live-check.cjs": "2d5c57f214e12ec95171950a8f85bc8399304204a553a4dae7fa1e172a9e0616",
+      "scripts/operator-confirmation-qa/check-page.html": "ce5b49b6ac33882c632fa5ae055c8d0c9d81d93f08fb5d42a7527abcb288a48b",
+      "scripts/operator-confirmation-qa/dialog-probe.swift": "ec70b48b36f75b4430d6570f1e94e5c91f3476cf92c2d860a0e9826676a0679f",
+      "scripts/operator-confirmation-qa/webview-host.swift": "f648cbaed3c8562f367a63ae49cbcb87ad4a97dc34716d90b57fdeb1d873ed7f"
+    }
+  },
+  "harness": {
+    "answers_dialogs": false,
+    "dialog_endings": "Robert clicks (--attended only; the outcome is what osascript returned), the page gives up, the harness ends the dialog process, or the hold step watches the dialog and then the page gives up",
+    "probe_modes": [
+      "session",
+      "window",
+      "watch",
+      "read"
+    ],
+    "previous_longest_dialog_ms": 135000,
+    "guards": {
+      "helper_command_ms": 30000,
+      "dialog_window_appears_s": 8,
+      "dialog_window_gone_s": 2,
+      "accessibility_read_s": 3,
+      "page_boot_ms": 120000,
+      "page_end_ms": 30000
+    },
+    "client_note": "a WebKit webview host this run started, pinned in place of the desktop app code-signature check: component evidence for the webview path, not the desktop app"
+  },
+  "isolation": {
+    "data": "a temporary directory and SQLite database, removed after the run",
+    "keys": "random throwaway keys generated for this run; the real operator and document keys were never read",
+    "praxis": "an in-process stand-in that checks the body-bound relay signature and the version, and sends nothing",
+    "live_services": "the live :3000 dashboard and :4000 API were not contacted"
+  },
+  "dialog_script": [
+    "on run argv",
+    "  set theTitle to item 1 of argv",
+    "  set theMessage to item 2 of argv",
+    "  set confirmLabel to item 3 of argv",
+    "  activate",
+    "  try",
+    "    set answer to display dialog theMessage with title theTitle buttons {\"Cancel\", confirmLabel} default button \"Cancel\" cancel button \"Cancel\" with icon caution",
+    "  on error number -128",
+    "    return \"declined\"",
+    "  end try",
+    "  if button returned of answer is confirmLabel then return \"confirmed\"",
+    "  return \"declined\"",
+    "end run"
+  ],
+  "steps": [
+    {
+      "id": "W01",
+      "label": "Browse and read with the session the native host planted",
+      "plans": [],
+      "sent": {
+        "id": "W01",
+        "label": "Browse and read with the session the native host planted",
+        "kind": "sequence",
+        "instruction": "no Mac dialog is expected for this step.",
+        "requests": [
+          {
+            "method": "GET",
+            "url": "/api/documents"
+          },
+          {
+            "method": "GET",
+            "url": "/api/documents/e2980fe3-4d5d-405c-b2ed-ab31b39ab931"
+          },
+          {
+            "method": "GET",
+            "url": "/api/documents/e2980fe3-4d5d-405c-b2ed-ab31b39ab931/history"
+          },
+          {
+            "method": "GET",
+            "url": "/api/documents/d6cdc262-a257-4967-a099-9abd1417b59d/outgoing"
+          },
+          {
+            "method": "GET",
+            "url": "/api/praxis/mailbox/drafts-review?folder=drafts"
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 200,
+          "fields": [
+            "documents",
+            "total",
+            "limit",
+            "offset",
+            "has_more",
+            "status"
+          ]
+        },
+        {
+          "status": 200,
+          "fields": [
+            "document",
+            "media_type",
+            "mime_type",
+            "asset_count",
+            "editable",
+            "preview_asset_key",
+            "readiness_path",
+            "blocking_tasks",
+            "revision",
+            "content",
+            "assets",
+            "manifest",
+            "readiness",
+            "file_state",
+            "file_error",
+            "source",
+            "outgoing",
+            "review",
+            "decision_items",
+            "inline_comments",
+            "review_status",
+            "current_decision",
+            "replacement",
+            "reviewable",
+            "retirement",
+            "retirement_history",
+            "replaces",
+            "named_as_replaced",
+            "version",
+            "viewer",
+            "links"
+          ]
+        },
+        {
+          "status": 200,
+          "fields": [
+            "document_id",
+            "current_revision_id",
+            "current_version",
+            "review_status",
+            "reviewable",
+            "revisions",
+            "drafts",
+            "capture_count",
+            "draft_count",
+            "decisions",
+            "edits",
+            "registrations",
+            "reviews",
+            "replacements"
+          ]
+        },
+        {
+          "status": 200,
+          "fields": [
+            "outgoing"
+          ]
+        },
+        {
+          "status": 200,
+          "fields": [
+            "items",
+            "counts"
+          ]
+        }
+      ],
+      "records_before": {
+        "decisions": {
+          "A": 0,
+          "D": 0,
+          "E": 0
+        },
+        "outgoing_B": "draft",
+        "send_approvals_B": 0,
+        "review_C": "draft",
+        "review_C_submission": null,
+        "praxis_relays": 0
+      },
+      "records_after": {
+        "decisions": {
+          "A": 0,
+          "D": 0,
+          "E": 0
+        },
+        "outgoing_B": "draft",
+        "send_approvals_B": 0,
+        "review_C": "draft",
+        "review_C_submission": null,
+        "praxis_relays": 0
+      },
+      "dialogs": [],
+      "checks": [
+        {
+          "name": "every read answered 200",
+          "pass": true,
+          "detail": [
+            200,
+            200,
+            200,
+            200,
+            200
+          ]
+        },
+        {
+          "name": "no dialog was shown",
+          "pass": true,
+          "detail": 0
+        }
+      ]
+    },
+    {
+      "id": "W02",
+      "label": "Approve document D with the stored proof alone; nobody answers and the page gives up once the dialog is open",
+      "plans": [
+        "abort"
+      ],
+      "sent": {
+        "id": "W02",
+        "label": "Approve document D with the stored proof alone; nobody answers and the page gives up once the dialog is open",
+        "kind": "sequence",
+        "instruction": "leave the Mac dialog alone; the page gives up as soon as it appears, and it closes.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/8ac867da-8bb8-42fa-8c28-ca1da6a95f30/decisions",
+            "body": {
+              "revision_id": "0926a310-8f5d-4253-a32b-516f117ef6c1",
+              "decision": "approve",
+              "note": "Stored proof only."
+            },
+            "abort": true
+          }
+        ]
+      },
+      "result": [
+        {
+          "visible": {
+            "visible": true,
+            "window_id": 5706
+          },
+          "result": {
+            "aborted": true,
+            "name": "AbortError"
+          }
+        }
+      ],
+      "records_before": {
+        "decisions": {
+          "A": 0,
+          "D": 0,
+          "E": 0
+        },
+        "outgoing_B": "draft",
+        "send_approvals_B": 0,
+        "review_C": "draft",
+        "review_C_submission": null,
+        "praxis_relays": 0
+      },
+      "records_after": {
+        "decisions": {
+          "A": 0,
+          "D": 0,
+          "E": 0
+        },
+        "outgoing_B": "draft",
+        "send_approvals_B": 0,
+        "review_C": "draft",
+        "review_C_submission": null,
+        "praxis_relays": 0
+      },
+      "dialogs": [
+        {
+          "n": 1,
+          "step": "W02",
+          "at": "2026-11-20T23:27:54.102Z",
+          "plan": "abort",
+          "title": "Nexus: approve this document?",
+          "confirm_label": "Approve",
+          "message": "Approve \"Harness check D: synthetic brief (task 5e513530)\"?\nVersion 1, revision 0926a310-8f5d-4253-a32b-516f117ef6c1, content sha256 60145d02d58e, captured 2026-11-20T23:27:19.820Z.\nNote:\nStored proof only.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:27:54.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 90790ede",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 94183,
+            "argv_strings": [
+              "Nexus: approve this document?",
+              "Approve \"Harness check D: synthetic brief (task 5e513530)\"?\nVersion 1, revision 0926a310-8f5d-4253-a32b-516f117ef6c1, content sha256 60145d02d58e, captured 2026-11-20T23:27:19.820Z.\nNote:\nStored proof only.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:27:54.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 90790ede",
+              "Approve"
+            ],
+            "options": {
+              "timeout": null,
+              "maxBuffer": null
+            }
+          },
+          "window": {
+            "bounds": {
+              "Height": 336,
+              "Width": 416,
+              "X": 752,
+              "Y": 187
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 94183,
+            "window_id": 5706
+          },
+          "console_locked": false,
+          "accessibility": {
+            "buttons": [
+              "Approve",
+              "Cancel"
+            ],
+            "mode": "read",
+            "pid": 94183,
+            "texts": [
+              "Approve \"Harness check D: synthetic brief (task 5e513530)\"?\nVersion 1, revision 0926a310-8f5d-4253-a32b-516f117ef6c1, content sha256 60145d02d58e, captured 2026-11-20T23:27:19.820Z.\nNote:\nStored proof only.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:27:54.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 90790ede",
+              "Nexus: approve this document?"
+            ],
+            "title": "Nexus: approve this document?",
+            "trusted": true
+          },
+          "records_while_open": {
+            "decisions": {
+              "A": 0,
+              "D": 0,
+              "E": 0
+            },
+            "outgoing_B": "draft",
+            "send_approvals_B": 0,
+            "review_C": "draft",
+            "review_C_submission": null,
+            "praxis_relays": 0
+          },
+          "action": "nobody answers; the page gives up",
+          "ended_at": "2026-11-20T23:27:56.283Z",
+          "open_ms": 27,
+          "idle_ms_at_end": 33,
+          "outcome": "aborted",
+          "answer_source": "none: the request ended and the broker closed the dialog",
+          "window_after": {
+            "mode": "watch",
+            "pid": 94183,
+            "still_open": false,
+            "watched_ms": 9
+          }
+        }
+      ],
+      "checks": [
+        {
+          "name": "the page saw the dialog appear, then gave up (its request was aborted)",
+          "pass": true,
+          "detail": {
+            "visible": {
+              "visible": true,
+              "window_id": 5706
+            },
+            "result": {
+              "aborted": true,
+              "name": "AbortError"
+            }
+          }
+        },
+        {
+          "name": "the server logged the aborted confirmation with the dialog Ref",
+          "pass": true,
+          "detail": "90790ede"
+        },
+        {
+          "name": "the dialog closed with the request",
+          "pass": true,
+          "detail": {
+            "mode": "watch",
+            "pid": 94183,
+            "still_open": false,
+            "watched_ms": 9
+          }
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 336,
+              "Width": 416,
+              "X": 752,
+              "Y": 187
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 94183,
+            "window_id": 5706
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: approve this document?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Approve \"Harness check D: synthetic brief (task 5e513530)\"?",
+            "/[Rr]evision 0926a310-8f5d-4253-a32b-516f117ef6c1, content sha256 60145d02d58e/"
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Approve"
+        },
+        {
+          "name": "osascript received exactly this title, text and button as argv",
+          "pass": true
+        },
+        {
+          "name": "osascript ran with no timeout and no output cap",
+          "pass": true,
+          "detail": {
+            "timeout": null,
+            "maxBuffer": null
+          }
+        },
+        {
+          "name": "the dialog says who asked (The Nexus app on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "Accessibility read the same text on screen",
+          "pass": true,
+          "detail": [
+            "Approve \"Harness check D: synthetic brief (task 5e513530)\"?\nVersion 1, revision 0926a310-8f5d-4253-a32b-516f117ef6c1, content sha256 60145d02d58e, captured 2026-11-20T23:27:19.820Z.\nNote:\nStored proof only.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:27:54.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 90790ede",
+            "Nexus: approve this document?"
+          ]
+        },
+        {
+          "name": "the dialog ended as aborted",
+          "pass": true,
+          "detail": {
+            "outcome": "aborted",
+            "answer_source": "none: the request ended and the broker closed the dialog"
+          }
+        },
+        {
+          "name": "nothing was recorded while the dialog was open",
+          "pass": true,
+          "detail": {
+            "before": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            },
+            "while_open": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            }
+          }
+        },
+        {
+          "name": "nothing was recorded",
+          "pass": true,
+          "detail": {
+            "before": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            },
+            "after": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "W03",
+      "label": "Send the Praxis Mail draft with the stored proof alone and forged recipient fields; nobody answers and the page gives up once the dialog is open",
+      "plans": [
+        "abort"
+      ],
+      "sent": {
+        "id": "W03",
+        "label": "Send the Praxis Mail draft with the stored proof alone and forged recipient fields; nobody answers and the page gives up once the dialog is open",
+        "kind": "sequence",
+        "instruction": "leave the Mac dialog alone; the page gives up as soon as it appears, and it closes.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/praxis/mailbox/drafts-review/md_harness",
+            "body": {
+              "action": "approve_send",
+              "version": "v1",
+              "to": "attacker@example.test",
+              "cc": [
+                "attacker-copy@example.test"
+              ],
+              "subject": "Forged subject",
+              "body": "Forged body"
+            },
+            "abort": true
+          }
+        ]
+      },
+      "result": [
+        {
+          "visible": {
+            "visible": true,
+            "window_id": 5707
+          },
+          "result": {
+            "aborted": true,
+            "name": "AbortError"
+          }
+        }
+      ],
+      "records_before": {
+        "decisions": {
+          "A": 0,
+          "D": 0,
+          "E": 0
+        },
+        "outgoing_B": "draft",
+        "send_approvals_B": 0,
+        "review_C": "draft",
+        "review_C_submission": null,
+        "praxis_relays": 0
+      },
+      "records_after": {
+        "decisions": {
+          "A": 0,
+          "D": 0,
+          "E": 0
+        },
+        "outgoing_B": "draft",
+        "send_approvals_B": 0,
+        "review_C": "draft",
+        "review_C_submission": null,
+        "praxis_relays": 0
+      },
+      "dialogs": [
+        {
+          "n": 2,
+          "step": "W03",
+          "at": "2026-11-20T23:27:56.305Z",
+          "plan": "abort",
+          "title": "Nexus: send this email?",
+          "confirm_label": "Send",
+          "message": "Send to harness-member@example.test: \"Harness check: synthetic Praxis draft, nothing is sent\"?\nCc: none\n\nMessage:\nSynthetic Praxis Mail body for the operator confirmation live check.\nNothing is sent.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:27:56.\nIf you did not just ask for this in Nexus, click Cancel.\nRef d8cf27d2",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 94213,
+            "argv_strings": [
+              "Nexus: send this email?",
+              "Send to harness-member@example.test: \"Harness check: synthetic Praxis draft, nothing is sent\"?\nCc: none\n\nMessage:\nSynthetic Praxis Mail body for the operator confirmation live check.\nNothing is sent.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:27:56.\nIf you did not just ask for this in Nexus, click Cancel.\nRef d8cf27d2",
+              "Send"
+            ],
+            "options": {
+              "timeout": null,
+              "maxBuffer": null
+            }
+          },
+          "window": {
+            "bounds": {
+              "Height": 356,
+              "Width": 420,
+              "X": 750,
+              "Y": 181
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 94213,
+            "window_id": 5707
+          },
+          "console_locked": false,
+          "accessibility": {
+            "buttons": [
+              "Send",
+              "Cancel"
+            ],
+            "mode": "read",
+            "pid": 94213,
+            "texts": [
+              "Send to harness-member@example.test: \"Harness check: synthetic Praxis draft, nothing is sent\"?\nCc: none\n\nMessage:\nSynthetic Praxis Mail body for the operator confirmation live check.\nNothing is sent.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:27:56.\nIf you did not just ask for this in Nexus, click Cancel.\nRef d8cf27d2",
+              "Nexus: send this email?"
+            ],
+            "title": "Nexus: send this email?",
+            "trusted": true
+          },
+          "records_while_open": {
+            "decisions": {
+              "A": 0,
+              "D": 0,
+              "E": 0
+            },
+            "outgoing_B": "draft",
+            "send_approvals_B": 0,
+            "review_C": "draft",
+            "review_C_submission": null,
+            "praxis_relays": 0
+          },
+          "action": "nobody answers; the page gives up",
+          "ended_at": "2026-11-20T23:27:58.569Z",
+          "open_ms": 27,
+          "idle_ms_at_end": 251,
+          "outcome": "aborted",
+          "answer_source": "none: the request ended and the broker closed the dialog",
+          "window_after": {
+            "mode": "watch",
+            "pid": 94213,
+            "still_open": false,
+            "watched_ms": 6
+          }
+        }
+      ],
+      "checks": [
+        {
+          "name": "the page saw the dialog appear, then gave up (its request was aborted)",
+          "pass": true,
+          "detail": {
+            "visible": {
+              "visible": true,
+              "window_id": 5707
+            },
+            "result": {
+              "aborted": true,
+              "name": "AbortError"
+            }
+          }
+        },
+        {
+          "name": "the server logged the aborted confirmation with the dialog Ref",
+          "pass": true,
+          "detail": "d8cf27d2"
+        },
+        {
+          "name": "the dialog closed with the request",
+          "pass": true,
+          "detail": {
+            "mode": "watch",
+            "pid": 94213,
+            "still_open": false,
+            "watched_ms": 6
+          }
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 356,
+              "Width": 420,
+              "X": 750,
+              "Y": 181
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 94213,
+            "window_id": 5707
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: send this email?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Send to harness-member@example.test: \"Harness check: synthetic Praxis draft, nothing is sent\"?",
+            "Cc: none"
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Send"
+        },
+        {
+          "name": "osascript received exactly this title, text and button as argv",
+          "pass": true
+        },
+        {
+          "name": "osascript ran with no timeout and no output cap",
+          "pass": true,
+          "detail": {
+            "timeout": null,
+            "maxBuffer": null
+          }
+        },
+        {
+          "name": "the dialog says who asked (The Nexus app on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "the dialog shows none of the forged request values",
+          "pass": true,
+          "detail": [
+            "attacker@example.test",
+            "attacker-copy@example.test",
+            "Forged"
+          ]
+        },
+        {
+          "name": "Accessibility read the same text on screen",
+          "pass": true,
+          "detail": [
+            "Send to harness-member@example.test: \"Harness check: synthetic Praxis draft, nothing is sent\"?\nCc: none\n\nMessage:\nSynthetic Praxis Mail body for the operator confirmation live check.\nNothing is sent.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:27:56.\nIf you did not just ask for this in Nexus, click Cancel.\nRef d8cf27d2",
+            "Nexus: send this email?"
+          ]
+        },
+        {
+          "name": "the dialog ended as aborted",
+          "pass": true,
+          "detail": {
+            "outcome": "aborted",
+            "answer_source": "none: the request ended and the broker closed the dialog"
+          }
+        },
+        {
+          "name": "nothing was recorded while the dialog was open",
+          "pass": true,
+          "detail": {
+            "before": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            },
+            "while_open": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            }
+          }
+        },
+        {
+          "name": "nothing was recorded",
+          "pass": true,
+          "detail": {
+            "before": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            },
+            "after": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "W04",
+      "label": "Approve sending document B's email with the stored proof alone; nobody answers and the page gives up once the dialog is open",
+      "plans": [
+        "abort"
+      ],
+      "sent": {
+        "id": "W04",
+        "label": "Approve sending document B's email with the stored proof alone; nobody answers and the page gives up once the dialog is open",
+        "kind": "sequence",
+        "instruction": "leave the Mac dialog alone; the page gives up as soon as it appears, and it closes.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/d6cdc262-a257-4967-a099-9abd1417b59d/outgoing/decision",
+            "body": {
+              "decision": "approve_send",
+              "revision_id": "5a609de9-40d4-4c91-9040-3af5f9b4a47a",
+              "envelope_hash": "ef36ed58341c16dd9dd28297c34a45f2f39c1eb3b0306cc1c04ca2aafc657d13"
+            },
+            "abort": true
+          }
+        ]
+      },
+      "result": [
+        {
+          "visible": {
+            "visible": true,
+            "window_id": 5708
+          },
+          "result": {
+            "aborted": true,
+            "name": "AbortError"
+          }
+        }
+      ],
+      "records_before": {
+        "decisions": {
+          "A": 0,
+          "D": 0,
+          "E": 0
+        },
+        "outgoing_B": "draft",
+        "send_approvals_B": 0,
+        "review_C": "draft",
+        "review_C_submission": null,
+        "praxis_relays": 0
+      },
+      "records_after": {
+        "decisions": {
+          "A": 0,
+          "D": 0,
+          "E": 0
+        },
+        "outgoing_B": "draft",
+        "send_approvals_B": 0,
+        "review_C": "draft",
+        "review_C_submission": null,
+        "praxis_relays": 0
+      },
+      "dialogs": [
+        {
+          "n": 3,
+          "step": "W04",
+          "at": "2026-11-20T23:27:58.589Z",
+          "plan": "abort",
+          "title": "Nexus: send this email?",
+          "confirm_label": "Send",
+          "message": "Send to harness-recipient@example.test: \"Harness check: synthetic message, nothing is sent\"?\nCc: harness-copy@example.test\n\nMessage:\nSynthetic body for the operator confirmation live check.\nNothing is sent.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:27:58.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 946c3fbf",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 94220,
+            "argv_strings": [
+              "Nexus: send this email?",
+              "Send to harness-recipient@example.test: \"Harness check: synthetic message, nothing is sent\"?\nCc: harness-copy@example.test\n\nMessage:\nSynthetic body for the operator confirmation live check.\nNothing is sent.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:27:58.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 946c3fbf",
+              "Send"
+            ],
+            "options": {
+              "timeout": null,
+              "maxBuffer": null
+            }
+          },
+          "window": {
+            "bounds": {
+              "Height": 350,
+              "Width": 414,
+              "X": 753,
+              "Y": 184
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 94220,
+            "window_id": 5708
+          },
+          "console_locked": false,
+          "accessibility": {
+            "buttons": [
+              "Send",
+              "Cancel"
+            ],
+            "mode": "read",
+            "pid": 94220,
+            "texts": [
+              "Send to harness-recipient@example.test: \"Harness check: synthetic message, nothing is sent\"?\nCc: harness-copy@example.test\n\nMessage:\nSynthetic body for the operator confirmation live check.\nNothing is sent.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:27:58.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 946c3fbf",
+              "Nexus: send this email?"
+            ],
+            "title": "Nexus: send this email?",
+            "trusted": true
+          },
+          "records_while_open": {
+            "decisions": {
+              "A": 0,
+              "D": 0,
+              "E": 0
+            },
+            "outgoing_B": "draft",
+            "send_approvals_B": 0,
+            "review_C": "draft",
+            "review_C_submission": null,
+            "praxis_relays": 0
+          },
+          "action": "nobody answers; the page gives up",
+          "ended_at": "2026-11-20T23:28:00.753Z",
+          "open_ms": 22,
+          "idle_ms_at_end": 214,
+          "outcome": "aborted",
+          "answer_source": "none: the request ended and the broker closed the dialog",
+          "window_after": {
+            "mode": "watch",
+            "pid": 94220,
+            "still_open": false,
+            "watched_ms": 9
+          }
+        }
+      ],
+      "checks": [
+        {
+          "name": "the page saw the dialog appear, then gave up (its request was aborted)",
+          "pass": true,
+          "detail": {
+            "visible": {
+              "visible": true,
+              "window_id": 5708
+            },
+            "result": {
+              "aborted": true,
+              "name": "AbortError"
+            }
+          }
+        },
+        {
+          "name": "the server logged the aborted confirmation with the dialog Ref",
+          "pass": true,
+          "detail": "946c3fbf"
+        },
+        {
+          "name": "the dialog closed with the request",
+          "pass": true,
+          "detail": {
+            "mode": "watch",
+            "pid": 94220,
+            "still_open": false,
+            "watched_ms": 9
+          }
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 350,
+              "Width": 414,
+              "X": 753,
+              "Y": 184
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 94220,
+            "window_id": 5708
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: send this email?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Send to harness-recipient@example.test: \"Harness check: synthetic message, nothing is sent\"?",
+            "Cc: harness-copy@example.test"
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Send"
+        },
+        {
+          "name": "osascript received exactly this title, text and button as argv",
+          "pass": true
+        },
+        {
+          "name": "osascript ran with no timeout and no output cap",
+          "pass": true,
+          "detail": {
+            "timeout": null,
+            "maxBuffer": null
+          }
+        },
+        {
+          "name": "the dialog says who asked (The Nexus app on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "Accessibility read the same text on screen",
+          "pass": true,
+          "detail": [
+            "Send to harness-recipient@example.test: \"Harness check: synthetic message, nothing is sent\"?\nCc: harness-copy@example.test\n\nMessage:\nSynthetic body for the operator confirmation live check.\nNothing is sent.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:27:58.\nIf you did not just ask for this in Nexus, click Cancel.\nRef 946c3fbf",
+            "Nexus: send this email?"
+          ]
+        },
+        {
+          "name": "the dialog ended as aborted",
+          "pass": true,
+          "detail": {
+            "outcome": "aborted",
+            "answer_source": "none: the request ended and the broker closed the dialog"
+          }
+        },
+        {
+          "name": "nothing was recorded while the dialog was open",
+          "pass": true,
+          "detail": {
+            "before": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            },
+            "while_open": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            }
+          }
+        },
+        {
+          "name": "nothing was recorded",
+          "pass": true,
+          "detail": {
+            "before": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            },
+            "after": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "W05",
+      "label": "Approve document A with forged confirmation fields and headers (carrying the last dialog Ref); Robert clicks Cancel",
+      "plans": [
+        "decline"
+      ],
+      "sent": {
+        "id": "W05",
+        "label": "Approve document A with forged confirmation fields and headers (carrying the last dialog Ref); Robert clicks Cancel",
+        "kind": "sequence",
+        "instruction": "Click Cancel in the Mac dialog.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/e2980fe3-4d5d-405c-b2ed-ab31b39ab931/decisions",
+            "body": {
+              "revision_id": "3ebac74b-9e2e-4fd3-bfd9-b11cc9467455",
+              "decision": "approve",
+              "note": "Forged confirmation.",
+              "confirmed": true,
+              "confirmation": "confirmed",
+              "operator_confirmation": {
+                "ok": true,
+                "ref": "946c3fbf"
+              },
+              "confirmation_ref": "946c3fbf",
+              "via": "access_session",
+              "authority": "access_user"
+            },
+            "headers": {
+              "x-nexus-confirmation": "confirmed",
+              "x-nexus-operator-confirmation": "946c3fbf",
+              "x-nexus-confirmed": "1"
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 403,
+          "json": {
+            "error": "You declined the confirmation on this Mac. Nothing was recorded.",
+            "code": "operator_confirmation_declined",
+            "nothing_recorded": true,
+            "confirmation_ref": "c2e68a46"
+          }
+        }
+      ],
+      "records_before": {
+        "decisions": {
+          "A": 0,
+          "D": 0,
+          "E": 0
+        },
+        "outgoing_B": "draft",
+        "send_approvals_B": 0,
+        "review_C": "draft",
+        "review_C_submission": null,
+        "praxis_relays": 0
+      },
+      "records_after": {
+        "decisions": {
+          "A": 0,
+          "D": 0,
+          "E": 0
+        },
+        "outgoing_B": "draft",
+        "send_approvals_B": 0,
+        "review_C": "draft",
+        "review_C_submission": null,
+        "praxis_relays": 0
+      },
+      "dialogs": [
+        {
+          "n": 4,
+          "step": "W05",
+          "at": "2026-11-20T23:28:00.776Z",
+          "plan": "decline",
+          "title": "Nexus: approve this document?",
+          "confirm_label": "Approve",
+          "message": "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 3ebac74b-9e2e-4fd3-bfd9-b11cc9467455, content sha256 7a867be4439b, captured 2026-11-20T23:27:19.802Z.\nNote:\nForged confirmation.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:28:00.\nIf you did not just ask for this in Nexus, click Cancel.\nRef c2e68a46",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 94229,
+            "argv_strings": [
+              "Nexus: approve this document?",
+              "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 3ebac74b-9e2e-4fd3-bfd9-b11cc9467455, content sha256 7a867be4439b, captured 2026-11-20T23:27:19.802Z.\nNote:\nForged confirmation.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:28:00.\nIf you did not just ask for this in Nexus, click Cancel.\nRef c2e68a46",
+              "Approve"
+            ],
+            "options": {
+              "timeout": null,
+              "maxBuffer": null
+            }
+          },
+          "window": {
+            "bounds": {
+              "Height": 324,
+              "Width": 420,
+              "X": 750,
+              "Y": 189
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 94229,
+            "window_id": 5709
+          },
+          "console_locked": false,
+          "accessibility": {
+            "buttons": [
+              "Approve",
+              "Cancel"
+            ],
+            "mode": "read",
+            "pid": 94229,
+            "texts": [
+              "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 3ebac74b-9e2e-4fd3-bfd9-b11cc9467455, content sha256 7a867be4439b, captured 2026-11-20T23:27:19.802Z.\nNote:\nForged confirmation.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:28:00.\nIf you did not just ask for this in Nexus, click Cancel.\nRef c2e68a46",
+              "Nexus: approve this document?"
+            ],
+            "title": "Nexus: approve this document?",
+            "trusted": true
+          },
+          "records_while_open": {
+            "decisions": {
+              "A": 0,
+              "D": 0,
+              "E": 0
+            },
+            "outgoing_B": "draft",
+            "send_approvals_B": 0,
+            "review_C": "draft",
+            "review_C_submission": null,
+            "praxis_relays": 0
+          },
+          "action": "waiting for Robert to click Cancel",
+          "ended_at": "2026-11-20T23:28:15.246Z",
+          "open_ms": 12222,
+          "idle_ms_at_end": 109,
+          "outcome": "declined",
+          "answer_source": "a click on the dialog: osascript returned the button",
+          "window_after": {
+            "mode": "watch",
+            "pid": 94229,
+            "still_open": false,
+            "watched_ms": 26
+          }
+        }
+      ],
+      "checks": [
+        {
+          "name": "refused 403 operator_confirmation_declined, nothing recorded",
+          "pass": true,
+          "detail": {
+            "status": 403,
+            "code": "operator_confirmation_declined",
+            "nothing_recorded": true
+          }
+        },
+        {
+          "name": "osascript returned declined: Robert's click",
+          "pass": true,
+          "detail": {
+            "outcome": "declined",
+            "answer_source": "a click on the dialog: osascript returned the button"
+          }
+        },
+        {
+          "name": "a keyboard or mouse event came after the dialog appeared (HID idle at the answer is shorter than the time it was open)",
+          "pass": true,
+          "detail": {
+            "idle_ms_at_end": 109,
+            "open_ms": 12222
+          }
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 324,
+              "Width": 420,
+              "X": 750,
+              "Y": 189
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 94229,
+            "window_id": 5709
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: approve this document?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Approve \"Harness check A: synthetic brief (task 5e513530)\"?",
+            "/[Rr]evision 3ebac74b-9e2e-4fd3-bfd9-b11cc9467455, content sha256 7a867be4439b/"
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Approve"
+        },
+        {
+          "name": "osascript received exactly this title, text and button as argv",
+          "pass": true
+        },
+        {
+          "name": "osascript ran with no timeout and no output cap",
+          "pass": true,
+          "detail": {
+            "timeout": null,
+            "maxBuffer": null
+          }
+        },
+        {
+          "name": "the dialog says who asked (The Nexus app on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "the dialog Ref matches the API answer",
+          "pass": true,
+          "detail": {
+            "dialog": "c2e68a46",
+            "api": "c2e68a46"
+          }
+        },
+        {
+          "name": "Accessibility read the same text on screen",
+          "pass": true,
+          "detail": [
+            "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 3ebac74b-9e2e-4fd3-bfd9-b11cc9467455, content sha256 7a867be4439b, captured 2026-11-20T23:27:19.802Z.\nNote:\nForged confirmation.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:28:00.\nIf you did not just ask for this in Nexus, click Cancel.\nRef c2e68a46",
+            "Nexus: approve this document?"
+          ]
+        },
+        {
+          "name": "the dialog ended as declined",
+          "pass": true,
+          "detail": {
+            "outcome": "declined",
+            "answer_source": "a click on the dialog: osascript returned the button"
+          }
+        },
+        {
+          "name": "nothing was recorded while the dialog was open",
+          "pass": true,
+          "detail": {
+            "before": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            },
+            "while_open": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            }
+          }
+        },
+        {
+          "name": "nothing was recorded",
+          "pass": true,
+          "detail": {
+            "before": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            },
+            "after": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "W06",
+      "label": "Approve document A; Robert clicks Approve",
+      "plans": [
+        "confirm"
+      ],
+      "sent": {
+        "id": "W06",
+        "label": "Approve document A; Robert clicks Approve",
+        "kind": "sequence",
+        "instruction": "Click Approve in the Mac dialog.",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/api/documents/e2980fe3-4d5d-405c-b2ed-ab31b39ab931/decisions",
+            "body": {
+              "revision_id": "3ebac74b-9e2e-4fd3-bfd9-b11cc9467455",
+              "decision": "approve",
+              "note": "Confirmed in the Mac dialog.",
+              "client_decision_id": "harness-w-1"
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "status": 201,
+          "json": {
+            "decision": {
+              "id": "ab325050-23e7-4c01-8e7e-994c125fd2ab",
+              "document_id": "e2980fe3-4d5d-405c-b2ed-ab31b39ab931",
+              "revision_id": "3ebac74b-9e2e-4fd3-bfd9-b11cc9467455",
+              "content_hash": "7a867be4439b0e69c7f90a6beef1066a4457fa4afa0f019bb915c362d82e12a6",
+              "decision": "approve",
+              "actor_id": "local_user",
+              "authority": "operator_credential",
+              "note": "Confirmed in the Mac dialog.",
+              "client_decision_id": "harness-w-1",
+              "intended_action": "none",
+              "created_at": "2026-11-20T23:28:20.200Z",
+              "recorded_by": "operator",
+              "provenance": null,
+              "selection": null
+            },
+            "review_status": "approved",
+            "document": {
+              "id": "e2980fe3-4d5d-405c-b2ed-ab31b39ab931",
+              "title": "Harness check A: synthetic brief (task 5e513530)",
+              "path": "/private/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-opconf-live-QurYJo/harness-a.md",
+              "root_project_id": "harness-project",
+              "project_id": "harness-project",
+              "task_id": "harness-task",
+              "kind": "document",
+              "metadata": {},
+              "current_revision_id": "3ebac74b-9e2e-4fd3-bfd9-b11cc9467455",
+              "registered_by": "local_user",
+              "created_at": "2026-11-20T23:27:19.801Z",
+              "updated_at": "2026-11-20T23:27:19.802Z",
+              "deliverable_key": "harness-a",
+              "purpose": "Purpose not provided.",
+              "blocking_task_ids": [],
+              "requires_review": true,
+              "intended_action": "none",
+              "media_type": "markdown",
+              "mime_type": "text/markdown"
+            },
+            "confirmation_ref": "c4cd8965"
+          }
+        }
+      ],
+      "records_before": {
+        "decisions": {
+          "A": 0,
+          "D": 0,
+          "E": 0
+        },
+        "outgoing_B": "draft",
+        "send_approvals_B": 0,
+        "review_C": "draft",
+        "review_C_submission": null,
+        "praxis_relays": 0
+      },
+      "records_after": {
+        "decisions": {
+          "A": 1,
+          "D": 0,
+          "E": 0
+        },
+        "outgoing_B": "draft",
+        "send_approvals_B": 0,
+        "review_C": "draft",
+        "review_C_submission": null,
+        "praxis_relays": 0
+      },
+      "dialogs": [
+        {
+          "n": 5,
+          "step": "W06",
+          "at": "2026-11-20T23:28:15.297Z",
+          "plan": "confirm",
+          "title": "Nexus: approve this document?",
+          "confirm_label": "Approve",
+          "message": "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 3ebac74b-9e2e-4fd3-bfd9-b11cc9467455, content sha256 7a867be4439b, captured 2026-11-20T23:27:19.802Z.\nNote:\nConfirmed in the Mac dialog.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:28:15.\nIf you did not just ask for this in Nexus, click Cancel.\nRef c4cd8965",
+          "osascript": {
+            "file": "/usr/bin/osascript",
+            "pid": 94274,
+            "argv_strings": [
+              "Nexus: approve this document?",
+              "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 3ebac74b-9e2e-4fd3-bfd9-b11cc9467455, content sha256 7a867be4439b, captured 2026-11-20T23:27:19.802Z.\nNote:\nConfirmed in the Mac dialog.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:28:15.\nIf you did not just ask for this in Nexus, click Cancel.\nRef c4cd8965",
+              "Approve"
+            ],
+            "options": {
+              "timeout": null,
+              "maxBuffer": null
+            }
+          },
+          "window": {
+            "bounds": {
+              "Height": 322,
+              "Width": 418,
+              "X": 751,
+              "Y": 190
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 94274,
+            "window_id": 5710
+          },
+          "console_locked": false,
+          "accessibility": {
+            "buttons": [
+              "Approve",
+              "Cancel"
+            ],
+            "mode": "read",
+            "pid": 94274,
+            "texts": [
+              "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 3ebac74b-9e2e-4fd3-bfd9-b11cc9467455, content sha256 7a867be4439b, captured 2026-11-20T23:27:19.802Z.\nNote:\nConfirmed in the Mac dialog.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:28:15.\nIf you did not just ask for this in Nexus, click Cancel.\nRef c4cd8965",
+              "Nexus: approve this document?"
+            ],
+            "title": "Nexus: approve this document?",
+            "trusted": true
+          },
+          "records_while_open": {
+            "decisions": {
+              "A": 0,
+              "D": 0,
+              "E": 0
+            },
+            "outgoing_B": "draft",
+            "send_approvals_B": 0,
+            "review_C": "draft",
+            "review_C_submission": null,
+            "praxis_relays": 0
+          },
+          "action": "waiting for Robert to click Approve",
+          "ended_at": "2026-11-20T23:28:20.184Z",
+          "open_ms": 2690,
+          "idle_ms_at_end": 85,
+          "outcome": "confirmed",
+          "answer_source": "a click on the dialog: osascript returned the button",
+          "window_after": {
+            "mode": "watch",
+            "pid": 94274,
+            "still_open": false,
+            "watched_ms": 7
+          }
+        }
+      ],
+      "checks": [
+        {
+          "name": "recorded 201",
+          "pass": true,
+          "detail": 201
+        },
+        {
+          "name": "exactly one decision on document A, for the confirmed revision",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "osascript returned confirmed: Robert's click",
+          "pass": true,
+          "detail": {
+            "outcome": "confirmed",
+            "answer_source": "a click on the dialog: osascript returned the button"
+          }
+        },
+        {
+          "name": "a keyboard or mouse event came after the dialog appeared (HID idle at the answer is shorter than the time it was open)",
+          "pass": true,
+          "detail": {
+            "idle_ms_at_end": 85,
+            "open_ms": 2690
+          }
+        },
+        {
+          "name": "exactly one dialog was shown",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "the dialog window belongs to osascript, outside the browser",
+          "pass": true,
+          "detail": {
+            "bounds": {
+              "Height": 322,
+              "Width": 418,
+              "X": 751,
+              "Y": 190
+            },
+            "found": true,
+            "layer": 8,
+            "mode": "window",
+            "owner": "osascript",
+            "pid": 94274,
+            "window_id": 5710
+          }
+        },
+        {
+          "name": "the dialog title names the action",
+          "pass": true,
+          "detail": "Nexus: approve this document?"
+        },
+        {
+          "name": "the dialog text names the exact action and subject",
+          "pass": true,
+          "detail": [
+            "Approve \"Harness check A: synthetic brief (task 5e513530)\"?",
+            "/[Rr]evision 3ebac74b-9e2e-4fd3-bfd9-b11cc9467455, content sha256 7a867be4439b/"
+          ]
+        },
+        {
+          "name": "the confirm button names the action",
+          "pass": true,
+          "detail": "Approve"
+        },
+        {
+          "name": "osascript received exactly this title, text and button as argv",
+          "pass": true
+        },
+        {
+          "name": "osascript ran with no timeout and no output cap",
+          "pass": true,
+          "detail": {
+            "timeout": null,
+            "maxBuffer": null
+          }
+        },
+        {
+          "name": "the dialog says who asked (The Nexus app on 127.0.0.1:4299)",
+          "pass": true
+        },
+        {
+          "name": "Accessibility read the same text on screen",
+          "pass": true,
+          "detail": [
+            "Approve \"Harness check A: synthetic brief (task 5e513530)\"?\nVersion 1, revision 3ebac74b-9e2e-4fd3-bfd9-b11cc9467455, content sha256 7a867be4439b, captured 2026-11-20T23:27:19.802Z.\nNote:\nConfirmed in the Mac dialog.\n\nRequested by The Nexus app on 127.0.0.1:4299 at 18:28:15.\nIf you did not just ask for this in Nexus, click Cancel.\nRef c4cd8965",
+            "Nexus: approve this document?"
+          ]
+        },
+        {
+          "name": "the dialog ended as confirmed",
+          "pass": true,
+          "detail": {
+            "outcome": "confirmed",
+            "answer_source": "a click on the dialog: osascript returned the button"
+          }
+        },
+        {
+          "name": "nothing was recorded before Robert clicked",
+          "pass": true,
+          "detail": {
+            "before": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            },
+            "while_open": {
+              "decisions": {
+                "A": 0,
+                "D": 0,
+                "E": 0
+              },
+              "outgoing_B": "draft",
+              "send_approvals_B": 0,
+              "review_C": "draft",
+              "review_C_submission": null,
+              "praxis_relays": 0
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "console_at_start": {
+    "at": "2026-11-20T23:27:19.832Z",
+    "locked": false,
+    "mode": "session",
+    "on_console": true,
+    "idle_ms": 79
+  },
+  "client_launch": {
+    "command": "/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-opconf-bin/webview-host-f648cbaed3c8 http://127.0.0.1:4299 http://127.0.0.1:4299/check?client=webview",
+    "pid": 93315
+  },
+  "boot": {
+    "page": {
+      "client": "webview",
+      "origin": "http://127.0.0.1:4299",
+      "session_before": {
+        "status": 200,
+        "operator": false
+      },
+      "host_ready": true,
+      "proof_stored": true,
+      "session_after": {
+        "status": 200,
+        "operator": true
+      }
+    },
+    "bootstraps": [
+      {
+        "at": "2026-11-20T23:27:20.146Z",
+        "device": "mac-desktop",
+        "pin": "stand-in pin: the webview host this run started, in place of the desktop app code-signature check (not the desktop app)",
+        "peer": {
+          "owner": {
+            "pid": 93315,
+            "ppid": 93310,
+            "uid": 501,
+            "executable": "/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-opconf-bin/webview-host-f648cbaed3c8",
+            "type": "main",
+            "args": "/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-opconf-bin/webview-host-f648cbaed3c8 http://127.0.0.1:4299 http://127.0.0.1:4299/check?client=webview"
+          },
+          "parent": {
+            "pid": 93310,
+            "ppid": 91530,
+            "uid": 501,
+            "executable": "node scripts/operator-confirmation-qa/live-check.cjs",
+            "type": "main",
+            "args": "node scripts/operator-confirmation-qa/live-check.cjs --client webview --attended"
+          }
+        }
+      }
+    ],
+    "checks": [
+      {
+        "name": "the session opened without a click or form",
+        "pass": true,
+        "detail": {
+          "session_after": {
+            "status": 200,
+            "operator": true
+          },
+          "proof_stored": true
+        }
+      },
+      {
+        "name": "before the host bootstrapped, the page had no operator session",
+        "pass": true,
+        "detail": {
+          "status": 200,
+          "operator": false
+        }
+      },
+      {
+        "name": "the native host bootstrapped the session (stand-in pin, not the desktop app)",
+        "pass": true,
+        "detail": {
+          "device": "mac-desktop",
+          "pin": "stand-in pin: the webview host this run started, in place of the desktop app code-signature check (not the desktop app)"
+        }
+      },
+      {
+        "name": "the bootstrap connection came from the host process itself, not the page",
+        "pass": true,
+        "detail": {
+          "pid": 93315,
+          "ppid": 93310,
+          "uid": 501,
+          "executable": "/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-opconf-bin/webview-host-f648cbaed3c8",
+          "type": "main",
+          "args": "/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-opconf-bin/webview-host-f648cbaed3c8 http://127.0.0.1:4299 http://127.0.0.1:4299/check?client=webview"
+        }
+      },
+      {
+        "name": "the host stored the proof with the desktop app's origin-checked evaluation",
+        "pass": true,
+        "detail": true
+      },
+      {
+        "name": "exactly one bootstrap",
+        "pass": true,
+        "detail": 1
+      },
+      {
+        "name": "no dialog during bootstrap",
+        "pass": true,
+        "detail": 0
+      },
+      {
+        "name": "the dialog script has no give-up time",
+        "pass": true,
+        "detail": [
+          "    set answer to display dialog theMessage with title theTitle buttons {\"Cancel\", confirmLabel} default button \"Cancel\" cancel button \"Cancel\" with icon caution"
+        ]
+      }
+    ]
+  },
+  "start": {
+    "at": "2026-11-20T23:27:54.048Z",
+    "page": {
+      "started": true
+    },
+    "idle_ms": 96,
+    "console": {
+      "locked": false,
+      "mode": "session",
+      "on_console": true
+    }
+  },
+  "end": {
+    "revoked": 200,
+    "proof_removed": true
+  },
+  "console_at_end": {
+    "at": "2026-11-20T23:28:20.206Z",
+    "locked": false,
+    "mode": "session",
+    "on_console": true,
+    "idle_ms": 115
+  },
+  "final_state": {
+    "documents": {
+      "A": {
+        "id": "e2980fe3-4d5d-405c-b2ed-ab31b39ab931",
+        "title": "Harness check A: synthetic brief (task 5e513530)",
+        "revision_id": "3ebac74b-9e2e-4fd3-bfd9-b11cc9467455",
+        "content_hash": "7a867be4439b0e69c7f90a6beef1066a4457fa4afa0f019bb915c362d82e12a6"
+      },
+      "B": {
+        "id": "d6cdc262-a257-4967-a099-9abd1417b59d",
+        "title": "Harness check B: synthetic invitation (task 5e513530)",
+        "revision_id": "5a609de9-40d4-4c91-9040-3af5f9b4a47a",
+        "content_hash": "13a27d91d86ef76556ce9f28a49b740c77fb6eeda37325d1a0a59a9b111c818c"
+      },
+      "C": {
+        "id": "b3ba3990-ef42-456e-ac19-f50bdf7e8a16",
+        "title": "Harness check C: synthetic review (task 5e513530)",
+        "revision_id": "de96cfbd-ca41-4d3c-8f8b-00bec369004e",
+        "content_hash": "ee70a7471ebe4d4cf77c90109de1c2eaafe7550ba6a8c88576b55d28e1e3d70c"
+      },
+      "D": {
+        "id": "8ac867da-8bb8-42fa-8c28-ca1da6a95f30",
+        "title": "Harness check D: synthetic brief (task 5e513530)",
+        "revision_id": "0926a310-8f5d-4253-a32b-516f117ef6c1",
+        "content_hash": "60145d02d58e939de5def21c9af878747ade5f72bbeb75964bb9a414f5d843cb"
+      },
+      "E": {
+        "id": "473b0d5f-8e30-4db2-8cec-3a0d73e90662",
+        "title": "Harness check E: synthetic brief, leave this dialog alone (task 5e513530)",
+        "revision_id": "92945067-9929-42c9-a49e-a7e9b51d9a4c",
+        "content_hash": "41380ec45c183e8ad0523fd075e9702e44ffb9214e33485d506ae34dbcb3303c"
+      }
+    },
+    "decisions": {
+      "A": [
+        {
+          "id": "ab325050-23e7-4c01-8e7e-994c125fd2ab",
+          "revision_id": "3ebac74b-9e2e-4fd3-bfd9-b11cc9467455",
+          "content_hash": "7a867be4439b0e69c7f90a6beef1066a4457fa4afa0f019bb915c362d82e12a6",
+          "decision": "approve",
+          "note": "Confirmed in the Mac dialog.",
+          "actor_id": "local_user",
+          "authority": "operator_credential",
+          "recorded_by": "operator",
+          "client_decision_id": "harness-w-1",
+          "created_at": "2026-11-20T23:28:20.200Z"
+        }
+      ],
+      "D": [],
+      "E": []
+    },
+    "outgoing_B": {
+      "status": "draft",
+      "envelope_hash": "ef36ed58341c16dd9dd28297c34a45f2f39c1eb3b0306cc1c04ca2aafc657d13",
+      "grant": null
+    },
+    "outgoing_B_events": [
+      {
+        "event": "prepared",
+        "authority": "runtime_credential",
+        "created_at": "2026-11-20T23:27:19.826Z"
+      }
+    ],
+    "review_C": {
+      "status": "draft",
+      "approval_delegated": false,
+      "submitted_authority": null,
+      "submission": null
+    },
+    "praxis_relays": [],
+    "praxis_drafts": [
+      {
+        "id": "md_harness",
+        "status": "draft",
+        "version": "v1",
+        "to": "harness-member@example.test"
+      }
+    ]
+  },
+  "dialogs_total": 5,
+  "server_log": [
+    {
+      "at": "2026-11-20T23:27:19.734Z",
+      "level": "warn",
+      "line": "[OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)"
+    },
+    {
+      "at": "2026-11-20T23:27:56.302Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] aborted document_decision ref=90790ede device=mac-desktop"
+    },
+    {
+      "at": "2026-11-20T23:27:58.586Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] aborted mail_send ref=d8cf27d2 device=mac-desktop"
+    },
+    {
+      "at": "2026-11-20T23:28:00.772Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] aborted mail_send ref=946c3fbf device=mac-desktop"
+    },
+    {
+      "at": "2026-11-20T23:28:15.290Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] declined document_decision ref=c2e68a46 device=mac-desktop"
+    },
+    {
+      "at": "2026-11-20T23:28:20.199Z",
+      "level": "log",
+      "line": "[OperatorConfirmation] confirmed document_decision ref=c4cd8965 device=mac-desktop"
+    },
+    {
+      "at": "2026-11-20T23:28:20.201Z",
+      "level": "log",
+      "line": "[Documents] approve recorded for e2980fe3-4d5d-405c-b2ed-ab31b39ab931 revision 3ebac74b-9e2e-4fd3-bfd9-b11cc9467455 (authority=operator_credential, operator confirmation ref=c4cd8965)"
+    }
+  ],
+  "host_log": [
+    "[webview-host] window occlusion detection off, so the page stays active while the screen is locked",
+    "[webview-host] loading the check page",
+    "[webview-host] bootstrap answered 201; HttpOnly session cookie planted in the webview store",
+    "[webview-host] proof evaluation ran (stored: true)",
+    "[webview-host] page: session: open (no click)",
+    "[webview-host] page: start Robert starts the attended check",
+    "[webview-host] page:     {\"started\":true}",
+    "[webview-host] page: W01 Browse and read with the session the native host planted",
+    "[webview-host] page:     200, 200, 200, 200, 200",
+    "[webview-host] page: W02 Approve document D with the stored proof alone; nobody answers and the page gives up once the dialog is open",
+    "[webview-host] page:     gave up (request aborted)",
+    "[webview-host] page: W03 Send the Praxis Mail draft with the stored proof alone and forged recipient fields; nobody answers and the page gives up once the dialog is open",
+    "[webview-host] page:     gave up (request aborted)",
+    "[webview-host] page: W04 Approve sending document B's email with the stored proof alone; nobody answers and the page gives up once the dialog is open",
+    "[webview-host] page:     gave up (request aborted)",
+    "[webview-host] page: W05 Approve document A with forged confirmation fields and headers (carrying the last dialog Ref); Robert clicks Cancel",
+    "[webview-host] page:     403 operator_confirmation_declined",
+    "[webview-host] page: W06 Approve document A; Robert clicks Approve"
+  ],
+  "summary": {
+    "steps": 6,
+    "dialogs": 5,
+    "dialog_endings": {
+      "none: the request ended and the broker closed the dialog": 3,
+      "a click on the dialog: osascript returned the button": 2
+    },
+    "checks": 87,
+    "passed": 87,
+    "failed": []
+  }
+}

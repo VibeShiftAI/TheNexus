@@ -121,12 +121,10 @@ function refusalMessage(err: unknown, noteState: NoteState): { text: string; sta
                 return { text: sentence(err.message), stale: false, reload: true };
             // On this Mac a decision also needs your answer to the native dialog (task 5e513530); the server says nothing was recorded.
             case "operator_confirmation_declined":
-            case "operator_confirmation_timeout":
             case "operator_confirmation_busy":
             case "operator_confirmation_aborted":
                 return { text: `${sentence(err.message)} Your note is kept; decide again when you are ready.`, stale: false, reload: false };
             case "operator_confirmation_unavailable":
-            case "operator_confirmation_paused":
                 return { text: `${sentence(err.message)} You can also decide from your signed-in tunnel, phone or Windows app. Reading and feedback still work.`, stale: false, reload: false };
             case "operator_confirmation_mismatch":
                 return { text: sentence(err.message), stale: false, reload: true };

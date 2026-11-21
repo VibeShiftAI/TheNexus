@@ -21,31 +21,34 @@
  * session (automatic-start, skill candidates, project, labeling and chat
  * routes) keep the parent behavior and are not asked.
  *
- * Declined, timed out, unavailable (not macOS, or osascript failed), busy (one
- * dialog at a time), paused (three declined, unanswered or abandoned dialogs
- * within ten minutes) or aborted (the client went away, before or during the
- * dialog) all refuse with a reason and record nothing. There is
- * no fallback. A verified Cloudflare Access session (tunnel browser, phone
- * shell, travel shell) and the operator bearer are separate credentials and
- * are not asked. An authority result that does not say which path it came
- * from is refused (fail closed).
+ * Declined, unavailable (not macOS, or osascript failed), busy (one dialog at
+ * a time) or aborted (the client went away, before or during the dialog) all
+ * refuse with a reason and record nothing. There is no fallback. A verified
+ * Cloudflare Access session (tunnel browser, phone shell, travel shell) and
+ * the operator bearer are separate credentials and are not asked. An
+ * authority result that does not say which path it came from is refused
+ * (fail closed).
+ *
+ * The broker keeps no clock of its own. A dialog stays open exactly as long as
+ * the HTTP request that asked for it: it closes when Robert answers, or when
+ * the request ends, because the response 'close' aborts the osascript child.
+ * A page that stops waiting ends its request; on the dashboard path the Next
+ * proxy also ends it when the page goes away or when the proxy's own timeout
+ * passes (experimental.proxyTimeout in dashboard/next.config.ts). A confirmed
+ * answer exists only inside the request that asked, so it needs no expiry
+ * either: the first write check spends it, whatever that check finds.
  *
  * Limits: the dialog proves a click on a native window, not who clicked. A
  * process of the same macOS user that holds the Accessibility permission could
  * press it, and a same-user process can read the operator key file directly.
+ * If the API process itself is stopped while a dialog is open, the dialog
+ * stays on screen until it is clicked, and clicking it records nothing.
  * See docs/contracts/local-operator-session.md, "Per-action confirmation".
  */
 const { execFile } = require('node:child_process');
 const { createHash, randomBytes } = require('node:crypto');
 
 const OSASCRIPT = '/usr/bin/osascript';
-const WAIT_SECONDS = 120;
-// A confirmed answer authorizes only a write that follows it promptly.
-const CONSUME_WITHIN_MS = 60 * 1000;
-// Repeated prompts Robert did not ask for must not train him to click.
-const PAUSE_AFTER = 3;
-const PAUSE_WINDOW_MS = 10 * 60 * 1000;
-const PAUSE_MS = 5 * 60 * 1000;
 // Upper bound on dialog text. Each action's excerpts are shorter, so only an
 // unusually long recipient or answer list reaches it.
 const MESSAGE_MAX = 4000;
@@ -54,20 +57,20 @@ const NOT_ASKED = new Set(['access_session', 'operator_bearer', 'document_execut
 const DEVICES = { 'mac-chrome': 'Google Chrome', 'mac-desktop': 'The Nexus app' };
 
 // argv keeps every server string out of the script source (no injection).
-// Cancel is the default button, so Return or Escape never confirms.
+// Cancel is the default button, so Return or Escape never confirms. The
+// dialog has no give-up time: it waits until it is answered or its request
+// ends (see the header).
 const SCRIPT = [
     'on run argv',
     '  set theTitle to item 1 of argv',
     '  set theMessage to item 2 of argv',
     '  set confirmLabel to item 3 of argv',
-    '  set waitSeconds to (item 4 of argv) as integer',
     '  activate',
     '  try',
-    '    set answer to display dialog theMessage with title theTitle buttons {"Cancel", confirmLabel} default button "Cancel" cancel button "Cancel" with icon caution giving up after waitSeconds',
+    '    set answer to display dialog theMessage with title theTitle buttons {"Cancel", confirmLabel} default button "Cancel" cancel button "Cancel" with icon caution',
     '  on error number -128',
     '    return "declined"',
     '  end try',
-    '  if gave up of answer then return "timeout"',
     '  if button returned of answer is confirmLabel then return "confirmed"',
     '  return "declined"',
     'end run',
@@ -75,10 +78,8 @@ const SCRIPT = [
 
 const REFUSALS = {
     declined: [403, 'operator_confirmation_declined', 'You declined the confirmation on this Mac. Nothing was recorded.'],
-    timeout: [403, 'operator_confirmation_timeout', 'The confirmation on this Mac was not answered in time. Nothing was recorded.'],
     unavailable: [503, 'operator_confirmation_unavailable', 'The confirmation dialog could not be shown on this Mac. Nothing was recorded.'],
     busy: [409, 'operator_confirmation_busy', 'Another confirmation dialog is already open on this Mac; answer it first. Nothing was recorded.'],
-    paused: [429, 'operator_confirmation_paused', 'Confirmations on this Mac are paused for five minutes after three were declined, left unanswered or abandoned within ten minutes. Nothing was recorded.'],
     aborted: [409, 'operator_confirmation_aborted', 'The request ended before the confirmation was answered. Nothing was recorded.'],
     unverified: [503, 'operator_confirmation_unavailable', 'This decision path cannot be confirmed, so nothing was recorded.'],
     mismatch: [409, 'operator_confirmation_mismatch', 'What would be recorded no longer matches what you confirmed. Nothing was recorded; reload and try again.'],
@@ -132,27 +133,27 @@ function shorten(text, max) {
     return `${text.slice(0, keep)}${omitted(text.length - keep)}`;
 }
 
-function showMacDialog({ title, message, confirmLabel, seconds, signal, run = execFile, platform = process.platform }) {
+// No timeout and no output cap of its own: the child lives until it answers or
+// `signal` aborts it, and anything but one expected word is 'unavailable'.
+function showMacDialog({ title, message, confirmLabel, signal, run = execFile, platform = process.platform }) {
     if (platform !== 'darwin') return Promise.resolve('unavailable');
     return new Promise(resolve => {
-        run(OSASCRIPT, [...SCRIPT.flatMap(line => ['-e', line]), title, message, confirmLabel, String(seconds)], {
-            encoding: 'utf8', timeout: (seconds + 15) * 1000, maxBuffer: 64 * 1024, signal,
+        run(OSASCRIPT, [...SCRIPT.flatMap(line => ['-e', line]), title, message, confirmLabel], {
+            encoding: 'utf8', signal,
             // Do not inherit executor-controlled loader or tool-search settings.
             env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', LANG: 'en_US.UTF-8', LC_ALL: 'en_US.UTF-8' },
         }, (error, stdout) => {
             if (signal?.aborted) return resolve('aborted');
-            if (error) return resolve(error.killed ? 'timeout' : 'unavailable');
+            if (error) return resolve('unavailable');
             const answer = String(stdout || '').trim();
-            return resolve(['confirmed', 'declined', 'timeout'].includes(answer) ? answer : 'unavailable');
+            return resolve(['confirmed', 'declined'].includes(answer) ? answer : 'unavailable');
         });
     });
 }
 
 // `origin` only labels the dialog; the live-check harness passes its own port.
-function createOperatorConfirmations({ show = showMacDialog, seconds = WAIT_SECONDS, now = Date.now, log = console, origin = 'localhost:3000' } = {}) {
+function createOperatorConfirmations({ show = showMacDialog, now = Date.now, log = console, origin = 'localhost:3000' } = {}) {
     let open = null;
-    let unanswered = [];
-    let pausedUntil = 0;
 
     function message(action, auth, ref) {
         const time = new Date(now()).toLocaleTimeString('en-US', { hour12: false });
@@ -177,12 +178,11 @@ function createOperatorConfirmations({ show = showMacDialog, seconds = WAIT_SECO
         if (NOT_ASKED.has(auth?.via)) return { ok: true, required: false, ref: null, consume: () => true };
         if (auth?.via !== 'local_session') return refusal('unverified');
         // A client that left before the dialog would open (during a capture or
-        // a Praxis read) is not asked at all; this does not count toward the pause.
+        // a Praxis read) is not asked at all.
         if (res?.destroyed || res?.socket?.destroyed) {
             log.log?.(`[OperatorConfirmation] aborted ${action.kind} before asking device=${auth?.device || 'unknown'}`);
             return refusal('aborted');
         }
-        if (now() < pausedUntil) return refusal('paused');
         if (open) return refusal('busy');
         const ref = randomBytes(4).toString('hex');
         const key = identityKey(action.identity);
@@ -196,7 +196,6 @@ function createOperatorConfirmations({ show = showMacDialog, seconds = WAIT_SECO
                 title: oneLine(action.title, 120),
                 message: message(action, auth, ref),
                 confirmLabel: oneLine(action.confirmLabel, 40),
-                seconds,
                 signal: controller.signal,
             });
         } catch {
@@ -207,30 +206,21 @@ function createOperatorConfirmations({ show = showMacDialog, seconds = WAIT_SECO
         }
         if (controller.signal.aborted) outcome = 'aborted';
         if (!REFUSALS[outcome] && outcome !== 'confirmed') outcome = 'unavailable';
-        if (outcome === 'confirmed') unanswered = [];
-        else if (['declined', 'timeout', 'aborted'].includes(outcome)) {
-            unanswered = unanswered.filter(at => now() - at < PAUSE_WINDOW_MS).concat(now());
-            if (unanswered.length >= PAUSE_AFTER) {
-                pausedUntil = now() + PAUSE_MS;
-                unanswered = [];
-            }
-        }
         log.log?.(`[OperatorConfirmation] ${outcome} ${action.kind} ref=${ref} device=${auth?.device || 'unknown'}`);
         if (outcome !== 'confirmed') return refusal(outcome, { confirmation_ref: ref });
-        const confirmedAt = now();
         let used = false;
         return {
             ok: true, required: true, ref,
-            /** Single use, within the window, and only for the identity confirmed. */
+            /** Single use, and only for the identity confirmed. */
             consume(identity) {
-                if (used || now() - confirmedAt > CONSUME_WITHIN_MS) return false;
+                if (used) return false;
                 used = true;
                 return identityKey(identity) === key;
             },
         };
     }
 
-    return { confirm, status: () => ({ open: open ? { ...open } : null, pausedUntil }) };
+    return { confirm, status: () => ({ open: open ? { ...open } : null }) };
 }
 
 // ── Dialog wording, built only from server records ─────────────────────────

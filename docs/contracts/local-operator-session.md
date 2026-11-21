@@ -179,10 +179,20 @@ means the cookie and proof, including the desktop app's renewed proof.
 `server/services/operator-confirmation.js` runs the dialog.
 
 - **Who shows it.** The API process itself runs `/usr/bin/osascript` (`display dialog`) inside the same HTTP request.
-- **Defaults.** Cancel is the default button, so Return or Escape never confirms. The dialog gives up after 120 seconds.
+- **Defaults.** Cancel is the default button, so Return or Escape never confirms. The dialog has no give-up time of its own; see "How long a dialog stays open".
 - **Text.** Every string reaches the script as an argument. Control, bidirectional and zero-width characters are removed from the dialog text. Long text is shown as an excerpt that says how much of it is shown. If the whole text would still pass 4000 characters (a very long recipient or answer list), it is cut with a note giving the exact number of characters left out.
 - **Footer.** It always shows, after a blank line, even when the text above it was cut. It names the client (Google Chrome or The Nexus app), the dashboard origin, the time, and a short reference. The response and the server log repeat that reference.
 - **Nothing to forge.** The request carries no confirmation token, header or field, so there is nothing to forge or replay. Forged fields are ignored.
+
+### How long a dialog stays open
+
+The broker keeps no clock of its own; every bound comes from the request that asked.
+
+- **The request.** A dialog stays open exactly as long as the HTTP request that asked for it. It closes when Robert answers, or when the request ends: the response's `close` event aborts the osascript child and the request is refused as `aborted`.
+- **The client.** A page that stops waiting ends its request. On the dashboard path the Next proxy ends the upstream request when the page goes away (`res.on('close', () => proxyReq.destroy())`, `next/dist/server/lib/router-utils/proxy-request.js:47`, Next 16.1.6) and when its own timeout passes (`experimental.proxyTimeout`, `dashboard/next.config.ts:41`: the Praxis chat timeout plus one minute, 21 minutes by default).
+- **The answer.** A confirmed answer exists only inside the request that asked for it, so it needs no expiry: the first write check spends it, whatever that check finds.
+- **No pause.** One dialog is open at a time (`busy`); a refusal of any kind leaves the next request free to ask.
+- **Busy while open.** Every other confirmation is refused as `busy` while a dialog is open, so a dialog left unanswered on an open dashboard page blocks the others until it is answered, the page goes away or the proxy timeout passes. A late click still records only if the record is unchanged (see below).
 
 ### What a confirmation is bound to
 
@@ -196,7 +206,7 @@ Each confirmation is bound to the canonical identity of what the dialog showed:
 After the dialog:
 
 1. The route reads the record again; for documents it also recaptures the file.
-2. It consumes the confirmation inside the write: once, within 60 seconds, and only if the identity is unchanged.
+2. It consumes the confirmation inside the write: once, and only if the identity is unchanged.
 3. Otherwise it answers 409 `operator_confirmation_mismatch`.
 
 An identical retry with the same `client_decision_id` is answered from the record before any dialog. Any other repeat asks again.
@@ -208,11 +218,9 @@ Nothing is recorded, the response says so (`nothing_recorded: true`), and there 
 | Outcome | Status | Code |
 |---|---|---|
 | Robert clicked Cancel | 403 | `operator_confirmation_declined` |
-| No answer before the dialog gave up | 403 | `operator_confirmation_timeout` |
-| The dialog could not be shown, or its process ended | 503 | `operator_confirmation_unavailable` |
+| The dialog could not be shown, or its process ended without an answer | 503 | `operator_confirmation_unavailable` |
 | Another confirmation is open (one at a time) | 409 | `operator_confirmation_busy` |
-| Three dialogs declined, left unanswered or abandoned (the client went away while one was open) within 10 minutes; asking pauses for 5 minutes | 429 | `operator_confirmation_paused` |
-| The client went away: before the dialog opened (it is never shown, and this does not count toward the pause) or while it was open (it closes with the request) | 409 | `operator_confirmation_aborted` |
+| The client went away: before the dialog opened (it is never shown) or while it was open (it closes with the request) | 409 | `operator_confirmation_aborted` |
 | The record changed while the dialog was open | 409 | `operator_confirmation_mismatch` |
 
 A request whose authority path is not recognized fails closed with 503.
@@ -264,19 +272,21 @@ The credential lives on the phone, not in the Mac session. It is still ambient i
   - None of them sends mail or records a document decision. Workspace-addition sanctions (`server/services/contract-change-authority.js`) need an Access assertion, so the local session never reaches them.
   - Asking on these too would widen the ruling. That is Robert's call and is retained in the task's review report.
 - **What the dialog shows.** A page can show anything. The dialog shows only server records (excerpts for long text), so judge by the dialog, not the page.
+- **Repeated asking.** There is no pause after refusals, so a script that keeps asking can put up one dialog after another (one at a time). Each defaults to Cancel, says who asked, warns "If you did not just ask for this in Nexus, click Cancel." and records nothing unless its confirm button is clicked. A pause policy (how many unanswered dialogs, for how long) is Robert's call and is retained in the task's review report.
+- **API restart during a dialog.** The Praxis supervisor stops the API by signalling its process only (`SIGTERM`, then `SIGKILL` after 5 seconds; `Praxis/src/supervisor/processes.ts`), and the API has no signal handler, so a dialog open at that moment is not closed with it: it stays on screen until it is clicked. Its request is gone, so clicking it records nothing.
 
 ### Verification
 
 - **Unit tests.** `server/__tests__/operator-confirmation.test.js` covers:
   - the broker and the osascript runner (with an injected exec);
   - each route;
-  - replay, mismatch, busy, pause and abort;
+  - replay, mismatch, busy and abort, and that no give-up time, expiry or pause applies;
   - refusals before asking, the long-dialog cut and the HTML-part line.
 - **Live check.** `scripts/operator-confirmation-qa/live-check.cjs` runs the real session store, kernel peer check, routes and osascript dialog against:
   - Robert's own Google Chrome;
-  - a WebKit host that sets up the session the way the desktop app does.
+  - a WebKit host that sets up the session the way the desktop app does (a stand-in for the app, not the app).
 
-  Its README explains how answers are given while the console is locked.
+  The harness never answers a dialog. Unattended runs cover only the steps that need no answer; the attended run waits for Robert to press Start and then for his clicks. Its README lists the four ways a dialog ends.
 - **Results.** Evidence and results are in `docs/reviews/2026-11-20-operator-confirmation.md`.
 
 ## Binding constraints (verbatim from the execution brief)

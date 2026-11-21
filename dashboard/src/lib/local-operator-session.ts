@@ -30,10 +30,10 @@ export function confirmsOnThisMac(): boolean {
     return Object.keys(localOperatorHeaders('/api/documents')).length > 0;
 }
 export const CONFIRM_ON_THIS_MAC = 'Confirm in the dialog on your Mac. Nothing is recorded until you do.';
-/** Server refusal codes for an unanswered, declined or unusable confirmation; nothing was recorded. */
+/** Server refusal codes for a declined, abandoned or unusable confirmation; nothing was recorded. */
 export const CONFIRMATION_REFUSALS = new Set([
-    'operator_confirmation_declined', 'operator_confirmation_timeout', 'operator_confirmation_unavailable',
-    'operator_confirmation_busy', 'operator_confirmation_paused', 'operator_confirmation_aborted', 'operator_confirmation_mismatch',
+    'operator_confirmation_declined', 'operator_confirmation_unavailable',
+    'operator_confirmation_busy', 'operator_confirmation_aborted', 'operator_confirmation_mismatch',
 ]);
 
 function renewNative(): Promise<boolean> {

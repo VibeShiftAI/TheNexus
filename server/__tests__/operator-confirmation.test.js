@@ -130,7 +130,7 @@ describe('confirmation broker', () => {
         expect(show).toHaveBeenCalledTimes(1);
     });
 
-    test('a confirmation is single use, bound to the confirmed identity and to a short window', async () => {
+    test('a confirmation is single use and bound to the confirmed identity; time plays no part', async () => {
         let clock = 1_000_000;
         const broker = confirmation.createOperatorConfirmations({ show: async () => 'confirmed', now: () => clock, log: {} });
         const identity = { kind: 'mail_send', draft_id: 'md_1', version: 'v1', to: 'a@example.test' };
@@ -142,38 +142,77 @@ describe('confirmation broker', () => {
         // Key order does not matter; values do.
         expect(second.consume({ to: 'a@example.test', version: 'v1', draft_id: 'md_1', kind: 'mail_send' })).toBe(true);
         expect(second.consume(identity)).toBe(false);
+        // The answer lives only inside the request that asked, so it has no expiry:
+        // only its first use spends it.
         const third = await ask();
-        clock += 61_000;
+        clock += 7 * 24 * 60 * 60 * 1000;
+        expect(third.consume(identity)).toBe(true);
         expect(third.consume(identity)).toBe(false);
     });
 
-    test('one dialog at a time, and three unanswered dialogs pause asking for five minutes', async () => {
-        let clock = 5_000_000;
+    test('one dialog at a time, and refusals never stop the next request from being asked', async () => {
         let release;
         const show = jest.fn(() => new Promise(resolve => { release = resolve; }));
-        const broker = confirmation.createOperatorConfirmations({ show, now: () => clock, log: {} });
+        const broker = confirmation.createOperatorConfirmations({ show, log: {} });
         const auth = { via: 'local_session' };
         const pending = broker.confirm({ res: res(), auth, action: action() });
         await waitFor(() => show.mock.calls.length === 1);
         expect(await broker.confirm({ res: res(), auth, action: action() })).toMatchObject({ ok: false, status: 409, code: 'operator_confirmation_busy' });
+        expect(show).toHaveBeenCalledTimes(1);
         release('declined');
         expect(await pending).toMatchObject({ code: 'operator_confirmation_declined' });
-        for (const outcome of ['timeout', 'declined']) {
+        // There is no pause and no fallback: each later request gets its own dialog.
+        for (const outcome of ['declined', 'unavailable', 'declined', 'declined']) {
+            const calls = show.mock.calls.length;
             const next = broker.confirm({ res: res(), auth, action: action() });
-            await waitFor(() => release && show.mock.calls.length >= 2);
+            await waitFor(() => show.mock.calls.length === calls + 1);
             release(outcome);
-            await next;
+            expect(await next).toMatchObject({ ok: false, code: `operator_confirmation_${outcome}`, nothing_recorded: true });
         }
-        expect(show).toHaveBeenCalledTimes(3);
-        // Deliberate declines count too (unwanted prompts are declined), and the reason says so.
-        expect(await broker.confirm({ res: res(), auth, action: action() })).toMatchObject({ ok: false, status: 429, code: 'operator_confirmation_paused',
-            error: 'Confirmations on this Mac are paused for five minutes after three were declined, left unanswered or abandoned within ten minutes. Nothing was recorded.' });
-        expect(show).toHaveBeenCalledTimes(3);
-        clock += 5 * 60 * 1000 + 1;
         const after = broker.confirm({ res: res(), auth, action: action() });
-        await waitFor(() => show.mock.calls.length === 4);
+        await waitFor(() => show.mock.calls.length === 6);
         release('confirmed');
         expect(await after).toMatchObject({ ok: true, required: true });
+        expect(broker.status()).toEqual({ open: null });
+    });
+
+    test('a dialog has no give-up time: it stays open until it is answered or its request ends', async () => {
+        jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] });
+        const settle = () => new Promise(resolve => setImmediate(resolve));
+        try {
+            const children = [];
+            // The real runner wrapper with a stand-in osascript that answers only when told to.
+            const run = (file, args, options, callback) => {
+                const child = { options, answer: stdout => callback(null, stdout) };
+                options.signal.addEventListener('abort', () => callback(Object.assign(new Error('The operation was aborted'), { name: 'AbortError' }), ''));
+                children.push(child);
+            };
+            const broker = confirmation.createOperatorConfirmations({ show: prompt => confirmation.showMacDialog({ ...prompt, run, platform: 'darwin' }), log: {} });
+            const auth = { via: 'local_session' };
+            for (const ending of ['answered', 'request ended']) {
+                const response = res();
+                let result = null;
+                const pending = broker.confirm({ res: response, auth, action: action() }).then(value => { result = value; });
+                expect(children).toHaveLength(ending === 'answered' ? 1 : 2);
+                const child = children[children.length - 1];
+                expect(child.options).not.toHaveProperty('timeout');
+                // Neither the broker nor the runner set a timer, so no amount of waiting ends the dialog.
+                expect(jest.getTimerCount()).toBe(0);
+                jest.advanceTimersByTime(7 * 24 * 60 * 60 * 1000);
+                await settle();
+                expect(result).toBeNull();
+                expect(broker.status().open).toMatchObject({ kind: 'document_decision' });
+                if (ending === 'answered') child.answer('confirmed\n');
+                else response.emit('close');
+                await pending;
+                expect(result).toMatchObject(ending === 'answered'
+                    ? { ok: true, required: true }
+                    : { ok: false, status: 409, code: 'operator_confirmation_aborted', nothing_recorded: true });
+                expect(broker.status().open).toBeNull();
+            }
+        } finally {
+            jest.useRealTimers();
+        }
     });
 
     test('a client that goes away closes the dialog and is refused as aborted', async () => {
@@ -186,7 +225,7 @@ describe('confirmation broker', () => {
         expect(await pending).toMatchObject({ ok: false, code: 'operator_confirmation_aborted', nothing_recorded: true });
     });
 
-    test('a client that left before the dialog would open is refused as aborted without asking, and that does not count toward the pause', async () => {
+    test('a client that left before the dialog would open is refused as aborted without asking', async () => {
         const show = jest.fn(async () => 'confirmed');
         const broker = confirmation.createOperatorConfirmations({ show, log: {} });
         const auth = { via: 'local_session' };
@@ -216,7 +255,9 @@ describe('confirmation broker', () => {
             identity: { kind: 'mail_send' }, to: 'member@example.test', cc: ['copy@example.test', 'second@example.test'], subject, body: 'b'.repeat(1000),
         }) });
         const prompt = show.mock.calls[0][0];
-        expect(prompt).toMatchObject({ title: 'Nexus: send this email?', confirmLabel: 'Send', seconds: 120 });
+        expect(prompt).toMatchObject({ title: 'Nexus: send this email?', confirmLabel: 'Send' });
+        // No wait time travels with the prompt: the dialog lasts as long as its request.
+        expect(Object.keys(prompt).sort()).toEqual(['confirmLabel', 'message', 'signal', 'title']);
         const lines = prompt.message.split('\n');
         expect(lines[0]).toBe('Send to member@example.test: "Invoice fdp.exe"?');
         expect(lines[1]).toBe('Cc: copy@example.test, second@example.test');
@@ -248,20 +289,22 @@ describe('confirmation broker', () => {
     test('the osascript runner passes every server string as argv, defaults to Cancel and maps each outcome', async () => {
         const calls = [];
         const runner = (result) => (file, args, options, callback) => { calls.push({ file, args, options }); setImmediate(() => callback(...result)); };
-        const prompt = { title: 'Nexus: send this email?', message: 'Send to "x" & `y`; $(rm -rf /)', confirmLabel: 'Send', seconds: 7 };
+        const prompt = { title: 'Nexus: send this email?', message: 'Send to "x" & `y`; $(rm -rf /)', confirmLabel: 'Send' };
         expect(await confirmation.showMacDialog({ ...prompt, run: runner([null, 'confirmed\n']), platform: 'darwin' })).toBe('confirmed');
         const [{ file: binary, args, options }] = calls;
         expect(binary).toBe('/usr/bin/osascript');
-        expect(args.slice(-4)).toEqual([prompt.title, prompt.message, 'Send', '7']);
-        const script = args.slice(0, -4).filter((_, index) => index % 2 === 1).join('\n');
-        expect(args.slice(0, -4).filter((_, index) => index % 2 === 0).every(flag => flag === '-e')).toBe(true);
+        expect(args.slice(-3)).toEqual([prompt.title, prompt.message, 'Send']);
+        const script = args.slice(0, -3).filter((_, index) => index % 2 === 1).join('\n');
+        expect(args.slice(0, -3).filter((_, index) => index % 2 === 0).every(flag => flag === '-e')).toBe(true);
         expect(script).toContain('default button "Cancel" cancel button "Cancel"');
-        expect(script).toContain('giving up after waitSeconds');
+        // No give-up time in the dialog and no timeout or output cap on the process.
+        expect(script).not.toContain('giving up');
         expect(script).not.toContain(prompt.message);
-        expect(options).toMatchObject({ timeout: 22_000, env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' } });
+        expect(options).toEqual({ encoding: 'utf8', signal: undefined, env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', LANG: 'en_US.UTF-8', LC_ALL: 'en_US.UTF-8' } });
         expect(await confirmation.showMacDialog({ ...prompt, run: runner([null, 'declined\n']), platform: 'darwin' })).toBe('declined');
-        expect(await confirmation.showMacDialog({ ...prompt, run: runner([null, 'timeout\n']), platform: 'darwin' })).toBe('timeout');
-        expect(await confirmation.showMacDialog({ ...prompt, run: runner([Object.assign(new Error('killed'), { killed: true }), '']), platform: 'darwin' })).toBe('timeout');
+        // Words the script cannot print any more, and a process killed by anyone but the request, are unavailable.
+        expect(await confirmation.showMacDialog({ ...prompt, run: runner([null, 'timeout\n']), platform: 'darwin' })).toBe('unavailable');
+        expect(await confirmation.showMacDialog({ ...prompt, run: runner([Object.assign(new Error('killed'), { killed: true, signal: 'SIGTERM' }), '']), platform: 'darwin' })).toBe('unavailable');
         expect(await confirmation.showMacDialog({ ...prompt, run: runner([new Error('No user interaction allowed. (-1713)'), '']), platform: 'darwin' })).toBe('unavailable');
         expect(await confirmation.showMacDialog({ ...prompt, run: runner([null, 'Send\n']), platform: 'darwin' })).toBe('unavailable');
         const before = calls.length;
@@ -273,24 +316,17 @@ describe('confirmation broker', () => {
 });
 
 describe('document decisions through the local session', () => {
-    test('the stored session proof alone records nothing: declined, timed out and unavailable dialogs refuse, and forged confirmation fields are ignored', async () => {
+    test('the stored session proof alone records nothing: declined and unavailable dialogs refuse, and forged confirmation fields are ignored', async () => {
         const cookie = await bootstrap();
-        const cases = [['declined', 403, 'operator_confirmation_declined'], ['timeout', 403, 'operator_confirmation_timeout'], ['unavailable', 503, 'operator_confirmation_unavailable']];
+        const cases = [['declined', 403, 'operator_confirmation_declined'], ['unavailable', 503, 'operator_confirmation_unavailable'], ['declined', 403, 'operator_confirmation_declined']];
         for (const [outcome, status, code] of cases) {
             answers.push(outcome);
             const result = await decide(cookie, { confirmation: 'confirmed', confirmed: true, confirmation_ref: 'deadbeef' }, { 'x-nexus-operator-confirmation': 'confirmed' });
             expect(result.status).toBe(status);
             expect(result.json).toMatchObject({ code, nothing_recorded: true });
         }
+        // Every request was asked: refusals neither pause asking nor fall back to the session.
         expect(prompts).toHaveLength(3);
-        expect(store.listDecisions(doc.id)).toHaveLength(0);
-        // An unavailable dialog is no sign of prompt fatigue; a third unanswered one
-        // (declined, timeout, declined) pauses asking, without falling back.
-        answers.push('declined');
-        expect((await decide(cookie)).json.code).toBe('operator_confirmation_declined');
-        const paused = await decide(cookie);
-        expect(paused.status).toBe(429); expect(paused.json).toMatchObject({ code: 'operator_confirmation_paused', nothing_recorded: true });
-        expect(prompts).toHaveLength(4);
         expect(store.listDecisions(doc.id)).toHaveLength(0);
     });
 
@@ -506,9 +542,9 @@ describe('sending email through the local session', () => {
     test('Praxis mail: the dialog names recipient and subject from Praxis; declined relays nothing; confirmed relays exactly the confirmed version once', async () => {
         const cookie = await bootstrap();
         const send = (body = {}) => api('POST', '/api/praxis/mailbox/drafts-review/md_fixture', { action: 'approve_send', version: 'v1', ...body }, { cookie });
-        answers.push('timeout');
-        const timedOut = await send();
-        expect(timedOut.status).toBe(403); expect(timedOut.json).toMatchObject({ code: 'operator_confirmation_timeout', nothing_recorded: true });
+        answers.push('declined');
+        const declined = await send();
+        expect(declined.status).toBe(403); expect(declined.json).toMatchObject({ code: 'operator_confirmation_declined', nothing_recorded: true });
         expect(relayed).toEqual([]);
         expect(prompts[0].message.split('\n').slice(0, 2)).toEqual(['Send to member@example.test: "Quarterly update [md1]"?', 'Cc: copy@example.test']);
         // Extra client fields never reach Praxis with a confirmed send.

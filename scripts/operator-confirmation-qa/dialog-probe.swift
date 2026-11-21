@@ -1,19 +1,18 @@
 // Native probe for the operator-confirmation live check (task 5e513530).
 //
-//   dialog-probe session                     console lock state
-//   dialog-probe window <pid> [waitSeconds]  the on-screen window owned by <pid>
-//   dialog-probe read <pid> [waitSeconds]    the dialog's text and buttons (Accessibility)
-//   dialog-probe press <pid> <title> [wait]  press the one button titled <title>
+//   dialog-probe session                    console lock state
+//   dialog-probe window <pid> [waitSeconds] the on-screen window owned by <pid>, once it appears
+//   dialog-probe watch <pid> [waitSeconds]  whether that window is still on screen after waitSeconds
+//   dialog-probe read <pid> [waitSeconds]   the dialog's text and buttons (Accessibility, read only)
 //
-// <pid> must be the osascript child that live-check.cjs itself started; `read`
-// and `press` refuse any other process (it must be an osascript child of the
-// probe's own parent). Each mode prints one JSON line.
-// `window` uses the window server list, which still answers while the screen
-// is locked. `read` and `press` use Accessibility, which macOS withholds from
-// windows behind the lock screen. That `press` works at all on an unlocked
-// screen is the limit the contract documents: a same-user process holding the
-// Accessibility permission can answer the dialog, so it proves a click, not
-// who clicked.
+// The probe only looks. It has no mode that clicks, presses or types, so the
+// live check cannot answer a dialog: an answer comes from a click on the
+// dialog itself, and osascript reports it. Each mode prints one JSON line.
+// `window` and `watch` use the window server list, which still answers while
+// the screen is locked. `read` uses Accessibility, which macOS withholds from
+// windows behind the lock screen, and it refuses any process but an osascript
+// child of the probe's own parent (the harness), so it cannot read the live
+// API's dialogs.
 import ApplicationServices
 import CoreGraphics
 import Foundation
@@ -26,7 +25,7 @@ func emit(_ report: [String: Any], code: Int32 = 0) -> Never {
 }
 
 func usage() -> Never {
-    FileHandle.standardError.write(Data("usage: dialog-probe session | window <pid> [wait] | read <pid> [wait] | press <pid> <title> [wait]\n".utf8))
+    FileHandle.standardError.write(Data("usage: dialog-probe session | window <pid> [wait] | watch <pid> [wait] | read <pid> [wait]\n".utf8))
     exit(64)
 }
 
@@ -41,17 +40,21 @@ if mode == "session" {
           "on_console": (session[kCGSessionOnConsoleKey as String] as? Bool) ?? false])
 }
 
-guard args.count >= 3, let pid = pid_t(args[2]), pid > 1 else { usage() }
-let wanted = mode == "press" ? (args.count > 3 ? args[3] : "") : ""
-let waitIndex = mode == "press" ? 4 : 3
-let wait = args.count > waitIndex ? (Double(args[waitIndex]) ?? 6) : 6
-let deadline = Date().addingTimeInterval(wait)
+guard ["window", "watch", "read"].contains(mode), args.count >= 3, let pid = pid_t(args[2]), pid > 1 else { usage() }
+let wait = args.count > 3 ? (Double(args[3]) ?? 6) : 6
+let started = Date()
+let deadline = started.addingTimeInterval(wait)
 var report: [String: Any] = ["mode": mode, "pid": Int(pid)]
+
+func windowOf(_ pid: pid_t) -> [String: Any]? {
+    let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+    return windows.first(where: { ($0[kCGWindowOwnerPID as String] as? Int) == Int(pid) })
+}
+func elapsedMs() -> Int { Int(Date().timeIntervalSince(started) * 1000) }
 
 if mode == "window" {
     repeat {
-        let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
-        if let window = windows.first(where: { ($0[kCGWindowOwnerPID as String] as? Int) == Int(pid) }) {
+        if let window = windowOf(pid) {
             report["found"] = true
             report["owner"] = window[kCGWindowOwnerName as String] as? String ?? ""
             report["layer"] = window[kCGWindowLayer as String] as? Int ?? -1
@@ -66,8 +69,22 @@ if mode == "window" {
     emit(report)
 }
 
-guard ["read", "press"].contains(mode) else { usage() }
-if mode == "press" && wanted.isEmpty { usage() }
+if mode == "watch" {
+    // Looks every 100 ms; reports as soon as the window is gone, or that it
+    // was still there when `wait` seconds had passed.
+    repeat {
+        if windowOf(pid) == nil {
+            report["still_open"] = false
+            report["watched_ms"] = elapsedMs()
+            emit(report)
+        }
+        if Date() >= deadline { break }
+        usleep(100_000)
+    } while true
+    report["still_open"] = true
+    report["watched_ms"] = elapsedMs()
+    emit(report)
+}
 
 /// The kernel's record of `pid`, or nil once it is gone.
 func kernelRecord(_ pid: pid_t) -> kinfo_proc? {
@@ -86,7 +103,7 @@ func commandName(_ info: kinfo_proc) -> String {
 }
 // Accessibility only for a dialog the calling harness started itself: an
 // osascript child of this probe's own parent. A live API's dialogs are
-// children of the API process, so this tool cannot read or answer them.
+// children of the API process, so this tool cannot read them.
 guard let target = kernelRecord(pid), target.kp_eproc.e_ppid == getppid(), commandName(target) == "osascript" else {
     report["error"] = "pid \(pid) is not an osascript dialog started by this probe's parent process"
     emit(report, code: 5)
@@ -101,7 +118,6 @@ func attribute(_ element: AXUIElement, _ name: String) -> AnyObject? {
 struct Item {
     let role: String
     let text: String
-    let element: AXUIElement
 }
 
 func walk(_ element: AXUIElement, into items: inout [Item], depth: Int = 0) {
@@ -109,7 +125,7 @@ func walk(_ element: AXUIElement, into items: inout [Item], depth: Int = 0) {
     let role = attribute(element, kAXRoleAttribute as String) as? String ?? ""
     let text = (attribute(element, kAXValueAttribute as String) as? String)
         ?? (attribute(element, kAXTitleAttribute as String) as? String) ?? ""
-    items.append(Item(role: role, text: text, element: element))
+    items.append(Item(role: role, text: text))
     // Behind the lock screen macOS answers with the application element at
     // every level; stop instead of walking that echo.
     if role == kAXApplicationRole as String && depth > 0 { return }
@@ -139,15 +155,4 @@ guard let window = dialog else {
 report["title"] = attribute(window, kAXTitleAttribute as String) as? String ?? ""
 report["texts"] = items.filter { $0.role == kAXStaticTextRole as String }.map { $0.text }
 report["buttons"] = items.filter { $0.role == kAXButtonRole as String }.map { $0.text }
-if mode == "press" {
-    let matches = items.filter { $0.role == kAXButtonRole as String && $0.text == wanted }
-    guard matches.count == 1 else {
-        report["error"] = "expected exactly one button titled \(wanted), found \(matches.count)"
-        emit(report, code: 3)
-    }
-    let result = AXUIElementPerformAction(matches[0].element, kAXPressAction as CFString)
-    report["press_result"] = Int(result.rawValue)
-    if result == .success { report["pressed"] = wanted }
-    emit(report, code: result == .success ? 0 : 4)
-}
 emit(report)

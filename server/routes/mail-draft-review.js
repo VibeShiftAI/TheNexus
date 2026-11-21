@@ -4,12 +4,15 @@ const { createDocumentDecisionAuthority } = require('../services/document-decisi
 const { praxisFetch, operatorProvenanceHeaders } = require('../services/praxis-client');
 const { operatorConfirmations, mailSendAction, sha256, NOT_ASKED } = require('../services/operator-confirmation');
 const OPERATORS = new Set(['access_user', 'access_device', 'operator_credential']);
+// This route's Praxis relay timeout (unchanged); the draft read before a
+// confirmation uses the same one.
+const PRAXIS_RELAY_TIMEOUT_MS = 30000;
 module.exports = function createMailDraftReviewRouter({ authorize = createDocumentDecisionAuthority(), relay = praxisFetch, sign = operatorProvenanceHeaders, confirmations = operatorConfirmations } = {}) {
     const router = express.Router();
     async function forward(res, path, options) {
         res.set('Cache-Control', 'no-store');
         try {
-            const response = await relay(path, { ...options, timeoutMs: 30000 });
+            const response = await relay(path, { ...options, timeoutMs: PRAXIS_RELAY_TIMEOUT_MS });
             return res.status(response.status).json(await response.json());
         } catch {
             return res.status(502).json({ error: 'Praxis could not confirm the mail action. Refresh to check its recorded status before trying again.' });
@@ -18,7 +21,7 @@ module.exports = function createMailDraftReviewRouter({ authorize = createDocume
     // What Praxis would send for this draft right now, read from Praxis itself
     // (never from the client), so the confirmation names the real message.
     async function currentDraft(id) {
-        const response = await relay('/api/mailbox/drafts-review?folder=drafts', { method: 'GET', timeoutMs: 30000 });
+        const response = await relay('/api/mailbox/drafts-review?folder=drafts', { method: 'GET', timeoutMs: PRAXIS_RELAY_TIMEOUT_MS });
         const data = await response.json();
         if (!response.ok || !Array.isArray(data?.items)) throw new Error('draft list unavailable');
         return data.items.find(item => item && item.id === id) || null;

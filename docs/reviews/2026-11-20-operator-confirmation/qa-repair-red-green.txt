@@ -1,0 +1,71 @@
+Red/green run for the QA repair round of task 5e513530 (attempt 0/2), 2026-11-20
+
+What changed: QA finding 3 (unsourced numeric policies). The 120-second dialog
+give-up, the 60-second consumption window, the pause after three unanswered
+dialogs (ten-minute count, five-minute pause), the 15-second process allowance
+and the 64-KiB output cap are removed from server/services/operator-confirmation.js,
+and the 30-second draft read in server/routes/mail-draft-review.js now reuses
+the route's existing Praxis relay timeout instead of a number of its own. The
+updated test file server/__tests__/operator-confirmation.test.js pins the new
+behavior: a dialog lasts exactly as long as its request, a confirmation is
+spent by the first write check whatever the clock says, and every refusal
+leaves the next request free to ask.
+
+RED: the updated test file against the previous commit
+  git worktree add --detach /tmp/nexus-5e513530-red3 8cf041e9
+  (8cf041e98fdadfa26c96f6c3ad47f4ed6626704f, node_modules symlinked from the
+  shared checkout, only the test file copied in)
+  npx jest server/__tests__/operator-confirmation.test.js --forceExit
+
+  Tests:       5 failed, 21 passed, 26 total
+
+  1. a confirmation is single use and bound to the confirmed identity; time plays no part
+       Expected: true   Received: false
+       > 149 |         expect(third.consume(identity)).toBe(true);
+       (a grant spent a week after the dialog was refused by the old 60-second window)
+  2. one dialog at a time, and refusals never stop the next request from being asked
+       -   "code": "operator_confirmation_declined",
+       +   "code": "operator_confirmation_paused",
+       > 170 |             expect(await next).toMatchObject({ ok: false, code: `operator_confirmation_${outcome}`, nothing_recorded: true });
+       (the old pause refused the fourth request without asking)
+  3. a dialog has no give-up time: it stays open until it is answered or its request ends
+       Expected path: not "timeout"   Received value: 135000
+       > 198 |                 expect(child.options).not.toHaveProperty('timeout');
+       (the old runner gave osascript a 120 s give-up plus a 15 s process allowance)
+  4. dialog text names the action from server values, removes invisible characters and says how much of a long body it shows
+       +   "seconds",
+       > 260 |         expect(Object.keys(prompt).sort()).toEqual(['confirmLabel', 'message', 'signal', 'title']);
+       (the old prompt carried a wait time)
+  5. the osascript runner passes every server string as argv, defaults to Cancel and maps each outcome
+       -   "Nexus: send this email?",
+       +   "undefined",
+       > 296 |         expect(args.slice(-3)).toEqual([prompt.title, prompt.message, 'Send']);
+       (the old script took the give-up seconds as its fourth argument)
+
+  The temporary worktree was removed afterwards (git worktree remove --force,
+  git worktree prune).
+
+GREEN: the task tree (HEAD 8cf041e9 plus this round's uncommitted changes)
+  npx jest server/__tests__/operator-confirmation.test.js --forceExit --verbose
+  Tests:       26 passed, 26 total
+
+  The 14 affected and security suites:
+  npx jest server/__tests__/local-operator-peer.test.js \
+    server/__tests__/mail-draft-relay.test.js \
+    server/__tests__/mail-draft-auth-mount.test.js \
+    server/__tests__/praxis-mind-stateless-conformance.test.js \
+    server/__tests__/local-operator-session.test.js \
+    server/__tests__/praxis-mind-board-governance.test.js \
+    server/__tests__/local-operator-flows.test.js \
+    server/__tests__/mcp-boundary-security.test.js \
+    server/__tests__/document-agent-reviews.test.js \
+    server/__tests__/document-outgoing.test.js \
+    server/__tests__/documents-route.test.js \
+    server/__tests__/document-executor-approvals.test.js \
+    server/__tests__/document-decision-answers.test.js \
+    server/__tests__/operator-confirmation.test.js --forceExit
+  Test Suites: 14 passed, 14 total
+  Tests:       275 passed, 275 total
+
+Full suites and their four baseline failures: baseline-failures.txt in this
+folder.

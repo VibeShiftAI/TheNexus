@@ -1,0 +1,125 @@
+Recovery recheck for task 5e513530 after the background-evidence hold, 2026-11-20/21 (UTC)
+
+Why this file exists
+  The first attended child of execution ea559f39-bf97-446e-aa29-a34775041af3
+  (attended-live-checks-1) exited 1 because of the first attended Chrome run
+  (130 of 166 checks; see "Run 1" in the report). Its receipt held the task.
+  Praxis recovered the hold under Robert's standing policy of 2026-10-18 (not
+  a new decision of his): POST /api/dispatch/background/abandon returned 200
+  at 2026-11-20T23:49:08Z, and the task was dispatched again as execution
+  757eec7c-dad8-4d1c-9042-f9332ee2870d. Recovery evidence:
+  /Volumes/Projects/OperationsEvidence/background-hold-ef4b69b5/.
+
+What this run did and did not do
+  - Rechecked both receipts, every registered artifact, and the source binding
+    of every live report against the current tree (sections A to D), then
+    reran the non-interactive suites (section E). Everything below was run
+    by this recovery run at the times shown; nothing is copied from an
+    earlier run.
+  - Rewrote nothing: both receipts, all five current live reports and the
+    two superseded ones are byte-for-byte what the earlier runs wrote. The
+    failed trial (receipt exit 1, live-chrome-attended.json) is kept.
+  - Registered no background work and started no live run. Attended runs need
+    Robert at the Mac, and nobody watches this recovery. An unattended run
+    would put dialogs on his screen, open a tab in his Chrome and compile the
+    Swift helpers; the existing reports already bind to the current bytes of
+    every file under test (section C), so a rerun would test the same code.
+  - Scratch for the reruns (TMPDIR, jest cache, full logs) was kept on the
+    Projects volume in /Volumes/Projects/.scratch-5e513530, not in /tmp or
+    the repository (the repository's tmp/ holds 685 tracked cache files).
+    The full logs stay there (server-full.txt, server-affected.txt,
+    server-confirmation.txt, dashboard-full.txt, dashboard-tsc.txt); the
+    TMPDIR contents and the jest cache were deleted after the runs.
+
+A. Receipts (checked 2026-11-20T23:57:43Z)
+  attended-live-checks-1: /tmp/nexus-5e513530-attended.done.json
+    sha256 now 371a10747262a8326f3fb34d55be04682d39d5968b17a0372f0a74278a62a2d3
+    recorded receiptHash (obligation record) 371a10747262a8326f3fb34d55be04682d39d5968b17a0372f0a74278a62a2d3 -> MATCH
+    recovery response (23:49:08Z) receipt sha256 371a10747262a8326f3fb34d55be04682d39d5968b17a0372f0a74278a62a2d3 -> MATCH; mtime 2026-11-20T23:29:38.757Z vs now 2026-11-20T23:29:38.757Z -> same; size 1373 vs 1373
+    archive copy /Volumes/Projects/OperationsEvidence/background-hold-ef4b69b5/nexus-5e513530-attended.done.json -> byte-identical
+    receipt: execution ea559f39-bf97-446e-aa29-a34775041af3, registration e1aea626-3ba2-448c-acee-5672df8df6d7 (same id as registered), exitCode 1, startedAt 2026-11-20T23:26:24.000Z, completedAt 2026-11-20T23:29:38.757Z
+  attended-chrome-run-2: /tmp/nexus-5e513530-attended-2.done.json
+    sha256 now aed42d43eec58c3db58bc211577e204831df92a7247b047cbb16aa3f80b8853a
+    obligation record receiptHash: (not stored for this child)
+    recovery response (23:49:08Z) receipt sha256 aed42d43eec58c3db58bc211577e204831df92a7247b047cbb16aa3f80b8853a -> MATCH; mtime 2026-11-20T23:31:00.859Z vs now 2026-11-20T23:31:00.859Z -> same; size 993 vs 993
+    archive copy /Volumes/Projects/OperationsEvidence/background-hold-ef4b69b5/nexus-5e513530-attended-2.done.json -> byte-identical
+    receipt: execution ea559f39-bf97-446e-aa29-a34775041af3, registration a5131988-b614-44ae-bd5f-eba6a9c21f9b (same id as registered), exitCode 0, startedAt 2026-11-20T23:29:17.000Z, completedAt 2026-11-20T23:31:00.858Z
+  post-dispatch-state.json in the recovery folder: receiptArchivesUnchanged {"nexus-5e513530-attended.done.json":true,"nexus-5e513530-attended-2.done.json":true}
+
+B. Registered artifacts: current bytes against the receipt and the freshness window (2026-11-20T23:57:43Z)
+  attended-live-checks-1: docs/reviews/2026-11-20-operator-confirmation/live-chrome-attended.json
+    sha256 now e84b9397e37d68fde41ee099e64b1e138874bdb6f908f4939952dc94e6fbbcf8 vs receipt e84b9397e37d68fde41ee099e64b1e138874bdb6f908f4939952dc94e6fbbcf8 -> MATCH
+    mtime 2026-11-20T23:27:19.643Z size 146712; freshAfter 2026-11-20T23:26:24.000Z -> fresh; before receipt completedAt 2026-11-20T23:29:38.757Z -> yes
+  attended-live-checks-1: docs/reviews/2026-11-20-operator-confirmation/live-webview-attended.json
+    sha256 now c19fcd5402e972cc449836e9fd4243427aef6e6e2c44cc312da93f0a91a12df7 vs receipt c19fcd5402e972cc449836e9fd4243427aef6e6e2c44cc312da93f0a91a12df7 -> MATCH
+    mtime 2026-11-20T23:28:20.219Z size 69234; freshAfter 2026-11-20T23:26:24.000Z -> fresh; before receipt completedAt 2026-11-20T23:29:38.757Z -> yes
+  attended-chrome-run-2: docs/reviews/2026-11-20-operator-confirmation/live-chrome-attended-2.json
+    sha256 now 29037bfc567bb6a42d22c2d132670f1d9072aca7be4419c69ffc44f809b3e297 vs receipt 29037bfc567bb6a42d22c2d132670f1d9072aca7be4419c69ffc44f809b3e297 -> MATCH
+    mtime 2026-11-20T23:30:11.412Z size 154702; freshAfter 2026-11-20T23:29:17.000Z -> fresh; before receipt completedAt 2026-11-20T23:31:00.858Z -> yes
+  The mtimes and hashes also equal the values the recovery response recorded at 23:49:08Z.
+
+C. Exact source: each report against HEAD and the current bytes of every file under test (2026-11-20T23:57:43Z)
+  HEAD now: 8cf041e98fdadfa26c96f6c3ad47f4ed6626704f (no commit since; branch praxis/run/5e513530-0d18-5939-87b8-583274b5bf5e)
+  live-chrome-attended.json: generated_at 2026-11-20T23:26:27.990Z; head 8cf041e9... same as HEAD now; files under test 15, current bytes match 15/15; answers_dialogs false; summary {"steps":15,"dialogs":9,"checks":166,"passed":130}
+  live-chrome-attended-2.json: generated_at 2026-11-20T23:29:29.206Z; head 8cf041e9... same as HEAD now; files under test 15, current bytes match 15/15; answers_dialogs false; summary {"steps":15,"dialogs":12,"checks":196,"passed":196}
+  live-webview-attended.json: generated_at 2026-11-20T23:27:19.760Z; head 8cf041e9... same as HEAD now; files under test 15, current bytes match 15/15; answers_dialogs false; summary {"steps":6,"dialogs":5,"checks":87,"passed":87}
+  live-chrome-unattended.json: generated_at 2026-11-20T22:49:20.311Z; sha256 c2c4fe50c6bd987025563df793ac2fc946614167126ad4bc767dbffd5fb09bbb; head 8cf041e9... same as HEAD now; files under test 15, current bytes match 15/15; answers_dialogs false; summary {"steps":9,"dialogs":8,"checks":120,"passed":120}
+  live-webview-unattended.json: generated_at 2026-11-20T22:52:00.132Z; sha256 c4be768d0b6ded47a90ffaf57834cf88f8e9943e0302b78f629c51ea0b65ab6c; head 8cf041e9... same as HEAD now; files under test 15, current bytes match 15/15; answers_dialogs false; summary {"steps":5,"dialogs":4,"checks":67,"passed":67}
+  live-chrome.json and live-webview.json (20:56Z and 20:57Z, superseded): written by the first harness, before reports carried a source block, so they bind to nothing; they stay labeled superseded.
+  The 15 files under test: server/services/operator-confirmation.js, local-operator-session.js, local-operator-peer.js, operator-access.js, document-decision-authority.js; server/routes/documents.js, document-outgoing.js, mail-draft-review.js, operator-session.js; db/document-reviews.js, document-outgoing.js; scripts/operator-confirmation-qa/live-check.cjs, check-page.html, dialog-probe.swift, webview-host.swift.
+
+D. Real clicks against the source (2026-11-20, after section C)
+  For each attended report: every line of the recorded AppleScript dialog
+  script was found, in order, in the current server/services/operator-confirmation.js,
+  and every dialog that ended on a click was checked again: osascript's
+  outcome, HID idle at the answer shorter than the time the dialog was open,
+  no osascript timeout, the window gone afterwards, and the buttons read
+  through Accessibility.
+  live-chrome-attended.json: dialog script lines found in order 13/13; dialogs 9; clicks 5; other endings S02:aborted, S05:aborted, S14:unavailable, S15:aborted
+    S03 plan=decline outcome=confirmed open_ms=3144 idle_ms_at_end=106 buttons=["Approve","Cancel"] -> click verified (outcome differs from the plan)
+    S04 plan=confirm outcome=confirmed open_ms=5266 idle_ms_at_end=121 buttons=["Approve","Cancel"] -> click verified
+    S06 plan=decline outcome=confirmed open_ms=4804 idle_ms_at_end=129 buttons=["Send","Cancel"] -> click verified (outcome differs from the plan)
+    S09 plan=decline outcome=confirmed open_ms=4509 idle_ms_at_end=141 buttons=["Send","Cancel"] -> click verified (outcome differs from the plan)
+    S12 plan=decline outcome=confirmed open_ms=6345 idle_ms_at_end=132 buttons=["Approve after changes","Cancel"] -> click verified (outcome differs from the plan)
+  live-chrome-attended-2.json: dialog script lines found in order 13/13; dialogs 12; clicks 8; other endings S02:aborted, S05:aborted, S14:unavailable, S15:aborted
+    S03 plan=decline outcome=declined open_ms=1773 idle_ms_at_end=91 buttons=["Approve","Cancel"] -> click verified
+    S04 plan=confirm outcome=confirmed open_ms=984 idle_ms_at_end=93 buttons=["Approve","Cancel"] -> click verified
+    S06 plan=decline outcome=declined open_ms=1511 idle_ms_at_end=115 buttons=["Send","Cancel"] -> click verified
+    S07 plan=confirm outcome=confirmed open_ms=915 idle_ms_at_end=121 buttons=["Send","Cancel"] -> click verified
+    S09 plan=decline outcome=declined open_ms=1563 idle_ms_at_end=133 buttons=["Send","Cancel"] -> click verified
+    S10 plan=confirm outcome=confirmed open_ms=824 idle_ms_at_end=150 buttons=["Send","Cancel"] -> click verified
+    S12 plan=decline outcome=declined open_ms=1712 idle_ms_at_end=111 buttons=["Approve after changes","Cancel"] -> click verified
+    S13 plan=confirm outcome=confirmed open_ms=790 idle_ms_at_end=106 buttons=["Approve after changes","Cancel"] -> click verified
+  live-webview-attended.json: dialog script lines found in order 13/13; dialogs 5; clicks 2; other endings W02:aborted, W03:aborted, W04:aborted
+    W05 plan=decline outcome=declined open_ms=12222 idle_ms_at_end=109 buttons=["Approve","Cancel"] -> click verified
+    W06 plan=confirm outcome=confirmed open_ms=2690 idle_ms_at_end=85 buttons=["Approve","Cancel"] -> click verified
+  Every clicked dialog also had "trusted": true, no osascript timeout (null) and was gone after the answer.
+
+E. Non-interactive suites rerun on the current tree (scratch: TMPDIR and the jest cache under /Volumes/Projects/.scratch-5e513530)
+  Full server jest, 2026-11-20T23:58:49Z to 23:59:01Z
+    TMPDIR=/Volumes/Projects/.scratch-5e513530/tmp npx jest --forceExit --cacheDirectory /Volumes/Projects/.scratch-5e513530/jest-cache
+    Test Suites: 2 failed, 179 passed, 181 total
+    Tests:       2 failed, 1 skipped, 2438 passed, 2441 total
+    Failing: the two baseline failures in baseline-failures.txt, with the same assertions:
+      server/__tests__/praxis-stream.test.js, "ignores X-Forwarded-For and judges loopback by the socket peer": Expected: 200, Received: 401 (> 503 | expect((await post()).status).toBe(200);)
+      server/__tests__/studio-route.test.js, "the enrich endpoint drains un-enriched objects and reports remaining": Expected: 0, Received: 2 (> 453 | expect(cursors.enrichRemaining).toBe(0);)
+  The 14 affected and security suites (the command in qa-repair-red-green.txt, with the same TMPDIR and --cacheDirectory as above), 2026-11-20T23:59:10Z
+    Test Suites: 14 passed, 14 total
+    Tests:       275 passed, 275 total
+  Confirmation suite (same TMPDIR and --cacheDirectory): npx jest server/__tests__/operator-confirmation.test.js --forceExit --verbose
+    Tests:       26 passed, 26 total
+  Dashboard (from dashboard/), 2026-11-20T23:59:35Z to 23:59:55Z
+    TMPDIR=/Volumes/Projects/.scratch-5e513530/tmp npm test
+    tests 1344, pass 1342, fail 2
+    Failing: the two baseline failures in baseline-failures.txt, with the same errors:
+      src/components/__tests__/daily-journal-tabs.test.ts:6, ENOENT: no such file or directory, open '<parent of the checkout>/nexus-shared/src/notes.ts'
+      src/components/__tests__/routing-economics.test.mjs:16, The input did not match the regular expression /\$2\.525 estimate/.
+  Dashboard typecheck (from dashboard/), 2026-11-21T00:00:17Z to 00:00:24Z
+    node node_modules/typescript/lib/tsc.js --noEmit --incremental false -p tsconfig.json
+    exit 0, no output; dashboard/tsconfig.json byte-identical before and after.
+
+F. Tree after the reruns
+  git status --porcelain: the same 19 task paths as before the reruns, nothing else.
+  git diff --cached --name-only before this file was added: baseline-failures.txt, live-chrome-attended-2.json,
+  live-chrome-attended.json, live-chrome-unattended.json, live-webview-attended.json, live-webview-unattended.json,
+  qa-repair-red-green.txt (all in this folder). Commit hold observed: no commit in this run.
