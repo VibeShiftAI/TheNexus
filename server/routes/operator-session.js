@@ -5,9 +5,11 @@ const { localOperatorSessions, localRequest, COOKIE, COOKIE_OPTIONS, TTL_MS } = 
 
 module.exports = function createOperatorSessionRouter({ sessions = localOperatorSessions } = {}) {
     const router = express.Router();
+    // A store bound to another loopback origin (verification harness only) checks its own.
+    const isLocal = sessions.isLocalRequest || localRequest;
     router.use((req, res, next) => {
         res.set('Cache-Control', 'no-store');
-        if (!localRequest(req, req.path === '/bootstrap')) return res.status(403).json({ code: 'operator_required', error: 'Local operator session required.' });
+        if (!isLocal(req, req.path === '/bootstrap')) return res.status(403).json({ code: 'operator_required', error: 'Local operator session required.' });
         next();
     });
     router.get('/', (req, res) => {

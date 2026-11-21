@@ -1,0 +1,52 @@
+Baseline failures for task 5e513530, QA repair round 1 (attempt 0/2), 2026-11-20
+
+Four tests fail on this task's tree. All four fail the same way on the QA
+baseline revision, so they predate the task and are unrelated to it.
+
+Task tree:     HEAD 8cf041e98fdadfa26c96f6c3ad47f4ed6626704f plus this round's
+               uncommitted changes (commit hold), in
+               /Volumes/Projects/.praxis-worktrees/5e513530-0d18-5939-87b8-583274b5bf5e/TheNexus
+Baseline:      fddc44b5bfbe0e912614b743d569c07452ca147c (the QA baseline),
+               checked out with
+                 git worktree add --detach /tmp/nexus-5e513530-baseline fddc44b5
+               node_modules and dashboard/node_modules symlinked from the shared
+               checkout; the worktree was removed afterwards
+               (git worktree remove --force, git worktree prune).
+
+Server: npx jest --forceExit (from the repository root of each tree)
+
+  Task tree:  Test Suites: 2 failed, 179 passed, 181 total
+              Tests:       2 failed, 1 skipped, 2438 passed, 2441 total
+  Baseline:   Test Suites: 2 failed, 178 passed, 180 total
+              Tests:       2 failed, 1 skipped, 2411 passed, 2414 total
+
+  Failing on both, with the same assertion:
+  1. server/__tests__/praxis-stream.test.js
+     praxis-stream route > POST /api/praxis/events ingest > ignores X-Forwarded-For and judges loopback by the socket peer
+       Expected: 200
+       Received: 401
+       > 503 |         expect((await post()).status).toBe(200);
+  2. server/__tests__/studio-route.test.js
+     studio route > the enrich endpoint drains un-enriched objects and reports remaining
+       Expected: 0
+       Received: 2
+       > 453 |     expect(cursors.enrichRemaining).toBe(0);
+
+Dashboard: npm test (from dashboard/ of each tree)
+
+  Task tree:  tests 1344, pass 1342, fail 2
+  Baseline:   tests 1342, pass 1340, fail 2
+
+  Failing on both, with the same error:
+  3. src/components/__tests__/daily-journal-tabs.test.ts:6
+     Praxis journal exposes stock analysis and YouTube script tabs
+       Error: ENOENT: no such file or directory, open '<parent of the checkout>/nexus-shared/src/notes.ts'
+       (the test reads ../nexus-shared next to the checkout, which neither a
+       worktree nor /tmp has)
+  4. src/components/__tests__/routing-economics.test.mjs:16
+     fetched comparison renders lane/model estimates, metric sample sizes and exact run links
+       AssertionError [ERR_ASSERTION]: The input did not match the regular expression /\$2\.525 estimate/.
+       (the rendered estimate is $1.820 on both trees)
+
+The task tree has 27 more server tests and 2 more dashboard tests than the
+baseline: the ones this task added. None of them fail.

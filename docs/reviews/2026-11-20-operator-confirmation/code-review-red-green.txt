@@ -1,0 +1,80 @@
+Code-review fixes for task 5e513530 (Option A): red/green record, 2026-11-20
+
+Fix commit: cdad4ab6 ("Keep the dialog's safety lines and refuse doomed sends before asking").
+Test file: server/__tests__/operator-confirmation.test.js as committed in cdad4ab6.
+Literal jest output below; stack lines and blank lines removed.
+
+RED: the final test file against the code before the fixes (e9364a1d)
+Commands: git worktree add --detach /tmp/nexus-5e513530-redcheck e9364a1d,
+then node_modules symlinked from the shared checkout, the test file copied in,
+and from /tmp/nexus-5e513530-redcheck:
+  npx jest server/__tests__/operator-confirmation.test.js --forceExit
+The temporary worktree was removed afterwards (git worktree remove --force, git worktree prune).
+
+Test Suites: 1 failed, 1 total
+Tests:       5 failed, 20 passed, 25 total
+    ✕ one dialog at a time, and three unanswered dialogs pause asking for five minutes (11 ms)
+    ✕ a client that left before the dialog would open is refused as aborted without asking, and that does not count toward the pause (8 ms)
+    ✕ a request too long for the dialog keeps who asked, the warning and the Ref, and says exactly how much it leaves out (7 ms)
+    ✕ document outgoing: a send the store would refuse is refused before asking (13 ms)
+    ✕ Praxis mail: a draft with an HTML part says so in the dialog (9 ms)
+
+Why each failed on the old code:
+
+  ● confirmation broker › one dialog at a time, and three unanswered dialogs pause asking for five minutes
+    -   "error": "Confirmations on this Mac are paused for five minutes after three were declined, left unanswered or abandoned within ten minutes. Nothing was recorded.",
+    +   "error": "Confirmations on this Mac are paused for five minutes after several went unanswered. Nothing was recorded.",
+
+  ● confirmation broker › a client that left before the dialog would open is refused as aborted without asking, and that does not count toward the pause
+    -   "code": "operator_confirmation_aborted",
+    -   "nothing_recorded": true,
+    -   "ok": false,
+    -   "status": 409,
+    +   "ok": true,
+
+  ● confirmation broker › a request too long for the dialog keeps who asked, the warning and the Ref, and says exactly how much it leaves out
+    expect(received).toBeLessThanOrEqual(expected)
+    Expected: <= 4000
+    Received:    4006
+    (The old code cut the whole text at 4000 characters and appended " [...]",
+    so the "Requested by" line, the Cancel warning and the Ref were cut off.)
+
+  ● sending email through the local session › document outgoing: a send the store would refuse is refused before asking
+    expect(received).toHaveLength(expected)
+    Expected length: 0
+    Received length: 2
+    (Both refused sends, no operator copy and changes requested, first showed
+    a "Send to member@example.test" dialog with "Cc: none".)
+
+  ● sending email through the local session › Praxis mail: a draft with an HTML part says so in the dialog
+        "Send to member@example.test: \"Quarterly update [md1]\"?",
+        "Cc: copy@example.test",
+    -   "This email also has an HTML part (38 characters). Most mail apps show that part instead of the text below; the draft in Nexus shows it.",
+    +   "",
+
+GREEN: the same test file on the fixed code (cdad4ab6), from the task worktree
+  npx jest server/__tests__/operator-confirmation.test.js --forceExit
+Test Suites: 1 passed, 1 total
+Tests:       25 passed, 25 total
+
+GREEN: affected and MCP security suites (14), same tree
+  npx jest server/__tests__/local-operator-peer.test.js server/__tests__/mail-draft-relay.test.js
+    server/__tests__/mail-draft-auth-mount.test.js server/__tests__/local-operator-session.test.js
+    server/__tests__/praxis-mind-stateless-conformance.test.js server/__tests__/praxis-mind-board-governance.test.js
+    server/__tests__/mcp-boundary-security.test.js server/__tests__/local-operator-flows.test.js
+    server/__tests__/document-agent-reviews.test.js server/__tests__/document-outgoing.test.js
+    server/__tests__/documents-route.test.js server/__tests__/document-executor-approvals.test.js
+    server/__tests__/document-decision-answers.test.js server/__tests__/operator-confirmation.test.js --forceExit
+Test Suites: 14 passed, 14 total
+Tests:       274 passed, 274 total
+
+Full server jest, same tree
+  npx jest --forceExit
+Test Suites: 2 failed, 179 passed, 181 total
+Tests:       2 failed, 1 skipped, 2437 passed, 2440 total
+FAIL server/__tests__/praxis-stream.test.js
+FAIL server/__tests__/studio-route.test.js
+  ● praxis-stream route › POST /api/praxis/events ingest › ignores X-Forwarded-For and judges loopback by the socket peer
+  ● studio route › the enrich endpoint drains un-enriched objects and reports remaining
+Both fail the same way on a detached worktree of the QA baseline fddc44b5, so
+they predate this task and are unrelated to it.

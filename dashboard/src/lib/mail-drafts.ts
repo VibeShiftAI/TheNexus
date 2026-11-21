@@ -150,6 +150,7 @@ async function request<T>(
         data?.error ||
         `Mail request failed (${response.status})`,
       response.status,
+      typeof data?.code === "string" ? data.code : null,
     );
   if (!data) throw new Error("Unreadable mail response");
   return data;

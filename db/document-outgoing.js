@@ -90,8 +90,22 @@ function createDocumentOutgoingStore(db) {
         current(row.document_id, row.revision_id);
         if (row.invalidated_at) fail('outgoing_invalidated', 'The document changed or became unavailable; prepare and review a new message version');
     }
+    // What an approve_send needs beyond an exact, unclaimed draft. The route
+    // runs it before asking Robert on the Mac, so he is never asked to confirm
+    // a send this store would then refuse.
+    function sendable(row) {
+        fresh(row);
+        if (row.feedback) fail('changes_requested', 'Revise the message before approving it');
+        if (!row.envelope.cc.length) fail('operator_copy_missing', 'The operator copy address must be configured and included in the reviewed message before sending');
+    }
     return {
         getOutgoing,
+        /** Throws the refusal an approve_send of this exact draft would get. */
+        checkSendable(id) {
+            const row = getOutgoing(id);
+            if (!row) fail('outgoing_conflict', 'The outgoing message changed; reload and review the exact current message');
+            sendable(row);
+        },
         listMailDrafts(folder = 'drafts') {
             return db.transaction(() => {
                 const rows = db.prepare("SELECT document_id, status FROM review_document_outgoing WHERE status != 'sent' ORDER BY updated_at DESC, document_id").all();
@@ -173,9 +187,7 @@ function createDocumentOutgoingStore(db) {
                     feedback: { status: 'changes_requested', comments: input.comments, returned_at: ts, actor_id: actor.id, authority: actor.authority },
                     updated_at: ts }, 'returned_to_praxis', actor);
             }
-            fresh(row);
-            if (row.feedback) fail('changes_requested', 'Revise the message before approving it');
-            if (!row.envelope.cc.length) fail('operator_copy_missing', 'The operator copy address must be configured and included in the reviewed message before sending');
+            sendable(row);
             if (row.status === 'approved') return row;
             const ts = now();
             return save({ ...row, status: 'approved', updated_at: ts, grant: {

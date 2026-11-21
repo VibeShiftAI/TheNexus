@@ -26,6 +26,13 @@
  *                                One-hour expiry; delete revokes one; restart
  *                                revokes all. Disable/rotate key or app pins
  *                                and restart to revoke and stop reissuance.
+ *                                Since 2026-11-20 (task 5e513530, Option A)
+ *                                the session alone records nothing with
+ *                                authority: a send or a document decision
+ *                                made through it (`via: 'local_session'`)
+ *                                also needs Robert's answer to a native macOS
+ *                                dialog naming that exact action
+ *                                (operator-confirmation.js).
  *                                docs/contracts/local-operator-session.md.
  *   document_executor_credential the document-scoped executor credential
  *                                (NEXUS_DOCUMENT_APPROVAL_KEY, task a2553798):
@@ -86,9 +93,15 @@ function createDocumentDecisionAuthority({ authenticateOperator } = {}) {
             checkFailed = true;
         }
         if (outcome?.operator) {
-            const authority = outcome.identity === 'local' ? 'operator_credential'
+            const local = outcome.identity === 'local';
+            const authority = local ? 'operator_credential'
                 : outcome.identity === 'device' ? 'access_device' : 'access_user';
-            return { ok: true, actor: { id: req.user.id, authority } };
+            // `via` names the path: a local session's browser-held proof is not
+            // enough on its own, so the decision routes ask Robert on this Mac
+            // (operator-confirmation.js); the other paths carry their own credential.
+            return local
+                ? { ok: true, actor: { id: req.user.id, authority }, via: 'local_session', device: outcome.device || null }
+                : { ok: true, actor: { id: req.user.id, authority }, via: 'access_session' };
         }
         // No verified session. A bearer, if one was sent, has to be the operator
         // credential or the document executor credential (a different key, so
@@ -102,13 +115,13 @@ function createDocumentDecisionAuthority({ authenticateOperator } = {}) {
             let operatorError;
             try {
                 requireStakeholderAuthority(req, 'operator');
-                return { ok: true, actor: { id: req.user.id, authority: 'operator_credential' } };
+                return { ok: true, actor: { id: req.user.id, authority: 'operator_credential' }, via: 'operator_bearer' };
             } catch (err) {
                 operatorError = err;
             }
             try {
                 requireStakeholderAuthority(req, 'document_executor');
-                return { ok: true, actor: { id: req.user.id, authority: 'document_executor_credential' } };
+                return { ok: true, actor: { id: req.user.id, authority: 'document_executor_credential' }, via: 'document_executor_bearer' };
             } catch {
                 // fall through to the operator refusal
             }

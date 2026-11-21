@@ -20,6 +20,22 @@ export function localOperatorHeaders(url: string): Record<string, string> {
     } catch { return {}; }
 }
 
+/**
+ * On this Mac's automatic session, a send or a document decision also waits
+ * for Robert's answer to a native dialog that the Nexus API shows outside the
+ * browser (task 5e513530, server/services/operator-confirmation.js). Browsing,
+ * reading and the tunnel, phone and Windows apps are never asked.
+ */
+export function confirmsOnThisMac(): boolean {
+    return Object.keys(localOperatorHeaders('/api/documents')).length > 0;
+}
+export const CONFIRM_ON_THIS_MAC = 'Confirm in the dialog on your Mac. Nothing is recorded until you do.';
+/** Server refusal codes for a declined, abandoned or unusable confirmation; nothing was recorded. */
+export const CONFIRMATION_REFUSALS = new Set([
+    'operator_confirmation_declined', 'operator_confirmation_unavailable',
+    'operator_confirmation_busy', 'operator_confirmation_aborted', 'operator_confirmation_mismatch',
+]);
+
 function renewNative(): Promise<boolean> {
     return new Promise(resolve => {
         const finish = (ok: boolean) => {

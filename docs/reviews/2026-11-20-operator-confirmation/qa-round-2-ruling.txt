@@ -1,0 +1,134 @@
+QA round 2 repair (attempt 1/2): Robert's ruling on the desktop clause of criterion 5, and the rechecks after it
+
+Task 5e513530-0d18-5939-87b8-583274b5bf5e, branch praxis/run/5e513530-0d18-5939-87b8-583274b5bf5e, worktree
+/Volumes/Projects/.praxis-worktrees/5e513530-0d18-5939-87b8-583274b5bf5e/TheNexus. Written 2026-11-21 by the resumed
+repair run. This round ran nothing live, answered no dialog, changed no code, harness or earlier evidence, and made no
+commit (commit hold).
+
+Why this file exists
+  QA round 2 passed criteria 1, 2, 3, 4, 6 and 7 and failed only the installed-app clause of criterion 5, as an
+  evidence gap. Its words: "Retain evidence from the installed signed app ... under authorized testing conditions;
+  alternatively, record an explicit operator amendment accepting substitution or deferral." The repair run asked Robert
+  (needs_input) for one letter: B, accept the test window as the desktop evidence (recommended); A, defer the app check
+  until after landing; C, stop Praxis, the API and the dashboard for a test of the real app before landing. This file
+  keeps his answer as stored and the rechecks run after it. The report records the ruling in item 3, in the
+  dispositions row for objection 2, in the section "The installed desktop app", under Limits and in retained
+  suggestion 10.
+
+A. Robert's answers as stored (Praxis hitl.db, opened read-only)
+  Query: sqlite3 -readonly -json "file:/Volumes/Projects/Praxis/data/hitl.db?mode=ro" "select id, status, requested_at,
+  resolved_at, json_extract(request_json,'$.resolution') as resolution from hitl_requests where id like
+  'task-question-5e513530-%' order by requested_at"
+  Run through /Volumes/Projects/.scratch-5e513530/round2-recheck.cjs at 2026-11-21T00:45:42Z:
+  task-question-5e513530-1795215540039: requested 2026-11-20T22:59:12.596Z, resolved 2026-11-20T23:22:48.927Z, resolution {"resolvedAt":"2026-11-20T23:22:48.927Z","resolvedBy":"robert","freeText":"Ready"}
+  task-question-5e513530-1795220618318: requested 2026-11-21T00:23:56.537Z, resolved 2026-11-21T00:38:41.139Z, resolution {"resolvedAt":"2026-11-21T00:38:41.139Z","resolvedBy":"robert","freeText":"Ok complete the task then"}
+
+  The second answer is the reply to the B/A/C question, and it names no letter. The resumed brief says "if the answer
+  is still insufficient, make the most reasonable choice and note it in your summary", and it lists the answer among
+  Robert's rulings, which amend the criteria. Reading: B.
+  - The reply closes the task now; C was the only option that needed a test first.
+  - It takes on no later check; A needed one from Robert, B needed nothing more.
+  - It opens with "Ok", the explicit OK the question said QA accepts in place of the test.
+  The stand-in is not claimed to be the installed app. An optional look in the app after landing is retained
+  suggestion 10; it is not a condition of the task.
+
+B. Tree state
+  HEAD 8cf041e98fdadfa26c96f6c3ad47f4ed6626704f, no commit since 2026-11-20T16:47:33-05:00; 20 status entries before
+  this file was added.
+  Against QA round 2's own snapshot of the tree (tree ba21655711bd49f24faa307ed972493d13b7e237), before this file was
+  staged:
+    $ git diff ba21655711bd49f24faa307ed972493d13b7e237 --stat -- .
+     docs/reviews/2026-11-20-operator-confirmation.md | 41 +++++++++++++++++-------
+     1 file changed, 29 insertions(+), 12 deletions(-)
+  So no code, harness or earlier evidence file changed after QA round 2 reviewed the tree; the report is the only
+  edited file, and this file is the only new one.
+
+C. Source binding of every current live report (HEAD and the sha256 of each of the 15 files under test, recomputed)
+  live-chrome-unattended.json: generated_at 2026-11-20T22:49:20.311Z; head same as HEAD now; files under test 15, current bytes match 15/15; answers_dialogs false; checks 120, passed 120
+  live-webview-unattended.json: generated_at 2026-11-20T22:52:00.132Z; head same as HEAD now; files under test 15, current bytes match 15/15; answers_dialogs false; checks 67, passed 67
+  live-chrome-attended.json: generated_at 2026-11-20T23:26:27.990Z; head same as HEAD now; files under test 15, current bytes match 15/15; answers_dialogs false; checks 166, passed 130
+  live-webview-attended.json: generated_at 2026-11-20T23:27:19.760Z; head same as HEAD now; files under test 15, current bytes match 15/15; answers_dialogs false; checks 87, passed 87
+  live-chrome-attended-2.json: generated_at 2026-11-20T23:29:29.206Z; head same as HEAD now; files under test 15, current bytes match 15/15; answers_dialogs false; checks 196, passed 196
+  (live-chrome-attended.json is Robert's first attended Chrome run, kept as recorded; its 36 failed checks are the
+  four dialogs he confirmed although the page labeled them Cancel. See the report, "Run 1".)
+
+D. Evidence lines the report cites for criterion 5 (read at 2026-11-21T00:45:42Z)
+    live-webview-unattended.json:1413: "device": "mac-desktop",
+    live-webview-unattended.json:1414: "pin": "stand-in pin: the webview host this run started, in place of the desktop app code-signature check (not the desktop app)",
+    live-webview-unattended.json:1620: "summary": {
+    live-webview-unattended.json:1621: "steps": 5,
+    live-webview-unattended.json:1622: "dialogs": 4,
+    live-webview-unattended.json:1623: "dialog_endings": {
+    live-webview-unattended.json:1624: "none: the request ended and the broker closed the dialog": 4
+    live-webview-unattended.json:1625: },
+    live-webview-unattended.json:1626: "checks": 67,
+    live-webview-unattended.json:1627: "passed": 67,
+    live-webview-attended.json:1293: "idle_ms_at_end": 109,
+    live-webview-attended.json:1294: "outcome": "declined",
+    live-webview-attended.json:1633: "idle_ms_at_end": 85,
+    live-webview-attended.json:1634: "outcome": "confirmed",
+    live-webview-attended.json:1806: "device": "mac-desktop",
+    live-webview-attended.json:1807: "pin": "stand-in pin: the webview host this run started, in place of the desktop app code-signature check (not the desktop app)",
+    live-webview-attended.json:2060: "passed": 87,
+    live-chrome-attended-2.json:37: "answers_dialogs": false,
+    live-chrome-attended-2.json:4261: "device": "mac-chrome",
+    live-chrome-attended-2.json:4579: "passed": 196,
+    live-check.cjs:214: if (!device && CLIENT === 'webview' && host && peer.owner?.pid === host.pid
+    live-check.cjs:215: && String(peer.owner?.args || '').split(' ')[0] === hostBinary && peer.owner?.uid === Number(process.env.NEXUS_LOCAL_OPERATOR_UID)) {
+    live-check.cjs:216: device = 'mac-desktop';
+    live-check.cjs:217: pin = 'stand-in pin: the webview host this run started, in place of the desktop app code-signature check (not the desktop app)';
+    operator-confirmation.js:56: const NOT_ASKED = new Set(['access_session', 'operator_bearer', 'document_executor_bearer']);
+    operator-confirmation.js:160: const device = DEVICES[auth?.device] || 'a local application';
+    operator-confirmation.js:178: if (NOT_ASKED.has(auth?.via)) return { ok: true, required: false, ref: null, consume: () => true };
+    operator-confirmation.js:179: if (auth?.via !== 'local_session') return refusal('unverified');
+
+E. Confirmation suite, rerun on this tree
+  $ TMPDIR=/Volumes/Projects/.scratch-5e513530/tmp npx jest server/__tests__/operator-confirmation.test.js --forceExit --cacheDirectory /Volumes/Projects/.scratch-5e513530/jest-cache
+  2026-11-21T00:45:49Z to 00:45:55Z, exit 0 (timings removed from the test lines below)
+  PASS server/__tests__/operator-confirmation.test.js
+    confirmation broker
+      ✓ Access, operator-bearer and executor-bearer paths are never asked; a result that does not say its path is refused
+      ✓ a confirmation is single use and bound to the confirmed identity; time plays no part
+      ✓ one dialog at a time, and refusals never stop the next request from being asked
+      ✓ a dialog has no give-up time: it stays open until it is answered or its request ends
+      ✓ a client that goes away closes the dialog and is refused as aborted
+      ✓ a client that left before the dialog would open is refused as aborted without asking
+      ✓ a failing or unexpected dialog answer is unavailable, never a fallback
+      ✓ dialog text names the action from server values, removes invisible characters and says how much of a long body it shows
+      ✓ a request too long for the dialog keeps who asked, the warning and the Ref, and says exactly how much it leaves out
+      ✓ the osascript runner passes every server string as argv, defaults to Cancel and maps each outcome
+    document decisions through the local session
+      ✓ the stored session proof alone records nothing: declined and unavailable dialogs refuse, and forged confirmation fields are ignored
+      ✓ a confirmed decision records exactly once with the confirmed identity; repeating the request asks again
+      ✓ an idempotent retry of a confirmed decision answers from the record without asking or recording again
+      ✓ a document that changes on disk while the dialog is open is refused as stale; nothing is recorded
+      ✓ a decision from the desktop app session is asked the same way (the webview path at the server boundary)
+      ✓ while one dialog is open a second decision is refused as busy; only the confirmed one records
+      ✓ closing the request while the dialog is open closes it and records nothing
+      ✓ Access sessions and the operator bearer are separate credentials: never asked, recorded as before
+    finishing a review through the local session
+      ✓ a plain finish (feedback only) stays click-free
+      ✓ the approve-after-changes grant asks once, names the grant, and is refused when a comment lands during the dialog
+    sending email through the local session
+      ✓ document outgoing: the stored proof alone is refused; a confirmed send approves exactly the reviewed envelope once
+      ✓ document outgoing: an edit that lands while the dialog is open makes the confirmation unusable
+      ✓ document outgoing: a send the store would refuse is refused before asking
+      ✓ Praxis mail: a draft with an HTML part says so in the dialog
+      ✓ Praxis mail: the dialog names recipient and subject from Praxis; declined relays nothing; confirmed relays exactly the confirmed version once
+      ✓ Praxis mail: a stale version is refused without asking, and edits stay click-free
+  Test Suites: 1 passed, 1 total
+  Tests:       26 passed, 26 total
+
+F. Encoding and whitespace (after the report's last edit, before this section was added)
+  $ node /Volumes/Projects/.scratch-5e513530/encoding-scan.cjs docs/reviews/2026-11-20-operator-confirmation.md docs/reviews/2026-11-20-operator-confirmation/qa-round-2-ruling.txt
+  (strict UTF-8 decode with TextDecoder fatal; looks for U+FFFD, C1 controls, UTF-8 read as Latin-1 or cp1252, and a
+  byte order mark; counts em dashes)
+  docs/reviews/2026-11-20-operator-confirmation.md: 45786 bytes, valid UTF-8, mojibake none, em dashes 0
+  docs/reviews/2026-11-20-operator-confirmation/qa-round-2-ruling.txt: 10520 bytes, valid UTF-8, mojibake none, em dashes 0
+  problems: 0
+  $ git diff --check            exit 0
+  $ git diff --cached --check   exit 0
+  $ git diff ba21655711bd49f24faa307ed972493d13b7e237 --stat -- .   (after this file was staged)
+   docs/reviews/2026-11-20-operator-confirmation.md   |  41 ++++---
+   .../qa-round-2-ruling.txt                          | 120 +++++++++++++++++++++
+   2 files changed, 149 insertions(+), 12 deletions(-)

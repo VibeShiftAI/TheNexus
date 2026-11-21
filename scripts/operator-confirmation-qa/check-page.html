@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nexus confirmation live check (synthetic)</title>
+<style>
+  body { font: 14px/1.5 -apple-system, system-ui, sans-serif; background: #0b1220; color: #e2e8f0; margin: 24px; max-width: 900px; }
+  h1 { font-size: 18px; margin: 0 0 8px; }
+  #instruction { color: #fde68a; font-weight: 600; min-height: 1.5em; }
+  pre { white-space: pre-wrap; background: #111a2e; padding: 12px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<h1>Nexus confirmation live check</h1>
+<p>Verification harness for task 5e513530. This page talks only to an isolated test server on this port, with
+synthetic documents and mail; nothing real is read, approved or sent. Its script plays a script an executor added to
+a dashboard page: it opens the local session without a click, then tries to record decisions and sends with what the
+browser stores. Nothing here answers the Mac dialogs: only a click on a dialog does.</p>
+<p id="instruction"></p>
+<pre id="log"></pre>
+<script>
+'use strict';
+// The "executor-added script". It holds exactly what any page script on the
+// dashboard origin holds: the HttpOnly session cookie (sent automatically)
+// and the origin-stored proof. There is no field, header or token that could
+// carry a Mac confirmation, so the forged ones below are ignored by the API.
+// In the webview the native host (like the desktop app) bootstraps after the
+// page loads and fires this event once it stored the proof; listen first.
+const hostReady = new Promise(resolve => window.addEventListener('nexus:local-operator-ready',
+  event => resolve(event.detail === true), { once: true }));
+(async () => {
+  const PROOF_KEY = 'nexus:local-operator-proof';
+  const logEl = document.getElementById('log');
+  const instructionEl = document.getElementById('instruction');
+  const log = line => { logEl.textContent += `${line}\n`; };
+  const proof = () => localStorage.getItem(PROOF_KEY) || '';
+  async function api(method, url, body, headers = {}, signal) {
+    const response = await fetch(url, {
+      method, signal, credentials: 'same-origin', cache: 'no-store',
+      headers: { 'content-type': 'application/json', 'x-nexus-local-proof': proof(), ...headers },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const text = await response.text();
+    let json = null;
+    try { json = JSON.parse(text); } catch (_) { json = null; }
+    return { status: response.status, json };
+  }
+  async function harness(path, body) {
+    const response = await fetch(path, {
+      method: body === undefined ? 'GET' : 'POST', cache: 'no-store',
+      headers: { 'content-type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    return response.json();
+  }
+  const brief = r => (r && r.aborted ? 'gave up (request aborted)'
+    : r && r.result ? brief(r.result)
+    : r && r.status !== undefined ? `${r.status}${r.json && r.json.code ? ` ${r.json.code}` : ''}` : JSON.stringify(r));
+  const summarize = result => (Array.isArray(result) ? result.map(brief).join(', ')
+    : result && result.first ? `first ${brief(result.first)}, second ${brief(result.second)}` : brief(result));
+  const aborted = error => ({ aborted: true, name: error && error.name });
+  // Resolves when this request's Mac dialog is on screen, or when the request is
+  // answered without one (refused before asking). The page never answers a
+  // dialog; it can only stop waiting for it.
+  const dialogOrAnswer = pending => Promise.race([
+    harness('/harness/wait-dialog'),
+    pending.then(() => ({ visible: false, answered_first: true })),
+  ]);
+  async function giveUp(request) {
+    const controller = new AbortController();
+    const pending = api(request.method, request.url, request.body, request.headers || {}, controller.signal).catch(aborted);
+    const visible = await dialogOrAnswer(pending);
+    if (visible.visible) {
+      // A held dialog stays unanswered until the harness has watched it long enough.
+      if (request.hold) await harness('/harness/release');
+      controller.abort();
+    }
+    return { visible, result: await pending };
+  }
+
+  async function run(step) {
+    if (step.kind === 'start') {
+      // Attended runs only: nothing asks before Robert says he is ready.
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = 'Start the attended check';
+      button.style.cssText = 'font: inherit; font-weight: 600; padding: 8px 16px; margin: 0 0 12px;';
+      logEl.before(button);
+      await new Promise(resolve => button.addEventListener('click', resolve, { once: true }));
+      button.remove();
+      return { started: true };
+    }
+    if (step.kind === 'sequence') {
+      const out = [];
+      for (const request of step.requests) {
+        out.push(request.abort ? await giveUp(request) : await api(request.method, request.url, request.body, request.headers || {}));
+      }
+      return out;
+    }
+    if (step.kind === 'busy') {
+      // The first request's dialog stays open while the second is tried; then the page gives up on the first.
+      const controller = new AbortController();
+      const first = api(step.first.method, step.first.url, step.first.body, {}, controller.signal).catch(aborted);
+      const visible = await dialogOrAnswer(first);
+      const second = await api(step.second.method, step.second.url, step.second.body);
+      controller.abort();
+      return { visible, first: await first, second };
+    }
+    return { error: `unknown step kind ${step.kind}` };
+  }
+
+  try {
+    const client = new URLSearchParams(location.search).get('client') || 'chrome';
+    const boot = { client, origin: location.origin };
+    const before = await api('GET', '/api/operator-session');
+    boot.session_before = { status: before.status, operator: before.json ? before.json.operator : null };
+    if (client === 'chrome') {
+      // Exactly what the dashboard does on localhost: no click, no form.
+      const minted = await fetch('/api/operator-session/bootstrap', { method: 'POST', credentials: 'same-origin', cache: 'no-store' });
+      const data = await minted.json().catch(() => null);
+      boot.bootstrap = { status: minted.status, operator: data ? data.operator : null, proof_received: !!(data && typeof data.proof === 'string') };
+      if (data && typeof data.proof === 'string') localStorage.setItem(PROOF_KEY, data.proof);
+    } else if (!proof()) {
+      boot.host_ready = await hostReady;
+    }
+    boot.proof_stored = proof().length === 43;
+    const after = await api('GET', '/api/operator-session');
+    boot.session_after = { status: after.status, operator: after.json ? after.json.operator : null };
+    log(`session: ${boot.session_after.operator ? 'open (no click)' : 'not open'}`);
+    await harness('/harness/result', { step: 'boot', result: boot });
+    for (;;) {
+      const next = await harness('/harness/next');
+      if (next.done) break;
+      const step = next.step;
+      instructionEl.textContent = step.instruction || '';
+      log(`${step.id} ${step.label}`);
+      let result;
+      try { result = await run(step); } catch (error) { result = { error: String((error && error.message) || error) }; }
+      log(`    ${summarize(result)}`);
+      await harness('/harness/result', { step: step.id, result });
+    }
+    localStorage.removeItem(PROOF_KEY);
+    const revoked = await fetch('/api/operator-session', { method: 'DELETE', credentials: 'same-origin', cache: 'no-store' });
+    await harness('/harness/result', { step: 'end', result: { revoked: revoked.status, proof_removed: proof() === '' } });
+    instructionEl.textContent = '';
+    log('Finished. The test server stops now and kept nothing. You can close this tab.');
+  } catch (error) {
+    instructionEl.textContent = '';
+    log(`Stopped: ${(error && error.message) || error}. The test server is gone; you can close this tab.`);
+  }
+})();
+</script>
+</body>
+</html>

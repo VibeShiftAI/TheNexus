@@ -133,6 +133,8 @@ describe("HTTP workflow with isolated database and source", () => {
             ? {
                 ok: true,
                 actor: { id: "operator", authority: "operator_credential" },
+                // The operator bearer path; a result without `via` is refused (fail closed).
+                via: "operator_bearer",
               }
             : { ok: false, error: "Operator required", status: 403 },
         delivery: { deliver: async () => null },

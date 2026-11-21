@@ -30,6 +30,7 @@ import {
     type RevisionMeta,
 } from "@/lib/document-review";
 import { clearDecisionNoteDraft, readDecisionNoteDraft, writeDecisionNoteDraft, type DecisionNoteDraft } from "@/lib/decision-note-draft";
+import { CONFIRM_ON_THIS_MAC, confirmsOnThisMac } from "@/lib/local-operator-session";
 import { BlockingTasks } from "./blocking-tasks";
 import { ReviewRequirements } from "./review-requirements";
 import { DocumentStatusBadge } from "./deliverable-row";
@@ -117,6 +118,15 @@ function refusalMessage(err: unknown, noteState: NoteState): { text: string; sta
             case "replacement_failed":
                 return { text: "This version was registered by a revision attempt that failed or was cancelled and was never declared ready, so nothing was recorded. A decision waits for the new version an explicit recovery delivers; the page now shows the failed attempt. Your note and comments are kept.", stale: false, reload: true };
             case "revision_not_ready":
+                return { text: sentence(err.message), stale: false, reload: true };
+            // On this Mac a decision also needs your answer to the native dialog (task 5e513530); the server says nothing was recorded.
+            case "operator_confirmation_declined":
+            case "operator_confirmation_busy":
+            case "operator_confirmation_aborted":
+                return { text: `${sentence(err.message)} Your note is kept; decide again when you are ready.`, stale: false, reload: false };
+            case "operator_confirmation_unavailable":
+                return { text: `${sentence(err.message)} You can also decide from your signed-in tunnel, phone or Windows app. Reading and feedback still work.`, stale: false, reload: false };
+            case "operator_confirmation_mismatch":
                 return { text: sentence(err.message), stale: false, reload: true };
             default:
                 return { text: err.status >= 500 && !/no decision was recorded/i.test(err.message) ? `${sentence(err.message)} No decision was recorded.` : sentence(err.message), stale: false, reload: false };
@@ -525,6 +535,9 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh, 
                             {noteOrigin.moved ? `; you are now deciding on rev ${shortHash(viewedRevision?.content_hash)}, so check that it still applies.` : "."}
                             {" "}<button type="button" onClick={discardNote} className="underline" data-decision-draft-discard="">Discard note</button>
                         </p>
+                    )}
+                    {busy && confirmsOnThisMac() && (
+                        <p role="status" className="mt-2 text-[11px] text-cyan-100" data-decision-confirm-on-mac="">{CONFIRM_ON_THIS_MAC}</p>
                     )}
                     <div className="mt-2 flex justify-end gap-2">
                         <button type="button" onClick={() => setConfirm(null)} disabled={busy} className="rounded-md border max-lg:min-h-11 border-slate-700 px-3 py-1.5 text-xs text-slate-300">Cancel</button>
