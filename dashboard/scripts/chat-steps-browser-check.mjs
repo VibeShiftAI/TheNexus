@@ -21,9 +21,12 @@
  *   6. a reload during a turn picks it up from the status route, without
  *      resending it, and its reply lands once;
  *   7. a degraded turn and an uncertain turn still say so;
- *   8. the main viewer's left column has no thought stream box while thinking.
- * Then: the planted credentials reached no page, stream, log, database or data
- * folder, and no request reached the live API port.
+ *   8. a very long turn keeps every step and all of its text, live, after a
+ *      reload in the middle of the turn, and on the expanded line;
+ *   9. the main viewer's left column has no thought stream box while thinking.
+ * Then: the API's published allowance reaches the page and covers its idle
+ * traffic plus a followed turn, the planted credentials reached no page, stream,
+ * log, database or data folder, and no request reached the live API port.
  *
  *   node scripts/chat-steps-browser-check.mjs
  *
@@ -79,6 +82,16 @@ const STAGES = [
   ["done", "done", "done", "done", "done", "running"],
 ];
 const SAVED_NEVER = ["Check which files changed", "Run the chat test suite", "The turn stream already carries", "Ask the task board"];
+// The long turn's rows, as they must read with nothing cut and every secret removed.
+const LONG_ROW_TEXT = (at) => (at === 0
+  ? `${"Review the complete change ".repeat(20)}with [redacted] and [redacted] END_OF_LABEL`
+  : at === 1
+    ? `Reasoning: ${"Compare the evidence before deciding. ".repeat(100)}Never echo [redacted]. END_OF_REASONING`
+    : `Long turn step ${at + 1}`);
+const longRowsMatch = (rows, count) => rows.length === count && rows.every((row, at) => row.status === "done" && row.text === LONG_ROW_TEXT(at));
+// How long the page sits idle while its own API traffic is counted.
+const IDLE_SAMPLE_MS = 60_000;
+const FOLLOW_READS_PER_WINDOW = 360;
 
 for (const dir of [SHOTS, PACKAGE]) fs.mkdirSync(dir, { recursive: true });
 const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "nexus-chat-steps-")));
@@ -204,12 +217,14 @@ try {
   let creatingConversation = null;
   let conversationCreated = false;
   let conversationsSet = 0;
+  let apiRequests = 0;
   const send = (method, params = {}) => new Promise((res) => { const id = ++nextId; pending.set(id, res); ws.send(JSON.stringify({ id, method, params })); });
   ws.onmessage = (e) => {
     const m = JSON.parse(e.data);
     if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
     if (m.method === "Network.requestWillBeSent") {
       const { url, method, postData } = m.params.request;
+      if (url.startsWith("http") && new URL(url).pathname.startsWith("/api/")) apiRequests += 1;
       if (method === "POST" && new URL(url).pathname === "/api/ai/chat") {
         postIds.add(m.params.requestId);
         chatPosts.push({ step, key: JSON.parse(postData ?? "{}").clientMessageId });
@@ -468,7 +483,46 @@ try {
     note("uncertain_reply", { line: uncertainLine, screenshot: await capture(SHOTS, `${name}-uncertain.png`, name) });
     await clean("uncertain");
 
-    // 8. The left column, while the core is thinking with a live trace.
+    // 8. A very long turn keeps every step and all of its text, through a reload.
+    step = `${name}-long`;
+    await startFresh();
+    await fixture.post("scenario", { name: "long" });
+    const { long } = await fixture.state();
+    const longPosts = chatPosts.length;
+    const longKey = await sendMessage("Work through the whole change.");
+    await waitUntil(async () => (await fixture.state()).waiting, "the long turn to start");
+    await advance();
+    await waitUntil(async () => longRowsMatch(await liveRows(), long.pauseAt), `the first ${long.pauseAt} steps, live and in order`, 60_000);
+    check(await noSideways(), "no sideways scrolling with long step text");
+    check(await rowsInside(LIVE), "long step text stays inside the viewport");
+    await clean("long turn, live");
+    await reload();
+    await waitUntil(async () => longRowsMatch(await liveRows(), long.pauseAt), "every step so far, from the first, after a reload", 60_000);
+    const midTurn = await receiptOf(longKey);
+    check(midTurn.state === "in_progress" && midTurn.step_count === long.pauseAt && midTurn.steps.length === long.pauseAt && midTurn.steps[0].seq === 1,
+      `the status route replays every step so far (${midTurn.state}, ${midTurn.step_count}, ${midTurn.steps?.length}, from ${midTurn.steps?.[0]?.seq})`);
+    await advance();
+    await waitUntil(async () => longRowsMatch(await liveRows(), long.steps), `all ${long.steps} steps, from the status route`, 60_000);
+    await clean("long turn, replayed");
+    await advance();
+    await waitFor(`!${q(LIVE)} && ${qa(`${STATION} [data-message-row="assistant"]`)}.length === 1`, "the long turn's reply", 60_000);
+    await waitFor(`${qa(FOLDED)}.length === 1`, "the long turn's folded line", 30_000);
+    const longLine = await evalJs(`${lastFold}.querySelector('button').textContent`);
+    check(longLine?.endsWith(` · ${long.steps} steps`), `the line states every step (${longLine})`);
+    await evalJs(`${lastFold}.querySelector('button').click()`);
+    await waitFor(`${lastFold}.querySelectorAll('[data-step-status]').length === ${long.steps}`, "every step on the expanded line");
+    const longOpened = await rowsOf(lastFold);
+    check(longRowsMatch(longOpened, long.steps), "the expanded line lists every step with its whole text, in order");
+    check(!(await evalJs(`${lastFold}.textContent`))?.includes("did not reach"), "no step is reported missing");
+    check(await noSideways(), "no sideways scrolling with the long line open");
+    check(await rowsInside(FOLDED), "every expanded long step sits inside the viewport");
+    check(chatPosts.length === longPosts + 1, "the reload sent the long turn nothing again");
+    await clean("long turn, expanded");
+    await evalJs(`${lastFold}.scrollIntoView({ block: 'start' })`);
+    await evalJs("new Promise(requestAnimationFrame)");
+    note("long_turn_kept_whole", { steps: longOpened.length, line: longLine, reloaded_at_step: long.pauseAt, longest_text: Math.max(...longOpened.map((row) => row.text.length)), screenshot: await capture(SHOTS, `${name}-long-turn.png`, name) });
+
+    // 9. The left column, while the core is thinking with a live trace.
     step = `${name}-viewer`;
     await startFresh();
     const core = await fixture.post("core", { active: true });
@@ -489,6 +543,22 @@ try {
   }
 
   await runWidth("desktop");
+
+  // The read pace is a share of the allowance the API publishes. Read that
+  // allowance the way the page does, and measure what an idle page already uses.
+  step = "allowance";
+  await openHome();
+  const published = await evalJs(`fetch('/api/ai/chat/turns/allowance-probe', { cache: 'no-store' }).then(r => ({ status: r.status, limit: r.headers.get('RateLimit-Limit'), policy: r.headers.get('RateLimit-Policy') }))`);
+  const windowSeconds = Number(published?.policy?.match(/;\s*w=(\d+)/)?.[1]);
+  const allowance = Number(published?.limit);
+  check(allowance > 0 && windowSeconds > 0, `the page can read the published allowance (${JSON.stringify(published)})`);
+  const idleStart = apiRequests;
+  await sleep(IDLE_SAMPLE_MS);
+  const idleRequests = apiRequests - idleStart;
+  const idlePerWindow = Math.ceil(idleRequests * (windowSeconds * 1000 / IDLE_SAMPLE_MS));
+  check(idlePerWindow + FOLLOW_READS_PER_WINDOW <= allowance, `an idle page (${idlePerWindow} per window) plus a followed turn (${FOLLOW_READS_PER_WINDOW}) fit the allowance (${allowance})`);
+  note("allowance_budget", { published, idle_requests_in_sample: idleRequests, sample_seconds: IDLE_SAMPLE_MS / 1000, idle_per_window: idlePerWindow, followed_turn_per_window: FOLLOW_READS_PER_WINDOW, allowance_per_window: allowance });
+
   await runWidth("phone");
 
   // ── Secrets, across everything the run produced ───────────────────────

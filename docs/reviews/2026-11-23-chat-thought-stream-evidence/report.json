@@ -1,18 +1,18 @@
 {
-  "when": "2026-11-23T15:45:27.308Z",
+  "when": "2026-11-23T18:46:02.172Z",
   "ports": {
-    "fixture": 62848,
-    "api": 62849,
-    "next": 62850
+    "fixture": 52654,
+    "api": 52655,
+    "next": 52656
   },
   "steps": [
     {
       "step": "setup",
       "label": "stack_up",
       "detail": {
-        "fixture": "http://127.0.0.1:62848",
-        "api": "http://127.0.0.1:62849",
-        "dashboard": "http://127.0.0.1:62850"
+        "fixture": "http://127.0.0.1:52654",
+        "api": "http://127.0.0.1:52655",
+        "dashboard": "http://127.0.0.1:52656"
       }
     },
     {
@@ -73,7 +73,7 @@
       "label": "folded",
       "detail": {
         "label": "Worked for 2s · 6 steps",
-        "duration_ms": 2466,
+        "duration_ms": 2665,
         "step_count": 6,
         "screenshot": "chat-folded-desktop.png"
       }
@@ -120,11 +120,38 @@
       }
     },
     {
+      "step": "desktop-long",
+      "label": "long_turn_kept_whole",
+      "detail": {
+        "steps": 520,
+        "line": "Worked for 29s · 520 steps",
+        "reloaded_at_step": 260,
+        "longest_text": 3850,
+        "screenshot": "desktop-long-turn.png"
+      }
+    },
+    {
       "step": "desktop-viewer",
       "label": "viewer_left_column",
       "detail": {
         "label": "Thinking",
         "screenshot": "viewer-left-column-desktop.png"
+      }
+    },
+    {
+      "step": "allowance",
+      "label": "allowance_budget",
+      "detail": {
+        "published": {
+          "status": 404,
+          "limit": "5758",
+          "policy": "5758;w=900"
+        },
+        "idle_requests_in_sample": 53,
+        "sample_seconds": 60,
+        "idle_per_window": 795,
+        "followed_turn_per_window": 360,
+        "allowance_per_window": 5758
       }
     },
     {
@@ -185,7 +212,7 @@
       "label": "folded",
       "detail": {
         "label": "Worked for 2s · 6 steps",
-        "duration_ms": 2484,
+        "duration_ms": 2716,
         "step_count": 6,
         "screenshot": "chat-folded-phone.png"
       }
@@ -210,7 +237,7 @@
       "step": "phone-replay",
       "label": "reload_during_turn",
       "detail": {
-        "label": "Worked for 9s · 6 steps",
+        "label": "Worked for 6s · 6 steps",
         "posts": 1,
         "screenshot": "phone-after-replay.png"
       }
@@ -232,6 +259,17 @@
       }
     },
     {
+      "step": "phone-long",
+      "label": "long_turn_kept_whole",
+      "detail": {
+        "steps": 520,
+        "line": "Worked for 31s · 520 steps",
+        "reloaded_at_step": 260,
+        "longest_text": 3850,
+        "screenshot": "phone-long-turn.png"
+      }
+    },
+    {
       "step": "phone-viewer",
       "label": "viewer_left_column",
       "detail": {
@@ -243,34 +281,34 @@
       "step": "secrets",
       "label": "planted_values_absent",
       "detail": {
-        "planted": 10,
+        "planted": 12,
         "scanned": {
           "chat streams received by the browser": {
-            "bytes": 19763,
+            "bytes": 19651,
             "leaked": 0
           },
           "turn status route": {
-            "bytes": 4039,
+            "bytes": 64644,
             "leaked": 0
           },
           "Praxis process output": {
-            "bytes": 23564,
+            "bytes": 27980,
             "leaked": 0
           },
           "Praxis logger": {
-            "bytes": 9912,
+            "bytes": 11814,
             "leaked": 0
           },
           "global thinking trace": {
-            "bytes": 1091,
+            "bytes": 28179,
             "leaked": 0
           },
           "Nexus API output": {
-            "bytes": 6265,
+            "bytes": 7040,
             "leaked": 0
           },
           "dashboard server output": {
-            "bytes": 2651,
+            "bytes": 3230,
             "leaked": 0
           },
           "Nexus database": {
@@ -278,7 +316,7 @@
             "leaked": 0
           },
           "Praxis data folder": {
-            "bytes": 1055098,
+            "bytes": 1205509,
             "leaked": 0
           }
         }
@@ -289,10 +327,10 @@
       "label": "isolation",
       "detail": {
         "responsesByPort": {
-          "dashboard": 304,
-          "throwaway-api": 44
+          "dashboard": 536,
+          "throwaway-api": 66
         },
-        "chatPosts": 8
+        "chatPosts": 10
       }
     }
   ],
