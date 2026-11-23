@@ -358,6 +358,11 @@ checkbox, now means:
   `authority`, `note`, `recorded_at`). The note is on `current_decision` in the
   document read, on the decision in `/history`, on the in-force check and in
   the package Praxis fetches.
+- Praxis still receives the identifier-only notification, once per submission.
+  Its receipt reads `approved_with_note`, or `approved` when the note is empty.
+  A non-empty note also gives the standing chat one identifier-only notice, so
+  it can read the note and file any follow-up it names as ordinary tracked work.
+  That work is never a document revision and asks for no second review.
 
 Reviews finished before this change keep `approval_delegated: true`, so their
 replacement work and the executor-recorded approval below finish the way they
