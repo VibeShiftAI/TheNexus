@@ -1,8 +1,8 @@
 /**
  * DispatchStation — "Ops": the crew flow graph. The three CLI providers, the
- * local LLM, and the Praxis hub render as one network (see CrewFlow); each
- * provider node wears its current role — executor, QA gatekeeper, council
- * seat, aggregator — with packets flowing along the edges as work moves.
+ * local LLM, and the Praxis hub render as one network (see DispatchMap); each
+ * provider node expands into one child node per live run (task run, QA review
+ * run, council seat), with work flowing along the edges while it runs.
  * Role/progress data comes from the shared SSE stream (executor.progress /
  * task.* events) with a fallback to the run registry from Praxis
  * /api/dispatch/state; council state from /api/praxis/council/sessions,
@@ -53,7 +53,15 @@ const LANES: { id: ExecutorName & ExecutorId; label: string }[] = [
 ];
 
 export interface ExecutorRun {
+  /** Best-known model: the served one when the executor reported it, else the requested one. */
   model?: string;
+  /** What the dispatch asked the CLI for. Absent on a Praxis that does not record it. */
+  requestedModel?: string;
+  requestedEffort?: string;
+  /** What the executor itself reported it is running. Never inferred. */
+  servedModel?: string;
+  /** The task's slot for the day; rendered as `S<number>`, nothing when absent. */
+  slotNumber?: number;
   taskId: string;
   executor: string;
   title: string;
@@ -388,6 +396,7 @@ export function DispatchStation() {
             arbiter={arbiter}
             onSetArbiter={handleSetArbiter}
             onInspect={setInspecting}
+            now={now}
           />
 
           {/* Status ticker: the one thing moving through the system right now */}
