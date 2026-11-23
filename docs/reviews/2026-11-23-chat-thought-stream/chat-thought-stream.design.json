@@ -9,7 +9,7 @@
       "viewport": "1440x900 @2x, main viewer panel",
       "state": "turn running",
       "file": "chat-live-desktop.png",
-      "notes": "Five steps are done and the sixth is running, in order, with the elapsed time beside the status. The italic line is the model's own reasoning text, which appears only when the session exposes some."
+      "notes": "Five steps are done and the sixth is running, in order, with the elapsed time above them. The italic line is the model's own reasoning text, which appears only when the session exposes some."
     },
     {
       "id": "chat-live-phone",

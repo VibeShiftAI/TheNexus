@@ -1,0 +1,5 @@
+ℹ fail 2
+ℹ pass 1417
+ℹ tests 1419
+✖ Praxis journal exposes stock analysis and YouTube script tabs (0.404917ms)
+✖ fetched comparison renders lane/model estimates, metric sample sizes and exact run links (35.016292ms)
