@@ -329,6 +329,7 @@ function projectLiveWork(state, boardRows, followupScope) {
         items.set(taskId, {
             ...base(taskId, run.title),
             ...slotNumberOf(run),
+            ...slotNumberOf(qa),
             lane: qa ? 'qa' : 'finished',
             executor: run.executor || null,
             startedAt: run.startedAt || null,

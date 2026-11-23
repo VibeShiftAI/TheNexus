@@ -1,9 +1,38 @@
 const express = require('express');
 const followUps = require('../services/followup-schedule');
+const { praxisJson } = require('../services/praxis-client');
 
-module.exports = function createCalendarRouter({ db, now = () => new Date() }) {
+/** The budget dispatch-insight.js gives its Praxis reads: a person is waiting on the reply. */
+const SLOT_NUMBER_TIMEOUT_MS = 4_000;
+
+/** The task's number on the day's schedule, from the one ledger, which Praxis holds. */
+async function praxisSlotNumber(taskId) {
+    const answer = await praxisJson('/api/schedule/slot-number', {
+        method: 'POST',
+        body: { taskId },
+        timeoutMs: SLOT_NUMBER_TIMEOUT_MS,
+    });
+    return Number.isSafeInteger(answer?.slotNumber) ? answer.slotNumber : null;
+}
+
+module.exports = function createCalendarRouter({ db, now = () => new Date(), allocateSlotNumber = praxisSlotNumber }) {
     const router = express.Router();
     const validId = value => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,160}$/.test(value);
+
+    /** A number is a label: if Praxis cannot give one, the row is written bare and tagged when it runs. */
+    const numberFollowUp = async taskId => {
+        try {
+            return await allocateSlotNumber(taskId);
+        } catch (error) {
+            console.warn(`[Calendar] Follow-up ${taskId} scheduled without a slot number: ${error.message}`);
+            return null;
+        }
+    };
+    const praxisTaskEvents = () => db.getCalendarEvents(undefined, undefined, { eventType: 'praxis_task' });
+    const refuseScheduled = (res, event) => res.status(409).json({
+        error: 'This task already has a pending calendar event; it is on the schedule.',
+        event,
+    });
 
     /**
      * Put a prepared follow-up on today's calendar after the last planned
@@ -30,13 +59,19 @@ module.exports = function createCalendarRouter({ db, now = () => new Date() }) {
             if (!workspace || /[\r\n]/.test(workspace)) {
                 return res.status(422).json({ error: 'This task’s project has no workspace path, so Praxis could not run it from the calendar. Set the project path first.' });
             }
-            const events = await db.getCalendarEvents(undefined, undefined, { eventType: 'praxis_task' });
+            // A task already on the calendar is refused before it can draw a number.
+            const scheduled = followUps.pendingEventFor(await praxisTaskEvents(), taskId);
+            if (scheduled) return refuseScheduled(res, scheduled);
+            // Number it BEFORE the read that decides. This call can wait on
+            // Praxis, and read, check, write below must stay one tight sequence
+            // so a double click cannot schedule the task twice. A repeat
+            // request gets the same number back, so it leaves no gap.
+            const slotNumber = await numberFollowUp(taskId);
+            const events = await praxisTaskEvents();
             const pending = followUps.pendingEventFor(events, taskId);
-            if (pending) {
-                return res.status(409).json({ error: 'This task already has a pending calendar event; it is on the schedule.', event: pending });
-            }
+            if (pending) return refuseScheduled(res, pending);
             const slot = followUps.planFollowUpSlot(events, now());
-            const event = await db.createCalendarEvent(followUps.followUpEvent({ task, workspace, slot }));
+            const event = await db.createCalendarEvent(followUps.followUpEvent({ task, workspace, slot, slotNumber }));
             if (!event || event.status !== 'scheduled') {
                 return res.status(500).json({ error: 'The calendar did not confirm the new event. Refresh before trying again.' });
             }

@@ -217,6 +217,17 @@ describe('dispatch-insight live-work projection', () => {
         expect(items['contract-fix']).not.toHaveProperty('slotNumber');
     });
 
+    test("next-day QA displays its current slot while the implementation retains its completion slot", () => {
+        const implementation = { ...FINISHED_UNREVIEWED, slotDay: '2026-10-04', slotNumber: 3 };
+        const review = {
+            ...QA_RUNNING_FOR_UNREVIEWED, slotDay: '2026-10-05', slotNumber: 2,
+            startedAt: '2026-10-05T15:00:00Z', updatedAt: '2026-10-05T15:00:00Z',
+        };
+        const project = (runs) => createDispatchInsightRouter.projectLiveWork({ executors: { runs } }, []);
+        expect(project([implementation, review])).toMatchObject([{ lane: 'qa', taskId: 'unreviewed', slotNumber: 2 }]);
+        expect(project([implementation])).toMatchObject([{ lane: 'finished', taskId: 'unreviewed', slotNumber: 3 }]);
+    });
+
     test('a finished row keeps the slotNumber its run carried', async () => {
         await boot({ state: { executors: {
             ...STATE_NO_PLAN_WITH_QUEUE.executors,

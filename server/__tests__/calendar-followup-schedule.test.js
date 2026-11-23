@@ -30,9 +30,10 @@ function fakeDb({ task = TASK, project = PROJECT, events = [] } = {}) {
     };
 }
 
-async function withServer(db, run) {
+// Every test but the two that exercise the real Praxis client answers with S9.
+async function withServer(db, run, routerOptions = { allocateSlotNumber: async () => 9 }) {
     const app = express(); app.use(express.json());
-    app.use('/api/calendar', createCalendarRouter({ db, now: () => NOW }));
+    app.use('/api/calendar', createCalendarRouter({ db, now: () => NOW, ...routerOptions }));
     const server = http.createServer(app);
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const post = (body, headers = {}) => fetch(`http://127.0.0.1:${server.address().port}/api/calendar/follow-ups`, {
@@ -68,6 +69,13 @@ describe('planFollowUpSlot', () => {
         expect(slot.start).toBe('2026-10-18T06:00:00.000Z');
         expect(slot.anchor.id).toBe('spill');
     });
+    test('a numbered follow-up already on tomorrow does not extend today\'s plan', () => {
+        const slot = followUps.planFollowUpSlot([
+            event({ id: 'today', status: 'scheduled', start_time: '2026-10-17T18:00:00.000Z', end_time: '2026-10-17T19:00:00.000Z' }),
+            event({ id: 'tomorrow-follow-up', title: 'S4 · Follow-up: Later', description: `Workspace: /p${followUps.FOLLOW_UP_MARKER}Nexus Task: x`, status: 'scheduled', start_time: '2026-10-18T14:00:00.000Z', end_time: '2026-10-18T14:30:00.000Z' }),
+        ], NOW);
+        expect(slot.anchor.id).toBe('today');
+    });
     test('a title that merely starts like a tag is unrelated work tomorrow, not this plan', () => {
         const slot = followUps.planFollowUpSlot([
             event({ id: 'today', status: 'scheduled', start_time: '2026-10-17T18:00:00.000Z', end_time: '2026-10-17T19:00:00.000Z' }),
@@ -99,7 +107,7 @@ describe('POST /api/calendar/follow-ups', () => {
             expect(body.after).toMatchObject({ id: 'last', title: '[Slot 3] Last planned' });
             expect(body.event).toMatchObject({
                 task_id: TASK.id, project_id: 'hwc', event_type: 'praxis_task', status: 'scheduled',
-                title: `Follow-up: ${TASK.name}`, start_time: '2026-10-17T19:00:00.000Z', end_time: '2026-10-17T19:30:00.000Z',
+                title: `S9 · Follow-up: ${TASK.name}`, start_time: '2026-10-17T19:00:00.000Z', end_time: '2026-10-17T19:30:00.000Z',
             });
             expect(body.event.id).toMatch(/^followup-[0-9a-f]{32}$/);
             expect(body.event.description).toContain(`Workspace: ${PROJECT.path}\n`);
@@ -108,7 +116,82 @@ describe('POST /api/calendar/follow-ups', () => {
             expect(db.created).toHaveLength(1);
         });
     });
-    test('a task that already has a pending event is not scheduled twice', async () => {
+    test('asks Praxis for the day number at the ledger route and writes it into the title', async () => {
+        const seen = [];
+        const praxis = express(); praxis.use(express.json());
+        praxis.post('/api/schedule/slot-number', (req, res) => { seen.push(req.body); res.json({ slotNumber: 12, day: '2026-10-17', tag: 'S12' }); });
+        const upstream = http.createServer(praxis);
+        await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+        const previous = process.env.PRAXIS_URL;
+        process.env.PRAXIS_URL = `http://127.0.0.1:${upstream.address().port}`;
+        const db = fakeDb();
+        try {
+            await withServer(db, async (post) => {
+                const response = await post({ taskId: TASK.id });
+                expect(response.status).toBe(201);
+                expect((await response.json()).event.title).toBe(`S12 · Follow-up: ${TASK.name}`);
+            }, {});
+            expect(seen).toEqual([{ taskId: TASK.id }]);
+        } finally {
+            if (previous === undefined) delete process.env.PRAXIS_URL; else process.env.PRAXIS_URL = previous;
+            upstream.closeAllConnections();
+            await new Promise(resolve => upstream.close(resolve));
+        }
+    });
+    test('still schedules the follow-up, bare, when Praxis cannot number it', async () => {
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const praxis = express();
+        praxis.post('/api/schedule/slot-number', (_req, res) => res.status(404).json({ error: 'no such route on this Praxis' }));
+        const upstream = http.createServer(praxis);
+        await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+        const previous = process.env.PRAXIS_URL;
+        process.env.PRAXIS_URL = `http://127.0.0.1:${upstream.address().port}`;
+        const db = fakeDb();
+        try {
+            await withServer(db, async (post) => {
+                const response = await post({ taskId: TASK.id });
+                expect(response.status).toBe(201);
+                expect((await response.json()).event.title).toBe(`Follow-up: ${TASK.name}`);
+            }, {});
+            expect(db.created).toHaveLength(1);
+            expect(warn).toHaveBeenCalledWith(expect.stringContaining('without a slot number'));
+        } finally {
+            warn.mockRestore();
+            if (previous === undefined) delete process.env.PRAXIS_URL; else process.env.PRAXIS_URL = previous;
+            upstream.closeAllConnections();
+            await new Promise(resolve => upstream.close(resolve));
+        }
+    });
+    test('a task refused before it joins draws no number', async () => {
+        const allocateSlotNumber = jest.fn(async () => 9);
+        for (const db of [fakeDb({ task: { ...TASK, status: 'completed' } }), fakeDb({ task: null }), fakeDb({ project: { ...PROJECT, path: null } })]) {
+            await withServer(db, async (post) => { await post({ taskId: TASK.id }); }, { allocateSlotNumber });
+        }
+        expect(allocateSlotNumber).not.toHaveBeenCalled();
+    });
+    test('the calendar is read again after the number arrives, so a double click cannot schedule the task twice', async () => {
+        const order = [];
+        const db = fakeDb();
+        const read = db.getCalendarEvents;
+        db.getCalendarEvents = async (...args) => { order.push('read'); return read(...args); };
+        await withServer(db, async (post) => { await post({ taskId: TASK.id }); }, {
+            allocateSlotNumber: async () => { order.push('number'); return 9; },
+        });
+        expect(order).toEqual(['read', 'number', 'read']);
+    });
+    test('a row written while the number was on its way still stops a second schedule', async () => {
+        const pending = event({ id: 'pending', task_id: TASK.id, status: 'scheduled', title: 'S9 · Follow-up: HWC09', start_time: '2026-10-17T19:00:00.000Z' });
+        const events = [];
+        const db = fakeDb({ events });
+        await withServer(db, async (post) => {
+            const response = await post({ taskId: TASK.id });
+            expect(response.status).toBe(409);
+            expect((await response.json()).event.id).toBe('pending');
+            expect(db.created).toHaveLength(0);
+        }, { allocateSlotNumber: async () => { events.push(pending); return 9; } });
+    });
+    test('a task that already has a pending event is not scheduled twice and draws no number', async () => {
+        const allocateSlotNumber = jest.fn(async () => 9);
         const pending = event({ id: 'pending', task_id: TASK.id, status: 'scheduled', title: 'Follow-up: HWC09', start_time: '2026-10-17T19:00:00.000Z' });
         const db = fakeDb({ events: [pending] });
         await withServer(db, async (post) => {
@@ -117,7 +200,8 @@ describe('POST /api/calendar/follow-ups', () => {
             const body = await response.json();
             expect(body.event.id).toBe('pending');
             expect(db.created).toHaveLength(0);
-        });
+        }, { allocateSlotNumber });
+        expect(allocateSlotNumber).not.toHaveBeenCalled();
     });
     test('closed tasks, unknown tasks, missing workspaces and malformed bodies write nothing', async () => {
         const closed = fakeDb({ task: { ...TASK, status: 'completed' } });

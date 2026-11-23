@@ -50,8 +50,9 @@ function taskClosed(task) {
 /**
  * Today's work plan as the calendar shows it: `praxis_task` events with a
  * task that start today (local), plus slot-tagged events that spilled past
- * midnight, which are still this plan. Unrelated work tomorrow and system
- * windows (local LLM, stakeholder meetings) do not extend the plan.
+ * midnight, which are still this plan. Unrelated work tomorrow, a follow-up
+ * already scheduled for tomorrow (it carries a tag too) and system windows
+ * (local LLM, stakeholder meetings) do not extend the plan.
  */
 function planEvents(events, now, timeZone = TIME_ZONE) {
     const today = day(now, timeZone);
@@ -62,7 +63,9 @@ function planEvents(events, now, timeZone = TIME_ZONE) {
         const start = toTime(event.start_time);
         if (start === null) return false;
         const onDay = day(new Date(start), timeZone);
-        return onDay === today || (onDay === tomorrow && isSlotTitle(String(event.title || '')));
+        if (onDay === today) return true;
+        return onDay === tomorrow && isSlotTitle(String(event.title || ''))
+            && !String(event.description || '').includes(FOLLOW_UP_MARKER);
     });
 }
 
@@ -100,15 +103,20 @@ function pendingEventFor(events, taskId) {
     return (events || []).find(event => event && event.task_id === taskId && PENDING_EVENT.has(normalize(event.status))) || null;
 }
 
-/** The calendar row for the follow-up, shaped like Praxis's own follow-ups. */
-function followUpEvent({ task, workspace, slot }) {
+/**
+ * The calendar row for the follow-up, shaped like Praxis's own follow-ups. It
+ * carries its day number when Praxis gave one; without one it is written bare
+ * and takes its tag when it starts running.
+ */
+function followUpEvent({ task, workspace, slot, slotNumber }) {
+    const name = `Follow-up: ${task.name || task.title || task.id}`;
     const id = `followup-${createHash('sha256').update(`${task.id}\n${slot.start}`).digest('hex').slice(0, 32)}`;
     const instructions = slot.anchor
         ? `Scheduled from the Nexus calendar after today's last planned task (${slot.anchor.title}).`
         : 'Scheduled from the Nexus calendar; no other task was planned for today.';
     return {
         id,
-        title: `Follow-up: ${task.name || task.title || task.id}`,
+        title: Number.isSafeInteger(slotNumber) ? `S${slotNumber} · ${name}` : name,
         description: `Workspace: ${workspace}${FOLLOW_UP_MARKER}Nexus Task: ${task.id}\nInstructions: ${instructions}`,
         task_id: task.id,
         project_id: task.project_id || null,
