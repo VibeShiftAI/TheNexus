@@ -1,0 +1,301 @@
+{
+  "when": "2026-11-23T16:36:42.467Z",
+  "ports": {
+    "fixture": 50222,
+    "api": 50223,
+    "next": 50224
+  },
+  "steps": [
+    {
+      "step": "setup",
+      "label": "stack_up",
+      "detail": {
+        "fixture": "http://127.0.0.1:50222",
+        "api": "http://127.0.0.1:50223",
+        "dashboard": "http://127.0.0.1:50224"
+      }
+    },
+    {
+      "step": "desktop-live",
+      "label": "working_indicator",
+      "detail": {
+        "status": "The chat session is working. Its final result is not yet confirmed.",
+        "elapsed": "under 1s",
+        "screenshot": "desktop-working.png"
+      }
+    },
+    {
+      "step": "desktop-live",
+      "label": "steps_in_order_while_running",
+      "detail": {
+        "stages": [
+          "r",
+          "dr",
+          "dddr",
+          "ddddr",
+          "dddddr"
+        ],
+        "rows": [
+          {
+            "text": "Check which files changed",
+            "status": "done"
+          },
+          {
+            "text": "Read TheNexus/dashboard/src/components/ai-terminal.tsx",
+            "status": "done"
+          },
+          {
+            "text": "Reasoning: The turn stream already carries status frames, so the steps can ride on it. Never echo [redacted] or [redacted].",
+            "status": "done"
+          },
+          {
+            "text": "Ask the task board with [redacted], [redacted] and [redacted]",
+            "status": "done"
+          },
+          {
+            "text": "Search for \"status_url\"",
+            "status": "done"
+          },
+          {
+            "text": "Run the chat test suite",
+            "status": "running"
+          }
+        ]
+      }
+    },
+    {
+      "step": "desktop-live",
+      "label": "live_screenshot",
+      "detail": "chat-live-desktop.png"
+    },
+    {
+      "step": "desktop-fold",
+      "label": "folded",
+      "detail": {
+        "label": "Worked for 3s · 6 steps",
+        "duration_ms": 3217,
+        "step_count": 6,
+        "screenshot": "chat-folded-desktop.png"
+      }
+    },
+    {
+      "step": "desktop-fold",
+      "label": "expanded",
+      "detail": {
+        "rows": 6,
+        "screenshot": "chat-expanded-desktop.png"
+      }
+    },
+    {
+      "step": "desktop-reload",
+      "label": "reload_keeps_reply_not_steps",
+      "detail": {
+        "messages": 2,
+        "screenshot": "desktop-after-reload.png"
+      }
+    },
+    {
+      "step": "desktop-replay",
+      "label": "reload_during_turn",
+      "detail": {
+        "label": "Worked for 6s · 6 steps",
+        "posts": 1,
+        "screenshot": "desktop-after-replay.png"
+      }
+    },
+    {
+      "step": "desktop-degraded",
+      "label": "degraded_notice",
+      "detail": {
+        "alert": "The chat session failed before it produced a reply, so the fallback agent is taking this message.",
+        "screenshot": "desktop-degraded.png"
+      }
+    },
+    {
+      "step": "desktop-uncertain",
+      "label": "uncertain_reply",
+      "detail": {
+        "line": "Worked for under 1s · 1 step · 1 did not finish",
+        "screenshot": "desktop-uncertain.png"
+      }
+    },
+    {
+      "step": "desktop-viewer",
+      "label": "viewer_left_column",
+      "detail": {
+        "label": "Thinking",
+        "screenshot": "viewer-left-column-desktop.png"
+      }
+    },
+    {
+      "step": "phone-live",
+      "label": "working_indicator",
+      "detail": {
+        "status": "The chat session is working. Its final result is not yet confirmed.",
+        "elapsed": "under 1s",
+        "screenshot": "phone-working.png"
+      }
+    },
+    {
+      "step": "phone-live",
+      "label": "steps_in_order_while_running",
+      "detail": {
+        "stages": [
+          "r",
+          "dr",
+          "dddr",
+          "ddddr",
+          "dddddr"
+        ],
+        "rows": [
+          {
+            "text": "Check which files changed",
+            "status": "done"
+          },
+          {
+            "text": "Read TheNexus/dashboard/src/components/ai-terminal.tsx",
+            "status": "done"
+          },
+          {
+            "text": "Reasoning: The turn stream already carries status frames, so the steps can ride on it. Never echo [redacted] or [redacted].",
+            "status": "done"
+          },
+          {
+            "text": "Ask the task board with [redacted], [redacted] and [redacted]",
+            "status": "done"
+          },
+          {
+            "text": "Search for \"status_url\"",
+            "status": "done"
+          },
+          {
+            "text": "Run the chat test suite",
+            "status": "running"
+          }
+        ]
+      }
+    },
+    {
+      "step": "phone-live",
+      "label": "live_screenshot",
+      "detail": "chat-live-phone.png"
+    },
+    {
+      "step": "phone-fold",
+      "label": "folded",
+      "detail": {
+        "label": "Worked for 2s · 6 steps",
+        "duration_ms": 2579,
+        "step_count": 6,
+        "screenshot": "chat-folded-phone.png"
+      }
+    },
+    {
+      "step": "phone-fold",
+      "label": "expanded",
+      "detail": {
+        "rows": 6,
+        "screenshot": "chat-expanded-phone.png"
+      }
+    },
+    {
+      "step": "phone-reload",
+      "label": "reload_keeps_reply_not_steps",
+      "detail": {
+        "messages": 2,
+        "screenshot": "phone-after-reload.png"
+      }
+    },
+    {
+      "step": "phone-replay",
+      "label": "reload_during_turn",
+      "detail": {
+        "label": "Worked for 6s · 6 steps",
+        "posts": 1,
+        "screenshot": "phone-after-replay.png"
+      }
+    },
+    {
+      "step": "phone-degraded",
+      "label": "degraded_notice",
+      "detail": {
+        "alert": "The chat session failed before it produced a reply, so the fallback agent is taking this message.",
+        "screenshot": "phone-degraded.png"
+      }
+    },
+    {
+      "step": "phone-uncertain",
+      "label": "uncertain_reply",
+      "detail": {
+        "line": "Worked for under 1s · 1 step · 1 did not finish",
+        "screenshot": "phone-uncertain.png"
+      }
+    },
+    {
+      "step": "phone-viewer",
+      "label": "viewer_left_column",
+      "detail": {
+        "label": "Thinking",
+        "screenshot": "viewer-left-column-phone.png"
+      }
+    },
+    {
+      "step": "secrets",
+      "label": "planted_values_absent",
+      "detail": {
+        "planted": 10,
+        "scanned": {
+          "chat streams received by the browser": {
+            "bytes": 19761,
+            "leaked": 0
+          },
+          "turn status route": {
+            "bytes": 4039,
+            "leaked": 0
+          },
+          "Praxis process output": {
+            "bytes": 23564,
+            "leaked": 0
+          },
+          "Praxis logger": {
+            "bytes": 9912,
+            "leaked": 0
+          },
+          "global thinking trace": {
+            "bytes": 1091,
+            "leaked": 0
+          },
+          "Nexus API output": {
+            "bytes": 6380,
+            "leaked": 0
+          },
+          "dashboard server output": {
+            "bytes": 2656,
+            "leaked": 0
+          },
+          "Nexus database": {
+            "bytes": 5438969,
+            "leaked": 0
+          },
+          "Praxis data folder": {
+            "bytes": 1055098,
+            "leaked": 0
+          }
+        }
+      }
+    },
+    {
+      "step": "isolation",
+      "label": "isolation",
+      "detail": {
+        "responsesByPort": {
+          "dashboard": 306,
+          "throwaway-api": 44
+        },
+        "chatPosts": 8
+      }
+    }
+  ],
+  "failures": [],
+  "ok": true
+}

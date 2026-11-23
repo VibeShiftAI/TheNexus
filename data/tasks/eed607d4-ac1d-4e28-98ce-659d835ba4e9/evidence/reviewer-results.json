@@ -1,0 +1,21 @@
+{
+  "verdict": "request_changes",
+  "productionCodeEdited": false,
+  "browser": {"command": "node ../data/tasks/eed607d4-ac1d-4e28-98ce-659d835ba4e9/evidence/reviewer-browser.mjs", "cwd": "TheNexus/dashboard", "exitCode": 0, "result": "CHECK_RESULT ok (23 steps)", "report": "browser/report.json"},
+  "dashboardFocused": {"command": "node --import ./test/register.mjs --test src/lib/__tests__/chat-turn-steps.test.ts src/lib/__tests__/read-praxis-event-stream.test.ts test/chat-turn-steps.test.mjs test/ai-terminal-send.test.mjs", "passed": 35, "failed": 0},
+  "praxisFocused": {"command": "npm test -- chat_turn_steps chat_cli_session", "passed": 65, "failed": 0},
+  "serverFocused": {"command": "npx jest server/__tests__/ai-chat --runInBand --forceExit", "passed": 57, "failed": 0},
+  "typechecks": {"TheNexus/dashboard": 0, "Praxis": 0, "TheNexusRoot": "no TypeScript project; npm placeholder exits 1"},
+  "limitsProbe": {
+    "command": "npx tsx ../TheNexus/data/tasks/eed607d4-ac1d-4e28-98ce-659d835ba4e9/evidence/reviewer-limits.ts",
+    "cwd": "Praxis",
+    "exitCode": 0,
+    "observations": [
+      {"STEP_TEXT_MAX":240,"REASONING_TEXT_MAX":2000,"labelTailRetained":false,"reasoningTailRetained":false},
+      {"MAX_STEPS_PER_TURN":500,"stepCount":502,"replayableSteps":500,"omitted":2,"firstReplaySeq":3},
+      {"MAX_FOLDED_TURNS":64,"storedFoldedTurns":64,"firstReplyStillExpandable":false}
+    ]
+  },
+  "verificationLimitation": "Full-suite baseline equivalence was not independently established. The accepted proof bundle has an empty observations array. The author's baseline-comparison.txt was read but is not treated as source-bound execution evidence. This limitation is not the reason for the fail verdict.",
+  "requiredFinding": "New unsourced truncation and eviction policies discard redacted text, in-flight replay history and expandable finished-turn lines. Preserve full redacted content for the relevant ephemeral lifecycle; tie any resource limits and polling/deadline policies to a named structural/provider boundary or quantified resource budget. Keep secrets out of storage and steps out of conversation messages."
+}

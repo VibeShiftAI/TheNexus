@@ -1,0 +1,51 @@
+{
+  "verdict": "pass",
+  "productionCodeEdited": false,
+  "browser": {
+    "command": "node ../data/tasks/eed607d4-ac1d-4e28-98ce-659d835ba4e9/evidence/reviewer-round2.mjs",
+    "cwd": "TheNexus/dashboard",
+    "exitCode": 0,
+    "result": "CHECK_RESULT ok (26 steps)",
+    "report": "reviewer-round2-browser/report.json",
+    "desktopLongFold": "Worked for 29s · 520 steps",
+    "phoneLongFold": "Worked for 29s · 520 steps",
+    "plantedValues": 12,
+    "leaksInEachScannedSurface": 0
+  },
+  "dashboardFocused": {
+    "command": "node --import ./test/register.mjs --test --test-reporter=spec src/lib/__tests__/chat-turn-steps.test.ts src/lib/__tests__/read-praxis-event-stream.test.ts test/chat-turn-steps.test.mjs test/ai-terminal-send.test.mjs",
+    "passed": 48,
+    "failed": 0,
+    "exitCode": 0
+  },
+  "praxisFocused": {
+    "command": "npm test -- chat_turn_steps --test-reporter=tap",
+    "passed": 25,
+    "failed": 0,
+    "exitCode": 0
+  },
+  "serverFocused": {
+    "command": "npx jest --runInBand server/__tests__/ai-chat-turn-status.test.js server/__tests__/ai-chat-praxis-stream.test.js server/__tests__/api-health-rate-limit.test.js",
+    "passed": 13,
+    "failed": 0,
+    "exitCode": 0
+  },
+  "typechecks": {"TheNexus/dashboard": 0, "Praxis": 0, "TheNexusRoot": "existing waiver retained"},
+  "retention": {
+    "command": "npx tsx ../TheNexus/docs/reviews/2026-11-23-chat-thought-stream-evidence/retention-probe.ts",
+    "cwd": "Praxis",
+    "exitCode": 0,
+    "result": "RETENTION_PROBE ok",
+    "replayableSteps": [502, 5002],
+    "omitted": [0, 0],
+    "storedFoldedTurns": [65, 650],
+    "labelTailRetained": true,
+    "reasoningTailRetained": true,
+    "firstReplyStillExpandable": true
+  },
+  "verificationLimitation": "Affected suites pass independently. Retained A242/A243 and baseline-comparison.txt report unchanged full-suite failure inventories. No fresh source-bound full-suite baseline exception or paired environment fingerprint was established in this review; that verification remains unresolved, not a new work defect or an expansion of the accepted scope.",
+  "visualReview": "Read the declared design manifest end to end and inspected all eight referenced screenshots. Live, folded and expanded steps are readable at desktop and phone widths. Also inspected the independent long-turn screenshots. No blocking visual issue found.",
+  "requiredFinding": null,
+  "additionalRepositoryReviewed": "/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/Praxis",
+  "scope": "No fixes, commits, deployment or task-status changes. Reviewer artifacts are under this task's evidence directory. Browser harness restored tsconfig.json and next-env.d.ts byte-for-byte, confirmed by before/after SHA-256 checks."
+}
