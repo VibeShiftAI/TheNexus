@@ -62,6 +62,7 @@ const WIDTHS = {
 const PHONE_UA = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36";
 
 const STATION = "#station-core";
+const CHAT_AND_STATUS = [STATION, ".dispatch-chat-core", '[role="dialog"][aria-label="Praxis chat session"]', '[role="status"]', '[role="alert"]', "[aria-live]"].join(", ");
 const COMPOSER = `${STATION} textarea`;
 const SEND = `${STATION} button[aria-label="Send message"]`;
 const LIVE = '[data-turn-steps="live"]';
@@ -247,7 +248,7 @@ try {
     if (m.method === "Network.loadingFinished" && postIds.has(m.params.requestId)) {
       void send("Network.getResponseBody", { requestId: m.params.requestId }).then((r) => { if (r.result?.body) rawBodies.push(r.result.body); });
     }
-    if (m.method === "Runtime.exceptionThrown") exceptions.push(`${step}: ${m.params.exceptionDetails?.exception?.description?.slice(0, 300) || m.params.exceptionDetails?.text}`);
+    if (m.method === "Runtime.exceptionThrown") exceptions.push(`${step}: ${m.params.exceptionDetails?.exception?.description || m.params.exceptionDetails?.text}`);
   };
   await send("Page.enable");
   await send("Runtime.enable");
@@ -284,7 +285,11 @@ try {
     const page = await evalJs("document.documentElement.outerHTML + JSON.stringify({ ...localStorage }) + JSON.stringify({ ...sessionStorage })");
     check(typeof page === "string" && page.length > 1000, `${where}: the page could be read`);
     check(leaks(page ?? "", await secretValues()) === 0, `${where}: a planted value is on the page`);
-    check(!(page ?? "").toLowerCase().includes(RETIRED), `${where}: the retired message is on the page`);
+    // A project or activity card can quote the old message in a commit subject.
+    // Check the chat, including its core readouts, and out-of-station announcements.
+    const chat = await evalJs(`${q(STATION)} && ${qa(CHAT_AND_STATUS)}.map(el => el.textContent + '\\n' + el.outerHTML).join('\\n')`);
+    check(typeof chat === "string", `${where}: the chat and status surfaces could be read`);
+    check(!(chat ?? "").toLowerCase().includes(RETIRED), `${where}: the retired message is on a chat or status surface`);
     check(!(page ?? "").includes(RUNNING_BOILERPLATE), `${where}: the running status sentence is on the page`);
   }
   async function hydrated() {

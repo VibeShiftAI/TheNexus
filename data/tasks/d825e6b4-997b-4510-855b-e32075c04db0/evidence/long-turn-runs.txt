@@ -1,0 +1,37 @@
+Command in dashboard/: node scripts/chat-steps-browser-check.mjs
+Every row ran the full suite with its isolated services, a new database and Chrome profile. Each included one desktop and one phone long turn.
+50 ms (20 calls/s) is the stock Praxis fixture. The 10 ms (100 calls/s) copy changed only LONG_TURN.gapMs in scripts/chat-steps-fixture.ts under a temporary CHECK_PRAXIS_REPO.
+CHECK_OUT and CHECK_PACKAGE redirected artifacts to scratch. Before the fix, a read-only Node --import CDP listener captured the exception description before the old 300-character truncation.
+The comparison main source was exported with git archive d7d88177. The dispatch source was 5b31530c. The integration rehearsal copied the two implementation files onto the main export.
+For the negative control, a separate copy of LiveTurnSteps appended “This is taking longer than expected.” to the existing visible degraded alert. Its browser check matched the fixed check byte-for-byte.
+
+Start (UTC)               | source                               | gap ms | desktop/phone depth exceptions | retired hits | other failures | exit
+2026-11-23T22:07:17.807Z | dispatch base 5b31530c                       | 50 | 0 / 0 | 21 | 0 | exit 1
+2026-11-23T22:07:34.589Z | main d7d88177                                | 50 | 0 / 0 | 20 | 0 | exit 1
+2026-11-23T22:13:18.059Z | main d7d88177, repeat                        | 50 | 0 / 0 | 20 | 0 | exit 1
+2026-11-23T22:10:46.723Z | dispatch base 5b31530c                       | 10 | 8 / 8 | 21 | 0 | exit 1
+2026-11-23T22:10:46.721Z | main d7d88177                                | 10 | 8 / 8 | 20 | 0 | exit 1
+2026-11-23T22:11:33.682Z | dispatch base, warning fixture, scoped check | 50 | 0 / 1 |  2 | 0 | exit 1
+2026-11-23T22:14:44.600Z | fixed provider, warning fixture, scoped check | 50 | 0 / 0 |  2 | 0 | exit 1
+2026-11-23T22:14:21.038Z | dispatch source + both fixes                 | 10 | 0 / 0 |  0 | 0 | exit 0
+2026-11-23T22:17:21.935Z | main d7d88177 + both fixes                   | 10 | 0 / 0 |  0 | 0 | exit 0
+2026-11-23T22:17:21.930Z | dispatch source + both fixes                 | 50 | 0 / 0 |  0 | 0 | exit 0
+2026-11-23T22:19:56.107Z | main d7d88177 + both fixes                   | 50 | 0 / 0 |  0 | 0 | exit 0
+
+Representative full CDP exception (main, 10 ms):
+Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+    at getRootForUpdatedFiber (webpack-internal:///(app-pages-browser)/../../../../../Volumes/Projects/TheNexus/dashboard/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:4902:11)
+    at enqueueConcurrentRenderForLane (webpack-internal:///(app-pages-browser)/../../../../../Volumes/Projects/TheNexus/dashboard/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:4866:14)
+    at forceStoreRerender (webpack-internal:///(app-pages-browser)/../../../../../Volumes/Projects/TheNexus/dashboard/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:8584:18)
+    at eval (webpack-internal:///(app-pages-browser)/../../../../../Volumes/Projects/TheNexus/dashboard/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:8570:11)
+    at emit (webpack-internal:///(app-pages-browser)/./src/lib/praxis-stream-store.ts:117:42)
+    at EventSource.handleFrame (webpack-internal:///(app-pages-browser)/./src/lib/praxis-stream-store.ts:158:9)
+
+Observed at the stock 50 ms with the old provider and temporary warning:
+isolation: no page exceptions (phone-long: Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+    at getRootForUpdatedFiber (webpack-internal:///(app-pages-browser)/../../../../../Volumes/Projects/TheNexus/dashboard/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:4902:11)
+    at enqueueConcurrentRenderForLane (webpack-internal:///(app-pages-browser)/../../../../../Volumes/Projects/TheNexus/dashboard/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:4866:14)
+    at forceStoreRerender (webpack-internal:///(app-pages-browser)/../../../../../Volumes/Projects/TheNexus/dashboard/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:8584:18)
+    at eval (webpack-internal:///(app-pages-browser)/../../../../../Volumes/Projects/TheNexus/dashboard/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:8570:11)
+    at emit (webpack-internal:///(app-pages-browser)/./src/lib/praxis-stream-store.ts:117:42)
+    at EventSource.handleFrame (webpack-internal:///(app-pages-browser)/./src/lib/praxis-stream-store.ts:158:9))

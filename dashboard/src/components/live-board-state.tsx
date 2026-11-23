@@ -11,8 +11,7 @@
  *     (`lib/live-socket`, the same socket CortexProvider uses for chat) and
  *     listens for the `praxis:event` fan-out the Nexus relay emits for every
  *     frame it receives from Praxis's SSE stream.
- *   - It ALSO folds in the existing shared SSE store (`usePraxisStream`), which
- *     is already open for the event ticker in the root layout. Frames are
+ *   - It ALSO folds in the shared Praxis SSE stream. Frames are
  *     deduped by `eventId`, so during Phase 1 both transports can deliver the
  *     same event and a drop on either one degrades rather than freezes the UI.
  *     Phase 2 (docs/live-transport-phase2.md) retires the SSE half.
@@ -37,6 +36,7 @@
 
 import {
     createContext,
+    useCallback,
     useContext,
     useEffect,
     useMemo,
@@ -56,7 +56,8 @@ import {
     type RenewalBridgeKind,
     type SignInState,
 } from "@/lib/connection-lifecycle";
-import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { getPraxisStreamStore } from "@/hooks/use-praxis-stream";
+import { EMPTY_STREAM_STATE } from "@/lib/praxis-stream-store";
 import {
     LIVE_DOMAINS,
     ZERO_REVISIONS,
@@ -180,19 +181,19 @@ export function LiveBoardStateProvider({ children }: { children: ReactNode }) {
     // already delivered (or vice versa) does not double-bump a revision.
     const markSeen = useRef(createFrameDeduper()).current;
 
-    // Shared applier, set by the socket effect and reused by the SSE drain
-    // below so both transports run through the same dedupe set.
-    const applyFrameRef = useRef<((e: StreamEvent, viaSocket: boolean) => void) | null>(null);
-
     // Last eventId applied on EITHER transport — the resume cursor sent back to
     // the relay on every (re)connect so it can replay the gap from its ring
     // buffer. Kept in a ref, not state: it changes on every frame and nothing
     // renders from it.
     const lastEventId = useRef<string | null>(null);
 
-    // The SSE half — already open for the root-layout event ticker, so
-    // consuming it here costs no extra connection.
-    const sse = usePraxisStream();
+    const [sse, setSse] = useState(EMPTY_STREAM_STATE);
+
+    const applyFrame = useCallback((event: StreamEvent, viaSocket: boolean) => {
+        if (!markSeen(event.eventId)) return;
+        if (event.eventId) lastEventId.current = event.eventId;
+        setSocketState((prev) => reduceFrame(prev, event, viaSocket));
+    }, [markSeen]);
 
     // ── The recovery coordinator: one app-wide reference ─────────────
     const lifecycle = getConnectionLifecycle();
@@ -216,15 +217,6 @@ export function LiveBoardStateProvider({ children }: { children: ReactNode }) {
         const handle = acquireLiveSocket();
         if (!handle) return;
         const { socket, release } = handle;
-
-        const applyFrame = (event: StreamEvent, viaSocket: boolean) => {
-            const id = (event as { eventId?: string }).eventId;
-            if (!markSeen(id)) return;
-            // Advance the resume cursor only for frames we actually applied, so
-            // a replay we deduped away can never move it past a gap.
-            if (id) lastEventId.current = id;
-            setSocketState((prev) => reduceFrame(prev, event, viaSocket));
-        };
 
         const onEvent = (event: StreamEvent) => {
             if (!event || typeof event !== "object" || typeof event.type !== "string") return;
@@ -264,35 +256,36 @@ export function LiveBoardStateProvider({ children }: { children: ReactNode }) {
         socket.on("disconnect", onDisconnect);
         if (socket.connected) onConnect();
 
-        // The SSE fallback is drained by the effect below via a ref to this
-        // same applier, so both transports share the dedupe set.
-        applyFrameRef.current = applyFrame;
-
         return () => {
             socket.off("praxis:event", onEvent);
             socket.off("praxis:resync", onResync);
             socket.off("connect", onConnect);
             socket.off("disconnect", onDisconnect);
-            applyFrameRef.current = null;
             release();
         };
-    }, []);
+    }, [applyFrame]);
 
-    // ── The SSE half: fold in anything the socket did not deliver ────
-    const lastSseIndex = useRef<string | null>(null);
+    // Fold SSE frames on delivery, just like socket frames. A synchronous render
+    // per stream notification followed by a setState in its effect can exceed
+    // React's nested update limit when the next frame is already waiting.
     useEffect(() => {
-        const apply = applyFrameRef.current;
-        if (!apply) return;
-        const newest = sse.recentEvents[0];
-        const newestId = newest ? (newest as { eventId?: string }).eventId ?? null : null;
-        if (newestId && newestId === lastSseIndex.current) return;
-        lastSseIndex.current = newestId;
-        // Walk oldest→newest so revisions bump in stream order; the dedupe set
-        // drops everything the socket already applied.
-        for (let i = sse.recentEvents.length - 1; i >= 0; i -= 1) {
-            apply(sse.recentEvents[i], false);
-        }
-    }, [sse.recentEvents]);
+        const store = getPraxisStreamStore();
+        let previousHead: StreamEvent | undefined;
+        const receive = () => {
+            const snapshot = store.getSnapshot();
+            const events = snapshot.recentEvents;
+            // On mount replay the buffered frames oldest first. Subsequent
+            // notifications prepend a frame or update only connection metadata.
+            const seenAt = previousHead ? events.indexOf(previousHead) : -1;
+            const count = seenAt < 0 ? events.length : seenAt;
+            for (let i = count - 1; i >= 0; i--) applyFrame(events[i], false);
+            previousHead = events[0];
+            setSse(snapshot);
+        };
+        const unsubscribe = store.subscribe(receive);
+        receive();
+        return unsubscribe;
+    }, [applyFrame]);
 
     const value = useMemo<LiveBoardStateValue>(() => {
         const transport: LiveTransport = socketState.socketConnected

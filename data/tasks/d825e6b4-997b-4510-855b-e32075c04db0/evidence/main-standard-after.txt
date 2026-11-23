@@ -1,0 +1,28 @@
+CHECK_SETUP stack_up {"fixture":"http://127.0.0.1:51829","api":"http://127.0.0.1:51830","dashboard":"http://127.0.0.1:51831"}
+CHECK_DESKTOP_LIVE working_indicator {"status":"Working","elapsed":"under 1s","screenshot":"desktop-working.png"}
+CHECK_DESKTOP_LIVE steps_in_order_while_running {"stages":["r","dr","dddr","ddddr","dddddr"],"rows":[{"text":"Check which files changed","status":"done"},{"text":"Read TheNexus/dashboard/src/components/ai-terminal.tsx","status":"done"},{"text":"Reasoning: The turn stream already carries status frames, so the steps can ride on it. Never echo [redacted] or [redacted].","status":"done"},{"text":"Ask the task board with [redacted], [redacted] and [redacted]","status":"done"},{"text":"Search for \"status_url\"","status":"done"},{"text":"Run the chat test suite","status":"running"}]}
+CHECK_DESKTOP_LIVE live_screenshot chat-live-desktop.png
+CHECK_DESKTOP_FOLD folded {"label":"Worked for 2s · 6 steps","duration_ms":2805,"step_count":6,"screenshot":"chat-folded-desktop.png"}
+CHECK_DESKTOP_FOLD expanded {"rows":6,"screenshot":"chat-expanded-desktop.png"}
+CHECK_DESKTOP_RELOAD reload_keeps_reply_not_steps {"messages":2,"screenshot":"desktop-after-reload.png"}
+CHECK_DESKTOP_REPLAY reload_during_turn {"label":"Worked for 6s · 6 steps","posts":1,"screenshot":"desktop-after-replay.png"}
+CHECK_DESKTOP_DEGRADED degraded_notice {"alert":"The chat session failed before it produced a reply, so the fallback agent is taking this message.","screenshot":"desktop-degraded.png"}
+CHECK_DESKTOP_UNCERTAIN uncertain_reply {"line":"Worked for under 1s · 1 step · 1 did not finish","screenshot":"desktop-uncertain.png"}
+CHECK_DESKTOP_LONG long_turn_kept_whole {"steps":520,"line":"Worked for 29s · 520 steps","reloaded_at_step":260,"longest_text":3850,"screenshot":"desktop-long-turn.png"}
+CHECK_DESKTOP_VIEWER viewer_left_column {"label":"Thinking","screenshot":"viewer-left-column-desktop.png"}
+CHECK_ALLOWANCE allowance_budget {"published":{"status":404,"limit":"5758","policy":"5758;w=900"},"idle_requests_in_sample":53,"sample_seconds":60,"idle_per_window":795,"followed_turn_per_window":360,"allowance_per_window":5758}
+CHECK_PHONE_LIVE working_indicator {"status":"Working","elapsed":"under 1s","screenshot":"phone-working.png"}
+CHECK_PHONE_LIVE steps_in_order_while_running {"stages":["r","dr","dddr","ddddr","dddddr"],"rows":[{"text":"Check which files changed","status":"done"},{"text":"Read TheNexus/dashboard/src/components/ai-terminal.tsx","status":"done"},{"text":"Reasoning: The turn stream already carries status frames, so the steps can ride on it. Never echo [redacted] or [redacted].","status":"done"},{"text":"Ask the task board with [redacted], [redacted] and [redacted]","status":"done"},{"text":"Search for \"status_url\"","status":"done"},{"text":"Run the chat test suite","status":"running"}]}
+CHECK_PHONE_LIVE live_screenshot chat-live-phone.png
+CHECK_PHONE_FOLD folded {"label":"Worked for 2s · 6 steps","duration_ms":2592,"step_count":6,"screenshot":"chat-folded-phone.png"}
+CHECK_PHONE_FOLD expanded {"rows":6,"screenshot":"chat-expanded-phone.png"}
+CHECK_PHONE_RELOAD reload_keeps_reply_not_steps {"messages":2,"screenshot":"phone-after-reload.png"}
+CHECK_PHONE_REPLAY reload_during_turn {"label":"Worked for 6s · 6 steps","posts":1,"screenshot":"phone-after-replay.png"}
+CHECK_PHONE_DEGRADED degraded_notice {"alert":"The chat session failed before it produced a reply, so the fallback agent is taking this message.","screenshot":"phone-degraded.png"}
+CHECK_PHONE_UNCERTAIN uncertain_reply {"line":"Worked for under 1s · 1 step · 1 did not finish","screenshot":"phone-uncertain.png"}
+CHECK_PHONE_LONG long_turn_kept_whole {"steps":520,"line":"Worked for 29s · 520 steps","reloaded_at_step":260,"longest_text":3850,"screenshot":"phone-long-turn.png"}
+CHECK_PHONE_VIEWER viewer_left_column {"label":"Thinking","screenshot":"viewer-left-column-phone.png"}
+CHECK_SECRETS planted_values_absent {"planted":12,"scanned":{"chat streams received by the browser":{"bytes":19653,"leaked":0},"turn status route":{"bytes":64597,"leaked":0},"Praxis process output":{"bytes":27980,"leaked":0},"Praxis logger":{"bytes":11814,"leaked":0},"global thinking trace":{"bytes":28179,"leaked":0},"Nexus API output":{"bytes":7091,"leaked":0},"dashboard server output":{"bytes":3149,"leaked":0},"Nexus database":{"bytes":5438969,"leaked":0},"Praxis data folder":{"bytes":1205509,"leaked":0}}}
+CHECK_ISOLATION isolation {"responsesByPort":{"dashboard":565,"throwaway-api":66},"chatPosts":10}
+CHECK_RESULT ok (26 steps)
+exit 0

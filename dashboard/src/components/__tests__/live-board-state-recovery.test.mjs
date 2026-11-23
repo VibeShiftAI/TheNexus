@@ -6,11 +6,12 @@
 // backoff and debounce run deterministically.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { act, createElement } from "react";
+import { act, createElement, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
 
 import { __sockets, __reset } from "socket.io-client";
 import { LiveBoardStateProvider, useLiveBoardState, useLiveRefetch } from "../live-board-state.tsx";
+import { MAX_RECENT_EVENTS } from "../live-board-state-logic.ts";
 import { __setConnectionLifecycleForTests, createConnectionLifecycle } from "../../lib/connection-lifecycle.ts";
 import { createPraxisStreamStore } from "../../lib/praxis-stream-store.ts";
 import { __setPraxisStreamStoreForTests } from "../../hooks/use-praxis-stream.ts";
@@ -42,17 +43,20 @@ class FakeSource {
     }
 }
 
-function Consumer({ id, domains, counts }) {
+function Consumer({ id, domains, counts, onCommit }) {
     useLiveRefetch(domains, () => {
         counts[id] = (counts[id] ?? 0) + 1;
     }, { fallbackPollMs: 0 });
-    const { phase, connected, reauthAttempted, signIn, reauthenticate } = useLiveBoardState();
+    const { phase, connected, reauthAttempted, signIn, reauthenticate, revisions, recentEvents } = useLiveBoardState();
+    useLayoutEffect(() => { onCommit?.(); });
     return createElement(
         "div",
         {
             "data-consumer": id,
             "data-phase": phase,
             "data-connected": String(connected),
+            "data-activity": revisions.activity,
+            "data-newest": recentEvents[0]?.eventId,
             "data-reauth-attempted": String(reauthAttempted),
             "data-sign-in": signIn,
         },
@@ -103,13 +107,13 @@ function harness(t, probe) {
         socket: () => __sockets[0],
         attr: (id, name) => container.querySelector(`[data-consumer="${id}"]`).getAttribute(name),
         listeners: () => Object.fromEntries(SOCKET_EVENTS.map((e) => [e, __sockets[0].__listenerCount(e)])),
-        async mount(consumers) {
+        async mount(consumers, onCommit) {
             await act(async () =>
                 root.render(
                     createElement(
                         LiveBoardStateProvider,
                         null,
-                        ...consumers.map(([id, domains]) => createElement(Consumer, { key: id, id, domains, counts })),
+                        ...consumers.map(([id, domains]) => createElement(Consumer, { key: id, id, domains, counts, onCommit })),
                     ),
                 ),
             );
@@ -299,6 +303,28 @@ test("`connected` follows the socket even while the SSE source is dead (the PRAX
         assert.equal(h.attr("strip", "data-connected"), "true", "socket still delivering");
         await h.step(3000);
         assert.equal(h.sources.length, 2, "and the store reopened the source on its own");
+    } finally {
+        h.cleanup();
+    }
+});
+
+test("a burst between paints folds every SSE frame and counts a socket duplicate once", async (t) => {
+    const h = harness(t, async () => "ok");
+    try {
+        let commits = 0;
+        await h.mount([["feed", ["activity"]]], () => commits++);
+        const beforeBurst = commits;
+        const frames = MAX_RECENT_EVENTS * 3;
+        await h.do(() => {
+            for (let i = 0; i < frames; i++) {
+                const frame = { type: "thinking.trace", eventId: `step-${i}`, content: `Step ${i}` };
+                h.sources[0].onmessage({ data: JSON.stringify(frame) });
+                if (i === 0) h.socket().__emit("praxis:event", frame);
+            }
+        });
+        assert.equal(commits - beforeBurst, 1, "publish the burst together without a follow-up render to fold it");
+        assert.equal(h.attr("feed", "data-activity"), String(frames));
+        assert.equal(h.attr("feed", "data-newest"), `step-${frames - 1}`);
     } finally {
         h.cleanup();
     }

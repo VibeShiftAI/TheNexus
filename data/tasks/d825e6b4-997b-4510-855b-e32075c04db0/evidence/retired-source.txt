@@ -1,0 +1,12 @@
+Chrome CDP observation during the unmodified main check (d7d88177).
+Checked document.body.innerText, #station-core.outerHTML and attribute values containing the case-insensitive phrase.
+{"station": true, "visibleTextHit": true, "chatHit": false, "matches": [{"el": "P", "attr": "title", "value": "Merge praxis/run/eed607d4-ac1d-4e28-98ce-659d835ba4e9 into main: Show Praxis's working steps live in the chat and retire the 'taking longer than expected' message", "text": "Merge praxis/run/eed607d4-ac1d-4e28-98ce-659d835ba4e9 into main: Show Praxis's w", "owners": ["CommitRow", "ActivityFeed", "Home", "ClientPageRoot", "SegmentViewNode", "InnerLayoutRouter", "RedirectErrorBoundary", "RedirectBoundary"], "station": false}]}
+
+Historical project-card path reproduced with renderToStaticMarkup(ProjectCard) and the actual subject of git log -1 --format=%s 7e34d675.
+{
+  "commit": "7e34d675",
+  "element": "<span class=\"truncate\" title=\"Show Praxis's working steps live in the chat and retire the 'taking longer than expected' message\">main<span class=\"text-slate-600\"> @7e34d67</span></span>",
+  "cardTextContainsPhrase": false
+}
+
+The old clean() searched the entire serialized document and both storage areas. A commit subject in either the project-card tooltip or the Activity Feed row trips that assertion.
