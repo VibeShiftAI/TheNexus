@@ -88,6 +88,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
     // NOTE: the composer's draft text deliberately does NOT live here — it is
     // ChatComposer's own state, so keystrokes can't re-render the transcript.
     const [loading, setLoading] = useState(false);
+    const [unconfirmedSends, setUnconfirmedSends] = useState<{ id: string; text: string }[]>([]);
     // A turn's status, steps and elapsed time live in the step store, outside the transcript.
     const turnSteps = useChatTurnSteps({ messages, conversationId, isLoadingHistory });
 
@@ -235,7 +236,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         });
     };
 
-    const runIngest = async (payload: string, isUrl: boolean, { setMessages }: SendConversation) => {
+    const runIngest = async (payload: string, isUrl: boolean, { setMessages, finish }: SendConversation) => {
         try {
             const authHeader = await getAuthHeader();
             const body = isUrl
@@ -268,6 +269,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 timestamp: new Date()
             }]);
         } finally {
+            finish();
             setLoading(false);
         }
     };
@@ -298,6 +300,14 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
 
     const runSend = async (chat: SendConversation, text: string, clientMessageId: string, filesToUpload: File[], currentAudioBlob: Blob | null, relayDepth = 0) => {
         const { setMessages } = chat;
+        let receivedReply: Message | undefined;
+        const reportFailure = (detail: string) => {
+            noteChatSend(clientMessageId, 'failed', { detail });
+            if (!chat.isVisible()) {
+                const submitted = text || filesToUpload.map(file => file.name).join(', ') || 'Voice recording';
+                setUnconfirmedSends(prev => [...prev, { id: clientMessageId, text: submitted }]);
+            }
+        };
         try {
             const authHeader = await getAuthHeader();
 
@@ -377,7 +387,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 // If the server included a user-facing response (e.g., Praxis proxy error),
                 // show it instead of a raw error so the user gets context
                 if (fallbackResponse) {
-                    noteChatSend(clientMessageId,'failed',{detail});
+                    reportFailure(detail);
                     setMessages(prev => [...prev, {
                         role: 'assistant',
                         content: fallbackResponse,
@@ -423,6 +433,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 if (finalEvent?.morningKickoff) dispatchMorningKickoff();
                 relayDisplayDirective(chat, finalEvent, relayDepth);
                 noteReplyOutcome(clientMessageId, finalEvent);
+                receivedReply = finalMessage;
                 return;
             }
 
@@ -447,8 +458,9 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             if (data.morningKickoff) dispatchMorningKickoff();
             relayDisplayDirective(chat, data, relayDepth);
             noteReplyOutcome(clientMessageId, data);
+            receivedReply = assistantMessage;
         } catch (error: any) {
-            noteChatSend(clientMessageId,'failed',{detail:error?.message || 'Reply could not be confirmed'});
+            reportFailure(error?.message || 'Reply could not be confirmed');
             turnSteps.followAfterLoss(clientMessageId);
             console.error('AI Chat error:', error);
             // Show a diagnostic error instead of the misleading "429 Rate Limit"
@@ -466,6 +478,8 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 timestamp: new Date(),
             }]);
         } finally {
+            // Display-report follow-ups reuse the originating chat handle.
+            if (relayDepth === 0) chat.finish(receivedReply);
             setLoading(false);
             turnSteps.release(clientMessageId);
         }
@@ -627,6 +641,14 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             </div>
 
             {/* Input */}
+            {unconfirmedSends.map(failure => (
+                <div key={failure.id} role="alert" className="shrink-0 rounded-md border border-amber-700/60 p-2 text-sm text-amber-200">
+                    A message sent before you switched chats could not be confirmed.
+                    <p className="my-1 max-h-24 overflow-y-auto whitespace-pre-wrap break-words">{failure.text}</p>
+                    <a className="underline" href={`/chat/turns/${encodeURIComponent(failure.id)}`} target="_blank" rel="noreferrer">Check this saved turn</a>
+                    <button type="button" className="ml-3 underline" onClick={() => setUnconfirmedSends(prev => prev.filter(item => item.id !== failure.id))}>Dismiss</button>
+                </div>
+            ))}
             <ComposerRow
                 isInline={isInline}
                 isOpen={isOpen}

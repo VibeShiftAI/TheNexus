@@ -32,7 +32,7 @@ function gate() {
     return { promise, resolve };
 }
 
-async function fixture(t, operation, delay, { rejectNavigation = false, modelReply } = {}) {
+async function fixture(t, operation, delay, { rejectNavigation = false, modelReply, sendPost } = {}) {
     const target = await db.createConversation('praxis', 'History ' + t.name);
     const previous = await db.createConversation('praxis', 'Previous');
     const seed = (id, content) => db.saveChatMessage({ conversation_id: id, mode: 'praxis', role: 'assistant', content });
@@ -70,7 +70,7 @@ async function fixture(t, operation, delay, { rejectNavigation = false, modelRep
         }
         if (pathname === '/api/ai/chat' && init?.method === 'POST') {
             posts.push(JSON.parse(init.body));
-            const response = await request();
+            const response = sendPost ? await sendPost(request) : await request();
             replies.push(response.clone().text());
             return response;
         }
@@ -274,3 +274,142 @@ test('a file dropped while a send waits stays attached to the next message', asy
     assert.deepEqual(view.posts[1].files.map(file => file.name), ['later.txt']);
     assert.deepEqual(chips(), []);
 });
+
+function submitDuringSwitch(view) {
+    const field = view.host.querySelector('textarea');
+    typeCharacter(field, message);
+    pressKey(field, 'Enter');
+    assert.equal(view.rows('user').filter(row => row.includes(message)).length, 1);
+    return field;
+}
+
+test('picking the same chat twice keeps the accepted user row exactly once', async t => {
+    const post = gate();
+    const savedReply = gate();
+    const deliverReply = gate();
+    t.after(post.resolve);
+    t.after(deliverReply.resolve);
+    const view = await fixture(t, 'switch', 'response', {
+        sendPost: async request => {
+            await post.promise;
+            const response = await request();
+            savedReply.resolve();
+            await deliverReply.promise;
+            return response;
+        },
+    });
+    const field = submitDuringSwitch(view);
+    await view.pick(view.target);
+    await act(async () => { view.release.resolve(); });
+    // The second snapshot is older than the POST. Then re-open with a fresh snapshot.
+    await view.until(() => view.currentId() === view.target.id && view.posts.length === 1);
+    await act(async () => { post.resolve(); await savedReply.promise; });
+    const userRows = () => view.rows('user').filter(row => row.includes(message)).length;
+    assert.equal(userRows(), 1, 'the older snapshot must keep the local send');
+    await view.pick(view.target);
+    await view.until(() => view.currentId() === view.target.id);
+    assert.equal(userRows(), 1, 'the fresh snapshot already contains the in-flight send');
+    await act(async () => { deliverReply.resolve(); });
+    await view.until(() => !field.disabled);
+    const saved = await db.getChatMessages(view.target.id);
+    const stored = saved.filter(row => row.role === 'user' && row.content === message).length;
+    const replyVisible = view.rows('assistant').some(row => row.includes('Test reply'));
+    t.diagnostic(JSON.stringify({ stored, visibleUserRows: userRows(), replyVisible }));
+    assert.equal(stored, 1);
+    assert.equal(replyVisible, true);
+    assert.equal(userRows(), 1);
+    assert.equal(view.posts.length, 1);
+});
+
+test('a stale repeat-pick response arriving after the send keeps both rows of the turn', async t => {
+    const snapshotRead = gate();
+    const releaseSnapshot = gate();
+    t.after(snapshotRead.resolve);
+    t.after(releaseSnapshot.resolve);
+    const view = await fixture(t, 'switch', 'response', {
+        sendPost: async request => { await snapshotRead.promise; return request(); },
+    });
+    const field = submitDuringSwitch(view);
+    await view.pick(view.target);
+    const getHistory = db.getChatMessages;
+    t.mock.method(db, 'getChatMessages', async (...args) => {
+        const rows = await getHistory(...args);
+        snapshotRead.resolve();
+        await releaseSnapshot.promise;
+        return rows;
+    }, { times: 1 });
+    await act(async () => { view.release.resolve(); });
+    await view.until(() => view.posts.length === 1 && !field.disabled);
+    await act(async () => { releaseSnapshot.resolve(); });
+    await view.until(() => view.currentId() === view.target.id);
+    assert.equal(view.rows('user').filter(row => row.includes(message)).length, 1);
+    assert.equal(view.rows('assistant').filter(row => row.includes('Test reply')).length, 1);
+});
+
+for (const failure of ['HTTP 503', 'Nexus error response']) {
+    test('a failed POST after a successful later pick keeps the submitted text visible: ' + failure, async t => {
+        const post = gate();
+        t.after(post.resolve);
+        const view = await fixture(t, 'create', 'response', {
+            sendPost: async request => {
+                await post.promise;
+                if (failure === 'HTTP 503') return new Response(null, { status: 503 });
+                return request();
+            },
+        });
+        const created = (await db.getActiveConversation()).id;
+        const field = submitDuringSwitch(view);
+        await view.pick(view.target);
+        await act(async () => { view.release.resolve(); });
+        await view.until(() => view.currentId() === view.target.id && view.posts.length === 1);
+        if (failure === 'Nexus error response') {
+            t.mock.method(db, 'saveChatMessage', () => { throw new Error('Storage unavailable'); }, { times: 1 });
+        }
+        await act(async () => { post.resolve(); });
+        await view.until(() => !field.disabled);
+        const [attempt] = view.posts;
+        const stored = Boolean(await db.getChatMessageById(attempt.clientMessageId));
+        const notice = [...view.host.querySelectorAll('[role="alert"]')].find(el => el.textContent.includes(message));
+        t.diagnostic(JSON.stringify({ stored, draft: field.value, notice: notice?.textContent ?? null }));
+        assert.equal(attempt.conversationId, created);
+        assert.equal(stored, false);
+        assert.equal(view.currentId(), view.target.id);
+        assert.equal(view.currentId(), (await db.getActiveConversation()).id);
+        assert.deepEqual(view.rows('user'), [], 'the failed turn does not belong to the newly selected chat');
+        assert.ok(notice && /could not be confirmed/i.test(notice.textContent));
+        assert.equal(notice.querySelector('a').getAttribute('href'), '/chat/turns/' + attempt.clientMessageId);
+        act(() => notice.querySelector('button').click());
+        assert.equal(view.host.contains(notice), false);
+        assert.equal(view.posts.length, 1);
+    });
+}
+
+for (const [sequence, bOpens, attemptC] of [
+    ['B opens', true, false],
+    ['B opens, C fails', true, true],
+    ['B fails, C fails', false, true],
+]) {
+    test('New, send, ' + sequence + ' keeps the message in the new chat', async t => {
+        const third = await db.createConversation('praxis', 'Third pick ' + t.name);
+        const view = await fixture(t, 'create', 'response');
+        const created = (await db.getActiveConversation()).id;
+        const field = submitDuringSwitch(view);
+        await view.pick(view.target);
+        if (attemptC) {
+            await view.pick(third);
+            await db.deleteConversation(third.id);
+        }
+        if (!bOpens) await db.deleteConversation(view.target.id);
+        await act(async () => { view.release.resolve(); });
+        const expected = bOpens ? view.target.id : created;
+        await view.until(() => view.currentId() === expected && !field.disabled);
+        assert.equal((await db.getActiveConversation()).id, expected);
+        assert.equal(view.posts.length, 1);
+        assert.equal(view.posts[0].conversationId, created);
+        const copies = (await db.getChatMessages(created)).filter(m => m.role === 'user' && m.content === message);
+        assert.deepEqual(copies.map(m => m.id), [view.posts[0].clientMessageId]);
+        assert.equal(view.rows('user').filter(row => row.includes(message)).length, bOpens ? 0 : 1);
+        assert.equal(view.rows('assistant').some(row => row.includes('Destination history')), bOpens);
+        assert.equal(view.rows('system').some(row => row.includes('Could not open')), attemptC);
+    });
+}

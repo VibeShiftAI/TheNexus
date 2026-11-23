@@ -148,6 +148,8 @@ export interface SendConversation {
     id: string | null;
     history: Message[];
     setMessages: Dispatch<SetStateAction<Message[]>>;
+    isVisible: () => boolean;
+    finish: (reply?: Message) => void;
 }
 
 interface ConversationSnapshot {
@@ -263,6 +265,7 @@ export function CortexProvider({ children }: { children: ReactNode }) {
     const initialised = useRef(false);
     // Network callbacks can run between adopting a conversation and React's next render.
     const activeConversation = useRef<{ id: string | null; history: Message[] }>({ id: null, history: [] });
+    const sending = useRef(new Set<{ conversationId: string | null; rows: Message[] }>());
     const pendingSwitch = useRef<{ ready: Promise<ConversationSnapshot>; outgoing: Message[] } | null>(null);
     const [switchPreview, setSwitchPreview] = useState<Message[] | null>(null);
     const navigationRevision = useRef(0);
@@ -372,14 +375,21 @@ export function CortexProvider({ children }: { children: ReactNode }) {
     // but wait for that selection's id and history before posting the turn.
     const beginChatSend = (message: Message): SendConversation | Promise<SendConversation> => {
         const revision = navigationRevision.current;
-        const forConversation = (id: string | null, history: Message[]): SendConversation => ({
-            id, history,
-            setMessages: update => {
-                // On first mount a legacy send can precede the initial active id.
-                const sameInitialView = id === null && revision === navigationRevision.current;
-                if (sameInitialView || activeConversation.current.id === id) setMessages(update);
-            },
-        });
+        const forConversation = (id: string | null, history: Message[]): SendConversation => {
+            const turn = { conversationId: id, rows: [message] };
+            sending.current.add(turn);
+            // On first mount a legacy send can precede the initial active id.
+            const isActive = () => activeConversation.current.id === id || (id === null && revision === navigationRevision.current);
+            return {
+                id, history,
+                setMessages: update => { if (isActive()) setMessages(update); },
+                isVisible: () => !pendingSwitch.current && isActive(),
+                finish: reply => {
+                    if (reply) turn.rows.push(reply);
+                    sending.current.delete(turn);
+                },
+            };
+        };
         const pending = pendingSwitch.current;
         if (pending) {
             pending.outgoing = [...pending.outgoing, message];
@@ -397,6 +407,9 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         const ready = (async (): Promise<ConversationSnapshot> => {
             // Mutations change the server's active thread. Process rapid picks in click order.
             if (previous) await previous.ready.catch(() => {});
+            // A repeat pick can read history before an accepted POST is saved. Take
+            // these rows now, since the send may finish before that snapshot returns.
+            const concurrentTurns = [...sending.current].filter(turn => turn.conversationId === id);
             const url = `${apiBase()}/api/chat/conversations`;
             const res = id === undefined
                 ? await fetch(url, {
@@ -408,9 +421,17 @@ export function CortexProvider({ children }: { children: ReactNode }) {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             if (!data.conversation?.id) throw new Error('Missing conversation id');
+            const history: Message[] = (data.messages || []).map(mapStoredMessage);
+            const storedIds = new Set(history.map(row => row.id));
+            for (const row of concurrentTurns.flatMap(turn => turn.rows)) {
+                if (row.id && !storedIds.has(row.id)) {
+                    history.push(row);
+                    storedIds.add(row.id);
+                }
+            }
             return {
                 id: data.conversation.id,
-                history: (data.messages || []).map(mapStoredMessage),
+                history,
                 hasMore: data.hasMore ?? false,
             };
         })();
