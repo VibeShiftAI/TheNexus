@@ -3,7 +3,7 @@
  * Today's Schedule.
  *
  * The schedule surfaces (the home timeline and /calendar) read calendar
- * events: day-plan slots and the [Ad-hoc] completions the reconciler writes
+ * events: day-plan slots and the off-plan completions the reconciler writes
  * AFTER a task finishes. Work Praxis queued from chat had no row until then,
  * so Robert could not see that it was in the queue (2026-10-04). Nexus
  * GET /api/dispatch-insight/live-work now projects what is running, queued
@@ -33,6 +33,7 @@
 import { isTaskDone } from "@praxis/contract";
 import type { CalendarEvent } from "@/lib/calendar";
 import type { LiveWorkItem, LiveWorkLane, LiveWorkResponse } from "@/lib/nexus/dispatch-insight";
+import { withSlotTag } from "@/lib/slot-tag";
 
 const LANE_RANK: Record<LiveWorkLane, number> = { running: 0, qa: 1, queued: 2, finished: 3, waiting: 4 };
 
@@ -187,7 +188,7 @@ export function mergeLiveWork(
     const row: LiveScheduleRow = {
       key: item.improvement ? `improvement:${item.taskId}:${item.improvement.id}` : `live:${item.taskId}`,
       taskId: item.taskId,
-      title: item.title || item.taskId,
+      title: withSlotTag(item.title || item.taskId, item.slotNumber),
       lane: item.lane,
       item,
       whenIso: liveItemClock(item),

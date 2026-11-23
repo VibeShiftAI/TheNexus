@@ -1,0 +1,3063 @@
+{
+  "label": "after",
+  "at": "2026-11-23T14:09:34.715Z",
+  "base": "http://localhost:50378",
+  "dashboard": "/Volumes/Projects/.praxis-worktrees/56c15b54-b7e4-473d-9f4a-102919de185d/TheNexus/dashboard",
+  "scenarios": {
+    "desktop idle": {
+      "expectedRuns": 0,
+      "expectedSeats": 0,
+      "map": {
+        "live": "true",
+        "runCount": "0",
+        "map": {
+          "left": 41,
+          "top": 709,
+          "right": 458,
+          "bottom": 1119,
+          "width": 417,
+          "height": 410
+        },
+        "runs": [],
+        "flows": [],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 816,
+              "right": 122,
+              "bottom": 836,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 908,
+              "right": 122,
+              "bottom": 928,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 377,
+              "top": 816,
+              "right": 397,
+              "bottom": 836,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 188,
+              "top": 1003,
+              "right": 202,
+              "bottom": 1017,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "false",
+            "active": "false",
+            "label": "Antigravity",
+            "phase": "Standing by",
+            "runList": false
+          },
+          {
+            "id": "claude-code",
+            "expanded": "false",
+            "active": "false",
+            "label": "Claude Code",
+            "phase": "Standing by",
+            "runList": false
+          },
+          {
+            "id": "codex",
+            "expanded": "false",
+            "active": "false",
+            "label": "Codex",
+            "phase": "Standing by",
+            "runList": false
+          },
+          {
+            "id": "openrouter",
+            "expanded": "false",
+            "active": "false",
+            "label": "OpenRouter",
+            "phase": "Standing by",
+            "runList": false
+          }
+        ],
+        "oldChips": 0,
+        "queue": "Dispatch queue clear",
+        "pageOverflowX": 0,
+        "viewport": 1440
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Idle Signal lost — reconnecting — — Default RECONNECTING Offline Signal lost — attempting to re-establish link Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "idle-desktop-ops-graphic.png",
+      "viewerShot": "idle-desktop-main-viewer.png"
+    },
+    "desktop busy": {
+      "expectedRuns": 6,
+      "expectedSeats": 0,
+      "map": {
+        "live": "true",
+        "runCount": "6",
+        "map": {
+          "left": 41,
+          "top": 709,
+          "right": 458,
+          "bottom": 1415,
+          "width": 417,
+          "height": 706
+        },
+        "runs": [
+          {
+            "key": "fx-site-audit",
+            "provider": "antigravity",
+            "role": "building",
+            "title": "Audit the landing page on a phone",
+            "model": "gemini-4-argon",
+            "effort": null,
+            "phase": "browsing",
+            "elapsed": "8m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 63,
+              "top": 898,
+              "right": 174,
+              "bottom": 927,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 55,
+              "top": 893,
+              "right": 181,
+              "bottom": 962,
+              "width": 126,
+              "height": 69
+            }
+          },
+          {
+            "key": "fx-ops-graphic",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Expand the Ops graphic to show every running agent",
+            "model": "Fable 5.2",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "47m",
+            "slot": "S2",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 90,
+              "top": 1061,
+              "right": 174,
+              "bottom": 1118,
+              "width": 84,
+              "height": 57
+            },
+            "box": {
+              "left": 55,
+              "top": 1056,
+              "right": 181,
+              "bottom": 1153,
+              "width": 126,
+              "height": 97
+            }
+          },
+          {
+            "key": "fx-intake-form",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Repair the intake form validation",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "thinking",
+            "elapsed": "12m",
+            "slot": "S5",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 90,
+              "top": 1162,
+              "right": 174,
+              "bottom": 1205,
+              "width": 84,
+              "height": 43
+            },
+            "box": {
+              "left": 55,
+              "top": 1157,
+              "right": 181,
+              "bottom": 1240,
+              "width": 126,
+              "height": 83
+            }
+          },
+          {
+            "key": "qa--fx-token-scan",
+            "provider": "claude-code",
+            "role": "reviewing",
+            "title": "Review: token usage scan repair",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": null,
+            "elapsed": "3m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 63,
+              "top": 1249,
+              "right": 174,
+              "bottom": 1278,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 55,
+              "top": 1244,
+              "right": 181,
+              "bottom": 1313,
+              "width": 126,
+              "height": 69
+            }
+          },
+          {
+            "key": "fx-slot-numbers",
+            "provider": "codex",
+            "role": "building",
+            "title": "Number the day's schedule slots",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "26m",
+            "slot": "S3",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 352,
+              "top": 898,
+              "right": 436,
+              "bottom": 941,
+              "width": 84,
+              "height": 43
+            },
+            "box": {
+              "left": 318,
+              "top": 893,
+              "right": 444,
+              "bottom": 976,
+              "width": 126,
+              "height": 83
+            }
+          },
+          {
+            "key": "fx-no-model",
+            "provider": "codex",
+            "role": "building",
+            "title": "Thought stream box follows the live run",
+            "model": "unknown",
+            "effort": null,
+            "phase": "thinking",
+            "elapsed": "1m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 325,
+              "top": 985,
+              "right": 436,
+              "bottom": 1014,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 318,
+              "top": 980,
+              "right": 444,
+              "bottom": 1049,
+              "width": 126,
+              "height": 69
+            }
+          }
+        ],
+        "flows": [
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 163
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 166
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 164
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 173
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 253
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 210
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 180
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 274
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 354
+          }
+        ],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 816,
+              "right": 122,
+              "bottom": 836,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 979,
+              "right": 122,
+              "bottom": 999,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 377,
+              "top": 816,
+              "right": 397,
+              "bottom": 836,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 188,
+              "top": 1332,
+              "right": 202,
+              "bottom": 1346,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "true",
+            "active": "true",
+            "label": "Antigravity",
+            "phase": "1 building",
+            "runList": true
+          },
+          {
+            "id": "claude-code",
+            "expanded": "true",
+            "active": "true",
+            "label": "Claude Code",
+            "phase": "2 building · 1 reviewing",
+            "runList": true
+          },
+          {
+            "id": "codex",
+            "expanded": "true",
+            "active": "true",
+            "label": "Codex",
+            "phase": "2 building",
+            "runList": true
+          },
+          {
+            "id": "openrouter",
+            "expanded": "false",
+            "active": "false",
+            "label": "OpenRouter",
+            "phase": "Standing by",
+            "runList": false
+          }
+        ],
+        "oldChips": 0,
+        "queue": "Dispatch queue clear",
+        "pageOverflowX": 0,
+        "viewport": 1440
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Fable 5.2 · testing — unavailable Default LIVE Offline Fable 5.2 · testing Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "busy-desktop-ops-graphic.png",
+      "viewerShot": "busy-desktop-main-viewer.png",
+      "drillDownShot": "busy-desktop-drill-down-from-run-node.png"
+    },
+    "desktop overflow": {
+      "expectedRuns": 23,
+      "expectedSeats": 2,
+      "map": {
+        "live": "true",
+        "runCount": "25",
+        "map": {
+          "left": 41,
+          "top": 709,
+          "right": 458,
+          "bottom": 2439,
+          "width": 417,
+          "height": 1731
+        },
+        "runs": [
+          {
+            "key": "fx-many-22",
+            "provider": "antigravity",
+            "role": "building",
+            "title": "Concurrent fixture task number 22",
+            "model": "gemini-4-argon",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "18m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 63,
+              "top": 898,
+              "right": 174,
+              "bottom": 927,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 55,
+              "top": 893,
+              "right": 181,
+              "bottom": 962,
+              "width": 126,
+              "height": 69
+            }
+          },
+          {
+            "key": "fx-many-23",
+            "provider": "antigravity",
+            "role": "building",
+            "title": "Concurrent fixture task number 23",
+            "model": "gemini-4-argon",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "16m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 63,
+              "top": 971,
+              "right": 174,
+              "bottom": 999,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 55,
+              "top": 966,
+              "right": 181,
+              "bottom": 1048,
+              "width": 126,
+              "height": 83
+            }
+          },
+          {
+            "key": "fx-many-01",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 1",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "1h 0m",
+            "slot": "S1",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 90,
+              "top": 1148,
+              "right": 174,
+              "bottom": 1191,
+              "width": 84,
+              "height": 43
+            },
+            "box": {
+              "left": 55,
+              "top": 1143,
+              "right": 181,
+              "bottom": 1240,
+              "width": 126,
+              "height": 97
+            }
+          },
+          {
+            "key": "fx-many-02",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 2",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "58m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 63,
+              "top": 1249,
+              "right": 174,
+              "bottom": 1277,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 55,
+              "top": 1244,
+              "right": 181,
+              "bottom": 1312,
+              "width": 126,
+              "height": 69
+            }
+          },
+          {
+            "key": "fx-many-03",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 3",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "56m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 63,
+              "top": 1321,
+              "right": 174,
+              "bottom": 1350,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 55,
+              "top": 1316,
+              "right": 181,
+              "bottom": 1385,
+              "width": 126,
+              "height": 69
+            }
+          },
+          {
+            "key": "fx-many-04",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 4",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "54m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 63,
+              "top": 1394,
+              "right": 174,
+              "bottom": 1422,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 55,
+              "top": 1389,
+              "right": 181,
+              "bottom": 1457,
+              "width": 126,
+              "height": 69
+            }
+          },
+          {
+            "key": "qa--fx-many-05",
+            "provider": "claude-code",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 5",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": null,
+            "elapsed": "52m",
+            "slot": "S2",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 90,
+              "top": 1466,
+              "right": 174,
+              "bottom": 1524,
+              "width": 84,
+              "height": 57
+            },
+            "box": {
+              "left": 55,
+              "top": 1461,
+              "right": 181,
+              "bottom": 1559,
+              "width": 126,
+              "height": 97
+            }
+          },
+          {
+            "key": "fx-many-06",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 6",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "50m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 63,
+              "top": 1568,
+              "right": 174,
+              "bottom": 1596,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 55,
+              "top": 1563,
+              "right": 181,
+              "bottom": 1631,
+              "width": 126,
+              "height": 69
+            }
+          },
+          {
+            "key": "fx-many-07",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 7",
+            "model": "unknown",
+            "effort": null,
+            "phase": "testing",
+            "elapsed": "48m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 63,
+              "top": 1640,
+              "right": 174,
+              "bottom": 1669,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 55,
+              "top": 1635,
+              "right": 181,
+              "bottom": 1704,
+              "width": 126,
+              "height": 69
+            }
+          },
+          {
+            "key": "fx-many-08",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 8",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "46m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 63,
+              "top": 1713,
+              "right": 174,
+              "bottom": 1741,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 55,
+              "top": 1708,
+              "right": 181,
+              "bottom": 1776,
+              "width": 126,
+              "height": 69
+            }
+          },
+          {
+            "key": "fx-many-09",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 9",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "44m",
+            "slot": "S3",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 90,
+              "top": 1785,
+              "right": 174,
+              "bottom": 1828,
+              "width": 84,
+              "height": 43
+            },
+            "box": {
+              "left": 55,
+              "top": 1780,
+              "right": 181,
+              "bottom": 1863,
+              "width": 126,
+              "height": 83
+            }
+          },
+          {
+            "key": "qa--fx-many-10",
+            "provider": "claude-code",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 10",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": null,
+            "elapsed": "42m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 63,
+              "top": 1872,
+              "right": 174,
+              "bottom": 1915,
+              "width": 111,
+              "height": 43
+            },
+            "box": {
+              "left": 55,
+              "top": 1867,
+              "right": 181,
+              "bottom": 1950,
+              "width": 126,
+              "height": 83
+            }
+          },
+          {
+            "key": "fx-many-11",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 11",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "40m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 63,
+              "top": 1959,
+              "right": 174,
+              "bottom": 1988,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 55,
+              "top": 1954,
+              "right": 181,
+              "bottom": 2023,
+              "width": 126,
+              "height": 69
+            }
+          },
+          {
+            "key": "fx-many-12",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 12",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "38m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 63,
+              "top": 2032,
+              "right": 174,
+              "bottom": 2060,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 55,
+              "top": 2027,
+              "right": 181,
+              "bottom": 2095,
+              "width": 126,
+              "height": 69
+            }
+          },
+          {
+            "key": "fx-many-13",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 13",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "36m",
+            "slot": "S4",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 90,
+              "top": 2104,
+              "right": 174,
+              "bottom": 2147,
+              "width": 84,
+              "height": 43
+            },
+            "box": {
+              "left": 55,
+              "top": 2099,
+              "right": 181,
+              "bottom": 2182,
+              "width": 126,
+              "height": 83
+            }
+          },
+          {
+            "key": "fx-many-14",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 14",
+            "model": "unknown",
+            "effort": null,
+            "phase": "writing",
+            "elapsed": "34m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 63,
+              "top": 2191,
+              "right": 174,
+              "bottom": 2220,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 55,
+              "top": 2186,
+              "right": 181,
+              "bottom": 2255,
+              "width": 126,
+              "height": 69
+            }
+          },
+          {
+            "key": "seat:cli:claude-code/claude-opus-5-5",
+            "provider": "claude-code",
+            "role": "council",
+            "title": "Fixture council: next improvements",
+            "model": "Opus 5.5",
+            "effort": null,
+            "phase": null,
+            "elapsed": "1m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 63,
+              "top": 2264,
+              "right": 174,
+              "bottom": 2292,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 55,
+              "top": 2259,
+              "right": 181,
+              "bottom": 2313,
+              "width": 126,
+              "height": 55
+            }
+          },
+          {
+            "key": "qa--fx-many-15",
+            "provider": "codex",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 15",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": null,
+            "elapsed": "32m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 325,
+              "top": 898,
+              "right": 436,
+              "bottom": 941,
+              "width": 111,
+              "height": 43
+            },
+            "box": {
+              "left": 318,
+              "top": 893,
+              "right": 444,
+              "bottom": 976,
+              "width": 126,
+              "height": 83
+            }
+          },
+          {
+            "key": "fx-many-16",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 16",
+            "model": "GPT-6.2 Astra",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "30m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 325,
+              "top": 985,
+              "right": 436,
+              "bottom": 1014,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 318,
+              "top": 980,
+              "right": 444,
+              "bottom": 1049,
+              "width": 126,
+              "height": 69
+            }
+          },
+          {
+            "key": "fx-many-17",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 17",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "28m",
+            "slot": "S5",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 352,
+              "top": 1058,
+              "right": 436,
+              "bottom": 1101,
+              "width": 84,
+              "height": 43
+            },
+            "box": {
+              "left": 318,
+              "top": 1053,
+              "right": 444,
+              "bottom": 1136,
+              "width": 126,
+              "height": 83
+            }
+          },
+          {
+            "key": "fx-many-18",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 18",
+            "model": "GPT-6.2 Astra",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "26m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 325,
+              "top": 1145,
+              "right": 436,
+              "bottom": 1173,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 318,
+              "top": 1140,
+              "right": 444,
+              "bottom": 1208,
+              "width": 126,
+              "height": 69
+            }
+          },
+          {
+            "key": "fx-many-19",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 19",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "24m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 325,
+              "top": 1217,
+              "right": 436,
+              "bottom": 1246,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 318,
+              "top": 1212,
+              "right": 444,
+              "bottom": 1281,
+              "width": 126,
+              "height": 69
+            }
+          },
+          {
+            "key": "qa--fx-many-20",
+            "provider": "codex",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 20",
+            "model": "GPT-6.2 Astra",
+            "effort": "high",
+            "phase": null,
+            "elapsed": "22m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 325,
+              "top": 1290,
+              "right": 436,
+              "bottom": 1333,
+              "width": 111,
+              "height": 43
+            },
+            "box": {
+              "left": 318,
+              "top": 1285,
+              "right": 444,
+              "bottom": 1368,
+              "width": 126,
+              "height": 83
+            }
+          },
+          {
+            "key": "fx-many-21",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 21",
+            "model": "unknown",
+            "effort": null,
+            "phase": "writing",
+            "elapsed": "20m",
+            "slot": "S6",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 352,
+              "top": 1377,
+              "right": 436,
+              "bottom": 1419,
+              "width": 84,
+              "height": 43
+            },
+            "box": {
+              "left": 318,
+              "top": 1372,
+              "right": 444,
+              "bottom": 1454,
+              "width": 126,
+              "height": 83
+            }
+          },
+          {
+            "key": "seat:cli:codex/gpt-6.2-astra",
+            "provider": "codex",
+            "role": "council",
+            "title": "Fixture council: next improvements",
+            "model": "GPT-6.2 Astra",
+            "effort": null,
+            "phase": null,
+            "elapsed": "1m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 325,
+              "top": 1463,
+              "right": 436,
+              "bottom": 1492,
+              "width": 111,
+              "height": 29
+            },
+            "box": {
+              "left": 318,
+              "top": 1458,
+              "right": 444,
+              "bottom": 1527,
+              "width": 126,
+              "height": 69
+            }
+          }
+        ],
+        "flows": [
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 163
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 166
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 245
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 164
+          },
+          {
+            "wire": "council",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 138
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 173
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 253
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 332
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 412
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 485
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 564
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 651
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 731
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 283
+          },
+          {
+            "wire": "council",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 317
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 179
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 266
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 339
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 411
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 498
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 585
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 658
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 730
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 810
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 897
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 977
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 1049
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 1129
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 1209
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 1274
+          }
+        ],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 816,
+              "right": 122,
+              "bottom": 836,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 1065,
+              "right": 122,
+              "bottom": 1085,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 377,
+              "top": 816,
+              "right": 397,
+              "bottom": 836,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 188,
+              "top": 2332,
+              "right": 202,
+              "bottom": 2346,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "true",
+            "active": "true",
+            "label": "Antigravity",
+            "phase": "2 building",
+            "runList": true
+          },
+          {
+            "id": "claude-code",
+            "expanded": "true",
+            "active": "true",
+            "label": "Claude Code",
+            "phase": "12 building · 2 reviewing",
+            "runList": true
+          },
+          {
+            "id": "codex",
+            "expanded": "true",
+            "active": "true",
+            "label": "Codex",
+            "phase": "5 building · 2 reviewing",
+            "runList": true
+          },
+          {
+            "id": "openrouter",
+            "expanded": "false",
+            "active": "false",
+            "label": "OpenRouter",
+            "phase": "Standing by",
+            "runList": false
+          }
+        ],
+        "oldChips": 0,
+        "queue": "01 S9 Queued: rebuild the system map 4m 02 Queued: refresh the model registry 2m +1 queued · open queue",
+        "pageOverflowX": 0,
+        "viewport": 1440
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Opus 5.5 · testing — unavailable Default LIVE Offline Opus 5.5 · testing Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "overflow-desktop-ops-graphic.png"
+    },
+    "phone idle": {
+      "expectedRuns": 0,
+      "expectedSeats": 0,
+      "map": {
+        "live": "true",
+        "runCount": "0",
+        "map": {
+          "left": 29,
+          "top": 1490,
+          "right": 361,
+          "bottom": 2244,
+          "width": 332,
+          "height": 755
+        },
+        "runs": [],
+        "flows": [],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1798,
+              "right": 205,
+              "bottom": 1818,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1890,
+              "right": 205,
+              "bottom": 1910,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 185,
+              "top": 1983,
+              "right": 205,
+              "bottom": 2003,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 134,
+              "top": 2161,
+              "right": 148,
+              "bottom": 2175,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "false",
+            "active": "false",
+            "label": "Antigravity",
+            "phase": "Standing by",
+            "runList": false
+          },
+          {
+            "id": "claude-code",
+            "expanded": "false",
+            "active": "false",
+            "label": "Claude Code",
+            "phase": "Standing by",
+            "runList": false
+          },
+          {
+            "id": "codex",
+            "expanded": "false",
+            "active": "false",
+            "label": "Codex",
+            "phase": "Standing by",
+            "runList": false
+          },
+          {
+            "id": "openrouter",
+            "expanded": "false",
+            "active": "false",
+            "label": "OpenRouter",
+            "phase": "Standing by",
+            "runList": false
+          }
+        ],
+        "oldChips": 0,
+        "queue": "Dispatch queue clear",
+        "pageOverflowX": 0,
+        "viewport": 390
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Idle Nothing executing — standing by — — Default LIVE Offline Connecting… Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "idle-phone-ops-graphic.png",
+      "viewerShot": "idle-phone-main-viewer.png"
+    },
+    "phone busy": {
+      "expectedRuns": 6,
+      "expectedSeats": 0,
+      "map": {
+        "live": "true",
+        "runCount": "6",
+        "map": {
+          "left": 29,
+          "top": 1431,
+          "right": 361,
+          "bottom": 2461,
+          "width": 332,
+          "height": 1030
+        },
+        "runs": [
+          {
+            "key": "fx-site-audit",
+            "provider": "antigravity",
+            "role": "building",
+            "title": "Audit the landing page on a phone",
+            "model": "gemini-4-argon",
+            "effort": null,
+            "phase": "browsing",
+            "elapsed": "8m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 51,
+              "top": 1822,
+              "right": 231,
+              "bottom": 1836,
+              "width": 180,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 1817,
+              "right": 359,
+              "bottom": 1857,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-ops-graphic",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Expand the Ops graphic to show every running agent",
+            "model": "Fable 5.2",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "47m",
+            "slot": "S2",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 78,
+              "top": 1956,
+              "right": 352,
+              "bottom": 1985,
+              "width": 274,
+              "height": 29
+            },
+            "box": {
+              "left": 43,
+              "top": 1951,
+              "right": 359,
+              "bottom": 2006,
+              "width": 316,
+              "height": 55
+            }
+          },
+          {
+            "key": "fx-intake-form",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Repair the intake form validation",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "thinking",
+            "elapsed": "12m",
+            "slot": "S5",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 78,
+              "top": 2015,
+              "right": 247,
+              "bottom": 2029,
+              "width": 169,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2010,
+              "right": 359,
+              "bottom": 2051,
+              "width": 316,
+              "height": 41
+            }
+          },
+          {
+            "key": "qa--fx-token-scan",
+            "provider": "claude-code",
+            "role": "reviewing",
+            "title": "Review: token usage scan repair",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": null,
+            "elapsed": "3m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 51,
+              "top": 2060,
+              "right": 220,
+              "bottom": 2074,
+              "width": 169,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2055,
+              "right": 359,
+              "bottom": 2095,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-slot-numbers",
+            "provider": "codex",
+            "role": "building",
+            "title": "Number the day's schedule slots",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "26m",
+            "slot": "S3",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 65,
+              "top": 2195,
+              "right": 236,
+              "bottom": 2209,
+              "width": 172,
+              "height": 14
+            },
+            "box": {
+              "left": 31,
+              "top": 2190,
+              "right": 347,
+              "bottom": 2231,
+              "width": 316,
+              "height": 41
+            }
+          },
+          {
+            "key": "fx-no-model",
+            "provider": "codex",
+            "role": "building",
+            "title": "Thought stream box follows the live run",
+            "model": "unknown",
+            "effort": null,
+            "phase": "thinking",
+            "elapsed": "1m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 38,
+              "top": 2240,
+              "right": 245,
+              "bottom": 2254,
+              "width": 207,
+              "height": 14
+            },
+            "box": {
+              "left": 31,
+              "top": 2235,
+              "right": 347,
+              "bottom": 2275,
+              "width": 316,
+              "height": 40
+            }
+          }
+        ],
+        "flows": [
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 128
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 247
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 501
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 247
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 292
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 263
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 254
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 305
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 350
+          }
+        ],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1739,
+              "right": 205,
+              "bottom": 1759,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1874,
+              "right": 205,
+              "bottom": 1894,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 185,
+              "top": 2112,
+              "right": 205,
+              "bottom": 2132,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 134,
+              "top": 2378,
+              "right": 148,
+              "bottom": 2392,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "true",
+            "active": "true",
+            "label": "Antigravity",
+            "phase": "1 building",
+            "runList": true
+          },
+          {
+            "id": "claude-code",
+            "expanded": "true",
+            "active": "true",
+            "label": "Claude Code",
+            "phase": "2 building · 1 reviewing",
+            "runList": true
+          },
+          {
+            "id": "codex",
+            "expanded": "true",
+            "active": "true",
+            "label": "Codex",
+            "phase": "2 building",
+            "runList": true
+          },
+          {
+            "id": "openrouter",
+            "expanded": "false",
+            "active": "false",
+            "label": "OpenRouter",
+            "phase": "Standing by",
+            "runList": false
+          }
+        ],
+        "oldChips": 0,
+        "queue": "Dispatch queue clear",
+        "pageOverflowX": 0,
+        "viewport": 390
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Fable 5.2 · testing — unavailable Default LIVE Offline Fable 5.2 · testing Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "busy-phone-ops-graphic.png",
+      "viewerShot": "busy-phone-main-viewer.png",
+      "drillDownShot": "busy-phone-drill-down-from-run-node.png"
+    },
+    "phone overflow": {
+      "expectedRuns": 23,
+      "expectedSeats": 2,
+      "map": {
+        "live": "true",
+        "runCount": "25",
+        "map": {
+          "left": 29,
+          "top": 1490,
+          "right": 361,
+          "bottom": 3374,
+          "width": 332,
+          "height": 1884
+        },
+        "runs": [
+          {
+            "key": "fx-many-22",
+            "provider": "antigravity",
+            "role": "building",
+            "title": "Concurrent fixture task number 22",
+            "model": "gemini-4-argon",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "18m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 51,
+              "top": 1880,
+              "right": 232,
+              "bottom": 1894,
+              "width": 181,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 1875,
+              "right": 359,
+              "bottom": 1915,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-23",
+            "provider": "antigravity",
+            "role": "building",
+            "title": "Concurrent fixture task number 23",
+            "model": "gemini-4-argon",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "16m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 51,
+              "top": 1924,
+              "right": 232,
+              "bottom": 1939,
+              "width": 181,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 1919,
+              "right": 359,
+              "bottom": 1960,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-01",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 1",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "1h 0m",
+            "slot": "S1",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 78,
+              "top": 2059,
+              "right": 250,
+              "bottom": 2073,
+              "width": 173,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2054,
+              "right": 359,
+              "bottom": 2095,
+              "width": 316,
+              "height": 41
+            }
+          },
+          {
+            "key": "fx-many-02",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 2",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "58m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 51,
+              "top": 2104,
+              "right": 225,
+              "bottom": 2118,
+              "width": 174,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2099,
+              "right": 359,
+              "bottom": 2139,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-03",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 3",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "56m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 51,
+              "top": 2148,
+              "right": 225,
+              "bottom": 2163,
+              "width": 174,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2143,
+              "right": 359,
+              "bottom": 2184,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-04",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 4",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "54m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 51,
+              "top": 2193,
+              "right": 226,
+              "bottom": 2207,
+              "width": 175,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2188,
+              "right": 359,
+              "bottom": 2228,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "qa--fx-many-05",
+            "provider": "claude-code",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 5",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": null,
+            "elapsed": "52m",
+            "slot": "S2",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 78,
+              "top": 2237,
+              "right": 296,
+              "bottom": 2251,
+              "width": 218,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2232,
+              "right": 359,
+              "bottom": 2273,
+              "width": 316,
+              "height": 41
+            }
+          },
+          {
+            "key": "fx-many-06",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 6",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "50m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 51,
+              "top": 2282,
+              "right": 225,
+              "bottom": 2296,
+              "width": 174,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2277,
+              "right": 359,
+              "bottom": 2317,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-07",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 7",
+            "model": "unknown",
+            "effort": null,
+            "phase": "testing",
+            "elapsed": "48m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 51,
+              "top": 2326,
+              "right": 225,
+              "bottom": 2341,
+              "width": 174,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2321,
+              "right": 359,
+              "bottom": 2362,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-08",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 8",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "46m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 51,
+              "top": 2371,
+              "right": 225,
+              "bottom": 2385,
+              "width": 174,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2366,
+              "right": 359,
+              "bottom": 2406,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-09",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 9",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "44m",
+            "slot": "S3",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 78,
+              "top": 2415,
+              "right": 252,
+              "bottom": 2429,
+              "width": 174,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2410,
+              "right": 359,
+              "bottom": 2451,
+              "width": 316,
+              "height": 41
+            }
+          },
+          {
+            "key": "qa--fx-many-10",
+            "provider": "claude-code",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 10",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": null,
+            "elapsed": "42m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 51,
+              "top": 2460,
+              "right": 274,
+              "bottom": 2474,
+              "width": 223,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2455,
+              "right": 359,
+              "bottom": 2495,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-11",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 11",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "40m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 51,
+              "top": 2504,
+              "right": 229,
+              "bottom": 2519,
+              "width": 178,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2499,
+              "right": 359,
+              "bottom": 2540,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-12",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 12",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "38m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 51,
+              "top": 2549,
+              "right": 230,
+              "bottom": 2563,
+              "width": 179,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2544,
+              "right": 359,
+              "bottom": 2584,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-13",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 13",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "36m",
+            "slot": "S4",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 78,
+              "top": 2593,
+              "right": 257,
+              "bottom": 2607,
+              "width": 180,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2588,
+              "right": 359,
+              "bottom": 2629,
+              "width": 316,
+              "height": 41
+            }
+          },
+          {
+            "key": "fx-many-14",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 14",
+            "model": "unknown",
+            "effort": null,
+            "phase": "writing",
+            "elapsed": "34m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 51,
+              "top": 2638,
+              "right": 231,
+              "bottom": 2652,
+              "width": 180,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2633,
+              "right": 359,
+              "bottom": 2673,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "seat:cli:claude-code/claude-opus-5-5",
+            "provider": "claude-code",
+            "role": "council",
+            "title": "Fixture council: next improvements",
+            "model": "Opus 5.5",
+            "effort": null,
+            "phase": null,
+            "elapsed": "1m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 51,
+              "top": 2682,
+              "right": 234,
+              "bottom": 2696,
+              "width": 183,
+              "height": 14
+            },
+            "box": {
+              "left": 43,
+              "top": 2677,
+              "right": 359,
+              "bottom": 2717,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "qa--fx-many-15",
+            "provider": "codex",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 15",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": null,
+            "elapsed": "32m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 38,
+              "top": 2817,
+              "right": 261,
+              "bottom": 2831,
+              "width": 223,
+              "height": 14
+            },
+            "box": {
+              "left": 31,
+              "top": 2812,
+              "right": 347,
+              "bottom": 2852,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-16",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 16",
+            "model": "GPT-6.2 Astra",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "30m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 38,
+              "top": 2861,
+              "right": 218,
+              "bottom": 2875,
+              "width": 180,
+              "height": 14
+            },
+            "box": {
+              "left": 31,
+              "top": 2856,
+              "right": 347,
+              "bottom": 2896,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-17",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 17",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "28m",
+            "slot": "S5",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 65,
+              "top": 2905,
+              "right": 244,
+              "bottom": 2920,
+              "width": 179,
+              "height": 14
+            },
+            "box": {
+              "left": 31,
+              "top": 2900,
+              "right": 347,
+              "bottom": 2941,
+              "width": 316,
+              "height": 41
+            }
+          },
+          {
+            "key": "fx-many-18",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 18",
+            "model": "GPT-6.2 Astra",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "26m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 38,
+              "top": 2950,
+              "right": 218,
+              "bottom": 2965,
+              "width": 180,
+              "height": 14
+            },
+            "box": {
+              "left": 31,
+              "top": 2945,
+              "right": 347,
+              "bottom": 2986,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-19",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 19",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "24m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 38,
+              "top": 2995,
+              "right": 218,
+              "bottom": 3009,
+              "width": 180,
+              "height": 14
+            },
+            "box": {
+              "left": 31,
+              "top": 2990,
+              "right": 347,
+              "bottom": 3030,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "qa--fx-many-20",
+            "provider": "codex",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 20",
+            "model": "GPT-6.2 Astra",
+            "effort": "high",
+            "phase": null,
+            "elapsed": "22m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 38,
+              "top": 3039,
+              "right": 263,
+              "bottom": 3053,
+              "width": 225,
+              "height": 14
+            },
+            "box": {
+              "left": 31,
+              "top": 3034,
+              "right": 347,
+              "bottom": 3074,
+              "width": 316,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-21",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 21",
+            "model": "unknown",
+            "effort": null,
+            "phase": "writing",
+            "elapsed": "20m",
+            "slot": "S6",
+            "headChildren": 2,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 65,
+              "top": 3083,
+              "right": 244,
+              "bottom": 3098,
+              "width": 179,
+              "height": 14
+            },
+            "box": {
+              "left": 31,
+              "top": 3078,
+              "right": 347,
+              "bottom": 3119,
+              "width": 316,
+              "height": 41
+            }
+          },
+          {
+            "key": "seat:cli:codex/gpt-6.2-astra",
+            "provider": "codex",
+            "role": "council",
+            "title": "Fixture council: next improvements",
+            "model": "GPT-6.2 Astra",
+            "effort": null,
+            "phase": null,
+            "elapsed": "1m",
+            "slot": null,
+            "headChildren": 1,
+            "titleFontPx": 11,
+            "titleBox": {
+              "left": 38,
+              "top": 3128,
+              "right": 221,
+              "bottom": 3143,
+              "width": 183,
+              "height": 14
+            },
+            "box": {
+              "left": 31,
+              "top": 3123,
+              "right": 347,
+              "bottom": 3164,
+              "width": 316,
+              "height": 40
+            }
+          }
+        ],
+        "flows": [
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 128
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 247
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 291
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 1065
+          },
+          {
+            "wire": "council",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 1135
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 246
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 291
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 335
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 380
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 424
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 469
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 513
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 558
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 307
+          },
+          {
+            "wire": "council",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 377
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 247
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 292
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 336
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 380
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 425
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 470
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 514
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 558
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 603
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 648
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 692
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 736
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 781
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 825
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 870
+          }
+        ],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1798,
+              "right": 205,
+              "bottom": 1818,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1977,
+              "right": 205,
+              "bottom": 1997,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 185,
+              "top": 2734,
+              "right": 205,
+              "bottom": 2754,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 134,
+              "top": 3267,
+              "right": 148,
+              "bottom": 3281,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "true",
+            "active": "true",
+            "label": "Antigravity",
+            "phase": "2 building",
+            "runList": true
+          },
+          {
+            "id": "claude-code",
+            "expanded": "true",
+            "active": "true",
+            "label": "Claude Code",
+            "phase": "12 building · 2 reviewing",
+            "runList": true
+          },
+          {
+            "id": "codex",
+            "expanded": "true",
+            "active": "true",
+            "label": "Codex",
+            "phase": "5 building · 2 reviewing",
+            "runList": true
+          },
+          {
+            "id": "openrouter",
+            "expanded": "false",
+            "active": "false",
+            "label": "OpenRouter",
+            "phase": "Standing by",
+            "runList": false
+          }
+        ],
+        "oldChips": 0,
+        "queue": "01 S9 Queued: rebuild the system map 4m 02 Queued: refresh the model registry 2m +1 queued · open queue",
+        "pageOverflowX": 0,
+        "viewport": 390
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Opus 5.5 · testing — unavailable Default LIVE Offline Opus 5.5 · testing Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "overflow-phone-ops-graphic.png"
+    }
+  },
+  "failures": []
+}

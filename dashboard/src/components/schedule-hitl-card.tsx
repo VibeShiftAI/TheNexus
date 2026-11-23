@@ -37,6 +37,7 @@ import {
   XCircle,
 } from "lucide-react";
 import type { HITLRequest } from "@praxis/contract";
+import { slotTag } from "@/lib/slot-tag";
 import {
   EXECUTOR_OPTIONS,
   useExecutorModelOptions,
@@ -424,7 +425,7 @@ export function ScheduleHitlCard({
                   <tr
                     className={`border-t border-slate-700/40 ${isInactive ? "opacity-50 line-through decoration-rose-400/60" : ""}`}
                   >
-                    <td className="px-2 py-1 text-slate-400">{slot.slotNumber}</td>
+                    <td className="px-2 py-1 text-slate-400">{slotTag(slot.slotNumber)}</td>
                     <td className="px-2 py-1 text-slate-100">
                       <button
                         type="button"

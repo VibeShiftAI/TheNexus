@@ -19,6 +19,7 @@ import { useCallback, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Ban, Check, CheckCheck, ChevronRight, CircleDashed, Clock, HelpCircle } from "lucide-react";
 import { useLiveRefetch } from "@/components/live-board-state";
+import { slotTag } from "@/lib/slot-tag";
 import {
   describeSlate,
   describeStall,
@@ -151,7 +152,7 @@ function SlotTable({ lifecycle }: { lifecycle: SlateLifecycle }) {
             : undefined;
         return (
           <li key={`${slot.slotNumber}-${slot.taskId}`} className="flex items-baseline gap-2">
-            <span className="w-5 shrink-0 text-right text-slate-600">{slot.slotNumber ?? "—"}</span>
+            <span className="w-7 shrink-0 text-right text-slate-600">{slotTag(slot.slotNumber) ?? "—"}</span>
             {slot.taskId ? (
               <Link href={`/task/${slot.taskId}`} className="truncate text-slate-300 hover:text-cyan-300">
                 {slot.title}

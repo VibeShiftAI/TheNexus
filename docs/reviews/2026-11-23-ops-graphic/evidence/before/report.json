@@ -1,0 +1,507 @@
+{
+  "label": "before",
+  "at": "2026-11-23T14:10:29.449Z",
+  "base": "http://localhost:51008",
+  "dashboard": "/Volumes/Projects/.scratch-56c15b54/baseline/dashboard",
+  "scenarios": {
+    "desktop idle": {
+      "expectedRuns": 0,
+      "expectedSeats": 0,
+      "map": {
+        "live": "true",
+        "runCount": null,
+        "map": {
+          "left": 41,
+          "top": 709,
+          "right": 458,
+          "bottom": 1119,
+          "width": 417,
+          "height": 410
+        },
+        "runs": [],
+        "flows": [],
+        "logos": [],
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": null,
+            "active": "false",
+            "label": "Antigravity",
+            "phase": "Standing by",
+            "runList": false
+          },
+          {
+            "id": "codex",
+            "expanded": null,
+            "active": "false",
+            "label": "Codex",
+            "phase": "Standing by",
+            "runList": false
+          },
+          {
+            "id": "claude-code",
+            "expanded": null,
+            "active": "false",
+            "label": "Claude Code",
+            "phase": "Standing by",
+            "runList": false
+          },
+          {
+            "id": "openrouter",
+            "expanded": null,
+            "active": "false",
+            "label": "OpenRouter",
+            "phase": "Standing by",
+            "runList": false
+          }
+        ],
+        "oldChips": 4,
+        "queue": "Dispatch queue clear",
+        "pageOverflowX": 0,
+        "viewport": 1440
+      },
+      "viewer": {
+        "crewSection": true,
+        "crewChips": 4,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Idle Signal lost — reconnecting — — Default RECONNECTING Offline Signal lost — attempting to re-establish link CREW Claude Code idle Codex idle Antigravity idle Local LLM idle Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "idle-desktop-ops-graphic.png",
+      "viewerShot": "idle-desktop-main-viewer.png"
+    },
+    "desktop busy": {
+      "expectedRuns": 6,
+      "expectedSeats": 0,
+      "map": {
+        "live": "true",
+        "runCount": null,
+        "map": {
+          "left": 41,
+          "top": 709,
+          "right": 458,
+          "bottom": 1119,
+          "width": 417,
+          "height": 410
+        },
+        "runs": [],
+        "flows": [
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          }
+        ],
+        "logos": [],
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": null,
+            "active": "true",
+            "label": "gemini-4-argon",
+            "phase": "browsing",
+            "runList": false
+          },
+          {
+            "id": "codex",
+            "expanded": null,
+            "active": "true",
+            "label": "GPT-6.2 Astra",
+            "phase": "testing +1",
+            "runList": false
+          },
+          {
+            "id": "claude-code",
+            "expanded": null,
+            "active": "true",
+            "label": "Fable 5.2 · Opus 5.5",
+            "phase": "QA · testing +2",
+            "runList": false
+          },
+          {
+            "id": "openrouter",
+            "expanded": null,
+            "active": "false",
+            "label": "OpenRouter",
+            "phase": "Standing by",
+            "runList": false
+          }
+        ],
+        "oldChips": 4,
+        "queue": "Dispatch queue clear",
+        "pageOverflowX": 0,
+        "viewport": 1440
+      },
+      "viewer": {
+        "crewSection": true,
+        "crewChips": 4,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Fable 5.2 · testing — unavailable Default LIVE Offline Fable 5.2 · testing CREW 3 working Fable 5.2 testing GPT-6.2 Astra testing gemini-4-argon browsing Local LLM idle Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "busy-desktop-ops-graphic.png",
+      "viewerShot": "busy-desktop-main-viewer.png"
+    },
+    "desktop overflow": {
+      "expectedRuns": 23,
+      "expectedSeats": 2,
+      "map": {
+        "live": "true",
+        "runCount": null,
+        "map": {
+          "left": 41,
+          "top": 709,
+          "right": 458,
+          "bottom": 1119,
+          "width": 417,
+          "height": 410
+        },
+        "runs": [],
+        "flows": [
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 173
+          },
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 244
+          }
+        ],
+        "logos": [],
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": null,
+            "active": "true",
+            "label": "gemini-4-argon",
+            "phase": "testing +1",
+            "runList": false
+          },
+          {
+            "id": "codex",
+            "expanded": null,
+            "active": "true",
+            "label": "GPT-6.2 Astra",
+            "phase": "QA · reviewing +6",
+            "runList": false
+          },
+          {
+            "id": "claude-code",
+            "expanded": null,
+            "active": "true",
+            "label": "Opus 5.5",
+            "phase": "QA · testing +13",
+            "runList": false
+          },
+          {
+            "id": "openrouter",
+            "expanded": null,
+            "active": "false",
+            "label": "OpenRouter",
+            "phase": "Standing by",
+            "runList": false
+          }
+        ],
+        "oldChips": 4,
+        "queue": "01 Queued: rebuild the system map 4m 02 Queued: refresh the model registry 2m +1 queued · open queue",
+        "pageOverflowX": 0,
+        "viewport": 1440
+      },
+      "viewer": {
+        "crewSection": true,
+        "crewChips": 4,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Opus 5.5 · testing — unavailable Default LIVE Offline Opus 5.5 · testing CREW 3 working Opus 5.5 testing GPT-6.2 Astra reviewing gemini-4-argon testing Local LLM idle Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "overflow-desktop-ops-graphic.png"
+    },
+    "phone idle": {
+      "expectedRuns": 0,
+      "expectedSeats": 0,
+      "map": {
+        "live": "true",
+        "runCount": null,
+        "map": {
+          "left": 29,
+          "top": 1602,
+          "right": 361,
+          "bottom": 2012,
+          "width": 332,
+          "height": 410
+        },
+        "runs": [],
+        "flows": [],
+        "logos": [],
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": null,
+            "active": "false",
+            "label": "Antigravity",
+            "phase": "Standing by",
+            "runList": false
+          },
+          {
+            "id": "codex",
+            "expanded": null,
+            "active": "false",
+            "label": "Codex",
+            "phase": "Standing by",
+            "runList": false
+          },
+          {
+            "id": "claude-code",
+            "expanded": null,
+            "active": "false",
+            "label": "Claude Code",
+            "phase": "Standing by",
+            "runList": false
+          },
+          {
+            "id": "openrouter",
+            "expanded": null,
+            "active": "false",
+            "label": "OpenRouter",
+            "phase": "Standing by",
+            "runList": false
+          }
+        ],
+        "oldChips": 4,
+        "queue": "Dispatch queue clear",
+        "pageOverflowX": 0,
+        "viewport": 390
+      },
+      "viewer": {
+        "crewSection": true,
+        "crewChips": 4,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Idle Nothing executing — standing by — — Default LIVE Offline Connecting… CREW Claude Code idle Codex idle Antigravity idle Local LLM idle Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "idle-phone-ops-graphic.png",
+      "viewerShot": "idle-phone-main-viewer.png"
+    },
+    "phone busy": {
+      "expectedRuns": 6,
+      "expectedSeats": 0,
+      "map": {
+        "live": "true",
+        "runCount": null,
+        "map": {
+          "left": 29,
+          "top": 1265,
+          "right": 361,
+          "bottom": 1675,
+          "width": 332,
+          "height": 410
+        },
+        "runs": [],
+        "flows": [
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          }
+        ],
+        "logos": [],
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": null,
+            "active": "true",
+            "label": "gemini-4-argon",
+            "phase": "browsing",
+            "runList": false
+          },
+          {
+            "id": "codex",
+            "expanded": null,
+            "active": "true",
+            "label": "GPT-6.2 Astra",
+            "phase": "testing +1",
+            "runList": false
+          },
+          {
+            "id": "claude-code",
+            "expanded": null,
+            "active": "true",
+            "label": "Fable 5.2 · Opus 5.5",
+            "phase": "QA · testing +2",
+            "runList": false
+          },
+          {
+            "id": "openrouter",
+            "expanded": null,
+            "active": "false",
+            "label": "OpenRouter",
+            "phase": "Standing by",
+            "runList": false
+          }
+        ],
+        "oldChips": 4,
+        "queue": "Dispatch queue clear",
+        "pageOverflowX": 0,
+        "viewport": 390
+      },
+      "viewer": {
+        "crewSection": true,
+        "crewChips": 4,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Fable 5.2 · testing — unavailable Default LIVE Offline Fable 5.2 · testing CREW 3 working Fable 5.2 testing GPT-6.2 Astra testing gemini-4-argon browsing Local LLM idle Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "busy-phone-ops-graphic.png",
+      "viewerShot": "busy-phone-main-viewer.png"
+    },
+    "phone overflow": {
+      "expectedRuns": 23,
+      "expectedSeats": 2,
+      "map": {
+        "live": "true",
+        "runCount": null,
+        "map": {
+          "left": 29,
+          "top": 1543,
+          "right": 361,
+          "bottom": 1953,
+          "width": 332,
+          "height": 410
+        },
+        "runs": [],
+        "flows": [
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 173
+          },
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": null,
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 244
+          }
+        ],
+        "logos": [],
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": null,
+            "active": "true",
+            "label": "gemini-4-argon",
+            "phase": "testing +1",
+            "runList": false
+          },
+          {
+            "id": "codex",
+            "expanded": null,
+            "active": "true",
+            "label": "GPT-6.2 Astra",
+            "phase": "QA · reviewing +6",
+            "runList": false
+          },
+          {
+            "id": "claude-code",
+            "expanded": null,
+            "active": "true",
+            "label": "Opus 5.5",
+            "phase": "QA · testing +13",
+            "runList": false
+          },
+          {
+            "id": "openrouter",
+            "expanded": null,
+            "active": "false",
+            "label": "OpenRouter",
+            "phase": "Standing by",
+            "runList": false
+          }
+        ],
+        "oldChips": 4,
+        "queue": "01 Queued: rebuild the system map 4m 02 Queued: refresh the model registry 2m +1 queued · open queue",
+        "pageOverflowX": 0,
+        "viewport": 390
+      },
+      "viewer": {
+        "crewSection": true,
+        "crewChips": 4,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Opus 5.5 · testing — unavailable Default LIVE Offline Opus 5.5 · testing CREW 3 working Opus 5.5 testing GPT-6.2 Astra reviewing gemini-4-argon testing Local LLM idle Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "overflow-phone-ops-graphic.png"
+    }
+  },
+  "failures": []
+}

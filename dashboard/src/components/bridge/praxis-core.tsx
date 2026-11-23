@@ -4,7 +4,8 @@
  * Praxis terminal embedded as the viewscreen
  * beside it — presence and conversation are one station. The viewscreen is
  * kept dashboard-sized; a maximize toggle blows it up to full screen without
- * losing conversation state. Crew chips click through to executor telemetry.
+ * losing conversation state. Which executor runs what is the Ops station's
+ * job (bridge/dispatch-map.tsx); the executor drill-down opens from there.
  */
 "use client";
 
@@ -14,14 +15,12 @@ import type { ActivityItem } from "@/lib/bridge-activity";
 import { useState, useRef } from "react";
 import { Radio, Maximize2, Minimize2, Plus, History } from "lucide-react";
 import { useLiveBoardState } from "@/components/live-board-state";
-import { useCrewActivity } from "@/hooks/use-crew-activity";
 import { useActiveWork } from "@/hooks/use-active-work";
 import { useCoreState } from "@/hooks/use-core-state";
 import { useTokenUsage } from "@/hooks/use-token-usage";
 import { fmtTokens } from "@/lib/token-usage";
-import { CoreCanvas, EXECUTOR_COLORS } from "@/components/bridge/core-canvas";
+import { CoreCanvas } from "@/components/bridge/core-canvas";
 import { HudPanel, HudErrorBoundary, HudModal } from "@/components/bridge/hud";
-import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
 import { AITerminal, type AITerminalHandle } from "@/components/ai-terminal";
 import { NowStrip } from "@/components/bridge/now-strip";
 import { ChatModelControl } from "@/components/bridge/chat-model-control";
@@ -47,16 +46,13 @@ function fmtTime(iso?: string) {
 
 export function PraxisCore() {
   const { presence, connected } = useLiveBoardState();
-  const { crew } = useCrewActivity();
   const core = useCoreState();
   const work = useActiveWork();
   const { usage } = useTokenUsage();
   const [activityOpen, setActivityOpen] = useState(false);
   const [activityDetail, setActivityDetail] = useState<ActivityItem | null>(null);
   const [viewscreenMax, setViewscreenMax] = useState(false);
-  const [inspecting, setInspecting] = useState<ExecutorId | null>(null);
   const terminalRef = useRef<AITerminalHandle>(null);
-  const busyCrew = crew.filter((m) => m.state === "active").length;
 
   const stats = (
     [
@@ -171,61 +167,6 @@ export function PraxisCore() {
             </div>
           )}
 
-          {/* Crew — the other pairs of hands: CLI executors + local LLM.
-              Praxis can be idle while the crew works his dispatched tasks.
-              Each chip opens the executor drill-down. */}
-          <div className="mt-2.5 w-full">
-            <div className="mb-1 flex items-baseline justify-between">
-              <span className="text-[10px] uppercase tracking-wide text-slate-600">crew</span>
-              {busyCrew > 0 && (
-                <span className="text-[10px] font-semibold text-cyan-400">{busyCrew} working</span>
-              )}
-            </div>
-            <div className="grid w-full grid-cols-2 gap-1.5">
-              {crew.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => setInspecting(m.id as ExecutorId)}
-                  className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-left transition-colors hover:border-slate-600 ${
-                    m.state === "active"
-                      ? "border-cyan-500/30 bg-cyan-500/5"
-                      : m.state === "failed"
-                      ? "border-red-500/30 bg-red-500/5"
-                      : "border-slate-800 bg-slate-950/50"
-                  }`}
-                  title={`${m.label}${m.detail ? `: ${m.detail}` : ""} — click for telemetry`}
-                >
-                  {/* Identity dot: same hue as this executor's comet around the
-                      orb, so the chip and the sprite read as one being. */}
-                  <span
-                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                      m.state === "active" ? "motion-safe:animate-pulse" : ""
-                    }`}
-                    style={{
-                      backgroundColor:
-                        m.state === "failed" ? "#f87171" : m.state === "done" ? "#34d399" : EXECUTOR_COLORS[m.id] ?? "#64748b",
-                      opacity: m.state === "idle" ? 0.35 : 1,
-                      boxShadow:
-                        m.state === "active"
-                          ? `0 0 6px ${EXECUTOR_COLORS[m.id] ?? "#64748b"}`
-                          : m.state === "failed"
-                          ? "0 0 6px rgba(248,113,113,0.8)"
-                          : undefined,
-                    }}
-                  />
-                  <div className="min-w-0">
-                    <div className={`truncate text-[10px] font-medium ${m.state === "idle" ? "text-slate-500" : "text-slate-200"}`}>
-                      {m.label}
-                    </div>
-                    <div className={`truncate text-[9px] ${m.state === "active" ? "text-cyan-400" : m.state === "failed" ? "text-red-400" : "text-slate-600"}`}>
-                      {m.detail ?? m.state}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
           {!!presence?.backgroundActivities?.length && (
             <div className="mt-2.5 rounded-md border border-slate-800/60 px-2.5 py-1.5" aria-label="Background activity">
               <div className="text-[10px] uppercase tracking-wide text-slate-500">Background</div>
@@ -273,7 +214,6 @@ export function PraxisCore() {
         </div>
       </div>
 
-      {inspecting && <ExecutorDetailModal executor={inspecting} onClose={() => setInspecting(null)} />}
       {activityOpen && <HudModal title="Praxis core activity" onClose={() => setActivityOpen(false)} wide>{activityDetail ? <><button className="mb-4 text-sm text-cyan-300" onClick={() => setActivityDetail(null)}>← All events</button><ActivityDetails item={activityDetail}/></> : <ActivityList onSelect={setActivityDetail}/>}<Link href="/activity" className="mt-4 block text-sm text-cyan-300">Full activity report →</Link></HudModal>}
     </HudPanel>
   );

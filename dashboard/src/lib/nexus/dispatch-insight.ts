@@ -32,6 +32,8 @@ export interface CliQueueEntry {
     /** When it entered the queue — the "waiting since" clock. */
     enqueuedAt?: string;
     args?: Record<string, unknown>;
+    /** The task's slot for the day, when Praxis gave it one. */
+    slotNumber?: number;
 }
 
 /** Per-executor slot occupancy inside the concurrency gate. */
@@ -212,6 +214,8 @@ export interface LiveWorkItem {
     taskVersion?: number | null;
     automaticStart?: AutomaticStartRequest | null;
     taskId: string;
+    /** The task's number on the day's schedule, shown as `S<number>`. Absent until it joins. */
+    slotNumber?: number | null;
     /** Board title when the task is on this board, else Praxis's copy. */
     title: string;
     projectId?: string | null;

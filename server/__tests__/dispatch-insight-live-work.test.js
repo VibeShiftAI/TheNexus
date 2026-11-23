@@ -203,6 +203,41 @@ describe('dispatch-insight live-work projection', () => {
         return Object.fromEntries(body.items.map((i) => [i.taskId, i]));
     }
 
+    test('running, queued and QA rows carry the slotNumber Praxis reports', async () => {
+        const queue = STATE_NO_PLAN_WITH_QUEUE.executors.cliQueue;
+        await boot({ state: { executors: {
+            ...STATE_NO_PLAN_WITH_QUEUE.executors,
+            runs: [{ ...RUNNING, slotNumber: 4 }, { ...FINISHED_UNREVIEWED, slotNumber: 2 }, QA_RUNNING_FOR_UNREVIEWED, AGENT_RUN],
+            cliQueue: [{ ...queue[0], slotNumber: 5 }, queue[1]],
+        } } });
+        const items = byId((await getJson(`${handle.baseUrl}/api/dispatch-insight/live-work`)).body);
+        expect(items.visibility).toMatchObject({ lane: 'running', slotNumber: 4 });
+        expect(items.approvals).toMatchObject({ lane: 'queued', slotNumber: 5 });
+        expect(items.unreviewed).toMatchObject({ lane: 'qa', slotNumber: 2 });
+        expect(items['contract-fix']).not.toHaveProperty('slotNumber');
+    });
+
+    test("next-day QA displays its current slot while the implementation retains its completion slot", () => {
+        const implementation = { ...FINISHED_UNREVIEWED, slotDay: '2026-10-04', slotNumber: 3 };
+        const review = {
+            ...QA_RUNNING_FOR_UNREVIEWED, slotDay: '2026-10-05', slotNumber: 2,
+            startedAt: '2026-10-05T15:00:00Z', updatedAt: '2026-10-05T15:00:00Z',
+        };
+        const project = (runs) => createDispatchInsightRouter.projectLiveWork({ executors: { runs } }, []);
+        expect(project([implementation, review])).toMatchObject([{ lane: 'qa', taskId: 'unreviewed', slotNumber: 2 }]);
+        expect(project([implementation])).toMatchObject([{ lane: 'finished', taskId: 'unreviewed', slotNumber: 3 }]);
+    });
+
+    test('a finished row keeps the slotNumber its run carried', async () => {
+        await boot({ state: { executors: {
+            ...STATE_NO_PLAN_WITH_QUEUE.executors,
+            runs: [{ ...FINISHED_UNREVIEWED, slotNumber: 2 }],
+            cliQueue: [],
+        } } });
+        const items = byId((await getJson(`${handle.baseUrl}/api/dispatch-insight/live-work`)).body);
+        expect(items.unreviewed).toMatchObject({ lane: 'finished', slotNumber: 2 });
+    });
+
     test('approved day plan + a queue: running, queued, QA-pending and related waiting rows', async () => {
         await boot();
         const { status, body } = await getJson(`${handle.baseUrl}/api/dispatch-insight/live-work`);

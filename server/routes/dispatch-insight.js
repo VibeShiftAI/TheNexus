@@ -266,12 +266,15 @@ function projectLiveWork(state, boardRows, followupScope) {
     };
 
     const items = new Map();
+    // The task's number on the day's schedule, as Praxis reports it (S<number>).
+    const slotNumberOf = (source) => (Number.isSafeInteger(source?.slotNumber) ? { slotNumber: source.slotNumber } : {});
 
     // 1. Running: the active implementation runs.
     for (const run of runs) {
         if (runKindOf(run) !== 'task' || run.status !== 'active') continue;
         items.set(run.taskId, {
             ...base(run.taskId, run.title),
+            ...slotNumberOf(run),
             lane: 'running',
             executor: run.executor || null,
             phase: run.phase || null,
@@ -286,6 +289,7 @@ function projectLiveWork(state, boardRows, followupScope) {
         const args = q.args && typeof q.args === 'object' ? q.args : {};
         items.set(q.taskId, {
             ...base(q.taskId, q.title),
+            ...slotNumberOf(q),
             lane: 'queued',
             executor: q.executor || null,
             enqueuedAt: q.enqueuedAt || null,
@@ -324,6 +328,8 @@ function projectLiveWork(state, boardRows, followupScope) {
             && WAITING_STATUSES.has(board.get(taskId)?.normalized)) continue;
         items.set(taskId, {
             ...base(taskId, run.title),
+            ...slotNumberOf(run),
+            ...slotNumberOf(qa),
             lane: qa ? 'qa' : 'finished',
             executor: run.executor || null,
             startedAt: run.startedAt || null,
