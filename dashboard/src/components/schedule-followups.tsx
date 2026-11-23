@@ -8,6 +8,7 @@ import { scheduleFollowUp } from "@/lib/calendar";
 import type { LiveWorkItem } from "@/lib/nexus/dispatch-insight";
 import { laneWord, liveItemLabel, type LiveScheduleRow, type LiveWorkAvailability } from "@/lib/schedule-live-work";
 import { taskHref } from "@/lib/task-links";
+import { displayEventTitle } from "@/lib/slot-tag";
 
 /**
  * FollowUpsSection — the follow-ups of today's plan, as their own block.
@@ -74,7 +75,7 @@ function AddToScheduleControl({ item, onChanged, disabled }: {
     <div data-add-to-schedule className="mt-1.5 text-xs">
       {scheduled ? (
         <p className="text-emerald-300">
-          On the calendar at {formatTime(scheduled.at)}{scheduled.after ? ` after “${scheduled.after}”` : ""}. Praxis starts it from there through the usual checks.
+          On the calendar at {formatTime(scheduled.at)}{scheduled.after ? ` after “${displayEventTitle(scheduled.after)}”` : ""}. Praxis starts it from there through the usual checks.
         </p>
       ) : (
         <button

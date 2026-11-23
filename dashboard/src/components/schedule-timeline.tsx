@@ -21,6 +21,7 @@ import {
   type LiveWorkReadState,
 } from "@/lib/schedule-live-work";
 import { taskHref } from "@/lib/task-links";
+import { displayEventTitle, withSlotTag } from "@/lib/slot-tag";
 import { useArrivalPulse } from "@/hooks/use-arrival-pulse";
 import { useLiveRefetch } from "@/components/live-board-state";
 import { HudPanel } from "@/components/bridge/hud";
@@ -421,7 +422,7 @@ export function ScheduleTimeline() {
       ? {
           id: entry.id,
           ts: entry.ts,
-          title: `${formatWhen(effectiveTimeIso(entry.event), spanStart)} · ${entry.event.title}${ranOffSchedule(entry.event) ? ` (planned ${formatWhen(entry.event.start_time, spanStart)})` : ""}`,
+          title: `${formatWhen(effectiveTimeIso(entry.event), spanStart)} · ${displayEventTitle(entry.event.title)}${ranOffSchedule(entry.event) ? ` (planned ${formatWhen(entry.event.start_time, spanStart)})` : ""}`,
           dotClass: !scheduleLive && entry.event.status === "in_progress" ? "bg-amber-400/40" : trackDot(entry.event.status),
         }
       : {
@@ -518,9 +519,9 @@ export function ScheduleTimeline() {
                 <Link
                   href={taskHref(event.task_id)}
                   className={`min-w-0 flex-1 truncate text-xs font-semibold hover:underline ${tone.title}`}
-                  title={`${event.title} — open the task`}
+                  title={`${displayEventTitle(event.title)} — open the task`}
                 >
-                  {event.title}
+                  {displayEventTitle(event.title)}
                 </Link>
                 {badgeChip}
                 <button
@@ -542,8 +543,8 @@ export function ScheduleTimeline() {
             >
               {sheen}
               {clock}
-              <span className={`min-w-0 flex-1 truncate text-xs font-semibold ${tone.title}`} title={event.title}>
-                {event.title}
+              <span className={`min-w-0 flex-1 truncate text-xs font-semibold ${tone.title}`} title={displayEventTitle(event.title)}>
+                {displayEventTitle(event.title)}
               </span>
               {badgeChip}
               {chevron}
@@ -882,11 +883,11 @@ export function ScheduleTimeline() {
 
           {queueHead ? (
             <div data-live-up-next className="mt-2 truncate border-t border-slate-800/60 pt-1.5 text-[10px] text-slate-500">
-              up next: <span className="text-cyan-300">{queueHead.title || queueHead.taskId}</span> · queued #{queueHead.position ?? 1}, starts when the slot frees
+              up next: <span className="text-cyan-300">{withSlotTag(queueHead.title || queueHead.taskId, queueHead.slotNumber)}</span> · queued #{queueHead.position ?? 1}, starts when the slot frees
             </div>
           ) : nextScheduled ? (
             <div className="mt-2 truncate border-t border-slate-800/60 pt-1.5 text-[10px] text-slate-500">
-              up next: <span className="text-purple-300">{nextScheduled.title}</span> · {formatWhen(nextScheduled.start_time, spanStart)}
+              up next: <span className="text-purple-300">{displayEventTitle(nextScheduled.title)}</span> · {formatWhen(nextScheduled.start_time, spanStart)}
             </div>
           ) : null}
 

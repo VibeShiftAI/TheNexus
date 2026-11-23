@@ -212,6 +212,8 @@ export interface LiveWorkItem {
     taskVersion?: number | null;
     automaticStart?: AutomaticStartRequest | null;
     taskId: string;
+    /** The task's number on the day's schedule, shown as `S<number>`. Absent until it joins. */
+    slotNumber?: number | null;
     /** Board title when the task is on this board, else Praxis's copy. */
     title: string;
     projectId?: string | null;

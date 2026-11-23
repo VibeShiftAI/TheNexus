@@ -20,6 +20,7 @@ import { FollowUpsSection } from "@/components/schedule-followups";
 import { useLiveRefetch } from "@/components/live-board-state";
 import { getLiveWork } from "@/lib/nexus/dispatch-insight";
 import { taskHref } from "@/lib/task-links";
+import { displayEventTitle } from "@/lib/slot-tag";
 import {
     applyLiveWorkRead,
     chainFollowUps,
@@ -270,12 +271,12 @@ export default function CalendarPage() {
                                                                 href={taskHref(event.task_id)}
                                                                 onClick={(e) => e.stopPropagation()}
                                                                 className="hover:underline"
-                                                                title={`${event.title}: open the task`}
+                                                                title={`${displayEventTitle(event.title)}: open the task`}
                                                             >
-                                                                {event.title}
+                                                                {displayEventTitle(event.title)}
                                                             </Link>
                                                         ) : (
-                                                            event.title
+                                                            displayEventTitle(event.title)
                                                         )}
                                                     </h3>
                                                     <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded opacity-70 bg-black/40">
