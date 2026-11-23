@@ -6,6 +6,7 @@ Baselines
 Both were checked out as detached worktrees side by side, because the Praxis
 suites read a sibling ../TheNexus. Every "After" run below used the task's final
 source after the QA repair (the content of TheNexus 7e15efed and Praxis faf86cbd).
+Section 7 repeats the checks on the result of merging main into the task.
 
 
 1. Dashboard
@@ -172,3 +173,79 @@ scripted Praxis service, and each number is one run:
 
 The gap was set with a temporary override that is no longer in the fixture. To
 reproduce a row, edit LONG_TURN.gapMs in Praxis scripts/chat-steps-fixture.ts.
+
+
+7. Merged result (QA repair for the merge conflict)
+TheNexus: 47699138, the merge of the task (12657f30) with main (2c7fab17). The
+one conflicted file, dashboard/src/components/bridge/praxis-core.tsx, was
+resolved by hand so that this task's thought stream removal and main's Crew
+removal both survive.
+Praxis: the task (faf86cbd) merged into main (1e751c7d) with no conflict, in a
+scratch checkout and left uncommitted. The task branch itself was not merged.
+
+  Typecheck: dashboard/ npx tsc --noEmit exit 0; merged Praxis npx tsc --noEmit
+    exit 0.
+  Dashboard (command in section 1): tests 1418, pass 1416, fail 2, the two names
+    in section 1 and no others.
+  Nexus server (command in section 2): suites 2 failed, 180 passed; tests 2
+    failed, 1 skipped, 2453 passed, the two names in section 2 and no others.
+  Browser check on the merged dashboard and merged Praxis, from dashboard/:
+      CHECK_PRAXIS_REPO=<merged Praxis> node scripts/chat-steps-browser-check.mjs
+    CHECK_RESULT ok (26 steps) at desktop and phone width. 12 planted secret
+    values, 0 leaked across the chat streams, status route, Praxis output and
+    logger, global trace, Nexus API and dashboard output, Nexus database and
+    Praxis data folder.
+  Retention probe on merged Praxis: RETENTION_PROBE ok.
+  Focused Praxis tests, npm test -- chat_turn_steps chat_cli_session: tests 68,
+    pass 68, fail 0.
+
+That browser run recaptured the eight review images, because the earlier set
+showed the Crew section that main removed. They are real captures of the
+dashboard. In the scripted turn only the CLI process and the model are replaced,
+so the routes, parsers, relay and page are the real ones.
+
+Praxis full suite (command in section 3), one tree at a time:
+
+                         tests    pass   fail  skipped  unique failing names
+  Merged, run 1          10431   10370     60        1                    59
+  Merged, run 2          10460   10401     58        1                    57
+  Plain main 1e751c7d    10438   10378     59        1                    58
+
+Against the dispatch baseline's 59 names, the merged runs added only these:
+  Run 1: tests/ingestion_arbitrary_limits.test.ts (file entry)
+         tests/knowledge_council_delivery.test.ts (file entry)
+         tests/tts_provider.test.ts (file entry)
+         CLI prepare/run/compare uses the real seat adapter against a local fake binary with no inference
+  Run 2: tests/intake_backlog_morning.test.ts (file entry)
+
+Each file entry is the test runner's own error, failureType 'uncaughtException',
+"Unable to deserialize cloned data due to invalid or unsupported version." It
+lands on a different file from run to run and hides that file's individual
+results, which is why the test totals differ. The task changes none of these
+test files.
+
+  Plain main's full run hit the same error on ingestion_arbitrary_limits and
+  also failed the CLI prepare test.
+
+  Alone, three runs on each tree:
+    npm test -- ingestion_arbitrary_limits knowledge_council_delivery
+      tts_provider prompt_experiment --test-reporter=tap
+    All six runs: tests 75, pass 73, fail 2, no runner error. The two names are
+    both in the dispatch baseline ("default provider and local settings preserve
+    hosted compatibility", "local briefing ignores exhausted ElevenLabs credits
+    while retaining its ceiling"). The CLI prepare test passed in all six.
+
+  Alone, three runs on each tree:
+    npm test -- intake_backlog_morning --test-reporter=tap
+    Merged:     22 of 22; 19 of 20 with the runner error; 22 of 22.
+    Plain main: 19 of 20 with the runner error; 22 of 22; 22 of 22.
+
+The runner error was not seen on plain main for knowledge_council_delivery or
+tts_provider in these runs. Both gave the same results on each tree when run
+alone, and neither failed in merged run 2.
+
+Three dispatch-baseline names pass on plain main and in both merged runs: "a hold
+that is still real stays visible, current and plainly actionable", "refusal ->
+successful dispatch -> delayed alert: the obsolete hold is closed by receipt and
+never spoken", "the fence Praxis writes is the one the Groundrules re-check
+accepts, and a tampered one is refused".

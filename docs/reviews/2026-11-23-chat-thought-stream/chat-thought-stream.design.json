@@ -1,7 +1,7 @@
 {
   "format": "nexus-design-package/1",
   "title": "Chat thought stream: live steps in the chat",
-  "summary": "While Praxis works on a reply, its steps now appear in the chat as they happen. When the reply lands they fold into one line you can expand, and the thought stream box is gone from the main viewer. These are real captures of the dashboard at desktop and phone width. The turn itself is scripted: only the CLI process and the model are replaced, so the routes, parsers, relay and page are the real ones. [redacted] marks a planted bridge token, operator grant and credential that were removed before the step left Praxis. The Crew chips come from this branch's starting point; a separate task has already removed them on main. The N badge on the phone is the development server's indicator.",
+  "summary": "While Praxis works on a reply, its steps now appear in the chat as they happen. When the reply lands they fold into one line you can expand, and the thought stream box is gone from the main viewer. The turn shown is scripted, so its steps are sample text. [redacted] marks a planted bridge token, operator grant and credential that were removed before the step left Praxis. The N badge on the phone is the development server's indicator.",
   "screens": [
     {
       "id": "chat-live-desktop",
@@ -25,7 +25,7 @@
       "viewport": "1440x900 @2x, main viewer panel",
       "state": "reply landed, steps collapsed",
       "file": "chat-folded-desktop.png",
-      "notes": "The steps fold into one line above the reply. It states the measured duration and the step count: Worked for 2s, 6 steps (2466 ms measured)."
+      "notes": "The steps fold into one line above the reply. It states the measured duration and the step count: Worked for 5s, 6 steps (5306 ms measured)."
     },
     {
       "id": "chat-folded-phone",
@@ -33,7 +33,7 @@
       "viewport": "390x844 @2x",
       "state": "reply landed, steps collapsed",
       "file": "chat-folded-phone.png",
-      "notes": "The same collapsed line at phone width (2484 ms measured). The line is a 44px tap target."
+      "notes": "The same collapsed line at phone width, Worked for 2s, 6 steps (2526 ms measured). The line is a 44px tap target."
     },
     {
       "id": "chat-expanded-desktop",
