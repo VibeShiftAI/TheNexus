@@ -126,3 +126,21 @@ Failing at baseline and after (59 names):
   There, npx --no-install tsc --noEmit exits 1 and prints npm's placeholder
   "This is not the tsc command you are looking for". The same command at the
   baseline gives the same exit 1 and the same message.
+
+
+5. Landing rehearsal (scratch checkouts only; no branch moved, nothing committed)
+  TheNexus: task 58d97f18 merged into main a733d9ec.
+    One conflicted file, dashboard/src/components/bridge/praxis-core.tsx, with
+    two hunks where this task's thought stream removal sits next to the Crew
+    removal already on main (6a62e56f). The resolution keeps both removals:
+      the hook line becomes: const { presence, connected } = useLiveBoardState();
+        with no crew line;
+      the trace modal line and the executor modal line are both removed.
+    With that resolution:
+      dashboard typecheck exit 0;
+      dashboard suite tests 1397, pass 1395, fail 2 (the two names in section 1);
+      npx jest server/__tests__/ai-chat: 10 suites, 57 tests, all pass.
+  Praxis: task 3613e838 merged into main e2d39506 with no conflict.
+      npx tsc --noEmit exit 0;
+      tests/chat_turn_steps.test.ts and tests/chat_turn_steps_legacy.test.ts:
+      tests 22, pass 22, fail 0.
