@@ -135,3 +135,30 @@ test("each vendor logo file is the one the notice records, byte for byte", () =>
   assert.equal(providerLogo("openrouter"), null, "no vendor file for OpenRouter: it keeps its glyph");
   assert.equal(providerLogo("constructor"), null);
 });
+
+// QA round 1 (task 56c15b54): the runs below are not written by hand. Praxis
+// tests/run_model_dispatch_state.test.ts started them through runExecution on
+// the production claude-code and codex executors (stand-in CLI binaries) and
+// read them back over HTTP from GET /api/dispatch/state; this file is that
+// response's runs, kept as evidence. Here they go through the same function
+// the Ops graphic uses for the model line.
+test("runs observed in dispatch state after a real dispatch show their model, and the one with none reads unknown", () => {
+  const file = join(process.cwd(), "..", "docs", "reviews", "2026-11-23-ops-graphic", "evidence", "dispatch-state", "observation.json");
+  const observation = JSON.parse(readFileSync(file, "utf-8")) as {
+    runs: { taskId: string; executor: string; kind: string; status: string; model?: string; requestedModel?: string; requestedEffort?: string; servedModel?: string }[];
+  };
+  const shown = observation.runs.map((run) => {
+    const resolved = resolveRunModel(run);
+    return [run.executor, runRole(run.kind, run.taskId), resolved.model ?? UNKNOWN_MODEL, resolved.modelSource, resolved.requestedModel, resolved.effort].join(" | ");
+  }).sort();
+  assert.deepEqual(shown, [
+    // Served by the CLI and different from the request: both are kept.
+    "claude-code | building | claude-stand-in-served-model | served | Fable 5.2 | high",
+    "claude-code | reviewing | claude-stand-in-served-model | served | Opus 5.5 | medium",
+    // codex names no model in its output: the request is what is shown.
+    "codex | building | GPT-6 Astra | requested |  | high",
+    "codex | reviewing | GPT-5.6 Sol | requested |  | medium",
+    // No model anywhere on the run, and none taken from the executor's name.
+    "model-truth-silent | building | unknown |  |  | ",
+  ]);
+});

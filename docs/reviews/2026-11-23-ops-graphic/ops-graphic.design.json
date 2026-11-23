@@ -1,7 +1,7 @@
 {
   "format": "nexus-design-package/1",
   "title": "Ops graphic: every running agent, real logos",
-  "summary": "The Ops graphic now draws one child node per live run under its provider (task runs, QA review runs, council seats), each with slot tag when present, task, model, role and elapsed time. Provider nodes carry the vendor's own logo at 20px in place of the 35px lettered chip. The Crew section is gone from the main viewer. Screenshots are from the running dashboard on an isolated stack with fixture runs (dashboard/scripts/ops-graphic-browser-check.mjs); no live task appears in them.",
+  "summary": "Recommended: approve the look. Still open: the model names on live runs depend on a Praxis change that is tested (real dispatches against stand-in CLIs, read back from dispatch state) but not yet running in production; until Praxis restarts with it, live run nodes will often read 'unknown'. The Ops graphic now draws one child node per live run under its provider (task runs, QA review runs, council seats), each with slot tag when present, task, model, role and elapsed time. Provider nodes carry the vendor's own logo at 20px in place of the 35px lettered chip. The Crew section is gone from the main viewer. Screenshots are from the running dashboard on an isolated stack with fixture runs (dashboard/scripts/ops-graphic-browser-check.mjs); no live task appears in them.",
   "screens": [
     {
       "id": "ops-idle-desktop",
