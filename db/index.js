@@ -3188,6 +3188,31 @@ function archiveBackgroundChatMessages() {
     })();
 }
 
+// An archived trigger row is the durable voice queue entry. No browser cursor,
+// time window, or separate enqueue operation can lose an acknowledged report.
+const outcomeSpeechRow = `mode = 'praxis' AND id GLOB 'follow-up:*:trigger'
+    AND id = 'follow-up:' || json_extract(metadata, '$.followUpId') || ':trigger'
+    AND json_extract(metadata, '$.source') = 'praxis:chat-follow-ups'
+    AND json_type(metadata, '$.outcomeSpeech') = 'text'`;
+function pendingOutcomeSpeech() {
+    return db.prepare(`SELECT id, json_extract(metadata, '$.outcomeSpeech') AS speech FROM chat_messages
+        WHERE ${outcomeSpeechRow} AND NOT EXISTS (
+            SELECT 1 FROM chat_outcome_speech_claims WHERE message_id = chat_messages.id AND released = 0
+        ) ORDER BY rowid`).all();
+}
+function claimOutcomeSpeech(id, token) {
+    return db.prepare(`INSERT INTO chat_outcome_speech_claims (message_id, token)
+        SELECT id, ? FROM chat_messages WHERE id = ? AND ${outcomeSpeechRow}
+        ON CONFLICT DO NOTHING`).run(token, id).changes === 1;
+}
+function releaseOutcomeSpeech(id, token) {
+    // A closing tab's keepalive can reach Nexus before its original claim.
+    // Remember this attempt so a delayed request cannot consume unheard audio.
+    db.prepare(`INSERT INTO chat_outcome_speech_claims (message_id, token, released)
+        SELECT id, ?, 1 FROM chat_messages WHERE id = ? AND ${outcomeSpeechRow}
+        ON CONFLICT(message_id, token) DO UPDATE SET released = 1`).run(token, id);
+}
+
 /**
  * Fetch a single chat message by its primary key.
  *
@@ -3715,6 +3740,7 @@ module.exports = {
     deleteConversation,
     getChatMessages,
     getChatMessageById,
+    pendingOutcomeSpeech, claimOutcomeSpeech, releaseOutcomeSpeech,
     getNextAssistantMessage,
     saveChatMessage,
     clearChatMessages,

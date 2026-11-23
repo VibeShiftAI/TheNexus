@@ -43,7 +43,10 @@ function isActivityOnlyChatMessage(row) {
 }
 // Spoken updates remain archived in Activity and are also visible in chat.
 function isChatVisibleMessage(row) {
-    return (row.role === 'assistant' && metadataOf(row).voiceAnnouncement === true)
+    const metadata = metadataOf(row);
+    return (row.role === 'assistant' && metadata.voiceAnnouncement === true)
+        || (row.role === 'system' && metadata.source === 'praxis:chat-follow-ups'
+            && metadata.chatDirectedFinal === true && Boolean(metadata.outcomeSpeech))
         || !isActivityOnlyChatMessage(row);
 }
 function isConversationalChatMessage(row) {
