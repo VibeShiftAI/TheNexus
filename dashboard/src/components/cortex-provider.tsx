@@ -419,8 +419,10 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         setSwitchPreview(pending.outgoing);
         try {
             const selected = await ready;
-            if (pendingSwitch.current !== pending) return;
+            // Even a superseded success is now active on the server. Keep its
+            // transcript behind the newer preview in case that next pick fails.
             showConversation(selected.id, [...selected.history, ...pending.outgoing], selected.hasMore);
+            if (pendingSwitch.current !== pending) return;
         } catch (error) {
             if (pendingSwitch.current !== pending) return;
             console.error('[CortexProvider] Failed to open conversation:', error);

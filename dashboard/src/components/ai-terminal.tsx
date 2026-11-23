@@ -228,7 +228,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
 
         return sendInConversation(userMessage, chat => {
             noteChatSend(clientMessageId, 'sending', { conversationId: chat.id, preview: messageContent });
-            clearAttachments();
+            clearAttachments(attachedPreviews);
             clearAudio();
             chatTurnSteps.begin(clientMessageId, chat.id, 'Sending your message…');
             void runSend(chat, text, clientMessageId, attachedFiles, audioBlob);
