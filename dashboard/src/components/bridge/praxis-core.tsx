@@ -1,7 +1,7 @@
 /**
  * PraxisCore — the bridge "main viewer": the living core orb (shared with
- * ambient mode via CoreCanvas) with live stat readouts and the thinking
- * trace on the left, and the Praxis terminal embedded as the viewscreen
+ * ambient mode via CoreCanvas) with live stat readouts on the left, and the
+ * Praxis terminal embedded as the viewscreen
  * beside it — presence and conversation are one station. The viewscreen is
  * kept dashboard-sized; a maximize toggle blows it up to full screen without
  * losing conversation state. Crew chips click through to executor telemetry.
@@ -46,21 +46,17 @@ function fmtTime(iso?: string) {
 }
 
 export function PraxisCore() {
-  const { presence, recentEvents, connected } = useLiveBoardState();
+  const { presence, connected } = useLiveBoardState();
   const { crew } = useCrewActivity();
   const core = useCoreState();
   const work = useActiveWork();
   const { usage } = useTokenUsage();
   const [activityOpen, setActivityOpen] = useState(false);
   const [activityDetail, setActivityDetail] = useState<ActivityItem | null>(null);
-  const [traceOpen, setTraceOpen] = useState(false);
   const [viewscreenMax, setViewscreenMax] = useState(false);
   const [inspecting, setInspecting] = useState<ExecutorId | null>(null);
   const terminalRef = useRef<AITerminalHandle>(null);
   const busyCrew = crew.filter((m) => m.state === "active").length;
-
-  const lastTrace = recentEvents.find((e) => e.type === "thinking.trace");
-  const traceText = lastTrace && lastTrace.type === "thinking.trace" ? lastTrace.content : presence?.thinkingTrace;
 
   const stats = (
     [
@@ -128,7 +124,7 @@ export function PraxisCore() {
       }
     >
       <div className="flex flex-col gap-4 lg:flex-row">
-        {/* Core column — presence, vitals, thought stream */}
+        {/* Core column: presence and vitals */}
         <div className="praxis-core-presence flex w-full shrink-0 flex-col items-center lg:w-[240px]">
           <button type="button" onClick={() => {setActivityOpen(true); setActivityDetail(null);}} aria-label="Inspect Praxis core activity" className="rounded-full transition hover:bg-cyan-300/5 focus-visible:outline-2 focus-visible:outline-cyan-300"><CoreCanvas state={core} size={150} /></button>
 
@@ -238,15 +234,6 @@ export function PraxisCore() {
               ))}
             </div>
           )}
-
-          {traceText && (core.activity === "thinking" || core.activity === "executing") && (
-            <button type="button" onClick={() => setTraceOpen(true)} aria-label="Read full thought trace" className="text-left hover:border-cyan-400/40 mt-2.5 max-h-16 w-full overflow-hidden rounded-md border border-slate-800/60 bg-slate-950/60 px-2.5 py-1.5">
-              <div className="text-[10px] uppercase tracking-wide text-slate-600">thought stream</div>
-              <p className="truncate font-mono text-[11px] leading-relaxed text-slate-500" title={traceText}>
-                {traceText}
-              </p>
-            </button>
-          )}
         </div>
 
         {/* Viewscreen — the Praxis terminal, part of the core station. The
@@ -287,7 +274,6 @@ export function PraxisCore() {
       </div>
 
       {inspecting && <ExecutorDetailModal executor={inspecting} onClose={() => setInspecting(null)} />}
-      {traceOpen && <HudModal title="Thought trace" onClose={() => setTraceOpen(false)} wide><p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-300">{traceText}</p><Link href="/activity" className="mt-4 block text-sm text-cyan-300">Open activity report →</Link></HudModal>}
       {activityOpen && <HudModal title="Praxis core activity" onClose={() => setActivityOpen(false)} wide>{activityDetail ? <><button className="mb-4 text-sm text-cyan-300" onClick={() => setActivityDetail(null)}>← All events</button><ActivityDetails item={activityDetail}/></> : <ActivityList onSelect={setActivityDetail}/>}<Link href="/activity" className="mt-4 block text-sm text-cyan-300">Full activity report →</Link></HudModal>}
     </HudPanel>
   );
