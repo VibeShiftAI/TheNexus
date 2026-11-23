@@ -169,11 +169,11 @@ test('one archived follow-up authorizes one playback across independent clients,
     const speech = 'Keep the archive offline. The details are in chat.';
     const message = { id, conversation_id: conversation.id, role: 'assistant', content: 'Keep the archive offline. Full report.', mode: 'praxis',
         metadata: { followUpId: 'watch', source: 'praxis:chat-follow-ups', outcomeSpeech: speech } };
-    await db.saveChatMessage(message);
+    const archived = await db.saveChatMessage(message);
     // Reload may send a keepalive release while the original claim is in flight.
     db.releaseOutcomeSpeech(id, 'closing-tab');
     expect(db.claimOutcomeSpeech(id, 'closing-tab')).toBe(false);
-    expect(db.pendingOutcomeSpeech()).toContainEqual({ id, speech });
+    expect(db.pendingOutcomeSpeech()).toContainEqual({ id, speech, deliveredAt: archived.created_at });
     const hear = async (client, connection = db) => {
         const pending = connection.pendingOutcomeSpeech();
         return pending.some(row => row.id === id) && connection.claimOutcomeSpeech(id, client) ? [speech] : [];

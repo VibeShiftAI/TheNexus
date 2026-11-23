@@ -119,7 +119,7 @@ export function VoiceCommandBar() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [setupFocusRequest, setSetupFocusRequest] = useState(0);
   const [wakeEnabled, setWakeEnabled] = useState(false);
-  const [alertMode, setAlertMode] = useState<AlertMode>('off');
+  const [alertMode, setAlertMode] = useState<AlertMode>();
   const [conversationActive, setConversationActive] = useState(false);
   const [wakeSuspended, setWakeSuspended] = useState(false);
   const wakeSuspendedRef = useRef(false);
@@ -147,9 +147,13 @@ export function VoiceCommandBar() {
 
   useEffect(() => {
     // Microphone arming is explicit for each page session, never restored.
-    setAlertMode(readAlertMode());
+    const syncMode = () => setAlertMode(readAlertMode());
+    syncMode();
+    const onStorage = (event: StorageEvent) => { if (event.key === ALERT_MODE_KEY) syncMode(); };
+    window.addEventListener('storage', onStorage);
     try { setAmbientIdle(getAmbientIdleMinutes()); } catch { /* Default when storage is blocked. */ }
     setWakeSupported(Boolean(createRecognition()));
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
   wakeEnabledRef.current = wakeEnabled;
 
@@ -671,7 +675,7 @@ export function VoiceCommandBar() {
     alertsRef.current = alerts;
     return () => { alerts.dispose(); alertsRef.current = null; };
   }, [speak, speech, setMessages]);
-  useEffect(() => { alertsRef.current?.update(recentEvents, alertMode); }, [recentEvents, alertMode]);
+  useEffect(() => { if (alertMode) alertsRef.current?.update(recentEvents, alertMode); }, [recentEvents, alertMode]);
 
   const pendingRead = useRef<AbortController | null>(null);
   const refreshOutcomes = useCallback(() => {
@@ -846,11 +850,11 @@ export function VoiceCommandBar() {
             </span>
             <select
               aria-label="Spoken alert mode"
-              value={alertMode}
+              value={alertMode ?? 'off'}
               onChange={e => {
                 const mode = e.target.value as AlertMode;
+                alertsRef.current?.setMode(mode);
                 setAlertMode(mode);
-                try { window.localStorage.setItem(ALERT_MODE_KEY, mode); } catch { /* session preference */ }
               }}
               className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-xs text-slate-200"
             >

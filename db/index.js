@@ -3195,7 +3195,7 @@ const outcomeSpeechRow = `mode = 'praxis' AND id GLOB 'follow-up:*:trigger'
     AND json_extract(metadata, '$.source') = 'praxis:chat-follow-ups'
     AND json_type(metadata, '$.outcomeSpeech') = 'text'`;
 function pendingOutcomeSpeech() {
-    return db.prepare(`SELECT id, json_extract(metadata, '$.outcomeSpeech') AS speech FROM chat_messages
+    return db.prepare(`SELECT id, json_extract(metadata, '$.outcomeSpeech') AS speech, created_at AS deliveredAt FROM chat_messages
         WHERE ${outcomeSpeechRow} AND NOT EXISTS (
             SELECT 1 FROM chat_outcome_speech_claims WHERE message_id = chat_messages.id AND released = 0
         ) ORDER BY rowid`).all();

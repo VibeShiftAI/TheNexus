@@ -6,7 +6,7 @@ import type { VoiceSession, VoiceSpeech } from './voice-speech';
 const endpoint = '/api/voice/outcomes';
 
 export async function pendingOutcomeSpeech(signal: AbortSignal) {
-  const res = await voiceChatRequest<{ id: string; speech: string }[]>(endpoint, { cache: 'no-store' }, { signal });
+  const res = await voiceChatRequest<{ id: string; speech: string; deliveredAt: string }[]>(endpoint, { cache: 'no-store' }, { signal });
   if (!res.ok || !Array.isArray(res.data)) throw new Error('Outcome queue unavailable');
   return res.data;
 }
