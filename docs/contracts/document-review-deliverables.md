@@ -279,10 +279,10 @@ decision needs one of the proofs Nexus trusts:
 
 | `authority` recorded | Proof | Records |
 |---|---|---|
-| `access_user` | a verified Cloudflare Access login session for `NEXUS_OPERATOR_EMAIL` (tunnel browser, phone shell) | Robert's direct decisions, and the approve-after-changes grant on Finish review |
+| `access_user` | a verified Cloudflare Access login session for `NEXUS_OPERATOR_EMAIL` (tunnel browser, phone shell) | Robert's direct decisions, and the approval a Finish review with the approve-with-note checkbox records |
 | `access_device` | the Windows travel shell's verified Access device session, pinned by `NEXUS_OPERATOR_DEVICE_IDS` | the same |
 | `operator_credential` | `Authorization: Bearer <NEXUS_OPERATOR_APPROVAL_KEY>` from a trusted operator tool, or a short-lived local session signed by the server after a pinned Mac application passes OS peer verification | the same; local provisioning and revocation: `docs/contracts/local-operator-session.md`; this key is also Robert's stakeholder approval authority (`docs/contracts/stakeholder-policy.md`) and no executor holds it |
-| `document_executor_credential` | `Authorization: Bearer <NEXUS_DOCUMENT_APPROVAL_KEY>` from `scripts/record-document-approval.js` | an executor-recorded approval only (below): it needs the `executor` block citing a review Robert finished with the grant, it cannot decide directly or grant, and every stakeholder endpoint refuses it |
+| `document_executor_credential` | `Authorization: Bearer <NEXUS_DOCUMENT_APPROVAL_KEY>` from `scripts/record-document-approval.js` | an executor-recorded approval only (below): it needs the `executor` block citing a review Robert finished with the old grant (only reviews finished before task 282c64fa carry one), it cannot decide directly or grant, and every stakeholder endpoint refuses it |
 
 The session is checked first, whatever `Authorization` header the request
 carries; a bearer is consulted only for a request with no verified session,
@@ -299,9 +299,10 @@ Refused: service users, `x-praxis-bridge-token`, `cf-access-client-id` /
 wrong bearer, an unsigned local request, and any request with
 `Sec-Fetch-Site: cross-site`. Dispatched executors and the QA reviewer reach
 the API as `local_user` with no operator proof, so they cannot decide on
-their own authority and cannot grant; since 2026-10-04 an executor may
-record Robert's own "approve with changes" instruction with the document
-executor credential, and only when Robert granted it (next paragraphs). The
+their own authority and cannot grant; an executor may record Robert's own
+"approve with changes" instruction with the document executor credential only
+for a review he finished with the old grant, before task 282c64fa (next
+paragraphs). The
 Mac app on `localhost:3000` has no Access session. It and the pinned local
 Chrome browser establish their operator sessions automatically, without a
 separate sign-in. The server verifies the actual TCP peer's running code,
@@ -316,24 +317,68 @@ prevent reissuance. The shared chat restart authenticator checks the same
 proof. See `docs/contracts/local-operator-session.md` for provisioning,
 revocation, supported clients and the bounded threat model.
 
+### Approve with a note (2026-11-23, task 282c64fa)
+
+Robert's instruction: "I checked that the document was approved with changes,
+that should not trigger a revision of the document, but that note should stay
+with it." `approve_after_changes: true` on
+`POST /api/documents/reviews/:reviewId/finish`, which the dashboard offers as
+the "Approve this version and keep my summary and comments with it as a note"
+checkbox, now means:
+
+- Robert approves the exact revision he reviewed, when he finishes. In the
+  same transaction as the submission, the finish inserts one `approve`
+  decision with `recorded_by: "operator"`, his own authority and the reviewed
+  `revision_id` and `content_hash`. Its `note` is his summary and every comment
+  (where it points, its words and its replies). Its `provenance.source`
+  (`kind: "review_finish"`) names the review and submission and keeps the
+  summary and comments. The review stores `approval_decision_id` and keeps
+  `approval_delegated: false`.
+- The requirements are the ones the grant had: his verified session or
+  operator credential, and for a local session his answer to the native Mac
+  dialog. Unsigned callers, the document executor credential, the runtime key,
+  bridge or service-token headers and service users get `403 operator_required`,
+  a cross-site request `403 cross_site`, a non-boolean flag `400 invalid_grant`.
+- The finish also has to pass what a direct approval passes: a reference
+  document is `409 review_not_required`, changed or unreadable bytes are
+  `409 stale_revision` or `409 file_unavailable`, a version closed by open
+  replacement work is refused, and a package with two or more directions
+  needs a direction he already approved on this revision
+  (`400 selection_required`). A refusal records nothing and keeps the draft.
+- It is recorded once. The approval's `client_decision_id` is
+  `review-finish:<review id>`, the unique index allows one row for it, a direct
+  decision may not use that prefix (`400 invalid_decision`), and a replayed
+  finish returns the first submission.
+- It opens no revision. `POST /api/documents/:id/replacements` citing that
+  submission is `409 source_not_change_request`, and an executor cannot cite
+  it (`403 source_review_not_delegated`). A later `request_changes` decision
+  still opens one replacement, citing that decision.
+- The note stays with the document. The submission payload carries `approval`
+  (`decision_id`, `decision`, `revision_id`, `content_hash`, `actor_id`,
+  `authority`, `note`, `recorded_at`). The note is on `current_decision` in the
+  document read, on the decision in `/history`, on the in-force check and in
+  the package Praxis fetches.
+
+Reviews finished before this change keep `approval_delegated: true`, so their
+replacement work and the executor-recorded approval below finish the way they
+started, and stored executor-recorded approvals stay readable with their
+provenance.
+
 ### Executor-recorded approvals (2026-10-04, task a2553798)
+
+Since task 282c64fa this path serves only reviews finished before that change;
+a finish no longer stores a grant.
 
 Robert's ruling in questionnaire `ask-robert-81299292-0878-4db1-a108-a14cc332f5dc`:
 his recurring "Approve with changes" review should not need a second click.
 The flow has two halves, and each is bound to its own credential.
 
-Robert's half is the grant. He reviews a revision and finishes the review
+Robert's half was the grant. He reviewed a revision and finished the review
 with his instruction (for example "just make this one change and then mark
 this document approved") and `approve_after_changes: true` on
-`POST /api/documents/reviews/:reviewId/finish`, which the dashboard offers as
-the "Approve once this change is made" checkbox on the same Finish review
-click. The grant is Robert's own act, so that finish is authorized like a
-decision: it is accepted only from his verified session or his operator
-credential. An unsigned caller (the shared `local_user` every local process
-carries), the document executor credential, the runtime key, bridge or
-service-token headers and service users get `403 operator_required`, a
-cross-site request `403 cross_site`, a non-boolean flag `400 invalid_grant`,
-and the review stays a draft. A granting review records
+`POST /api/documents/reviews/:reviewId/finish`, which the dashboard then
+offered as the "Approve once this change is made" checkbox on the same Finish
+review click. A granting review stored
 `approval_delegated: true` and `submitted_authority` (`access_user`,
 `access_device` or `operator_credential`); its submission payload carries
 both and its chat message says "Approval delegated". A finish without the
@@ -384,9 +429,9 @@ The server binds an executor-recorded approval to Robert's grant
 Direct operator decisions are unchanged: an operator-credential request
 without an `executor` block, and every Access-session decision, records
 `recorded_by: "operator"` with `provenance: null`. The server log lines name
-the recorder (`recorded_by=executor <id>, source_review=<review id>`) and the
-grant (`finished with approval delegated (authority=<authority>, submission=<id>)`),
-never a credential. The document executor credential is editorial only: the
+the recorder (`recorded_by=executor <id>, source_review=<review id>`) and an
+approval at finish (`finished with approval of revision <id> recorded
+(authority=<authority>, submission=<id>)`), never a credential. The document executor credential is editorial only: the
 stakeholder decision and receipt endpoints ask for the operator or runtime
 role and answer it `403`, so it cannot widen a document approval into a
 product-scope approval.
@@ -498,10 +543,10 @@ Nexus records authority and state; Praxis owns the delivery operation.
   refused, and `src/config.ts` strips `NEXUS_OPERATOR_APPROVAL_KEY` and
   `NEXUS_DOCUMENT_APPROVAL_KEY` from the environment it hands executors (like
   `PRAXIS_OPERATOR_KEY`). A dispatched executor records only Robert's own
-  "approve with changes" instruction, and only when he finished that review
-  with the approve-after-changes grant (the submission payload says
-  `approval_delegated: true` and the chat message "Approval delegated"), on
-  the revision that resulted from it, through
+  "approve with changes" instruction, and only for a review he finished with
+  the old approve-after-changes grant, before task 282c64fa (the submission
+  payload says `approval_delegated: true` and the chat message "Approval
+  delegated"), on the revision that resulted from it, through
   `scripts/record-document-approval.js` (section 6) with the document-scoped
   executor credential; it never approves on its own judgement, a review
   without the grant is feedback to act on and report, and `request_changes`
@@ -543,14 +588,19 @@ Nexus records authority and state; Praxis owns the delivery operation.
   attempt id only for the same decision on the same revision, and clear it
   once a decision is recorded. A refusal message that recommends a reload
   must not cost the note.
-- Keep Finish review and the decision buttons separate calls. Neither implies
-  the other. The "Approve once this change is made" checkbox on Finish review
-  sends `approve_after_changes: true` with the same finish call; it is not a
-  decision either, it lets the executor record one approval of the corrected
-  revision (section 6). It needs the session, so on `403 operator_required`
-  explain that the grant, like a decision, needs the tunnel, phone or travel
-  session, and keep the draft. Show `approval_delegated` on the finished
-  review so the reader can see which rounds delegated.
+- Keep Finish review and the decision buttons separate calls. A plain finish
+  records no decision. The "Approve this version and keep my summary and
+  comments with it as a note" checkbox on Finish review sends
+  `approve_after_changes: true` with the same finish call and records one
+  approval of the reviewed revision, with the summary and comments as its note
+  (section 6). It needs the session, so on `403 operator_required` explain
+  that the approval, like a decision, needs the tunnel, phone or travel
+  session, and keep the draft. Where the server could only refuse it (a
+  reference document, a changed version, a package with no chosen direction),
+  say why instead of offering the checkbox. Show `approval_decision_id` on the
+  finished review and the note beside the approval; a round with
+  `approval_delegated` was finished under the old rule and its card promises
+  nothing about an executor.
 - Show history from `/api/documents/:id/history`: revisions, decisions
   (with `authority`, `recorded_by` and, for an executor-recorded approval,
   `provenance` with the instruction and the grant it acted on), receipts and
@@ -591,6 +641,9 @@ Nexus records authority and state; Praxis owns the delivery operation.
   `submitted_authority` (null). Reviews finished before the columns existed
   read as feedback and never authorize an executor-recorded approval
   (`source_review_not_delegated`); Robert decides on them directly.
+- Approve with a note (2026-11-23, task 282c64fa) adds `approval_decision_id`
+  (null) to `document_reviews`. Existing rows read as not approved at finish;
+  a stored `approval_delegated: true` keeps its original lifecycle.
 
 ## 11. Verification
 
@@ -604,13 +657,20 @@ Nexus records authority and state; Praxis owns the delivery operation.
   cross-project producer rule, and migration of a frozen pre-change schema
   (including the 2026-10-02 decisions table gaining `recorded_by` and
   `provenance`).
+- `npx jest server/__tests__/document-approve-with-note.test.js` covers the
+  approval at finish: the note on every read path, one approval per review
+  under replay and races, the refusals (proof, stale or missing bytes, closed
+  versions, reference documents, unchosen directions), no replacement from
+  such a submission, and the old rule's in-flight lifecycle.
 - `npx jest server/__tests__/document-executor-approvals.test.js` covers
-  executor-recorded approvals: the delegated approval with its provenance
-  and grant snapshot, the grant itself (an unsigned review and a signed review
-  without the flag are refused as sources; an unsigned caller, the document
+  executor-recorded approvals on reviews finished under the old rule (the
+  suite puts the stored grant on a plain finish): the delegated approval with
+  its provenance and grant snapshot, the sources (an unsigned review and a
+  signed review without the flag are refused; an unsigned caller, the document
   executor credential, the runtime key, bridge, service-token, service-user
-  and cross-site requests cannot grant and the draft survives; the session,
-  the device session and the operator credential can), the refusal matrix
+  and cross-site requests are refused at finish and the draft survives; a
+  grant stored from the session, the device session or the operator credential
+  is accepted), the refusal matrix
   (no, wrong and unconfigured credential, the operator credential or a session
   carrying the block, the document credential without a block, bridge and
   service-token headers, malformed blocks, unknown and unfinished reviews,
@@ -625,9 +685,9 @@ Nexus records authority and state; Praxis owns the delivery operation.
   stops on drift, never prints a credential). In Praxis,
   `npm test -- executor_forbidden_env` proves both keys are scrubbed from the
   environment executors inherit. In the dashboard,
-  `document-review.test.mjs` covers the "Approve once this change is made"
-  checkbox: the finish body carries `approve_after_changes: true` only when
-  it is ticked, and the delegated badge appears on the finished round.
+  `document-review.test.mjs` covers the approve-with-note checkbox: the finish
+  body carries `approve_after_changes: true` only when it is ticked, the
+  finished round says it is approved and the note shows beside the approval.
 - The existing document suites (`documents-route`, `document-registry`,
   `document-review-format`, `document-review-delivery`,
   `document-review-receiver` under `server/__tests__/`) still pass unchanged.
@@ -868,9 +928,9 @@ still at the old version, explicitly); a cancelled, deleted or archived task
 makes it `cancelled`; a failed task makes it `failed`; `qa_passed` with a
 current ready result makes it `ready`. On `ready` the document's
 `reviewable.ok` is true again and the new version takes reviews and decisions
-exactly as any current revision does (sections 5 and 6), including the
-executor-recorded approval of an "approve once this change is made" grant,
-which is refused with `replacement_in_progress` until then.
+exactly as any current revision does (sections 5 and 6), including, for a
+review finished under the old rule, the executor-recorded approval of its
+grant, which is refused with `replacement_in_progress` until then.
 
 Reads: `GET /api/documents/:id/replacements` returns `{ document_id,
 current_revision_id, open, reviewable, replacements }` (newest first). `GET
