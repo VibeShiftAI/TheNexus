@@ -36,6 +36,11 @@ const STUBS = new Map([
 
 const EXTENSIONS = ["", ".ts", ".tsx", ".mts", ".mjs", ".js", "/index.ts", "/index.tsx"];
 
+// Integration suites can mount a real provider in place of its unit-test store.
+export function initialize({ realModules = [] } = {}) {
+    for (const specifier of realModules) STUBS.delete(specifier);
+}
+
 function tryExtensions(baseUrl) {
     for (const ext of EXTENSIONS) {
         const candidate = `${baseUrl.href}${ext}`;

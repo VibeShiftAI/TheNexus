@@ -36,6 +36,7 @@ import { currentOpenDocument } from "@/lib/presentation-open-document";
 import { prepareChatFiles, voiceClipBase64 } from "@/lib/chat-uploads";
 import { useChatAudio } from "@/hooks/use-chat-audio";
 import { useChatHistory, messageKey } from "@/hooks/use-chat-history";
+import { chatTurnSteps } from "@/lib/chat-turn-steps";
 import { useChatTurnSteps } from "@/hooks/use-chat-turn-steps";
 import { useFileAttachments } from "@/hooks/use-file-attachments";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
@@ -45,7 +46,7 @@ import { TerminalHeader } from "@/components/chat/terminal-header";
 import { MessageRow } from "@/components/chat/message-row";
 import { FoldedTurnSteps, LiveTurnSteps, UnconfirmedTurnNotice } from "@/components/chat/turn-steps";
 import { PlanReviewModal } from "@/components/chat/plan-review-modal";
-import type { Message, CortexArtifact } from "@/components/cortex-provider";
+import type { Message, CortexArtifact, SendConversation } from "@/components/cortex-provider";
 
 interface AITerminalProps {
     isOpen?: boolean;
@@ -83,7 +84,7 @@ function noteReplyOutcome(clientMessageId: string, reply: { state?: string; erro
 
 export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function AITerminal({ isOpen = true, onClose, mode = 'modal', hideHeader = false }, ref) {
     const isInline = mode === 'inline';
-    const { messages, setMessages, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages, chatAudio, playChatAudio, toggleChatAudio, pauseChatAudio } = useCortex();
+    const { messages, setMessages, beginChatSend, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages, chatAudio, playChatAudio, toggleChatAudio, pauseChatAudio } = useCortex();
     // NOTE: the composer's draft text deliberately does NOT live here — it is
     // ChatComposer's own state, so keystrokes can't re-render the transcript.
     const [loading, setLoading] = useState(false);
@@ -160,11 +161,25 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
     // Message persistence, the Socket.IO connection and artifact handling are
     // all owned by CortexProvider; praxis is the only mode.
 
-    // Synchronous dispatch decision for the composer: returns true when the
-    // message was accepted (the composer then clears its input), false when
-    // nothing was consumed (empty draft, mid-request, /ingest with no
-    // payload). The slow work continues in runIngest/runSend below.
-    const handleSend = (rawText: string): boolean => {
+    // A pending switch previews the row immediately. Accept (and clear) the
+    // draft only once its conversation opens, so a failed switch is retryable.
+    const sendInConversation = (message: Message, send: (chat: SendConversation) => void) => {
+        setLoading(true);
+        const destination = beginChatSend(message);
+        if (destination instanceof Promise) {
+            return destination.then(chat => {
+                send(chat);
+                return true;
+            }, () => {
+                setLoading(false);
+                return false;
+            });
+        }
+        send(destination);
+        return true;
+    };
+
+    const handleSend = (rawText: string): boolean | Promise<boolean> => {
         const text = rawText.trim();
         if ((!text && attachedFiles.length === 0 && !audioBlob) || loading) return false;
 
@@ -185,14 +200,11 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
 
             // Show user message
             const isUrl = /^https?:\/\//i.test(payload);
-            setMessages(prev => [...prev, {
+            return sendInConversation({
                 role: 'user',
                 content: `📥 /ingest ${isUrl ? payload : payload.substring(0, 80) + (payload.length > 80 ? '...' : '')}`,
                 timestamp: new Date()
-            }]);
-            setLoading(true);
-            void runIngest(payload, isUrl);
-            return true;
+            }, chat => { void runIngest(payload, isUrl, chat); });
         }
 
         // Build user message content
@@ -214,19 +226,16 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             timestamp: new Date(),
         };
 
-        setMessages(prev => [...prev, userMessage]);
-        noteChatSend(clientMessageId,'sending',{conversationId,preview:messageContent});
-        const filesToUpload = [...attachedFiles];
-        clearAttachments(); // detaches the files and revokes their preview URLs
-        const currentAudioBlob = audioBlob;
-        clearAudio(); // Reset recording UI
-        turnSteps.begin(clientMessageId, 'Sending your message…');
-        setLoading(true);
-        void runSend(text, clientMessageId, filesToUpload, currentAudioBlob);
-        return true;
+        return sendInConversation(userMessage, chat => {
+            noteChatSend(clientMessageId, 'sending', { conversationId: chat.id, preview: messageContent });
+            clearAttachments();
+            clearAudio();
+            chatTurnSteps.begin(clientMessageId, chat.id, 'Sending your message…');
+            void runSend(chat, text, clientMessageId, attachedFiles, audioBlob);
+        });
     };
 
-    const runIngest = async (payload: string, isUrl: boolean) => {
+    const runIngest = async (payload: string, isUrl: boolean, { setMessages }: SendConversation) => {
         try {
             const authHeader = await getAuthHeader();
             const body = isUrl
@@ -266,28 +275,29 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
     // Display commands: only a reply's structured `displayDirective` field (never its text) is run,
     // once, with the operator's own session; the PRAXIS_DISPLAY_REPORT turn that follows may carry
     // one follow-up directive (a stop for a cancelled start), no deeper. lib/presentation-chat-relay.
-    const relayDisplayDirective = (reply: { displayDirective?: unknown } | null | undefined, depth: number) => {
+    const relayDisplayDirective = (chat: SendConversation, reply: { displayDirective?: unknown } | null | undefined, depth: number) => {
         const directive = readIssuedDirective(reply?.displayDirective);
         if (!directive || depth >= 2) return;
         void (async () => {
             const report = await executeDisplayDirective(directive);
             const reportText = renderDisplayReport(report);
             const reportMessageId = createClientMessageId();
-            setMessages(prev => [...prev, {
+            chat.setMessages(prev => [...prev, {
                 id: reportMessageId,
                 role: 'user',
                 content: reportText,
                 timestamp: new Date(),
                 metadata: { displayReport: { action: directive.action, ok: report.ok, code: report.code } },
             }]);
-            noteChatSend(reportMessageId, 'sending', { conversationId, preview: `Display ${directive.action}: ${report.ok ? 'done' : report.code || 'failed'}` });
-            turnSteps.begin(reportMessageId, 'Reporting the display result to Praxis…');
+            noteChatSend(reportMessageId, 'sending', { conversationId: chat.id, preview: `Display ${directive.action}: ${report.ok ? 'done' : report.code || 'failed'}` });
+            chatTurnSteps.begin(reportMessageId, chat.id, 'Reporting the display result to Praxis…');
             setLoading(true);
-            await runSend(reportText, reportMessageId, [], null, depth + 1);
+            await runSend(chat, reportText, reportMessageId, [], null, depth + 1);
         })();
     };
 
-    const runSend = async (text: string, clientMessageId: string, filesToUpload: File[], currentAudioBlob: Blob | null, relayDepth = 0) => {
+    const runSend = async (chat: SendConversation, text: string, clientMessageId: string, filesToUpload: File[], currentAudioBlob: Blob | null, relayDepth = 0) => {
+        const { setMessages } = chat;
         try {
             const authHeader = await getAuthHeader();
 
@@ -307,7 +317,8 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             const requestBody = JSON.stringify({
                 message: text || (currentAudioBlob ? "Voice recording attached" : `Please analyze the attached file(s): ${filesToUpload.map(f => f.name).join(', ')}`),
                 mode: 'praxis',
-                history: messages.slice(-10), // Last 10 messages for context
+                conversationId: chat.id ?? undefined,
+                history: chat.history.slice(-10), // Last 10 messages for context
                 projectId: scopedProjectId, // Send scope if available
                 clientMessageId,
                 files: fileContents, // Include text file contents for LLM context
@@ -410,7 +421,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 });
                 turnSteps.fold(clientMessageId, messageKey(finalMessage), finalEvent);
                 if (finalEvent?.morningKickoff) dispatchMorningKickoff();
-                relayDisplayDirective(finalEvent, relayDepth);
+                relayDisplayDirective(chat, finalEvent, relayDepth);
                 noteReplyOutcome(clientMessageId, finalEvent);
                 return;
             }
@@ -434,7 +445,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             });
             void turnSteps.foldAfterReply(clientMessageId, messageKey(assistantMessage));
             if (data.morningKickoff) dispatchMorningKickoff();
-            relayDisplayDirective(data, relayDepth);
+            relayDisplayDirective(chat, data, relayDepth);
             noteReplyOutcome(clientMessageId, data);
         } catch (error: any) {
             noteChatSend(clientMessageId,'failed',{detail:error?.message || 'Reply could not be confirmed'});

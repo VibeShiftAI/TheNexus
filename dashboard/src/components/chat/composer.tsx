@@ -22,8 +22,8 @@ export interface ChatComposerProps {
     isRecording: boolean;
     hasAudio: boolean;
     attachedCount: number;
-    /** Synchronous dispatch decision: true = message accepted, clear the input. */
-    onSend: (text: string) => boolean;
+    /** Clear the draft when its conversation accepts the send. */
+    onSend: (text: string) => boolean | Promise<boolean>;
 }
 
 /** The composer's keystroke state lives HERE, in a leaf component beside the
@@ -92,15 +92,19 @@ export function ChatComposer({ isInline, isOpen, loading, isRecording, hasAudio,
         return () => window.removeEventListener("nexus:chat-seed", onSeed);
     }, [updateInput]);
 
-    const submit = () => {
+    const submit = async () => {
         // Clicking the Send button moves focus to the button; restore it to
         // the composer so typing can continue without a manual re-click,
         // matching the old <input>'s Enter-to-send flow.
-        if (onSend(input)) {
-            setInput("");
-            clearChatDraft();
-            inputRef.current?.focus();
-        }
+        const accepted = onSend(input);
+        if (accepted instanceof Promise) {
+            if (!await accepted) return;
+            // A deck action can seed a different draft while navigation is pending.
+            if ((inputRef.current?.value ?? readChatDraft()) !== input) return;
+        } else if (!accepted) return;
+        setInput("");
+        clearChatDraft();
+        inputRef.current?.focus();
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -168,7 +172,7 @@ export interface ComposerRowProps {
     startRecording: () => void;
     stopRecording: () => void;
     clearAudio: () => void;
-    onSend: (text: string) => boolean;
+    onSend: (text: string) => boolean | Promise<boolean>;
 }
 
 export function ComposerRow({
