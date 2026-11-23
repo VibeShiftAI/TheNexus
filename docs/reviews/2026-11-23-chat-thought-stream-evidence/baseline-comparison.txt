@@ -1,0 +1,128 @@
+Baseline comparison for task eed607d4 (working steps in the chat), run 2026-11-23.
+
+Baselines
+  TheNexus 9923f67ffc7e554b80634f10fc77d847f5ffe73e
+  Praxis   09257f4e1e3b9cb9f9f47ce0b47e460e41e91a19
+Both were checked out as detached worktrees side by side, because the Praxis
+suites read a sibling ../TheNexus. Every run below used the task's final source.
+
+
+1. Dashboard
+Command (dashboard/): npm test -- --test-reporter=tap
+Baseline command: node --import ./test/register.mjs --test --test-reporter=tap
+  "src/**/__tests__/*.test.mjs" "src/**/__tests__/*.test.ts" "test/*.test.mjs"
+  After:    tests 1378, pass 1376, fail 2
+  Baseline: tests 1350, pass 1348, fail 2
+Failing in both, with no others:
+  Praxis journal exposes stock analysis and YouTube script tabs
+  fetched comparison renders lane/model estimates, metric sample sizes and exact run links
+
+
+2. Nexus server
+Command (repo root): npx jest --cacheDirectory=<scratch> --forceExit
+  After:    suites 2 failed, 180 passed; tests 2 failed, 1 skipped, 2441 passed
+  Baseline: suites 2 failed, 180 passed; tests 2 failed, 1 skipped, 2440 passed
+Failing in both, with no others:
+  praxis-stream route > POST /api/praxis/events ingest > ignores X-Forwarded-For and judges loopback by the socket peer
+  studio route > the enrich endpoint drains un-enriched objects and reports remaining
+
+
+3. Praxis
+Command (repo root): npm test -- --test-reporter=tap
+  After:    tests 10306, pass 10243, fail 62, skipped 1 (61 unique names)
+  Baseline: tests 10313, pass 10252, fail 60, skipped 1 (59 unique names)
+Failing at baseline and not after: none.
+
+Failing after and not at baseline: two entries, neither caused by this task.
+
+  tests/tts_provider.test.ts (the file entry)
+    The test runner itself failed: failureType 'uncaughtException', "Unable to
+    deserialize cloned data due to invalid or unsupported version."
+    Rerun three times on each tree:
+      npm test -- tts_provider prompt_experiment --test-reporter=tap
+    All six runs: tests 53, pass 51, fail 2, with the same two names, both in
+    the baseline list below ("default provider and local settings preserve
+    hosted compatibility", "local briefing ignores exhausted ElevenLabs credits
+    while retaining its ceiling").
+
+  CLI prepare/run/compare uses the real seat adapter against a local fake binary with no inference
+    Intermittent. Rerun on each tree together with the other suites whose
+    failure counts differed:
+      npm test -- checkpoint_end_to_end consultation_memory email_intake_council
+        email_intake_runtime member_profile_pilot prompt_experiment
+        report_intake_questions report_intake_slot_failure
+        stakeholder-living-report tts_provider --test-reporter=tap
+    After:    tests 167, pass 144, fail 23
+    Baseline: tests 167, pass 143, fail 24
+    In that rerun this test failed on the baseline and passed on the task's
+    tree. Nothing failed on the task's tree that passed on the baseline.
+
+Failing at baseline and after (59 names):
+  5fbeff4a replay: answer -> admission hold -> manual delivery -> old-card answer -> no duplicate, no re-ask
+  E2 and rubric inference preserve full prompt and use no guessed output ceiling
+  Gemma-authored candidates get a strict-mesh CLI lane with paid defaults demoted
+  REGRESSION GATE: every warning/critical eventType published under src/ has an explicit OVERRIDES entry
+  a council still running holds the intake honestly; the sweep composes round 1 once the result is saved
+  a failed council is reported, never skipped, and retried through the durable job ledger
+  a failed follow-up survives repeated refusals and a retry without new text
+  a follow-up round asks every still-unresolved question in priority order: partial, unknown and unanswered alike
+  a hold that is still real stays visible, current and plainly actionable
+  a long follow-up survives repeated refusals and a retry without new text
+  a partial 1/3 council merges saved needs, composes the round and reports participation only to Robert
+  a partial 2/3 council merges saved needs, composes the round and reports participation only to Robert
+  a partial draft-ready notice survives a delivery outage and pause/resume without recomposing
+  a partial draft-ready notice survives a delivery outage without recomposing
+  a pending review council is never replaced: start is held until that council has finished, then the preparation council convenes
+  a thin result never overwrites a real measurement, and writes when there is none
+  a token event creates a persisted acknowledgment-only yellow card and owns its notification
+  acknowledgements retain source evidence and hold clarification without repeating unanswered questions
+  an adopted Nexus partial review with no readable seat count (legacy record) is rejected, not merged or emailed
+  an adopted Nexus partial review with zero substantive seats (legacy finding) is rejected, not merged or emailed
+  an adopted Nexus partial review with zero substantive seats in its participation field is rejected, not merged or emailed
+  an executor's mid-execution drift stays held with the decision path named; an unrelated duplicate hold keeps its own reason
+  an intake with nine open questions produces one email with every question grouped under topic headings and numbered continuously
+  an outstanding intake email keeps its questions out of the report, which says answers are awaited; internal-only tasks never appear
+  assembled built-in registry preserves the split snapshot plus current domains
+  bounded failure stalls durably and explicit resume retries retained source without another query
+  calibration refuses BEFORE building pairs when the paid reference cannot answer
+  composition crash replay recovers its one retained query, draft and reminder; a cancelled intake retains late raw replies only
+  compound questions and internal references stall visibly without leaking into a mail draft
+  default provider and local settings preserve hosted compatibility
+  every roster slug still exists and is still free
+  explicit operator test uses the same pipeline, exact project/address/source, no member identity and no reminders
+  getTradingPersonas uses Model Control despite the retired local_first flag
+  getTradingPersonas uses the configured frontier bench
+  induceE2Rubric: guard misses reach the Reflector and gate the champion
+  induceE2Rubric: measured seed, one evolution round, improved rubric wins
+  induceE2Rubric: recorded seed re-replays only its miss cases for justifications
+  intake stages 5 to 7 against the real Nexus intake store
+  keep persists inherited follow-ups after a failed write without leaving a journal copy
+  keep stores a long answer whole for the next manual dispatch
+  keep stores a long follow-up whole for the next manual dispatch
+  keep stores a long inherited-follow-up whole for the next manual dispatch
+  local briefing ignores exhausted ElevenLabs credits while retaining its ceiling
+  manual day planning also withholds duplicate work before publishing an approval
+  no task-payload producer bypasses the creation boundary
+  one outstanding request; pause/cancel/stale or edited envelopes cannot send, resume never revives cancelled mail
+  readBenches returns both benches with typed, named seats
+  refusal -> successful dispatch -> delayed alert: the obsolete hold is closed by receipt and never spoken
+  stale knowledge revision prevents delivery; explicit resume creates exactly one fresh envelope
+  the Default Bench seats today's leader where Opus 5 sat, with a reply budget a reasoning model can ballot in; Opus 5.5 aggregates both benches
+  the fence Praxis writes is the one the Groundrules re-check accepts, and a tampered one is refused
+  the free lane follows the ranking once it has evidence, and the rotation never reaches Gemma
+  the send gate refuses a report whose intake questions were edited, went stale or were replaced
+  the split routers register exactly the pre-split route surface plus the inventoried additions
+  the tailored chat-dispatch path receives the same question and action links
+  trading council voices use the configured frontier bench even with the old local flag
+  when CLI seats fail, the lane falls to a mesh-legal local route and never paid API
+  writeInductionArtifacts freezes the champion rubric with provenance
+  writeInductionArtifacts records the guard verdict and reads back
+
+
+4. Typecheck
+  Praxis (repo root): npx tsc --noEmit, exit 0.
+  TheNexus dashboard/ (the repository's only tsconfig): npx tsc --noEmit, exit 0.
+  TheNexus repo root has no tsconfig.json and no TypeScript project.
+  There, npx --no-install tsc --noEmit exits 1 and prints npm's placeholder
+  "This is not the tsc command you are looking for". The same command at the
+  baseline gives the same exit 1 and the same message.
