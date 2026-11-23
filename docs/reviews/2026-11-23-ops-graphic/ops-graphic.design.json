@@ -1,0 +1,59 @@
+{
+  "format": "nexus-design-package/1",
+  "title": "Ops graphic: every running agent, real logos",
+  "summary": "Recommended: approve the look. Still open: the model names on live runs depend on a Praxis change that is tested (real dispatches against stand-in CLIs, read back from dispatch state) but not yet running in production; until Praxis restarts with it, live run nodes will often read 'unknown'. The Ops graphic now draws one child node per live run under its provider (task runs, QA review runs, council seats), each with slot tag when present, task, model, role and elapsed time. Provider nodes carry the vendor's own logo at 20px in place of the 35px lettered chip. The Crew section is gone from the main viewer. Screenshots are from the running dashboard on an isolated stack with fixture runs (dashboard/scripts/ops-graphic-browser-check.mjs); no live task appears in them.",
+  "screens": [
+    {
+      "id": "ops-idle-desktop",
+      "title": "Ops graphic, nothing running (desktop)",
+      "viewport": "1440x900",
+      "state": "idle",
+      "file": "after/idle-desktop-ops-graphic.png",
+      "notes": "Every provider is collapsed to its logo, name and 'Standing By'. No run node, no moving wire. OpenRouter keeps its arrow glyph: the task named four vendors and it was not one of them."
+    },
+    {
+      "id": "ops-idle-phone",
+      "title": "Ops graphic, nothing running (phone)",
+      "viewport": "390x844 @2x",
+      "state": "idle",
+      "file": "after/idle-phone-ops-graphic.png",
+      "notes": "On a narrow station the providers stack under the hub."
+    },
+    {
+      "id": "ops-busy-desktop",
+      "title": "Ops graphic, six runs on three executors (desktop), before and after",
+      "viewport": "1440x900",
+      "state": "busy",
+      "file": "after/busy-desktop-ops-graphic.png",
+      "before": "before/busy-desktop-ops-graphic.png",
+      "notes": "Same fixture state in both. Before: one pod per provider wearing one role, the rest counted away ('QA · Testing +2', 'Testing +1'). After: Claude Code holds two task runs and one QA review run (purple, 'reviewing'), Codex two, Antigravity one. S2, S5 and S3 are slot tags; the three runs without a slot show no tag. 'unknown' in amber is a run for which Praxis reported no model. The second Claude Code run was requested as Fable 5.2 and served as Opus 5.5: the node shows the served model and its tooltip names the request."
+    },
+    {
+      "id": "ops-busy-phone",
+      "title": "Ops graphic, six runs on three executors (phone), before and after",
+      "viewport": "390x844 @2x",
+      "state": "busy",
+      "file": "after/busy-phone-ops-graphic.png",
+      "before": "before/busy-phone-ops-graphic.png",
+      "notes": "Stacked layout: each run node has the full width, so the title, model, effort, role, phase and elapsed time sit on two lines."
+    },
+    {
+      "id": "main-viewer-desktop",
+      "title": "Main viewer without the Crew section (desktop), before and after",
+      "viewport": "1440x900",
+      "state": "busy",
+      "file": "after/busy-desktop-main-viewer.png",
+      "before": "before/busy-desktop-main-viewer.png",
+      "notes": "Before: the Crew block of four chips sat under the orb. After: it is gone; the executor drill-down opens from any provider or run node on the Ops graphic."
+    },
+    {
+      "id": "main-viewer-phone",
+      "title": "Main viewer without the Crew section (phone), before and after",
+      "viewport": "390x844 @2x",
+      "state": "busy",
+      "file": "after/busy-phone-main-viewer.png",
+      "before": "before/busy-phone-main-viewer.png",
+      "notes": "Same change at phone width."
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-23T14:27:15.359Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/model-control/fable-availability — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Router] fable-availability unreachable at http://127.0.0.1:4000 ([tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/model-control/fable-availability — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately) — holding the fail-open default
+[2026-11-23T14:27:15.402Z] [WARN] [Router] fable-availability unreachable at http://127.0.0.1:4000 ([tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/model-control/fable-availability — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately) — holding the fail-open default
+[2026-11-23T14:27:15.459Z] [DEBUG] [Executor] model-truth-9074-claude-task: cross-repo run window opened at 2026-11-23T14:27:15.458Z over 0 sibling repo(s)
+[2026-11-23T14:27:15.459Z] [INFO] [RollbackCache] Cached pre-state for model-truth-9074-claude-task (retry 0/2)
+[2026-11-23T14:27:15.459Z] [INFO] [Executor] Routing task model-truth-9074-claude-task → claude-code (async)
+[RollbackCache] Cached pre-state for model-truth-9074-claude-task (retry 0/2)
+[Executor] Routing task model-truth-9074-claude-task → claude-code (async)
+[Executor:claude-code] Dispatching task model-truth-9074-claude-task in /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-model-dispatch-V9ffou/projects/workspace (model claude-fable-5-2, effort high, timeout 0ms, workspace binding audit, log /Volumes/Projects/.praxis-worktrees/56c15b54-b7e4-473d-9f4a-102919de185d/Praxis/data/claude-code-runs/model-truth-9074-claude-task.log)
+[2026-11-23T14:27:15.463Z] [INFO] [Executor:claude-code] Dispatching task model-truth-9074-claude-task in /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-model-dispatch-V9ffou/projects/workspace (model claude-fable-5-2, effort high, timeout 0ms, workspace binding audit, log /Volumes/Projects/.praxis-worktrees/56c15b54-b7e4-473d-9f4a-102919de185d/Praxis/data/claude-code-runs/model-truth-9074-claude-task.log)
+[RollbackCache] Cached pre-state for qa--model-truth-9074-claude-review (retry 0/2)
+[Executor] Routing task qa--model-truth-9074-claude-review → claude-code (async)
+[2026-11-23T14:27:15.528Z] [INFO] [RollbackCache] Cached pre-state for qa--model-truth-9074-claude-review (retry 0/2)
+[2026-11-23T14:27:15.528Z] [INFO] [Executor] Routing task qa--model-truth-9074-claude-review → claude-code (async)
+[Executor:claude-code] Dispatching task qa--model-truth-9074-claude-review in /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-model-dispatch-V9ffou/projects/workspace (model claude-opus-5-5, effort medium, timeout 0ms, workspace binding audit, log /Volumes/Projects/.praxis-worktrees/56c15b54-b7e4-473d-9f4a-102919de185d/Praxis/data/claude-code-runs/qa--model-truth-9074-claude-review.log)
+[2026-11-23T14:27:15.530Z] [INFO] [Executor:claude-code] Dispatching task qa--model-truth-9074-claude-review in /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-model-dispatch-V9ffou/projects/workspace (model claude-opus-5-5, effort medium, timeout 0ms, workspace binding audit, log /Volumes/Projects/.praxis-worktrees/56c15b54-b7e4-473d-9f4a-102919de185d/Praxis/data/claude-code-runs/qa--model-truth-9074-claude-review.log)
+[2026-11-23T14:27:15.595Z] [DEBUG] [Executor] model-truth-9074-codex-task: cross-repo run window opened at 2026-11-23T14:27:15.595Z over 0 sibling repo(s)
+[2026-11-23T14:27:15.595Z] [INFO] [RollbackCache] Cached pre-state for model-truth-9074-codex-task (retry 0/2)
+[2026-11-23T14:27:15.595Z] [INFO] [Executor] Routing task model-truth-9074-codex-task → codex (async)
+[RollbackCache] Cached pre-state for model-truth-9074-codex-task (retry 0/2)
+[Executor] Routing task model-truth-9074-codex-task → codex (async)
+[Executor:codex] Dispatching task model-truth-9074-codex-task in /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-model-dispatch-V9ffou/projects/workspace (timeout 0ms, model gpt-6-astra, effort high, log /Volumes/Projects/.praxis-worktrees/56c15b54-b7e4-473d-9f4a-102919de185d/Praxis/data/codex-runs/model-truth-9074-codex-task.log)
+[2026-11-23T14:27:15.596Z] [INFO] [Executor:codex] Dispatching task model-truth-9074-codex-task in /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-model-dispatch-V9ffou/projects/workspace (timeout 0ms, model gpt-6-astra, effort high, log /Volumes/Projects/.praxis-worktrees/56c15b54-b7e4-473d-9f4a-102919de185d/Praxis/data/codex-runs/model-truth-9074-codex-task.log)
+[RollbackCache] Cached pre-state for qa--model-truth-9074-codex-review (retry 0/2)
+[Executor] Routing task qa--model-truth-9074-codex-review → codex (async)
+[2026-11-23T14:27:15.653Z] [INFO] [RollbackCache] Cached pre-state for qa--model-truth-9074-codex-review (retry 0/2)
+[2026-11-23T14:27:15.653Z] [INFO] [Executor] Routing task qa--model-truth-9074-codex-review → codex (async)
+[Executor:codex] Dispatching task qa--model-truth-9074-codex-review in /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-model-dispatch-V9ffou/projects/workspace (timeout 0ms, model gpt-5.6-sol, effort medium, log /Volumes/Projects/.praxis-worktrees/56c15b54-b7e4-473d-9f4a-102919de185d/Praxis/data/codex-runs/qa--model-truth-9074-codex-review.log)
+[2026-11-23T14:27:15.654Z] [INFO] [Executor:codex] Dispatching task qa--model-truth-9074-codex-review in /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-model-dispatch-V9ffou/projects/workspace (timeout 0ms, model gpt-5.6-sol, effort medium, log /Volumes/Projects/.praxis-worktrees/56c15b54-b7e4-473d-9f4a-102919de185d/Praxis/data/codex-runs/qa--model-truth-9074-codex-review.log)
+[2026-11-23T14:27:15.717Z] [DEBUG] [Executor] model-truth-9074-no-model: cross-repo run window opened at 2026-11-23T14:27:15.717Z over 0 sibling repo(s)
+[2026-11-23T14:27:15.717Z] [INFO] [RollbackCache] Cached pre-state for model-truth-9074-no-model (retry 0/2)
+[2026-11-23T14:27:15.717Z] [INFO] [Executor] Routing task model-truth-9074-no-model → model-truth-silent (async)
+[RollbackCache] Cached pre-state for model-truth-9074-no-model (retry 0/2)
+[Executor] Routing task model-truth-9074-no-model → model-truth-silent (async)
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, entry script /Volumes/Projects/.praxis-worktrees/56c15b54-b7e4-473d-9f4a-102919de185d/Praxis/tests/run_model_dispatch_state.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-23T14:27:15.731Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, entry script /Volumes/Projects/.praxis-worktrees/56c15b54-b7e4-473d-9f4a-102919de185d/Praxis/tests/run_model_dispatch_state.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[Executor:claude-code] Task qa--model-truth-9074-claude-review completed with outcome success
+[2026-11-23T14:27:17.187Z] [INFO] [Executor:claude-code] Task qa--model-truth-9074-claude-review completed with outcome success
+[Executor:codex] Task qa--model-truth-9074-codex-review completed with outcome success
+[2026-11-23T14:27:17.200Z] [INFO] [Executor:codex] Task qa--model-truth-9074-codex-review completed with outcome success
+[Executor:codex] Task model-truth-9074-codex-task completed with outcome success
+[2026-11-23T14:27:17.313Z] [INFO] [Executor:codex] Task model-truth-9074-codex-task completed with outcome success
+[Executor:claude-code] Task model-truth-9074-claude-task completed with outcome success
+[2026-11-23T14:27:17.331Z] [INFO] [Executor:claude-code] Task model-truth-9074-claude-task completed with outcome success
+✔ a fresh task run and QA review run on claude-code and codex report their model in dispatch state (1962.351ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2549.683625

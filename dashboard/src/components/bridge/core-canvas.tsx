@@ -61,9 +61,8 @@ export function coreStyle(activity: PresenceActivity | string | undefined): Core
   return CORE_STYLES[activity as PresenceActivity] ?? CORE_STYLES.offline;
 }
 
-/** Identity colors for the crew — shared with the crew chips so a comet is
- *  visually the same being as its chip. */
-export const EXECUTOR_COLORS: Record<string, string> = {
+/** Identity colors for the crew: one comet colour per executor. */
+const EXECUTOR_COLORS: Record<string, string> = {
   "claude-code": "#fb923c",
   codex: "#38bdf8",
   antigravity: "#e879f9",

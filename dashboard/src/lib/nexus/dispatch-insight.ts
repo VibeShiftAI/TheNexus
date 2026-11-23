@@ -32,6 +32,8 @@ export interface CliQueueEntry {
     /** When it entered the queue — the "waiting since" clock. */
     enqueuedAt?: string;
     args?: Record<string, unknown>;
+    /** The task's slot for the day, when Praxis gave it one. */
+    slotNumber?: number;
 }
 
 /** Per-executor slot occupancy inside the concurrency gate. */

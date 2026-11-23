@@ -41,6 +41,13 @@ export interface CliLaneRun {
   startedAt?: string;
   /** ms since the run started, or null when Praxis sent no timestamp. */
   runningMs: number | null;
+  /** Model fields exactly as Praxis reported them; each absent when it sent none. */
+  model?: string;
+  requestedModel?: string;
+  requestedEffort?: string;
+  servedModel?: string;
+  /** The task's slot for the day, when the run carries one. */
+  slotNumber?: number;
 }
 
 /** One executor's row in the lane block. */
@@ -66,6 +73,8 @@ export interface CliLaneQueueItem {
   enqueuedAt: string | null;
   /** ms waited, or null when Praxis sent no enqueue time. */
   waitingMs: number | null;
+  /** The task's slot for the day, or null when the entry carries none. */
+  slotNumber: number | null;
 }
 
 /** The concurrency gate, ready to render. */
@@ -121,6 +130,11 @@ export interface CliLaneSource {
       phase?: string;
       status?: string;
       startedAt?: string;
+      model?: string;
+      requestedModel?: string;
+      requestedEffort?: string;
+      servedModel?: string;
+      slotNumber?: number;
     }[];
     cliQueue?: CliQueueEntry[];
     cliConcurrency?: CliConcurrencyState;
@@ -131,6 +145,22 @@ export interface CliLaneSource {
 
 function num(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/** A non-empty reported string, else undefined: a blank is not a value. */
+function text(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+/** A slot number is a positive integer; anything else is "no slot". */
+function slot(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
+}
+
+/** `S<number>` for a run or queue entry that carries a slot, else null (render nothing). */
+export function slotTag(value: unknown): string | null {
+  const n = slot(value);
+  return n == null ? null : `S${n}`;
 }
 
 function elapsedMs(iso: string | undefined | null, now: number): number | null {
@@ -235,6 +265,11 @@ export function deriveCliLane(state: CliLaneSource | null | undefined, now = Dat
           kind: r.kind,
           startedAt: r.startedAt,
           runningMs: elapsedMs(r.startedAt, now),
+          model: text(r.model),
+          requestedModel: text(r.requestedModel),
+          requestedEffort: text(r.requestedEffort),
+          servedModel: text(r.servedModel),
+          slotNumber: slot(r.slotNumber) ?? undefined,
         })),
       slots: num(occupancy?.slots) ?? num(gateState?.slots?.[name]),
       free: num(occupancy?.free),
@@ -250,6 +285,7 @@ export function deriveCliLane(state: CliLaneSource | null | undefined, now = Dat
     executorLabel: executorLabel(entry?.executor),
     enqueuedAt: entry?.enqueuedAt ?? null,
     waitingMs: elapsedMs(entry?.enqueuedAt, now),
+    slotNumber: slot(entry?.slotNumber),
   }));
 
   const free = num(gateState?.free);

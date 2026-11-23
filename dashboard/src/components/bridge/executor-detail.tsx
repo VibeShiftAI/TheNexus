@@ -2,7 +2,7 @@
  * ExecutorDetailModal — drill-down popup for a crew member / dispatch lane.
  * Fetches a fresh dispatch-state snapshot on open and shows the runs, queue
  * and worker state for one executor (or the local LLM queue). Opened from
- * the DispatchStation lanes and the crew chips on the main viewer.
+ * the Ops graphic (DispatchStation): a provider node or any of its run nodes.
  */
 "use client";
 

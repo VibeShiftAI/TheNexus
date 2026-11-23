@@ -317,8 +317,8 @@ body { zoom: var(--nexus-display-scale, 1); }
 /* Inside the Android shell the page is the app: no tap flash, no rubber-band. */
 html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
 
-/* On a phone, put presence beside the orb so the conversation starts sooner. Vitals and
-   crew keep the full card width; the desktop presence column is unchanged. */
+/* On a phone, put presence beside the orb so the conversation starts sooner. Vitals
+   keep the full card width; the desktop presence column is unchanged. */
 @media (max-width: 639px) {
   .praxis-core-presence {
     display: grid;
@@ -387,16 +387,9 @@ html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-be
 .dispatch-provider-button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; min-height: 96px; padding: 5px 1px; border-radius: 10px; transition: background .3s; }
 .dispatch-provider-button:hover { background: #1e293b65; }
 .dispatch-provider-button:focus-visible, .dispatch-hub:focus-visible, .dispatch-local:focus-visible, .dispatch-council:focus-visible, .dispatch-arbiter:focus-visible { outline: 2px solid #67e8f9; outline-offset: 3px; }
-.dispatch-chip { display: grid; place-items: center; width: 35px; height: 35px; color: var(--module-color); background: linear-gradient(135deg, color-mix(in srgb, var(--module-color) 45%, #020617), #07101c 45%); clip-path: polygon(25% 0,75% 0,100% 25%,100% 75%,75% 100%,25% 100%,0 75%,0 25%); }
-.dispatch-chip > span { display: grid; place-items: center; width: 29px; height: 29px; background: #07101c; clip-path: inherit; font-size: 17px; }
-.dispatch-provider[data-active=true] .dispatch-chip { filter: brightness(1.4); }
-.dispatch-provider[data-active=true] .dispatch-chip > span { background: radial-gradient(circle, color-mix(in srgb, var(--module-color) 22%, #07101c), #07101c); }
 .dispatch-provider-label { color: #cbd5e1; font-size: 11px; font-weight: 600; white-space: nowrap; }
 .dispatch-phase { color: var(--module-color); font-size: 10px; line-height: 1.4; text-transform: capitalize; }
 .dispatch-seat { display: flex; align-items: center; gap: 3px; color: #fbbf24; font-size: 9px; }
-.dispatch-slots { display: flex; justify-content: center; gap: 3px; margin-top: 3px; }
-.dispatch-slots i { width: 16px; height: 3px; border-radius: 2px; background: #334155; }
-.dispatch-slots i[data-occupied=true] { background: var(--module-color); box-shadow: 0 0 6px var(--module-color); animation: module-breathe 2s ease-in-out infinite; }
 .dispatch-arbiter { position: absolute; top: 6px; right: 14%; color: #475569; border: 1px solid #33415580; border-radius: 50%; padding: 4px; background: #07101c; }
 .dispatch-arbiter[data-selected=true] { color: #fbbf24; border-color: #fbbf2460; }
 .dispatch-hub { grid-area: hub; position: relative; align-self: center; width: 100%; max-width: 190px; justify-self: center; aspect-ratio: 160/180; border-radius: 50%; color: var(--module-color); }
@@ -413,7 +406,7 @@ html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-be
 .dispatch-queue { grid-area: queue; margin-top: 10px; display: grid; gap: 5px; font-size: 10px; }
 .dispatch-queue a { display: flex; align-items: center; gap: 8px; padding: 3px 5px; border-radius: 4px; }
 .dispatch-queue a:hover { background: #1e293b; }
-@media (prefers-reduced-motion: reduce) { .module-flow, .module-breathe, .module-new, .dispatch-quorum i, .dispatch-slots i { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .module-flow, .module-breathe, .module-new, .dispatch-quorum i { animation: none !important; } }
 
 .dispatch-council-wrap { grid-area: council; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100px; padding-bottom: 8px; }
 .dispatch-council { grid-area: auto; }
@@ -470,6 +463,59 @@ html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-be
 .dispatch-map::-webkit-scrollbar, .dispatch-voices::-webkit-scrollbar, .dispatch-queue::-webkit-scrollbar { width: 4px; }
 .dispatch-map::-webkit-scrollbar-thumb, .dispatch-voices::-webkit-scrollbar-thumb, .dispatch-queue::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 .dispatch-map::-webkit-scrollbar-track, .dispatch-voices::-webkit-scrollbar-track, .dispatch-queue::-webkit-scrollbar-track { background: transparent; }
+
+/* Ops graphic: one node per live run under its provider (task 56c15b54,
+   2026-11-23). Providers sit in two columns beside the hub; a provider with
+   runs grows a list of run nodes and the map grows with it, so nothing is
+   capped, merged or hidden behind an inner scroller: the page scrolls. 410px
+   stays as the floor, the height the station had when every provider was one
+   fixed pod. The wires are measured from the laid-out nodes (dispatch-map.tsx). */
+.dispatch-map-frame { container: dispatch-map / inline-size; flex-shrink: 0; }
+.dispatch-map { grid-template-columns: minmax(0,1.1fr) minmax(120px,1fr) minmax(0,1.1fr); grid-template-areas: 'council council council' 'left hub right' 'local local local' 'queue queue queue'; grid-template-rows: 100px auto 36px minmax(58px, auto); height: auto; min-height: 410px; max-height: none; overflow: visible; }
+.dispatch-wires { inset: 0; width: 100%; height: 100%; overflow: visible; }
+.dispatch-column { display: flex; flex-direction: column; gap: 10px; min-width: 0; align-self: start; padding-bottom: 8px; }
+.dispatch-column[data-side=left] { grid-area: left; }
+.dispatch-column[data-side=right] { grid-area: right; }
+.dispatch-hub { align-self: start; }
+/* The queue grows with the map now, so its rows are all on the page instead of inside a 58px scroller. */
+.dispatch-queue { height: auto; min-height: 58px; overflow: visible; }
+.dispatch-provider { align-self: auto; }
+.dispatch-provider-button { height: auto; min-height: 72px; }
+.dispatch-logo { display: grid; place-items: center; width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--module-color) 55%, #1e293b); background: #07101c; color: #e2e8f0; transition: box-shadow .3s, border-color .3s; }
+.dispatch-provider[data-active=true] .dispatch-logo { box-shadow: 0 0 12px color-mix(in srgb, var(--module-color) 50%, transparent); }
+.dispatch-logo-mark { display: block; }
+.dispatch-logo-mask { background: currentColor; }
+.dispatch-logo-glyph { font-size: 14px; line-height: 1; color: var(--module-color); }
+.dispatch-local .dispatch-logo-mask { flex-shrink: 0; }
+.dispatch-runs { list-style: none; display: grid; gap: 4px; margin: 2px 0 0; padding: 0; }
+/* The gutter on the column's outer edge is where the trunk wire runs. */
+.dispatch-provider[data-side=left] .dispatch-runs { padding-left: 12px; }
+.dispatch-provider[data-side=right] .dispatch-runs { padding-right: 12px; }
+.dispatch-run { display: grid; gap: 2px; width: 100%; min-width: 0; padding: 4px 6px; text-align: left; border-radius: 7px; border: 1px solid color-mix(in srgb, var(--module-color) 38%, #1e293b); background: #07101ce6; transition: background .2s; }
+.dispatch-provider[data-side=left] .dispatch-run { border-left: 2px solid var(--module-color); }
+.dispatch-provider[data-side=right] .dispatch-run { border-right: 2px solid var(--module-color); }
+.dispatch-run:hover { background: #1e293b; }
+.dispatch-run:focus-visible { outline: 2px solid #67e8f9; outline-offset: 2px; }
+.dispatch-run-head { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+.dispatch-run-slot { flex-shrink: 0; padding: 0 4px; border-radius: 3px; font-size: 10px; font-weight: 700; line-height: 1.5; font-variant-numeric: tabular-nums; color: var(--module-color, #67e8f9); background: color-mix(in srgb, var(--module-color, #67e8f9) 18%, transparent); }
+.dispatch-run-title { min-width: 0; overflow-wrap: anywhere; color: #e2e8f0; font-size: 11px; line-height: 1.3; }
+.dispatch-run-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; color: #94a3b8; font-size: 10px; line-height: 1.4; }
+.dispatch-run-model { color: #cbd5e1; font-weight: 600; }
+.dispatch-run-model[data-known=false] { color: #fbbf24; font-weight: 400; font-style: italic; }
+.dispatch-run-role { color: var(--module-color); }
+.dispatch-run-phase { color: #94a3b8; }
+.dispatch-run-elapsed { margin-left: auto; font-variant-numeric: tabular-nums; }
+/* Narrow station (a phone, or the 2-up row on a small desktop): the columns
+   stack under the hub so a run node keeps the full width. 400px is where the
+   side columns of the three-column grid fall under 125px (400 * 1.1 / 3.2 less
+   the trunk gutter), too narrow for a title beside a model name. */
+@container dispatch-map (max-width: 399px) {
+  .dispatch-map { grid-template-columns: minmax(0,1fr); grid-template-areas: 'council' 'hub' 'left' 'right' 'local' 'queue'; grid-template-rows: 100px auto auto auto 36px minmax(58px, auto); }
+  .dispatch-hub { max-width: 170px; }
+  .dispatch-column { padding-bottom: 0; margin-top: 10px; }
+  /* Stacked, the hub wire runs straight down through every provider: the name and tally sit on a plate so the wire passes behind them. */
+  .dispatch-provider-label, .dispatch-phase, .dispatch-seat:not(:empty) { padding: 0 8px; border-radius: 6px; background: #060c18; }
+}
 
 /* Mermaid diagrams drawn from ```mermaid fences in the document reader
    (components/document-review/mermaid-diagram.tsx). Mermaid emits the SVG at
