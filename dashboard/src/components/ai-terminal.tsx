@@ -17,10 +17,11 @@
  *   - attachment selection / preview / removal        → hooks/use-file-attachments
  *   - scrollback, DOM window, history panel state     → hooks/use-chat-history
  *   - file upload + voice clip encoding for a send   → lib/chat-uploads
+ *   - a turn's live steps and their folded line      → hooks/use-chat-turn-steps, components/chat/turn-steps
  * See docs/ai-terminal-map.md for the full inventory.
  */
 
-import { useState, forwardRef, useImperativeHandle } from "react";
+import { Fragment, useState, forwardRef, useImperativeHandle } from "react";
 import { Bot, Loader2, MessageSquare, Paperclip, Download } from "lucide-react";
 import { useParams } from "next/navigation";
 
@@ -35,12 +36,14 @@ import { currentOpenDocument } from "@/lib/presentation-open-document";
 import { prepareChatFiles, voiceClipBase64 } from "@/lib/chat-uploads";
 import { useChatAudio } from "@/hooks/use-chat-audio";
 import { useChatHistory, messageKey } from "@/hooks/use-chat-history";
+import { useChatTurnSteps } from "@/hooks/use-chat-turn-steps";
 import { useFileAttachments } from "@/hooks/use-file-attachments";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { ComposerRow } from "@/components/chat/composer";
 import { ConversationList } from "@/components/chat/conversation-list";
 import { TerminalHeader } from "@/components/chat/terminal-header";
 import { MessageRow } from "@/components/chat/message-row";
+import { FoldedTurnSteps, LiveTurnSteps, UnconfirmedTurnNotice } from "@/components/chat/turn-steps";
 import { PlanReviewModal } from "@/components/chat/plan-review-modal";
 import type { Message, CortexArtifact } from "@/components/cortex-provider";
 
@@ -84,7 +87,8 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
     // NOTE: the composer's draft text deliberately does NOT live here — it is
     // ChatComposer's own state, so keystrokes can't re-render the transcript.
     const [loading, setLoading] = useState(false);
-    const [turnStatus, setTurnStatus] = useState('');
+    // A turn's status, steps and elapsed time live in the step store, outside the transcript.
+    const turnSteps = useChatTurnSteps({ messages, conversationId, isLoadingHistory });
 
     // Scrollback + DOM render window + the history panel toggle.
     const {
@@ -92,6 +96,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         visibleMessages,
         hiddenMessageCount,
         handleMessagesScroll,
+        followBottom,
         showConversations,
         setShowConversations,
         toggleConversations,
@@ -215,7 +220,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         clearAttachments(); // detaches the files and revokes their preview URLs
         const currentAudioBlob = audioBlob;
         clearAudio(); // Reset recording UI
-        setTurnStatus('Sending your message…');
+        turnSteps.begin(clientMessageId, 'Sending your message…');
         setLoading(true);
         void runSend(text, clientMessageId, filesToUpload, currentAudioBlob);
         return true;
@@ -276,7 +281,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 metadata: { displayReport: { action: directive.action, ok: report.ok, code: report.code } },
             }]);
             noteChatSend(reportMessageId, 'sending', { conversationId, preview: `Display ${directive.action}: ${report.ok ? 'done' : report.code || 'failed'}` });
-            setTurnStatus('Reporting the display result to Praxis…');
+            turnSteps.begin(reportMessageId, 'Reporting the display result to Praxis…');
             setLoading(true);
             await runSend(reportText, reportMessageId, [], null, depth + 1);
         })();
@@ -311,6 +316,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 stream: canStreamPraxis,
                 ...((open => open ? { displayContext: { document: open } } : {})(currentOpenDocument())), // the review on screen pins "this document"
             });
+            if (!canStreamPraxis) turnSteps.followWithoutStream(clientMessageId);
 
             for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
                 try {
@@ -374,22 +380,17 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             const responseContentType = response.headers.get('content-type') || '';
             if (streamingAssistantId && responseContentType.includes('text/event-stream')) {
                 noteChatSend(clientMessageId,'working');
-                setMessages(prev => [...prev, {
-                    id: streamingAssistantId,
-                    role: 'assistant',
-                    content: '',
-                    timestamp: new Date(),
-                }]);
 
+                // The reply's row appears with its first text, so no empty bubble sits above the steps.
                 const finalEvent = await readPraxisEventStream(response, (delta) => {
-                    setTurnStatus('Receiving the reply…');
+                    turnSteps.noteStatus(clientMessageId, { message: 'Receiving the reply…' });
                     noteChatSend(clientMessageId,'replying');
-                    setMessages(prev => prev.map(message =>
-                        message.id === streamingAssistantId
+                    setMessages(prev => prev.some(message => message.id === streamingAssistantId)
+                        ? prev.map(message => message.id === streamingAssistantId
                             ? { ...message, content: `${message.content}${delta}` }
-                            : message
-                    ));
-                }, status => setTurnStatus(status.message));
+                            : message)
+                        : [...prev, { id: streamingAssistantId, role: 'assistant', content: delta, timestamp: new Date() }]);
+                }, status => turnSteps.noteStatus(clientMessageId, status), step => turnSteps.noteStep(clientMessageId, step));
 
                 const finalMessage: Message = {
                     id: finalEvent?.assistantMessageId || streamingAssistantId,
@@ -407,6 +408,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                     }
                     return [...withoutStreaming, finalMessage];
                 });
+                turnSteps.fold(clientMessageId, messageKey(finalMessage), finalEvent);
                 if (finalEvent?.morningKickoff) dispatchMorningKickoff();
                 relayDisplayDirective(finalEvent, relayDepth);
                 noteReplyOutcome(clientMessageId, finalEvent);
@@ -430,11 +432,13 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 }
                 return [...prev, assistantMessage];
             });
+            void turnSteps.foldAfterReply(clientMessageId, messageKey(assistantMessage));
             if (data.morningKickoff) dispatchMorningKickoff();
             relayDisplayDirective(data, relayDepth);
             noteReplyOutcome(clientMessageId, data);
         } catch (error: any) {
             noteChatSend(clientMessageId,'failed',{detail:error?.message || 'Reply could not be confirmed'});
+            turnSteps.followAfterLoss(clientMessageId);
             console.error('AI Chat error:', error);
             // Show a diagnostic error instead of the misleading "429 Rate Limit"
             const errMsg = error?.message || String(error);
@@ -452,7 +456,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             }]);
         } finally {
             setLoading(false);
-            setTurnStatus('');
+            turnSteps.release(clientMessageId);
         }
     };
 
@@ -574,9 +578,12 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                     </div>
                 )}
 
-                {visibleMessages.map((msg, i) => (
+                {visibleMessages.map((msg, i) => {
+                    const foldedTurn = turnSteps.folded.get(messageKey(msg));
+                    return (
+                    <Fragment key={messageKey(msg)}>
+                    {foldedTurn && <FoldedTurnSteps turn={foldedTurn} />}
                     <MessageRow
-                        key={messageKey(msg)}
                         msg={msg}
                         rowKey={messageKey(msg)}
                         i={i}
@@ -599,23 +606,12 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                         playNextQueuedVoice={playNextQueuedVoice}
                         saveVoiceMemo={saveVoiceMemo}
                     />
-                ))}
+                    </Fragment>
+                    );
+                })}
 
-                {loading && (
-                    <div className="flex gap-3">
-                        <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                            <Loader2 size={16} className="animate-spin" />
-                        </div>
-                        <div className="bg-slate-800 rounded-lg px-4 py-2">
-                            {turnStatus && <p role="status" className="text-sm text-slate-300 mb-2">{turnStatus}</p>}
-                            <div className="flex gap-1">
-                                <span className="w-2 h-2 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                                <span className="w-2 h-2 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                                <span className="w-2 h-2 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: '300ms' }} />
-                            </div>
-                        </div>
-                    </div>
-                )}
+                <LiveTurnSteps conversationId={conversationId} busy={loading} onGrow={followBottom} />
+                {turnSteps.unconfirmedTurn && <UnconfirmedTurnNotice turnId={turnSteps.unconfirmedTurn} />}
 
             </div>
 

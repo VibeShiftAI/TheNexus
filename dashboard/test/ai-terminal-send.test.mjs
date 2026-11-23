@@ -51,8 +51,9 @@ async function settle() {
     }
 }
 
+// The sends only: a send with no stream also reads its turn's steps (a GET).
 function chatCalls(calls) {
-    return calls.filter((c) => c.url.includes("/api/ai/chat"));
+    return calls.filter((c) => c.url.includes("/api/ai/chat") && c.init.method === "POST");
 }
 
 test("plain text send: optimistic append, POST body, reply, input cleared", async () => {

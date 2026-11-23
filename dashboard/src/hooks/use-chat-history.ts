@@ -52,6 +52,8 @@ export interface ChatHistoryApi {
     hiddenMessageCount: number;
     handleMessagesScroll: () => void;
     jumpToBottom: () => void;
+    /** Re-pin after content below the messages grew; a reader scrolled up stays put. */
+    followBottom: () => void;
     showConversations: boolean;
     setShowConversations: React.Dispatch<React.SetStateAction<boolean>>;
     /** Flip the history panel, loading the conversation list when opening. */
@@ -115,6 +117,11 @@ export function useChatHistory({
             }
         });
         isNearBottomRef.current = true;
+    }, []);
+
+    const followBottom = useCallback(() => {
+        const container = messagesContainerRef.current;
+        if (container && isNearBottomRef.current) container.scrollTop = container.scrollHeight;
     }, []);
 
     // Open at the LATEST message: pin to the bottom when history finishes
@@ -197,6 +204,7 @@ export function useChatHistory({
         hiddenMessageCount,
         handleMessagesScroll,
         jumpToBottom,
+        followBottom,
         showConversations,
         setShowConversations,
         toggleConversations,

@@ -123,7 +123,8 @@ Classification key: **T** transport · **R** rendering · **A** audio/voice ·
 | Inline voice-note cards (`<audio>`, save, dismiss) | A | `components/chat/message-row.tsx` |
 | Attachment preview chips | F | `components/chat/attachment-chips.tsx` |
 | Composer row: hidden inputs, chips, audio preview chip, mic / photo / paperclip buttons | F + A + Y | `components/chat/composer.tsx` (`ComposerRow`) |
-| Drop overlay, empty state, "loading older", scroll-up hint, typing dots | Y | `ai-terminal.tsx` |
+| Drop overlay, empty state, "loading older", scroll-up hint | Y | `ai-terminal.tsx` |
+| Typing dots, since 2026-11-23 part of the live steps panel (with the folded line and the unconfirmed-turn notice) | R | `components/chat/turn-steps.tsx` |
 
 ---
 
@@ -144,6 +145,9 @@ Classification key: **T** transport · **R** rendering · **A** audio/voice ·
 | `src/hooks/use-file-attachments.ts` | 190 | `attachmentsReducer` (pure) + selection / drag-drop / preview / removal |
 | `src/hooks/use-voice-recorder.ts` | 91 | MediaRecorder capture and the memo preview |
 | `src/lib/chat-uploads.ts` | 52 | a send's inline text files, uploaded attachments and base64 voice clip (moved out 2026-10-30 when the terminal reached its line budget) |
+| `src/lib/chat-turn-steps.ts` | 286 | a turn's working steps in page memory (never messages, never saved): order, elapsed time, the folded line |
+| `src/hooks/use-chat-turn-steps.ts` | 175 | feeds that store from the turn's stream, or from its status route when no stream is open (voice, attachments, a dropped stream, a reload) |
+| `src/components/chat/turn-steps.tsx` | 155 | live steps panel, folded expandable line, notice for a turn that ended with no confirmed reply |
 
 ## 3. Autoplay timing rules (unchanged, now stated once)
 

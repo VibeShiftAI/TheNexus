@@ -4,13 +4,18 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { MarkdownMessage } from "@/components/chat/markdown-message";
+import { TurnStepList } from "@/components/chat/turn-steps";
 import { getAuthHeader } from "@/lib/auth";
+import { isTurnStep, stepCountLabel } from "@/lib/chat-turn-steps";
 
 type TurnReceipt = {
     state: "in_progress" | "completed" | "rejected" | "uncertain" | "failed";
     started_at?: string;
     reply?: { response?: string; error?: string };
     error?: string;
+    /** Held in Praxis's memory while the turn runs and briefly after; not part of the saved receipt. */
+    steps?: unknown;
+    step_count?: number;
 };
 
 export default function ChatTurnPage() {
@@ -44,10 +49,16 @@ export default function ChatTurnPage() {
         : receipt?.state === "in_progress" ? "Praxis is still working"
         : receipt?.state === "rejected" ? "Request rejected before work began"
         : receipt ? "This turn needs a status check" : "Checking your turn";
+    const steps = Array.isArray(receipt?.steps) ? receipt.steps.filter(isTurnStep) : [];
+    const stepCount = Math.max(receipt?.step_count ?? 0, steps.length);
     return <main className="mx-auto max-w-3xl space-y-6 p-6 text-slate-200">
         <h1 className="text-2xl font-semibold">{title}</h1>
         {error && <p role="alert" className="text-amber-300">{error}</p>}
         {receipt?.state === "in_progress" && <p role="status">Your original request is still in progress. This page checks automatically; you do not need to send it again.</p>}
+        {steps.length > 0 && <section aria-label="Steps in this turn" className="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+            <h2 className="text-sm font-medium text-slate-300">{stepCountLabel(stepCount)}</h2>
+            <TurnStepList steps={steps} hiddenSteps={stepCount - steps.length} />
+        </section>}
         {receipt?.state !== "in_progress" && receipt?.reply?.response && <MarkdownMessage content={receipt.reply.response} />}
         {receipt && ["rejected", "uncertain", "failed"].includes(receipt.state) && <div className="space-y-3">
             {receipt.state === "rejected"

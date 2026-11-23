@@ -1,16 +1,25 @@
+import { isTurnStep, type TurnStep } from './chat-turn-steps';
+
 export interface PraxisTurnStatus {
     type: 'status';
     state: string;
     message: string;
     turn_id?: string;
     status_url?: string;
+    /** Time since the turn started, measured by Praxis. */
+    elapsed_ms?: number;
+    /** The conversation the server saved this turn in. */
+    conversation_id?: string;
 }
+
+export type PraxisTurnStep = TurnStep & { type: 'step'; turn_id?: string; elapsed_ms?: number };
 
 /** Decode the chat relay stream; progress and partial text never confirm completion. */
 export async function readPraxisEventStream(
     response: Response,
     onDelta: (delta: string) => void,
     onStatus?: (status: PraxisTurnStatus) => void,
+    onStep?: (step: PraxisTurnStep) => void,
 ): Promise<any> {
     const reader = response.body?.getReader();
     if (!reader) throw new Error('Streaming response did not include a readable body');
@@ -31,6 +40,8 @@ export async function readPraxisEventStream(
         if (event.type === 'error') throw new Error(event.error || 'Praxis response interrupted');
         if (event.type === 'status' && typeof event.message === 'string') {
             onStatus?.(event);
+        } else if (event.type === 'step') {
+            if (isTurnStep(event)) onStep?.(event as PraxisTurnStep);
         } else if (event.type === 'delta' && typeof event.delta === 'string') {
             onDelta(event.delta);
         } else if (event.type === 'final') {
