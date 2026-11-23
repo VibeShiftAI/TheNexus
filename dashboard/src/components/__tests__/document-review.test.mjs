@@ -376,6 +376,35 @@ test('the checkbox says it approves this version and keeps the note, sends the f
   } finally { t.cleanup(); }
 });
 
+test('an approval with no summary and no comments says approved and claims no note, while queued and once delivered', async () => {
+  const srv = server({ deliveredAfterPolls: Infinity });
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    await click(button(c, 'Finish review'));
+    await click(c.querySelector('[data-approve-with-note] input[type="checkbox"]'));
+    await click(button(c.querySelector('[data-finish-panel]'), 'Send to Praxis'));
+    assert.equal(srv.calls.filter(x => x.path.endsWith('/finish')).length, 1);
+    const card = c.querySelector('[data-submission-card]');
+    assert.equal(card.querySelector('[data-approved-no-note]').textContent.trim(), 'Approved: this version is approved. No revision was started and it needs no second review.');
+    assert.ok(!card.querySelector('[data-approved-with-note]'));
+    assert.match(card.textContent, /Your approval is stored\./);
+    assert.doesNotMatch(card.textContent, /\bnote\b/i);
+    await settle(40);
+  } finally { t.cleanup(); }
+
+  const delivered = { id: 'sub-1', review_id: 'rev-plain', delivery_status: 'delivered', delivery_attempts: 1, next_attempt_at: null, last_error: null, delivered_at: '2026-09-10T10:10:05Z', receipt: { delivered_at: '2026-09-10T10:10:05Z' }, created_at: '2026-09-10T10:10:00Z', updated_at: '2026-09-10T10:10:05Z' };
+  const later = mount(server({ review: makeReview({ id: 'rev-plain', status: 'submitted', submitted_at: '2026-09-10T10:10:00Z', approval_delegated: false, approval_decision_id: 'decision-1', submitted_authority: 'access_user', submission: delivered }) }));
+  try {
+    await settle(40);
+    const card = later.container.querySelector('[data-submission-card]');
+    assert.ok(card.querySelector('[data-approved-no-note]'));
+    assert.match(card.textContent, /Your approval stays with this document\./);
+    assert.doesNotMatch(card.textContent, /\bnote\b/i);
+  } finally { later.cleanup(); }
+});
+
 test('a plain finish carries no approve_after_changes field and shows no approval', async () => {
   const srv = server();
   const t = mount(srv);

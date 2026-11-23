@@ -307,7 +307,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const [finishOpen, setFinishOpen] = useState(false);
     const [finishing, setFinishing] = useState(false);
     const [finishError, setFinishError] = useState<string | null>(null);
-    // Robert's explicit approve-after-changes grant, sent with Finish review (task a2553798).
+    // Robert's approve checkbox, sent with Finish review: it approves the version he reviewed and keeps his note (task 282c64fa).
     const [approveAtFinish, setApproveAtFinish] = useState(false);
     const [retrying, setRetrying] = useState(false);
     const [outlineOpen, setOutlineOpen] = useState(false);
@@ -1329,24 +1329,31 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         </ul>
     );
 
+    // The approval's note is his summary and comments, so with neither there is no note to mention.
+    const approvalHasNote = Boolean(review?.summary?.trim() || review?.comments?.length);
+
     const submissionCard = submission && (
         <div className="rounded-lg border border-slate-700 bg-slate-950/80 p-3" data-submission-card="">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <DeliveryBadge submission={submission} />
                 <span className="text-[11px] text-slate-500">Finished {formatWhen(review?.submitted_at)}</span>
             </div>
-            {review?.approval_decision_id ? (
+            {review?.approval_decision_id ? (approvalHasNote ? (
                 <p className="mt-2 text-[11px] text-emerald-200" data-approved-with-note="">
                     Approved with your note: this version is approved, and your summary and comments stay with it. No revision was started and it needs no second review.
                 </p>
-            ) : review?.approval_delegated ? (
+            ) : (
+                <p className="mt-2 text-[11px] text-emerald-200" data-approved-no-note="">
+                    Approved: this version is approved. No revision was started and it needs no second review.
+                </p>
+            )) : review?.approval_delegated ? (
                 <p className="mt-2 text-[11px] text-slate-300" data-approval-delegated="">
                     Finished under the earlier approve-after-changes rule. Revision work already started for this review finishes the way it began.
                 </p>
             ) : null}
             {submission.delivery_status === "delivered" && submission.receipt && (
                 <p className="mt-2 text-[11px] text-slate-400">
-                    Receipt: Praxis notified {formatWhen(submission.receipt.delivered_at)}. {review?.approval_decision_id ? "Your approval and its note stay with this document." : "Feedback remains saved with this document; notification does not mean revision work is complete."}
+                    Receipt: Praxis notified {formatWhen(submission.receipt.delivered_at)}. {review?.approval_decision_id ? (approvalHasNote ? "Your approval and its note stay with this document." : "Your approval stays with this document.") : "Feedback remains saved with this document; notification does not mean revision work is complete."}
                 </p>
             )}
             {submission.delivery_status === "failed" && (
@@ -1356,7 +1363,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 </div>
             )}
             {(submission.delivery_status === "queued" || submission.delivery_status === "relaying") && (
-                <p className="mt-2 text-[11px] text-slate-400">{review?.approval_decision_id ? "Your approval and its note are stored." : "Your feedback is stored."} It will show as notified once Praxis confirms receipt (attempt {submission.delivery_attempts}).</p>
+                <p className="mt-2 text-[11px] text-slate-400">{review?.approval_decision_id ? (approvalHasNote ? "Your approval and its note are stored." : "Your approval is stored.") : "Your feedback is stored."} It will show as notified once Praxis confirms receipt (attempt {submission.delivery_attempts}).</p>
             )}
             {submission.delivery_status !== "delivered" && (
                 <button type="button" onClick={() => void retry()} disabled={retrying} className="mt-2 inline-flex items-center gap-1 rounded-md border border-slate-600 px-2.5 py-1 text-[11px] text-slate-200 hover:border-cyan-500/60 disabled:opacity-50">

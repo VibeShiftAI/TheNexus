@@ -291,6 +291,7 @@ test('his summary and every comment stay with the approval on the document read,
     // The saved relay text says what happened and no longer promises an executor or a revision.
     const stored = await fullSubmission(review.id);
     expect(stored.message_text).toContain('**Approved by Robert**');
+    expect(stored.message_text).toContain('His summary and comments stay with the approval as its note.');
     expect(stored.message_text).not.toContain('Approval delegated');
     expect(stored.message_text).not.toContain('record-document-approval');
     expect(stored.message_text).not.toContain('Replacement work for this review');
@@ -304,6 +305,9 @@ test('an approval with no summary and no comments carries an empty note', async 
     expect((await read(document.id)).current_decision).toMatchObject({ decision: 'approve', revision_id: v1.id, note: '' });
     const stored = await fullSubmission(review.id);
     expect(stored.payload.approval).toMatchObject({ note: '' });
+    // The relay text does not claim a note he never wrote.
+    expect(stored.message_text).toContain('**Approved by Robert**');
+    expect(stored.message_text).not.toMatch(/as its note/);
 });
 
 test('every proof Robert has records the approval as his, and the note keeps a long summary whole', async () => {

@@ -355,7 +355,8 @@ function formatSubmissionMessage(payload) {
 
     if (payload.approval) {
         lines.push('**Approved by Robert**');
-        lines.push(`Robert approved exactly this revision when he finished this review (decision ${payload.approval.decision_id}, ${payload.approval.authority}). His summary and comments stay with the approval as its note. This starts no revision and produces no new version, and an approval never sends or publishes anything.`);
+        const keptNote = payload.approval.note ? ' His summary and comments stay with the approval as its note.' : '';
+        lines.push(`Robert approved exactly this revision when he finished this review (decision ${payload.approval.decision_id}, ${payload.approval.authority}).${keptNote} This starts no revision and produces no new version, and an approval never sends or publishes anything.`);
         lines.push('');
     }
 
