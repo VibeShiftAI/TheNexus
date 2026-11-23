@@ -82,8 +82,12 @@ test("each step appears in order while the turn runs, with elapsed time and no e
     assert.match(live(container).querySelector("[data-turn-elapsed]").textContent, /s$/);
     assert.equal(rows(live(container)).length, 0);
 
-    await chat.write({ type: "status", state: "running", message: "The chat session is working.", elapsed_ms: 400 });
-    assert.equal(live(container).querySelector('[role="status"]').textContent, "The chat session is working.");
+    await chat.write({ type: "status", state: "running", message: "The chat session is working. Its final result is not yet confirmed.", elapsed_ms: 400 });
+    assert.equal(live(container).textContent.includes("The chat session is working"), false, "the running sentence is not shown");
+    const announced = live(container).querySelector('[role="status"]');
+    assert.equal(announced.textContent, "Working", "a screen reader still hears that the turn is working");
+    assert.equal(announced.className, "sr-only");
+    assert.ok(live(container).querySelector("[data-turn-elapsed]"), "the elapsed time stays");
 
     await chat.write(step(1, "running", "Run git status"));
     assert.deepEqual(rows(live(container)), [["Run git status", "running"]]);

@@ -62,13 +62,24 @@ test('the start time comes from Praxis and survives network delay', () => {
 test('a degraded state stays visible for the rest of the turn and ordinary status keeps updating', () => {
     const store = createTurnStepsStore(() => 0);
     store.begin('t', 'c', 'Sending');
-    store.noteStatus('t', { state: 'running', message: 'Working' });
+    store.noteStatus('t', { state: 'preparing', message: 'Preparing' });
     store.noteStatus('t', { state: 'degraded', message: 'The fallback agent is taking this message.' });
-    assert.equal(store.live('c')!.status, 'Working');
+    assert.equal(store.live('c')!.status, 'Preparing');
     assert.equal(store.live('c')!.warning, 'The fallback agent is taking this message.');
     store.noteStatus('t', { state: 'verifying', message: 'Checking the reply' });
     assert.equal(store.live('c')!.status, 'Checking the reply');
     assert.equal(store.live('c')!.warning, 'The fallback agent is taking this message.');
+});
+
+test('the running status sentence is not kept, and the statuses around it still show', () => {
+    const store = createTurnStepsStore(() => 0);
+    store.begin('t', 'c', 'Sending');
+    store.noteStatus('t', { state: 'preparing', message: 'Preparing' });
+    store.noteStatus('t', { state: 'running', message: 'The chat session is working. Its final result is not yet confirmed.' });
+    assert.equal(store.live('c')!.status, '');
+    assert.equal(store.live('c')!.warning, null);
+    store.noteStatus('t', { state: 'verifying', message: 'Checking the reply' });
+    assert.equal(store.live('c')!.status, 'Checking the reply');
 });
 
 test('folding closes running steps truthfully and uses the duration Praxis measured', () => {

@@ -104,7 +104,7 @@ export const LiveTurnSteps = memo(function LiveTurnSteps({ conversationId, busy,
             <div className="min-w-0 max-w-[92%] rounded-lg bg-slate-800 px-4 py-2">
                 {turn && (
                     <div className="flex flex-wrap items-baseline gap-x-2">
-                        <p role="status" className="min-w-0 text-sm text-slate-300">{turn.status}</p>
+                        <p role="status" className={turn.status ? "min-w-0 text-sm text-slate-300" : "sr-only"}>{turn.status || "Working"}</p>
                         <Elapsed startedAt={turn.startedAt} />
                     </div>
                 )}

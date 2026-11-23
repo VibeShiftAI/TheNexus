@@ -254,7 +254,8 @@ export function createTurnStepsStore(clock: () => number = () => performance.now
         noteStatus(id: string, note: TurnStatusNote) {
             patch(id, turn => {
                 const warning = WARNING_STATES.has(note.state ?? "") ? note.message : turn.warning;
-                const status = warning === note.message ? turn.status : note.message;
+                // Praxis's running status is one fixed sentence; the steps and the timer already show the turn is working.
+                const status = note.state === "running" ? "" : warning === note.message ? turn.status : note.message;
                 const conversationId = note.conversation_id ?? turn.conversationId;
                 const unchanged = status === turn.status && warning === turn.warning && conversationId === turn.conversationId;
                 const next = unchanged ? turn : { ...turn, status, warning, conversationId };

@@ -54,6 +54,7 @@ if (!CHROME) { console.error("No Chrome binary found; set CHECK_CHROME."); proce
 const KEEP = process.env.CHECK_KEEP === "1";
 const DIST = ".next-verify-steps";
 const RETIRED = "taking longer than expected";
+const RUNNING_BOILERPLATE = "The chat session is working";
 const WIDTHS = {
   desktop: { width: 1440, height: 900, deviceScaleFactor: 2, mobile: false },
   phone: { width: 390, height: 844, deviceScaleFactor: 2, mobile: true },
@@ -284,6 +285,7 @@ try {
     check(typeof page === "string" && page.length > 1000, `${where}: the page could be read`);
     check(leaks(page ?? "", await secretValues()) === 0, `${where}: a planted value is on the page`);
     check(!(page ?? "").toLowerCase().includes(RETIRED), `${where}: the retired message is on the page`);
+    check(!(page ?? "").includes(RUNNING_BOILERPLATE), `${where}: the running status sentence is on the page`);
   }
   async function hydrated() {
     await waitFor(`!window.__checkOld && (() => { const el = ${q(COMPOSER)}; return !!el && Object.keys(el).some(k => k.startsWith('__reactProps')); })()`, "the chat composer to hydrate", 240_000);
