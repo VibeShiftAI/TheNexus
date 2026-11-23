@@ -4,14 +4,15 @@ Baselines
   TheNexus 9923f67ffc7e554b80634f10fc77d847f5ffe73e
   Praxis   09257f4e1e3b9cb9f9f47ce0b47e460e41e91a19
 Both were checked out as detached worktrees side by side, because the Praxis
-suites read a sibling ../TheNexus. Every run below used the task's final source.
+suites read a sibling ../TheNexus. Every "After" run below used the task's final
+source after the QA repair (the content of TheNexus 7e15efed and Praxis faf86cbd).
 
 
 1. Dashboard
-Command (dashboard/): npm test -- --test-reporter=tap
-Baseline command: node --import ./test/register.mjs --test --test-reporter=tap
-  "src/**/__tests__/*.test.mjs" "src/**/__tests__/*.test.ts" "test/*.test.mjs"
-  After:    tests 1378, pass 1376, fail 2
+Command, both trees (dashboard/): node --import ./test/register.mjs --test
+  --test-reporter=tap "src/**/__tests__/*.test.mjs" "src/**/__tests__/*.test.ts"
+  "test/*.test.mjs"
+  After:    tests 1391, pass 1389, fail 2
   Baseline: tests 1350, pass 1348, fail 2
 Failing in both, with no others:
   Praxis journal exposes stock analysis and YouTube script tabs
@@ -20,7 +21,7 @@ Failing in both, with no others:
 
 2. Nexus server
 Command (repo root): npx jest --cacheDirectory=<scratch> --forceExit
-  After:    suites 2 failed, 180 passed; tests 2 failed, 1 skipped, 2441 passed
+  After:    suites 2 failed, 180 passed; tests 2 failed, 1 skipped, 2442 passed
   Baseline: suites 2 failed, 180 passed; tests 2 failed, 1 skipped, 2440 passed
 Failing in both, with no others:
   praxis-stream route > POST /api/praxis/events ingest > ignores X-Forwarded-For and judges loopback by the socket peer
@@ -29,11 +30,14 @@ Failing in both, with no others:
 
 3. Praxis
 Command (repo root): npm test -- --test-reporter=tap
-  After:    tests 10306, pass 10243, fail 62, skipped 1 (61 unique names)
+  After:    tests 10338, pass 10277, fail 60, skipped 1 (59 unique names)
   Baseline: tests 10313, pass 10252, fail 60, skipped 1 (59 unique names)
 Failing at baseline and not after: none.
+Failing after and not at baseline: none.
 
-Failing after and not at baseline: two entries, neither caused by this task.
+An earlier full run of this task's tree, before the QA repair, also showed the
+two entries below, which the baseline run did not. Neither failed in the run
+above, and the reruns below tie neither to this task.
 
   tests/tts_provider.test.ts (the file entry)
     The test runner itself failed: failureType 'uncaughtException', "Unable to
@@ -129,7 +133,7 @@ Failing at baseline and after (59 names):
 
 
 5. Landing rehearsal (scratch checkouts only; no branch moved, nothing committed)
-  TheNexus: task 58d97f18 merged into main a733d9ec.
+  TheNexus: task 7e15efed merged into main 2c7fab17.
     One conflicted file, dashboard/src/components/bridge/praxis-core.tsx, with
     two hunks where this task's thought stream removal sits next to the Crew
     removal already on main (6a62e56f). The resolution keeps both removals:
@@ -138,9 +142,33 @@ Failing at baseline and after (59 names):
       the trace modal line and the executor modal line are both removed.
     With that resolution:
       dashboard typecheck exit 0;
-      dashboard suite tests 1397, pass 1395, fail 2 (the two names in section 1);
+      dashboard suite tests 1418, pass 1416, fail 2 (the two names in section 1);
       npx jest server/__tests__/ai-chat: 10 suites, 57 tests, all pass.
-  Praxis: task 3613e838 merged into main e2d39506 with no conflict.
+  Praxis: task faf86cbd merged into main 1e751c7d with no conflict.
       npx tsc --noEmit exit 0;
       tests/chat_turn_steps.test.ts and tests/chat_turn_steps_legacy.test.ts:
-      tests 22, pass 22, fail 0.
+      tests 25, pass 25, fail 0.
+
+
+6. Step bursts and React's update limit
+The browser check's long turn sends 520 tool calls 50 ms apart, 20 a second.
+That is five times the busiest second in real sessions: the 400 newest Claude
+Code transcripts on this machine on 2026-11-23 held 3,275 tool calls (38 of the
+transcripts made any), with at most 4 started in one second.
+
+At 100 calls a second the home page throws React's "Maximum update depth
+exceeded", with or without this task. Each frame on the global event stream
+commits synchronously through dashboard/src/lib/praxis-stream-store.ts, and the
+live board's drain effect then schedules another update, so a page with 35
+project cards falls behind the stream. This task does not change that store.
+
+Errors in one burst of 519 events. Both trees used the same .env and the same
+scripted Praxis service, and each number is one run:
+
+  Gap between calls       Baseline    Task's tree
+  10 ms (100 a second)    7, 7, 7     7, 7, 7
+  20 ms (50 a second)     0, 0, 0     0, 0, 0
+  50 ms (20 a second)     0           0
+
+The gap was set with a temporary override that is no longer in the fixture. To
+reproduce a row, edit LONG_TURN.gapMs in Praxis scripts/chat-steps-fixture.ts.
