@@ -1,0 +1,81 @@
+Working directory: dashboard/
+Dispatch revision: 7e34d675de4206ddc0bf63d926b037e3eb34e98a
+
+Dispatch product code, delayed navigation (exit 1)
+$ node --import ./test/register.mjs --test test/conversation-switch.test.mjs
+✖ create with a delayed response keeps and saves a concurrent send in its destination (642.314541ms)
+ℹ {"during":1,"after":0,"shown":"f8c86342-e37e-4dd1-8376-0e0ead88a56f","previous":"07470bc7-9e10-4ae0-9b03-4d3cb9d9f088","stored":"f8c86342-e37e-4dd1-8376-0e0ead88a56f"}
+✖ create with a delayed request keeps and saves a concurrent send in its destination (207.230166ms)
+ℹ {"during":1,"after":0,"shown":"eda3da91-588e-49e9-a2b5-9fdb2ff77389","previous":"e86bde3c-738f-4469-a267-5166927898c2","stored":"e86bde3c-738f-4469-a267-5166927898c2"}
+✖ switch with a delayed response keeps and saves a concurrent send in its destination (321.78875ms)
+ℹ {"during":1,"after":0,"shown":"86a35864-4074-4044-b5ba-c94ae5c92959","previous":"94bbf45e-dd19-4db8-9daf-bd19eb879965","stored":"86a35864-4074-4044-b5ba-c94ae5c92959"}
+✖ switch with a delayed request keeps and saves a concurrent send in its destination (134.798209ms)
+ℹ {"during":1,"after":0,"shown":"836d70f0-2d66-4e90-9cf8-a28e9d0b2af5","previous":"8fcc3834-2225-4604-ae7d-0fa11b7e14c8","stored":"8fcc3834-2225-4604-ae7d-0fa11b7e14c8"}
+✔ new conversation with no concurrent send opens an empty transcript (36.449416ms)
+ℹ tests 5
+ℹ pass 1
+ℹ fail 4
+
+Patched product code, delayed navigation (exit 0)
+$ node --import ./test/register.mjs --test test/conversation-switch.test.mjs
+✔ create with a delayed response keeps and saves a concurrent send in its destination (1165.4885ms)
+ℹ {"during":1,"after":1,"shown":"7fba0196-de63-4a10-b6bd-1e905c6b00ba","previous":"61878366-76eb-4b54-93bb-5b98772dd199","stored":"7fba0196-de63-4a10-b6bd-1e905c6b00ba"}
+✔ create with a delayed request keeps and saves a concurrent send in its destination (328.533959ms)
+ℹ {"during":1,"after":1,"shown":"d7b72d18-9423-4398-87b9-f1b189efcc32","previous":"57c6e6bd-965d-4160-b3a5-1b8359d75a26","stored":"d7b72d18-9423-4398-87b9-f1b189efcc32"}
+✔ switch with a delayed response keeps and saves a concurrent send in its destination (332.56775ms)
+ℹ {"during":1,"after":1,"shown":"5bfc7312-26a9-4f15-974f-f8cbb9b0fcce","previous":"1fb74eb7-c4f7-4e3a-8eba-e26ed404b103","stored":"5bfc7312-26a9-4f15-974f-f8cbb9b0fcce"}
+✔ switch with a delayed request keeps and saves a concurrent send in its destination (286.113875ms)
+ℹ {"during":1,"after":1,"shown":"8c0df048-e26b-43de-89e2-da4789ec3963","previous":"9423311f-e8dc-487b-a6e2-0d8c6f5f3aa7","stored":"8c0df048-e26b-43de-89e2-da4789ec3963"}
+✔ new conversation with no concurrent send opens an empty transcript (92.279334ms)
+✔ a failed selection leaves the draft ready to retry without posting it to the previous conversation (120.722333ms)
+✔ a reply arriving after another selection stays in the conversation that accepted the turn (311.565458ms)
+ℹ tests 7
+ℹ pass 7
+ℹ fail 0
+
+Dispatch dashboard suite (exit 1)
+$ npm test
+✖ Praxis journal exposes stock analysis and YouTube script tabs (0.879417ms)
+✖ fetched comparison renders lane/model estimates, metric sample sizes and exact run links (54.753833ms)
+ℹ tests 1418
+ℹ pass 1416
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+
+Intermediate dashboard suite (exit 1)
+$ npm test
+✖ Praxis journal exposes stock analysis and YouTube script tabs (4.207375ms)
+✖ Finish review submits once with the summary and shows queued then delivered with a receipt (919.207292ms)
+✖ fetched comparison renders lane/model estimates, metric sample sizes and exact run links (647.653083ms)
+ℹ tests 1425
+ℹ pass 1422
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+
+Document review file rerun (exit 0)
+$ node --import ./test/register.mjs --test src/components/__tests__/document-review.test.mjs
+✔ Finish review submits once with the summary and shows queued then delivered with a receipt (569.647584ms)
+ℹ tests 17
+ℹ pass 17
+ℹ fail 0
+
+Final dashboard suite (exit 1)
+$ npm test
+✖ Praxis journal exposes stock analysis and YouTube script tabs (1.026625ms)
+✖ fetched comparison renders lane/model estimates, metric sample sizes and exact run links (396.136042ms)
+ℹ tests 1425
+ℹ pass 1423
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+New failing names compared to dispatch: []
+
+$ NEXT_TELEMETRY_DISABLED=1 NEXT_DIST_DIR=.next-verify npm run build -- --webpack
+✓ Compiled successfully in 100s
+✓ Generating static pages using 15 workers (31/31) in 4.3s
+Exit 0
+
+$ npx tsc --noEmit
+No output. Exit 0.

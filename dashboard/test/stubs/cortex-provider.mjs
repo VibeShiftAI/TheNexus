@@ -77,6 +77,10 @@ export function useCortex() {
     return {
         messages,
         setMessages,
+        beginChatSend(message) {
+            setMessages(previous => [...previous, message]);
+            return { id: conversationId, history: messages, setMessages };
+        },
         readyForReview: EMPTY_SET,
         setReadyForReview: noop,
         conversationId,

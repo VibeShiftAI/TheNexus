@@ -144,7 +144,20 @@ export interface ChatAudioNowPlaying {
     duration: number;
 }
 
+export interface SendConversation {
+    id: string | null;
+    history: Message[];
+    setMessages: Dispatch<SetStateAction<Message[]>>;
+}
+
+interface ConversationSnapshot {
+    id: string;
+    history: Message[];
+    hasMore: boolean;
+}
+
 interface CortexContextValue {
+    beginChatSend: (message: Message) => SendConversation | Promise<SendConversation>;
     messages: Message[];
     setMessages: Dispatch<SetStateAction<Message[]>>;
     // Conversation management
@@ -248,13 +261,19 @@ export function CortexProvider({ children }: { children: ReactNode }) {
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const socketRef = useRef<Socket | null>(null);
     const initialised = useRef(false);
-    // Current conversation id for the resync closure (socket handlers are
-    // registered once with empty deps, so state must ride a ref).
-    const conversationIdRef = useRef<string | null>(null);
-    useEffect(() => {
-        conversationIdRef.current = conversationId;
-    }, [conversationId]);
+    // Network callbacks can run between adopting a conversation and React's next render.
+    const activeConversation = useRef<{ id: string | null; history: Message[] }>({ id: null, history: [] });
+    const pendingSwitch = useRef<{ ready: Promise<ConversationSnapshot>; outgoing: Message[] } | null>(null);
+    const [switchPreview, setSwitchPreview] = useState<Message[] | null>(null);
+    const navigationRevision = useRef(0);
     const lastResyncAtRef = useRef(0);
+
+    const showConversation = useCallback((id: string, history: Message[], hasMore: boolean) => {
+        activeConversation.current = { id, history };
+        setConversationId(id);
+        setMessages(history);
+        setHasMoreMessages(hasMore);
+    }, []);
 
     // ── Catch-up resync ──
     // The socket drops whenever the backend restarts (Praxis kickstarts are
@@ -263,6 +282,8 @@ export function CortexProvider({ children }: { children: ReactNode }) {
     // conversation's tail and merges the missed messages in. Called on every
     // socket (re)connect and whenever the tab becomes visible again.
     const resyncActiveConversation = useCallback(async (reason: string) => {
+        if (pendingSwitch.current) return;
+        const revision = navigationRevision.current;
         const now = Date.now();
         if (now - lastResyncAtRef.current < 4000) return; // connect+focus often fire together
         lastResyncAtRef.current = now;
@@ -271,9 +292,9 @@ export function CortexProvider({ children }: { children: ReactNode }) {
             const res = await fetch(`${base}/api/chat/active?mode=praxis&limit=30`);
             if (!res.ok) return;
             const data = await res.json();
-            if (!data.conversation) return;
+            if (!data.conversation || revision !== navigationRevision.current) return;
             const fetched: Message[] = (data.messages || []).map(mapStoredMessage);
-            if (conversationIdRef.current && conversationIdRef.current === data.conversation.id) {
+            if (activeConversation.current.id && activeConversation.current.id === data.conversation.id) {
                 setMessages(prev => {
                     const merged = mergeFetchedMessages(prev, fetched);
                     if (merged !== prev) {
@@ -285,19 +306,18 @@ export function CortexProvider({ children }: { children: ReactNode }) {
                 // The active conversation changed while we were away (started
                 // from mobile / another surface) — adopt it wholesale.
                 console.log(`[CortexProvider] Resync (${reason}): active conversation changed — reloading`);
-                setConversationId(data.conversation.id);
-                setMessages(fetched);
-                setHasMoreMessages(data.hasMore ?? false);
+                showConversation(data.conversation.id, fetched, data.hasMore ?? false);
             }
         } catch (e) {
             console.warn('[CortexProvider] Resync failed:', e);
         }
-    }, []);
+    }, [showConversation]);
 
     // ── Fetch active conversation + history from server on mount ──
     useEffect(() => {
         const base = apiBase();
 
+        const revision = navigationRevision.current;
         async function loadActiveConversation() {
             try {
                 setIsLoadingHistory(true);
@@ -308,14 +328,13 @@ export function CortexProvider({ children }: { children: ReactNode }) {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
 
-                if (data.conversation) {
-                    setConversationId(data.conversation.id);
-                    setMessages((data.messages || []).map(mapStoredMessage));
-                    setHasMoreMessages(data.hasMore ?? false);
+                if (data.conversation && revision === navigationRevision.current) {
+                    showConversation(data.conversation.id, (data.messages || []).map(mapStoredMessage), data.hasMore ?? false);
                 }
             } catch (e) {
                 console.warn('[CortexProvider] Failed to load chat history from server:', e);
                 // Fallback: try localStorage for backward compat
+                if (revision !== navigationRevision.current) return;
                 const stored = localStorage.getItem('cortex_chat_history');
                 if (stored) {
                     try {
@@ -334,7 +353,7 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         // terminal. Its pending-plan lookup (/api/terminal/state) has no server
         // any more, so drop the stale key instead of asking for it.
         localStorage.removeItem(LEGACY_TERMINAL_THREAD_KEY);
-    }, []);
+    }, [showConversation]);
 
     // ── Load conversation list ──
     const loadConversations = useCallback(async () => {
@@ -349,42 +368,73 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
-    // ── Start a new conversation (old one stays in history) ──
-    const startNewConversation = useCallback(async () => {
-        try {
-            const base = apiBase();
-            const res = await fetch(`${base}/api/chat/conversations`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode: 'praxis' }),
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            setConversationId(data.conversation.id);
-            setMessages([]); // Fresh conversation — no messages yet
-            await loadConversations(); // Refresh the sidebar list
-        } catch (e) {
-            console.error('[CortexProvider] Failed to start new conversation:', e);
+    // A send belongs to the selection in effect at submit. Show it immediately,
+    // but wait for that selection's id and history before posting the turn.
+    const beginChatSend = (message: Message): SendConversation | Promise<SendConversation> => {
+        const revision = navigationRevision.current;
+        const forConversation = (id: string | null, history: Message[]): SendConversation => ({
+            id, history,
+            setMessages: update => {
+                // On first mount a legacy send can precede the initial active id.
+                const sameInitialView = id === null && revision === navigationRevision.current;
+                if (sameInitialView || activeConversation.current.id === id) setMessages(update);
+            },
+        });
+        const pending = pendingSwitch.current;
+        if (pending) {
+            pending.outgoing = [...pending.outgoing, message];
+            setSwitchPreview(pending.outgoing);
+            return pending.ready.then(({ id, history }) => forConversation(id, history));
         }
-    }, [loadConversations]);
+        setMessages(prev => [...prev, message]);
+        const active = activeConversation.current;
+        return forConversation(active.id, active.id === conversationId ? messages : active.history);
+    };
 
-    // ── Switch to an existing conversation ──
-    const switchConversationFn = useCallback(async (id: string) => {
-        try {
-            const base = apiBase();
-            const res = await fetch(`${base}/api/chat/conversations/${id}/switch`, {
-                method: 'PUT',
-            });
+    const openConversation = useCallback(async (id?: string) => {
+        const previous = pendingSwitch.current;
+        navigationRevision.current++;
+        const ready = (async (): Promise<ConversationSnapshot> => {
+            // Mutations change the server's active thread. Process rapid picks in click order.
+            if (previous) await previous.ready.catch(() => {});
+            const url = `${apiBase()}/api/chat/conversations`;
+            const res = id === undefined
+                ? await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: 'praxis' }),
+                })
+                : await fetch(`${url}/${encodeURIComponent(id)}/switch`, { method: 'PUT' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-            setConversationId(data.conversation.id);
-            setMessages((data.messages || []).map(mapStoredMessage));
-            setHasMoreMessages(data.hasMore ?? false);
-            await loadConversations();
-        } catch (e) {
-            console.error('[CortexProvider] Failed to switch conversation:', e);
+            if (!data.conversation?.id) throw new Error('Missing conversation id');
+            return {
+                id: data.conversation.id,
+                history: (data.messages || []).map(mapStoredMessage),
+                hasMore: data.hasMore ?? false,
+            };
+        })();
+        const pending = { ready, outgoing: [] as Message[] };
+        pendingSwitch.current = pending;
+        setSwitchPreview(pending.outgoing);
+        try {
+            const selected = await ready;
+            if (pendingSwitch.current !== pending) return;
+            showConversation(selected.id, [...selected.history, ...pending.outgoing], selected.hasMore);
+        } catch (error) {
+            if (pendingSwitch.current !== pending) return;
+            console.error('[CortexProvider] Failed to open conversation:', error);
+            setMessages(prev => [...prev, { role: 'system', content: 'Could not open the conversation. Please try again.', timestamp: new Date() }]);
+        } finally {
+            if (pendingSwitch.current === pending) {
+                pendingSwitch.current = null;
+                setSwitchPreview(null);
+            }
         }
-    }, [loadConversations]);
+        await loadConversations();
+    }, [loadConversations, showConversation]);
+
+    const startNewConversation = useCallback(() => openConversation(), [openConversation]);
 
     // ── Delete a conversation ──
     const deleteConversationFn = useCallback(async (id: string) => {
@@ -509,7 +559,7 @@ export function CortexProvider({ children }: { children: ReactNode }) {
             // Only append messages for the conversation on screen — events
             // for other conversations would silently corrupt the view.
             const eventConversation = incoming.conversation_id || event.conversationId;
-            if (eventConversation && conversationIdRef.current && eventConversation !== conversationIdRef.current) {
+            if (eventConversation && activeConversation.current.id && eventConversation !== activeConversation.current.id) {
                 return;
             }
 
@@ -683,14 +733,14 @@ export function CortexProvider({ children }: { children: ReactNode }) {
 
     return (
         <CortexContext.Provider value={{
-            messages, setMessages,
-            conversationId, conversations,
+            messages: switchPreview ?? messages, setMessages, beginChatSend,
+            conversationId: switchPreview === null ? conversationId : null, conversations,
             startNewConversation,
-            switchConversation: switchConversationFn,
+            switchConversation: openConversation,
             loadConversations,
             deleteConversation: deleteConversationFn,
-            isLoadingHistory,
-            hasMoreMessages,
+            isLoadingHistory: isLoadingHistory || switchPreview !== null,
+            hasMoreMessages: hasMoreMessages && switchPreview === null,
             isLoadingMore,
             loadMoreMessages,
             chatAudio,

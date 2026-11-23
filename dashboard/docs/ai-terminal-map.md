@@ -105,7 +105,7 @@ Classification key: **T** transport · **R** rendering · **A** audio/voice ·
 | `handleDragEnter` / `handleDragOver` / `handleDragLeave` / `handleDrop` | drag-and-drop | F | `hooks/use-file-attachments.ts` |
 | `removeFile` | drop one chip and revoke its object URL | F | `hooks/use-file-attachments.ts` |
 | `startRecording` / `stopRecording` / `clearAudio` | voice memo capture | A | `hooks/use-voice-recorder.ts` |
-| `handleSend` | synchronous accept/reject decision, `/ingest` slash command, optimistic user row | T | `ai-terminal.tsx` |
+| `handleSend` | accept/reject decision (waits for a pending conversation switch), `/ingest` slash command, optimistic user row | T | `ai-terminal.tsx` |
 | `runIngest` | `POST /api/ingest` | T | `ai-terminal.tsx` |
 | `runSend` | file upload and base64 audio (via `lib/chat-uploads.ts` since 2026-10-30), retry-once fetch, SSE-vs-JSON response, error banners | T | `ai-terminal.tsx` |
 | `renderTerminalContent` | the shared inline/modal body | Y | `ai-terminal.tsx` |
