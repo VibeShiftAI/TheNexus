@@ -189,7 +189,7 @@ function HistoryList({ history, currentRevisionId, snapshots = false }: { histor
                             <span className={decision.decision === "approve" ? "text-sky-200" : "text-orange-200"}>{DECISION_TEXT[decision.decision].past}</span>
                             {decision.selection?.direction ? <span className="text-sky-100"> · direction {decision.selection.direction}</span> : null}
                             {" "}{formatWhen(decision.created_at)} · {decision.authority.replace(/_/g, " ")}
-                            {decision.note ? <span className="text-slate-300">: {decision.note}</span> : null}
+                            {decision.note ? <span className="whitespace-pre-wrap break-words text-slate-300" data-history-decision-note="">: {decision.note}</span> : null}
                         </p>
                     ))}
                     {(history.edits ?? []).filter((edit) => edit.result_revision_id === revision.id).map((edit) => (
@@ -445,6 +445,12 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh, 
                     </span>
                 )}
             </div>
+            {current?.decision === "approve" && current.note && (
+                // The whole note, however long: it scrolls here instead of being cut.
+                <div tabIndex={0} aria-label="Note with this approval" className="mt-1.5 max-h-60 overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-slate-800 bg-slate-950/60 p-2 text-[11px] text-slate-300" data-current-decision-note="">
+                    <span className="font-semibold text-slate-400">Note with this approval: </span>{current.note}
+                </div>
+            )}
             <BlockingTasks tasks={data.blocking_tasks} />
             <ReviewRequirements key={doc.id} document={doc} onRefresh={onRefresh} />
             {purpose && <p className="mt-1.5 text-xs text-slate-300" data-decision-purpose="">Purpose: {purpose}</p>}
