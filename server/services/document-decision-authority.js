@@ -42,7 +42,9 @@
  *                                The documents route accepts it only with an
  *                                `executor` block citing a review Robert
  *                                finished with the approve-after-changes
- *                                grant (document-decision-provenance.js); it
+ *                                grant, which only reviews finished before
+ *                                task 282c64fa carry
+ *                                (document-decision-provenance.js); it
  *                                can neither decide directly nor grant, and
  *                                stakeholder endpoints refuse it because they
  *                                ask stakeholder-authority.js for `operator`.

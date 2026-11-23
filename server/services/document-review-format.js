@@ -217,13 +217,46 @@ function publicComment(comment) {
     };
 }
 
-function buildSubmissionPayload({ submissionId, review, comments, document, revision, source, submittedAt, selectedDirection = null, changeRequests = [], decisionAnswers = [], decisionItems = [] }) {
+/**
+ * Robert's summary and comments as the note on an approval recorded at finish
+ * (task 282c64fa): every word kept, each comment with where it points and its
+ * replies under it, so the note reads on its own wherever it is shown. Empty
+ * when he wrote nothing.
+ */
+function composeApprovalNote(summary, comments = []) {
+    const rows = comments.map(publicComment);
+    const ids = new Set(rows.map(comment => comment.id));
+    const roots = rows.filter(comment => !comment.parent_id || !ids.has(comment.parent_id));
+    const where = comment => {
+        if (comment.kind === 'passage') {
+            const range = comment.start_line === comment.end_line ? `On line ${comment.start_line}` : `On lines ${comment.start_line}-${comment.end_line}`;
+            const words = String(comment.selection || comment.quote || '').trim();
+            return words ? `${range} ("${words}")` : range;
+        }
+        if (MEDIA_COMMENT_KINDS.has(comment.kind)) return `On ${comment.target_label || comment.anchor_target?.asset_key || comment.kind}`;
+        return 'Whole document';
+    };
+    const lines = roots.flatMap((comment, index) => [
+        `${index + 1}. ${where(comment)}${comment.resolved ? ' [resolved]' : ''}: ${comment.body.trim()}`,
+        ...rows.filter(reply => reply.parent_id === comment.id).map(reply => `   Reply: ${reply.body.trim()}`),
+    ]);
+    return [String(summary ?? '').trim(), lines.length ? `Comments (${roots.length}):\n${lines.join('\n')}` : ''].filter(Boolean).join('\n\n');
+}
+
+function buildSubmissionPayload({ submissionId, review, comments, document, revision, source, submittedAt, selectedDirection = null, changeRequests = [], decisionAnswers = [], decisionItems = [], approval = null }) {
     return {
         // Robert's answers to the document's structured decisions (task 50aa5747; Praxis/docs/document-decisions.md),
         // with the definitions they answer. Absent when none were given, so legacy consumers see the payload unchanged.
         ...(decisionAnswers.length ? {
             decision_answers: decisionAnswers.map(({ decision_id, answer }) => ({ decision_id, answer })),
             decision_items: decisionItems,
+        } : {}),
+        // The approval recorded when this review was finished (task 282c64fa), with its note. Absent otherwise.
+        ...(approval ? {
+            approval: {
+                decision_id: approval.id, decision: approval.decision, revision_id: approval.revision_id, content_hash: approval.content_hash,
+                actor_id: approval.actor_id, authority: approval.authority, note: approval.note, recorded_at: approval.created_at,
+            },
         } : {}),
         media_type: document.media_type || revision.media_type || 'markdown',
         selected_direction: selectedDirection,
@@ -233,7 +266,8 @@ function buildSubmissionPayload({ submissionId, review, comments, document, revi
         submitted_at: submittedAt,
         summary: review.summary || '',
         change_requests: changeRequests.map(({ id, note, created_at }) => ({ id, note, created_at })),
-        // Robert's explicit approve-after-changes grant and the operator proof it was made with (task a2553798).
+        // The operator proof the finish carried. approval_delegated is the old approve-after-changes grant (task a2553798):
+        // true only on a review finished before task 282c64fa, whose revision work keeps the lifecycle it started with.
         approval_delegated: review.approval_delegated === true,
         submitted_authority: review.submitted_authority || null,
         document: {
@@ -285,7 +319,7 @@ function formatSubmissionMessage(payload) {
         `Review link: ${payload.review_url}`,
         `Submission id: ${payload.submission_id}`,
         // Names where work is linked without asking for any: the decision authorizes work, this review's text does not.
-        ...(payload.replacements_path ? [`Replacement work for this review, if Robert's decision calls for any, is linked at POST ${payload.replacements_path} (source.submission_id: ${payload.submission_id}; contract §12). Linking it there closes this version to further review until the new version is ready; a chat reply does not.`] : []),
+        ...(payload.replacements_path && !payload.approval ? [`Replacement work for this review, if Robert's decision calls for any, is linked at POST ${payload.replacements_path} (source.submission_id: ${payload.submission_id}; contract §12). Linking it there closes this version to further review until the new version is ready; a chat reply does not.`] : []),
         '',
         '**Summary**',
         payload.summary && payload.summary.trim() ? payload.summary.trim() : '(no summary given)',
@@ -319,6 +353,13 @@ function formatSubmissionMessage(payload) {
         lines.push('');
     }
 
+    if (payload.approval) {
+        lines.push('**Approved by Robert**');
+        lines.push(`Robert approved exactly this revision when he finished this review (decision ${payload.approval.decision_id}, ${payload.approval.authority}). His summary and comments stay with the approval as its note. This starts no revision and produces no new version, and an approval never sends or publishes anything.`);
+        lines.push('');
+    }
+
+    // Only a review finished under the old approve-after-changes rule (before task 282c64fa) carries this.
     if (payload.approval_delegated) {
         lines.push('**Approval delegated**');
         lines.push(`Robert finished this review with the approve-after-changes grant (${payload.submitted_authority}). Once the requested change is made and the resulting revision is registered, the executor records his approval of that revision with TheNexus/scripts/record-document-approval.js, citing submission ${payload.submission_id}. Nothing else is approved by this.`);
@@ -382,6 +423,7 @@ module.exports = {
     mediaAnchorState,
     formatSeconds,
     publicComment,
+    composeApprovalNote,
     buildSubmissionPayload,
     formatSubmissionMessage,
 };

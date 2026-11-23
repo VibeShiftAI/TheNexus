@@ -264,7 +264,7 @@ const outgoingOf = () => store.getOutgoing(docs.B.id);
 const approvals = () => store.listOutgoingEvents(docs.B.id).filter(event => event.event === 'approved');
 // Everything a step could record, as counts and states.
 const snapshot = () => (docs.E ? {
-    decisions: Object.fromEntries(['A', 'D', 'E'].map(key => [key, decisionsOf(docs[key]).length])),
+    decisions: Object.fromEntries(['A', 'C', 'D', 'E'].map(key => [key, decisionsOf(docs[key]).length])),
     outgoing_B: outgoingOf()?.status ?? null,
     send_approvals_B: approvals().length,
     review_C: store.getReview(docs.C.review.id)?.status ?? null,
@@ -475,8 +475,8 @@ const forgedDecide = doc => {
 };
 const approveSend = () => ({ method: 'POST', url: `/api/documents/${docs.B.id}/outgoing/decision`,
     body: { decision: 'approve_send', revision_id: docs.B.outgoing.revision_id, envelope_hash: docs.B.outgoing.envelope_hash } });
-const finishGrant = () => ({ method: 'POST', url: `/api/documents/reviews/${docs.C.review.id}/finish`,
-    body: { approve_after_changes: true, summary: 'Approve once the second paragraph is tightened.' } });
+const finishApproving = () => ({ method: 'POST', url: `/api/documents/reviews/${docs.C.review.id}/finish`,
+    body: { approve_after_changes: true, summary: 'Approved. The second paragraph could be tighter.' } });
 const reads = () => [
     { method: 'GET', url: '/api/documents' },
     { method: 'GET', url: `/api/documents/${docs.A.id}` },
@@ -526,9 +526,9 @@ const decisionDialog = (doc, decision) => ({
         new RegExp(`[Rr]evision ${doc.revision.id}, content sha256 ${doc.revision.content_hash.slice(0, 12)}`)],
 });
 const mailDialog = ({ to, cc, subject }) => ({ title: 'Nexus: send this email?', label: 'Send', lines: [`Send to ${to}: "${subject}"?`, `Cc: ${cc.length ? cc.join(', ') : 'none'}`] });
-const finishDialog = () => ({ title: 'Nexus: finish this review?', label: 'Approve after changes',
-    lines: [`Finish your review of "${docs.C.title}"`, 'This lets the executor that applies your changes record your approval of the revised version.',
-        'Comments in this review: 1.', 'Summary:', 'Approve once the second paragraph is tightened.'] });
+const finishDialog = () => ({ title: 'Nexus: finish this review?', label: 'Approve this version',
+    lines: [`Finish your review of "${docs.C.title}"`, 'This approves this exact version now and keeps your summary and comments with it as a note. It starts no revision and sends nothing.',
+        'Comments in this review: 1.', 'Summary:', 'Approved. The second paragraph could be tighter.'] });
 function dialogChecks(context, expect) {
     const dialog = context.dialogs[0];
     const checks = [['exactly one dialog was shown', context.dialogs.length === 1, context.dialogs.length]];
@@ -699,19 +699,21 @@ function chromeSteps() {
                 noDialog(context), nothingNew(context, 'still exactly one relay')] },
         );
     }
-    steps.push(refusedStep({ id: 'S12', what: 'Finish the review of document C with the approve-after-changes grant', ending: negative,
-        request: finishGrant, dialog: finishDialog }));
+    steps.push(refusedStep({ id: 'S12', what: 'Finish the review of document C, approving this version with a note', ending: negative,
+        request: finishApproving, dialog: finishDialog }));
     if (ATTENDED) {
-        steps.push(confirmedStep({ id: 'S13', what: 'Finish the same review with the grant', button: 'Approve after changes', request: finishGrant, dialog: finishDialog,
+        steps.push(confirmedStep({ id: 'S13', what: 'Finish the same review, approving this version', button: 'Approve this version', request: finishApproving, dialog: finishDialog,
             recorded: (response, context) => {
                 const review = store.getReview(docs.C.review.id);
                 const submission = store.getSubmissionForReview(docs.C.review.id);
+                const recordedOnC = decisionsOf(docs.C);
                 const ref = refIn(context.dialogs[0]);
                 return [['finished 202', response.status === 202, response.status ?? null],
-                    ['the review is submitted once, with the grant, on Robert\'s operator credential', review?.status === 'submitted' && !!review?.approval_delegated
-                        && review?.submitted_authority === 'operator_credential' && !!submission,
-                    { status: review?.status ?? null, approval_delegated: review?.approval_delegated ?? null, submitted_authority: review?.submitted_authority ?? null, submission: submission?.id ?? null }],
-                    ['the server logged the finish with the dialog Ref', !!ref && logged(`finished with approval delegated (authority=operator_credential, submission=${submission?.id}, operator confirmation ref=${ref})`)]];
+                    ['the review is submitted once, with one approval of this revision on Robert\'s operator credential', review?.status === 'submitted' && !review?.approval_delegated
+                        && review?.submitted_authority === 'operator_credential' && !!submission && recordedOnC.length === 1 && recordedOnC[0].id === review?.approval_decision_id
+                        && recordedOnC[0].decision === 'approve' && recordedOnC[0].revision_id === docs.C.revision.id && recordedOnC[0].authority === 'operator_credential',
+                    { status: review?.status ?? null, approval_decision_id: review?.approval_decision_id ?? null, submitted_authority: review?.submitted_authority ?? null, submission: submission?.id ?? null, decisions: recordedOnC.length }],
+                    ['the server logged the finish with the dialog Ref', !!ref && logged(`finished with approval of revision ${docs.C.revision.id} recorded (authority=operator_credential, submission=${submission?.id}, operator confirmation ref=${ref})`)]];
             } }));
     }
     steps.push(killStep('S14'), busyStep('S15'));
@@ -836,10 +838,10 @@ function finalState() {
     const review = store.getReview(docs.C.review.id);
     return {
         documents: Object.fromEntries(Object.entries(docs).map(([key, doc]) => [key, { id: doc.id, title: doc.title, revision_id: doc.revision.id, content_hash: doc.revision.content_hash }])),
-        decisions: Object.fromEntries(['A', 'D', 'E'].map(key => [key, decisionsOf(docs[key]).map(decisionView)])),
+        decisions: Object.fromEntries(['A', 'C', 'D', 'E'].map(key => [key, decisionsOf(docs[key]).map(decisionView)])),
         outgoing_B: outgoing && { status: outgoing.status, envelope_hash: outgoing.envelope_hash, grant: outgoing.grant && { authority: outgoing.grant.authority, envelope_hash: outgoing.grant.envelope_hash, approved_at: outgoing.grant.approved_at } },
         outgoing_B_events: store.listOutgoingEvents(docs.B.id).map(event => ({ event: event.event, authority: event.authority, created_at: event.created_at })),
-        review_C: review && { status: review.status, approval_delegated: !!review.approval_delegated, submitted_authority: review.submitted_authority ?? null,
+        review_C: review && { status: review.status, approval_decision_id: review.approval_decision_id ?? null, submitted_authority: review.submitted_authority ?? null,
             submission: store.getSubmissionForReview(review.id)?.id ?? null },
         praxis_relays: relayed,
         praxis_drafts: [...drafts.values()].map(draft => ({ id: draft.id, status: draft.status, version: draft.version, to: draft.to })),
