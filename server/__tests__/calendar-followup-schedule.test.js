@@ -61,6 +61,20 @@ describe('planFollowUpSlot', () => {
         expect(slot.start).toBe('2026-10-18T06:00:00.000Z');
         expect(slot.anchor.id).toBe('spill');
     });
+    test('a plan event tagged S<number> that spilled past midnight is still this plan', () => {
+        const slot = followUps.planFollowUpSlot([
+            event({ id: 'spill', title: 'S7 · Spilled', status: 'scheduled', start_time: '2026-10-18T05:30:00.000Z', end_time: '2026-10-18T06:00:00.000Z' }),
+        ], NOW);
+        expect(slot.start).toBe('2026-10-18T06:00:00.000Z');
+        expect(slot.anchor.id).toBe('spill');
+    });
+    test('a title that merely starts like a tag is unrelated work tomorrow, not this plan', () => {
+        const slot = followUps.planFollowUpSlot([
+            event({ id: 'today', status: 'scheduled', start_time: '2026-10-17T18:00:00.000Z', end_time: '2026-10-17T19:00:00.000Z' }),
+            event({ id: 'bucket', title: 'S3 bucket cleanup', status: 'scheduled', start_time: '2026-10-18T05:30:00.000Z', end_time: '2026-10-18T06:00:00.000Z' }),
+        ], NOW);
+        expect(slot.anchor.id).toBe('today');
+    });
     test('never schedules in the past: a finished plan yields a slot a couple of minutes from now, and an empty day the same', () => {
         const done = followUps.planFollowUpSlot([event({ id: 'done', end_time: '2026-10-17T08:20:00.000Z', start_time: '2026-10-17T08:00:00.000Z' })], NOW);
         expect(done.start).toBe(new Date(NOW.getTime() + followUps.LEAD_MS).toISOString());

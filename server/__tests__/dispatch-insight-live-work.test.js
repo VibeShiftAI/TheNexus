@@ -203,6 +203,30 @@ describe('dispatch-insight live-work projection', () => {
         return Object.fromEntries(body.items.map((i) => [i.taskId, i]));
     }
 
+    test('running, queued and QA rows carry the slotNumber Praxis reports', async () => {
+        const queue = STATE_NO_PLAN_WITH_QUEUE.executors.cliQueue;
+        await boot({ state: { executors: {
+            ...STATE_NO_PLAN_WITH_QUEUE.executors,
+            runs: [{ ...RUNNING, slotNumber: 4 }, { ...FINISHED_UNREVIEWED, slotNumber: 2 }, QA_RUNNING_FOR_UNREVIEWED, AGENT_RUN],
+            cliQueue: [{ ...queue[0], slotNumber: 5 }, queue[1]],
+        } } });
+        const items = byId((await getJson(`${handle.baseUrl}/api/dispatch-insight/live-work`)).body);
+        expect(items.visibility).toMatchObject({ lane: 'running', slotNumber: 4 });
+        expect(items.approvals).toMatchObject({ lane: 'queued', slotNumber: 5 });
+        expect(items.unreviewed).toMatchObject({ lane: 'qa', slotNumber: 2 });
+        expect(items['contract-fix']).not.toHaveProperty('slotNumber');
+    });
+
+    test('a finished row keeps the slotNumber its run carried', async () => {
+        await boot({ state: { executors: {
+            ...STATE_NO_PLAN_WITH_QUEUE.executors,
+            runs: [{ ...FINISHED_UNREVIEWED, slotNumber: 2 }],
+            cliQueue: [],
+        } } });
+        const items = byId((await getJson(`${handle.baseUrl}/api/dispatch-insight/live-work`)).body);
+        expect(items.unreviewed).toMatchObject({ lane: 'finished', slotNumber: 2 });
+    });
+
     test('approved day plan + a queue: running, queued, QA-pending and related waiting rows', async () => {
         await boot();
         const { status, body } = await getJson(`${handle.baseUrl}/api/dispatch-insight/live-work`);

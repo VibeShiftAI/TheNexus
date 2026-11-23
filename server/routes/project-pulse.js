@@ -328,7 +328,7 @@ function createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById
                 if (d.project_id !== project.id) continue;
                 events.push({
                     type: 'dispatch', at: d.started_at,
-                    title: d.task_name || 'Ad-hoc dispatch',
+                    title: d.task_name || 'Untitled dispatch',
                     meta: [d.executor, d.model].filter(Boolean).join(' · '),
                     outcome: d.outcome, tokens: d.tokens,
                     tokensSource: tokenSource(d.tokens, d.tokens_estimated),

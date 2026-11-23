@@ -21,7 +21,10 @@ const { isTaskDone } = require('@praxis/contract');
 
 const TIME_ZONE = 'America/New_York';
 const FOLLOW_UP_MARKER = '\nPraxis follow-up\n';
-const SLOT_TITLE = /^\[Slot \d+\]/i;
+/** A plan event's title: `S<number> · ` (Praxis slot-numbers.ts), or `[Slot N]` on older events. */
+const SLOT_TITLE = /^S\d+ · /;
+const LEGACY_SLOT_TITLE = /^\[Slot \d+\]/i;
+const isSlotTitle = title => SLOT_TITLE.test(title) || LEGACY_SLOT_TITLE.test(title);
 /** Never start before the dispatcher's next poll could see the event. */
 const LEAD_MS = 2 * 60_000;
 /** Planned duration when the last task has no end_time of its own. */
@@ -46,7 +49,7 @@ function taskClosed(task) {
 
 /**
  * Today's work plan as the calendar shows it: `praxis_task` events with a
- * task that start today (local), plus `[Slot N]` events that spilled past
+ * task that start today (local), plus slot-tagged events that spilled past
  * midnight, which are still this plan. Unrelated work tomorrow and system
  * windows (local LLM, stakeholder meetings) do not extend the plan.
  */
@@ -59,7 +62,7 @@ function planEvents(events, now, timeZone = TIME_ZONE) {
         const start = toTime(event.start_time);
         if (start === null) return false;
         const onDay = day(new Date(start), timeZone);
-        return onDay === today || (onDay === tomorrow && SLOT_TITLE.test(String(event.title || '')));
+        return onDay === today || (onDay === tomorrow && isSlotTitle(String(event.title || '')));
     });
 }
 
