@@ -19,6 +19,7 @@ export type LiveDomain =
     | "schedule"
     | "system"
     | "activity"
+    | "outcomeSpeech"
     /** HITL inbox: pending count, badge, the inbox list itself. */
     | "hitl"
     /** Dispatch surfaces: executor lanes, CLI slots, the queue. */
@@ -32,6 +33,7 @@ export const LIVE_DOMAINS: LiveDomain[] = [
     "schedule",
     "system",
     "activity",
+    "outcomeSpeech",
     "hitl",
     "dispatch",
     "council",
@@ -45,6 +47,7 @@ export const ZERO_REVISIONS: LiveRevisions = Object.freeze({
     schedule: 0,
     system: 0,
     activity: 0,
+    outcomeSpeech: 0,
     hitl: 0,
     dispatch: 0,
     council: 0,

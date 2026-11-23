@@ -322,3 +322,30 @@ test('failed recovery owner leaves an unowned failure independently deliverable'
   assert.deepEqual(f.spoken.map(s => s.event.eventId), ['fallback']);
   assert.equal(eligibleAlert(event('task.failed', { failureRecoveryOwner: 'unknown' }), 'attention'), true);
 });
+
+test('only the owed success changes eligibility across alert modes', () => {
+  for (const mode of ['off', 'attention', 'conversational'] as const) {
+    const owner = { outcomeFollowUpId: 'watch' };
+    assert.equal(eligibleAlert(event('task.qa-passed', owner), mode), false);
+    assert.equal(eligibleAlert(event('task.qa-passed'), mode), mode === 'conversational');
+    assert.equal(eligibleAlert(event('task.blocked', owner), mode), mode === 'conversational');
+    assert.equal(eligibleAlert(event('task.failed', owner), mode), mode !== 'off');
+    assert.equal(eligibleAlert(event('hitl.created', { ...owner, request: { question: 'Approve?' } }), mode), mode !== 'off');
+  }
+});
+
+test('queued reports keep FIFO order beyond the ordinary age window and wait for conversational mode', async () => {
+  localStorage.clear();
+  const f = fixture();
+  const outcomes = Array.from({ length: 8 }, (_, i) => ({ id: `follow-up:${i}:trigger`, speech: `Finding ${i}. The details are in chat.` }));
+  f.alerts.update([], 'attention');
+  f.alerts.updateOutcomes(outcomes);
+  await tick(); assert.deepEqual(f.spoken, []);
+  f.alerts.update([], 'off');
+  f.advance(120000); await tick(); assert.deepEqual(f.spoken, []);
+  f.alerts.update([], 'conversational');
+  await tick();
+  for (const _ of outcomes.slice(1)) { f.advance(120000); await tick(); }
+  assert.deepEqual(f.spoken, outcomes.map(row => row.id));
+  f.alerts.dispose();
+});
