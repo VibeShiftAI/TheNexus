@@ -132,6 +132,9 @@ describe('AI chat Praxis token streaming', () => {
     expect(res.status).toBe(200);
     expect(JSON.parse(global.fetch.mock.calls[0][1].body).conversationContext).toMatchObject({ conversationId: 'conv-1', messages: [] });
     expect(res.headers.get('content-type')).toContain('text/event-stream');
+    // Without no-transform the dashboard's proxy gzips the stream and holds
+    // every step and delta until the turn has ended.
+    expect(res.headers.get('cache-control')).toContain('no-transform');
     expect(body).toContain('data: {"type":"delta","delta":"hello "}');
     expect(body).toContain('data: {"type":"delta","delta":"Robert"}');
     expect(body).toContain('"type":"final"');

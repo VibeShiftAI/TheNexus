@@ -84,6 +84,31 @@ async function saveRelayReply(db, message, clientMessageId) {
     return { row: matches(raced) ? raced : null, inserted: false };
 }
 
+const STEP_KINDS = new Set(['tool', 'reasoning']);
+const STEP_STATUSES = new Set(['running', 'done', 'failed', 'unfinished']);
+const finiteMs = (value) => (Number.isFinite(value) && value >= 0 ? value : undefined);
+
+/** One working step, field by field. Praxis has already redacted its text. */
+function relayStepFrame(event) {
+    if (typeof event.id !== 'string' || !Number.isSafeInteger(event.seq) || typeof event.text !== 'string'
+        || !STEP_KINDS.has(event.kind) || !STEP_STATUSES.has(event.status)) return null;
+    return {
+        type: 'step', turn_id: event.turn_id, id: event.id, seq: event.seq, kind: event.kind,
+        text: event.text, status: event.status,
+        started_ms: finiteMs(event.started_ms), elapsed_ms: finiteMs(event.elapsed_ms),
+    };
+}
+
+/** Timing for the client's collapsed line. It is never part of the saved message. */
+function turnTimingOf(event) {
+    const timing = {};
+    for (const field of ['duration_ms', 'step_count', 'omitted_steps']) {
+        const value = finiteMs(event[field]);
+        if (value !== undefined) timing[field] = value;
+    }
+    return timing;
+}
+
 async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversationId, clientMessageId, metadata = {}, onReply = () => {} }) {
     const { buildChatMessageEvent, buildPraxisAssistantMetadata } = require('../chat-message-format');
     const decoder = new TextDecoder();
@@ -101,6 +126,7 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
     let displayDirective = {};
     let finalized = false;
     let outcome = {};
+    let turnTiming = {};
 
     async function handleFrame(frame) {
         const dataLines = frame
@@ -121,8 +147,15 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
         if (event.type === 'error') throw new Error(event.error || 'Praxis stream failed');
         if (event.type === 'status' && typeof event.message === 'string') {
             res.write(`data: ${JSON.stringify({ type: 'status', state: event.state,
-                message: event.message.slice(0, 1000), turn_id: event.turn_id,
+                message: event.message.slice(0, 1000), turn_id: event.turn_id, elapsed_ms: finiteMs(event.elapsed_ms),
+                // The page may have changed conversation while this send was on its way.
+                ...(conversationId ? { conversation_id: conversationId } : {}),
                 ...(validTurnKey(event.turn_id) ? { status_url: `/api/ai/chat/turns/${encodeURIComponent(event.turn_id)}` } : {}) })}\n\n`);
+            return false;
+        }
+        if (event.type === 'step') {
+            const step = relayStepFrame(event);
+            if (step) res.write(`data: ${JSON.stringify(step)}\n\n`);
             return false;
         }
         const delta = event.delta ?? event.choices?.[0]?.delta?.content ?? '';
@@ -140,6 +173,7 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
             morningKickoff = event.morningKickoff === true;
             displayDirective = displayDirectiveOf(event);
             outcome = praxisTurnOutcome(event);
+            turnTiming = turnTimingOf(event);
         }
 
         return false;
@@ -203,6 +237,7 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
         ...(suppressVoice ? { suppressVoice: true } : {}),
         morningKickoff,
         ...displayDirective,
+        ...turnTiming,
     };
     res.write(`data: ${JSON.stringify(payload)}\n\n`);
     res.write('data: [DONE]\n\n');
@@ -480,7 +515,9 @@ function createAIChatRouter({ db, io }) {
                 const praxisResponse = await fetchPraxis();
                 activity.update(activityId,'working',undefined,activityAttempt);
                 res.setHeader('Content-Type', 'text/event-stream');
-                res.setHeader('Cache-Control', 'no-cache');
+                // no-transform: the dashboard's proxy otherwise gzips this stream
+                // and holds every frame until the turn ends.
+                res.setHeader('Cache-Control', 'no-cache, no-transform');
                 res.setHeader('Connection', 'keep-alive');
                 res.setHeader('X-Accel-Buffering', 'no');
                 res.flushHeaders?.();

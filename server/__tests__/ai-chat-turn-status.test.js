@@ -26,6 +26,29 @@ test('relay preserves turn status separately from assistant output and forwards 
     expect(body).toContain('/api/ai/chat/turns/synthetic-client');
     expect(db.saveChatMessage.mock.calls.filter(([r]) => r.role === 'assistant').map(([r]) => r.content)).toEqual(['Actual verified answer']);
 });
+test('relay forwards working steps field by field and keeps them out of the saved reply', async () => {
+    global.fetch = jest.fn(async () => frames([
+        { type: 'status', state: 'running', message: 'Working.', turn_id: 'synthetic-client', elapsed_ms: 1200 },
+        { type: 'step', turn_id: 'synthetic-client', id: 's1', seq: 1, kind: 'tool', text: 'Run git status', status: 'running', started_ms: 1300, elapsed_ms: 1300, raw_command: 'must-not-pass' },
+        { type: 'step', turn_id: 'synthetic-client', id: 's1', seq: 1, kind: 'tool', text: 'Run git status', status: 'done', started_ms: 1300, elapsed_ms: 1900 },
+        { type: 'step', turn_id: 'synthetic-client', id: 'bad', seq: 'not-a-number', kind: 'tool', text: 'Malformed step', status: 'done' },
+        { type: 'final', response: 'Actual verified answer', duration_ms: 2400, step_count: 1, omitted_steps: 0 },
+    ]));
+    const res = await originalFetch(base, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ message: 'Synthetic request', clientMessageId: 'synthetic-client', stream: true }) });
+    const body = await res.text();
+    const events = body.split('\n\n').filter(frame => frame.startsWith('data: {')).map(frame => JSON.parse(frame.slice(6)));
+    const steps = events.filter(event => event.type === 'step');
+    expect(steps.map(step => [step.seq, step.text, step.status])).toEqual([[1, 'Run git status', 'running'], [1, 'Run git status', 'done']]);
+    expect(Object.keys(steps[0]).sort()).toEqual(['elapsed_ms', 'id', 'kind', 'seq', 'started_ms', 'status', 'text', 'turn_id', 'type']);
+    expect(body).not.toContain('must-not-pass');
+    expect(body).not.toContain('Malformed step');
+    expect(events.find(event => event.type === 'status')).toMatchObject({ elapsed_ms: 1200, conversation_id: 'synthetic-conversation' });
+    expect(events.find(event => event.type === 'final')).toMatchObject({ duration_ms: 2400, step_count: 1, omitted_steps: 0 });
+    const saved = db.saveChatMessage.mock.calls.map(([row]) => JSON.stringify(row));
+    expect(saved.length).toBeGreaterThan(0);
+    for (const row of saved) expect(row).not.toMatch(/Run git status|duration_ms|step_count|omitted_steps|"steps"/);
+});
 test.each([false, true])('nonstream/async path retains the same turn key (async=%s)', async async => {
     global.fetch = jest.fn(async () => Response.json({ response: 'Synthetic reply' }));
     const id = async ? 'synthetic-async' : 'synthetic-direct';
