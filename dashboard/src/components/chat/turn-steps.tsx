@@ -6,7 +6,7 @@
  * plain text, never as markdown or links.
  */
 
-import { memo, useEffect, useId, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useId, useReducer, useState } from "react";
 import { AlertTriangle, Brain, Check, ChevronRight, CircleDashed, Loader2, X } from "lucide-react";
 import Link from "next/link";
 
@@ -28,26 +28,31 @@ function StepIcon({ step }: { step: TurnStep }) {
     return <Check aria-hidden size={13} className={`${className} text-emerald-400`} />;
 }
 
+/** Memoized: a long turn re-renders only the row that changed. */
+const TurnStepRow = memo(function TurnStepRow({ step }: { step: TurnStep }) {
+    return (
+        <li data-step-status={step.status} className="flex items-start gap-2 text-xs leading-5 text-slate-300">
+            <StepIcon step={step} />
+            <span className={`min-w-0 [overflow-wrap:anywhere] ${step.kind === "reasoning" ? "whitespace-pre-wrap italic text-slate-400" : ""}`}>
+                {step.kind === "reasoning" && <span className="sr-only">Reasoning: </span>}
+                {step.text}
+            </span>
+            {step.status === "failed" || step.status === "unfinished"
+                ? <span className={`shrink-0 ${step.status === "failed" ? "text-red-300" : "text-amber-200"}`}>{STATUS_LABEL[step.status]}</span>
+                : <span className="sr-only">{STATUS_LABEL[step.status]}</span>}
+        </li>
+    );
+});
+
 export function TurnStepList({ steps, hiddenSteps = 0 }: { steps: readonly TurnStep[]; hiddenSteps?: number }) {
     return (
         <ol aria-label="Working steps" className="mt-1.5 space-y-1">
             {hiddenSteps > 0 && (
                 <li className="text-xs text-slate-500">
-                    {hiddenSteps} earlier {hiddenSteps === 1 ? "step is" : "steps are"} no longer held for this view.
+                    {hiddenSteps} {hiddenSteps === 1 ? "step" : "steps"} did not reach this page.
                 </li>
             )}
-            {steps.map(step => (
-                <li key={step.id} data-step-status={step.status} className="flex items-start gap-2 text-xs leading-5 text-slate-300">
-                    <StepIcon step={step} />
-                    <span className={`min-w-0 [overflow-wrap:anywhere] ${step.kind === "reasoning" ? "whitespace-pre-wrap italic text-slate-400" : ""}`}>
-                        {step.kind === "reasoning" && <span className="sr-only">Reasoning: </span>}
-                        {step.text}
-                    </span>
-                    {step.status === "failed" || step.status === "unfinished"
-                        ? <span className={`shrink-0 ${step.status === "failed" ? "text-red-300" : "text-amber-200"}`}>{STATUS_LABEL[step.status]}</span>
-                        : <span className="sr-only">{STATUS_LABEL[step.status]}</span>}
-                </li>
-            ))}
+            {steps.map(step => <TurnStepRow key={step.id} step={step} />)}
         </ol>
     );
 }
@@ -63,14 +68,29 @@ function Elapsed({ startedAt }: { startedAt: number }) {
     return <span data-turn-elapsed className="shrink-0 text-xs tabular-nums text-slate-500">{formatElapsed(now - startedAt)}</span>;
 }
 
-export function LiveTurnSteps({ conversationId, busy, onGrow }: {
+/**
+ * Follows the store with an ordinary state update, so a burst of steps batches
+ * into one render. useSyncExternalStore would commit synchronously for every
+ * step, and a long list makes each of those commits expensive.
+ */
+function useLiveTurn(conversationId: string | null) {
+    const [, noteChange] = useReducer((version: number) => version + 1, 0);
+    useEffect(() => {
+        // Catches a step that landed between the first render and this subscription.
+        noteChange();
+        return chatTurnSteps.subscribe(noteChange);
+    }, []);
+    return chatTurnSteps.live(conversationId);
+}
+
+/** Memoized: the terminal re-renders for every live board event, and this list can be long. */
+export const LiveTurnSteps = memo(function LiveTurnSteps({ conversationId, busy, onGrow }: {
     conversationId: string | null;
     /** The terminal is busy with something that is not a chat turn. */
     busy: boolean;
     onGrow: () => void;
 }) {
-    const read = () => chatTurnSteps.live(conversationId);
-    const turn = useSyncExternalStore(chatTurnSteps.subscribe, read, () => null);
+    const turn = useLiveTurn(conversationId);
 
     // Steps grow the transcript without changing a message; keep the newest in view.
     useEffect(() => { if (turn) onGrow(); }, [turn, onGrow]);
@@ -115,7 +135,7 @@ export function LiveTurnSteps({ conversationId, busy, onGrow }: {
             </div>
         </div>
     );
-}
+});
 
 /** A followed turn is over and no reply reached this page, so the panel cannot just vanish. */
 export function UnconfirmedTurnNotice({ turnId }: { turnId: string }) {

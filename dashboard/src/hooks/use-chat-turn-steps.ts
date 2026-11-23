@@ -16,19 +16,22 @@ import { getAuthHeader } from "@/lib/auth";
 import { chatTurnSteps, type TurnReceiptSteps } from "@/lib/chat-turn-steps";
 import type { PraxisTurnStatus, PraxisTurnStep } from "@/lib/read-praxis-event-stream";
 
-const FOLLOW_EVERY_MS = 2_500;
-/** Failed reads in a row before the panel says it has lost contact. */
-const LOST_CONTACT_AFTER = 3;
+/** The key the turn status route accepts: validTurnKey in server/routes/ai-chat.js. */
 const TURN_KEY = /^[a-zA-Z0-9_-]{1,160}$/;
 const STILL_WORKING = "Praxis is still working on this message.";
-/** How long a landed reply waits for its turn's final steps before folding what the page holds. */
-const FOLD_READ_TIMEOUT_MS = 5_000;
 
-async function readTurn(id: string, signal?: AbortSignal): Promise<TurnReceiptSteps | "gone"> {
+/**
+ * One read of the turn's status route. "gone" means it knows no such turn;
+ * "wait" means the API allowance is spent for now, which says nothing about the
+ * turn and is not a lost connection (the read backoff holds requests meanwhile).
+ */
+async function readTurn(id: string, signal?: AbortSignal): Promise<TurnReceiptSteps | "gone" | "wait"> {
     const response = await fetch(`/api/ai/chat/turns/${encodeURIComponent(id)}`, {
         headers: await getAuthHeader(), signal, cache: "no-store",
     });
+    chatTurnSteps.noteAllowance(response.headers);
     if (response.status === 400 || response.status === 404) return "gone";
+    if (response.status === 429) return "wait";
     if (!response.ok) throw new Error(`Turn status answered ${response.status}`);
     return response.json();
 }
@@ -42,8 +45,6 @@ function pause(ms: number, signal: AbortSignal): Promise<void> {
 }
 
 interface FollowOptions {
-    /** Wait before the first read, for a turn that was only just sent. */
-    delayMs?: number;
     /** A turn this page did not send: show it only if it is really still running. */
     adopt?: { conversationId: string | null };
 }
@@ -53,18 +54,18 @@ function noteHowItEnded(id: string, receipt: TurnReceiptSteps) {
     if (receipt.state !== "completed") chatTurnSteps.noteUnconfirmed(id);
 }
 
-async function followTurn(id: string, signal: AbortSignal, { delayMs = 0, adopt }: FollowOptions) {
-    let failures = 0;
-    let wait = delayMs;
-    while (!signal.aborted) {
-        if (wait > 0) await pause(wait, signal);
+async function followTurn(id: string, signal: AbortSignal, { adopt }: FollowOptions) {
+    for (let first = true; !signal.aborted; first = false) {
+        if (!first) await pause(chatTurnSteps.followSpacing(), signal);
         if (signal.aborted) return;
-        wait = FOLLOW_EVERY_MS;
         if (document.hidden) continue;
         try {
             const receipt = await readTurn(id, signal);
             if (signal.aborted) return;
-            failures = 0;
+            chatTurnSteps.noteContact(id);
+            if (receipt === "wait") continue;
+            // A definite answer. Until one comes, a remount asks about this turn again.
+            chatTurnSteps.noteKnown(id);
             if (receipt === "gone") {
                 // A send still on its way has not registered its turn yet.
                 if (chatTurnSteps.isSending(id)) continue;
@@ -84,12 +85,8 @@ async function followTurn(id: string, signal: AbortSignal, { delayMs = 0, adopt 
             }
         } catch {
             if (signal.aborted) return;
-            failures += 1;
-            if (adopt && !chatTurnSteps.has(id) && failures >= LOST_CONTACT_AFTER) {
-                chatTurnSteps.forget(id);
-                return;
-            }
-            if (failures >= LOST_CONTACT_AFTER) chatTurnSteps.noteLostContact(id);
+            // The panel says so from the first unanswered read; the next answer clears it.
+            chatTurnSteps.noteLostContact(id);
         }
     }
 }
@@ -128,7 +125,6 @@ export function useChatTurnSteps({ messages, conversationId, isLoadingHistory }:
         ? newest.id : null;
     useEffect(() => {
         if (!unansweredTurn || isLoadingHistory || chatTurnSteps.known(unansweredTurn)) return;
-        chatTurnSteps.noteKnown(unansweredTurn);
         follow(unansweredTurn, { adopt: { conversationId } });
     }, [unansweredTurn, isLoadingHistory, conversationId, follow]);
 
@@ -146,7 +142,7 @@ export function useChatTurnSteps({ messages, conversationId, isLoadingHistory }:
         /** This send has no stream, so its steps come from the status route. */
         followWithoutStream: (id: string) => {
             chatTurnSteps.startFollowing(id);
-            follow(id, { delayMs: FOLLOW_EVERY_MS });
+            follow(id);
         },
         /** The stream or request broke while the turn may still be running. */
         followAfterLoss: (id: string) => {
@@ -154,21 +150,19 @@ export function useChatTurnSteps({ messages, conversationId, isLoadingHistory }:
             chatTurnSteps.startFollowing(id, STILL_WORKING);
             follow(id);
         },
-        /** A reply with no stream arrived: read the turn's final steps, then fold them. */
+        /**
+         * A reply with no stream arrived. The line folds now from what this page
+         * holds, so a slow read can hold nothing open, and the turn's final steps
+         * join it whenever that read answers.
+         */
         foldAfterReply: async (id: string, messageId: string | null | undefined) => {
             pollers.current.get(id)?.abort();
             pollers.current.delete(id);
-            // The send ends right after this call; hold the turn until the read below settles.
-            chatTurnSteps.startFollowing(id);
-            const reading = new AbortController();
-            const timer = setTimeout(() => reading.abort(), FOLD_READ_TIMEOUT_MS);
-            let receipt: TurnReceiptSteps | undefined;
+            chatTurnSteps.fold(id, messageId);
             try {
-                const read = await readTurn(id, reading.signal);
-                if (read !== "gone") { receipt = read; chatTurnSteps.applyReceipt(id, read); }
-            } catch { /* Fold what this page already holds, timed by its own clock. */ }
-            clearTimeout(timer);
-            chatTurnSteps.fold(id, messageId, receipt);
+                const read = await readTurn(id);
+                if (read !== "gone" && read !== "wait") chatTurnSteps.completeFold(id, messageId, read);
+            } catch { /* The line stays as this page measured it. */ }
         },
         release: (id: string) => chatTurnSteps.release(id),
     }), [folded, unconfirmedTurn, conversationId, follow]);

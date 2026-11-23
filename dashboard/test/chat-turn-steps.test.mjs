@@ -3,7 +3,7 @@
 // an in-flight turn is picked up again after a dropped stream or a reload.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createElement } from "react";
+import { createElement, Profiler } from "react";
 import { createRoot } from "react-dom/client";
 
 import { mountTerminal, findComposerInput, typeCharacter, act, cortexTestStore } from "./helpers.mjs";
@@ -11,6 +11,7 @@ import { chatTurnSteps } from "../src/lib/chat-turn-steps.ts";
 import { useChatTurnSteps } from "../src/hooks/use-chat-turn-steps.ts";
 import { setParams } from "./stubs/next-navigation.mjs";
 import ChatTurnPage from "../src/app/chat/turns/[id]/page.tsx";
+import { LiveTurnSteps } from "../src/components/chat/turn-steps.tsx";
 
 const RETIRED = "Chat is taking longer than expected";
 const flush = async () => { for (let i = 0; i < 6; i += 1) await act(async () => { await new Promise(setImmediate); }); };
@@ -198,7 +199,7 @@ test("a dropped stream keeps following the turn and folds it when its saved repl
     assert.ok(container.querySelector("textarea"), "the composer stays available");
 
     receipt = { ...receipt, state: "completed", steps: [receipt.steps[0], { ...receipt.steps[1], status: "done" }], duration_ms: 9_000, reply: { response: "Answer" } };
-    await act(async () => { t.mock.timers.tick(2_500); });
+    await act(async () => { t.mock.timers.tick(chatTurnSteps.followSpacing()); });
     await flush();
     assert.equal(live(container), null);
     await act(async () => {
@@ -243,7 +244,7 @@ test("a followed turn that ends uncertain says so until a later message follows 
     assert.equal(unconfirmed(container), null, "no notice while it runs");
 
     receipt = { ...receipt, state: "uncertain", duration_ms: 8_000 };
-    await act(async () => { t.mock.timers.tick(2_500); });
+    await act(async () => { t.mock.timers.tick(chatTurnSteps.followSpacing()); });
     await flush();
     assert.equal(live(container), null);
     assert.match(unconfirmed(container).textContent, /ended without a confirmed reply/);
@@ -266,45 +267,221 @@ test("a send still on its way survives a status read that finds no turn yet", as
 
     chatTurnSteps.begin("slow-send", "c", "Sending your message…");
     act(() => hook.api.followWithoutStream("slow-send"));
-    await act(async () => { t.mock.timers.tick(2_500); });
+    await flush();
+    await act(async () => { t.mock.timers.tick(chatTurnSteps.followSpacing()); });
     await flush();
     assert.equal(chatTurnSteps.has("slow-send"), true, "the request is still open, so Praxis may not have the turn yet");
 
     // The request ended with no reply: now the same answer means there is no such turn.
     act(() => hook.api.release("slow-send"));
-    await act(async () => { t.mock.timers.tick(2_500); });
+    await act(async () => { t.mock.timers.tick(chatTurnSteps.followSpacing()); });
     await flush();
     assert.equal(chatTurnSteps.has("slow-send"), false);
 });
 
-test("a reply that lands folds the steps even as the send ends, and a hung read cannot hold the panel open", async (t) => {
-    t.mock.timers.enable({ apis: ["setTimeout"] });
+test("a reply that lands folds at once, a hung read holds nothing open, and its late answer completes the line", async (t) => {
     const original = globalThis.fetch;
-    // Answers only when aborted, like a status request that never comes back.
-    globalThis.fetch = (_url, init) => new Promise((_resolve, reject) => {
-        init.signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
-    });
+    // Like a status request that has not come back. There is no timeout to wait out.
+    let answer;
+    globalThis.fetch = () => new Promise((resolve) => { answer = resolve; });
     t.after(() => { globalThis.fetch = original; });
     chatTurnSteps.resetForTests();
     const hook = mountStepsHook(t);
     t.after(() => { chatTurnSteps.resetForTests(); });
 
     chatTurnSteps.begin("json-reply", "c", "Working");
-    chatTurnSteps.noteStep("json-reply", { id: "s1", seq: 1, kind: "tool", text: "Run git status", status: "done" });
+    chatTurnSteps.noteStep("json-reply", { id: "s1", seq: 1, kind: "tool", text: "Run git status", status: "running" });
     let settled = false;
     await act(async () => {
         hook.api.foldAfterReply("json-reply", "json-reply:reply").then(() => { settled = true; });
         hook.api.release("json-reply");
         await new Promise(setImmediate);
     });
-    assert.equal(chatTurnSteps.has("json-reply"), true, "the turn outlives its send until the read settles");
+    assert.equal(chatTurnSteps.has("json-reply"), false, "nothing stays open while the read hangs");
     assert.equal(settled, false);
+    assert.equal(chatTurnSteps.getFolded().get("json-reply:reply").stepCount, 1);
+    assert.deepEqual(chatTurnSteps.getFolded().get("json-reply:reply").steps.map((s) => s.status), ["unfinished"]);
 
-    await act(async () => { t.mock.timers.tick(5_000); await new Promise(setImmediate); });
+    await act(async () => {
+        answer(Response.json({ state: "completed", steps: [
+            { id: "s1", seq: 1, kind: "tool", text: "Run git status", status: "done" },
+            { id: "s2", seq: 2, kind: "tool", text: "Read src/app.ts", status: "done" },
+        ], step_count: 2, duration_ms: 9_000 }));
+        await new Promise(setImmediate);
+    });
     await flush();
     assert.equal(settled, true);
-    assert.equal(chatTurnSteps.has("json-reply"), false);
-    assert.equal(chatTurnSteps.getFolded().get("json-reply:reply").stepCount, 1);
+    const line = chatTurnSteps.getFolded().get("json-reply:reply");
+    assert.deepEqual(line.steps.map((s) => [s.id, s.status]), [["s1", "done"], ["s2", "done"]]);
+    assert.equal(line.durationMs, 9_000);
+    assert.equal(line.stepCount, 2);
+});
+
+test("the first unanswered read says contact is lost, the next answer clears it, and a rate limit is not a lost connection", async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    let answer = () => Response.json({ error: "praxis_unavailable" }, { status: 503 });
+    const original = globalThis.fetch;
+    globalThis.fetch = async () => answer();
+    t.after(() => { globalThis.fetch = original; });
+    chatTurnSteps.resetForTests();
+    const hook = mountStepsHook(t);
+    t.after(() => { chatTurnSteps.resetForTests(); });
+    const next = async () => {
+        await act(async () => { t.mock.timers.tick(chatTurnSteps.followSpacing()); });
+        await flush();
+    };
+
+    chatTurnSteps.begin("flaky", "c", "Working");
+    act(() => hook.api.followWithoutStream("flaky"));
+    await flush();
+    assert.equal(chatTurnSteps.live("c").lostContact, true, "one failed read is enough to say so");
+
+    answer = () => Response.json({ state: "in_progress", steps: [{ id: "s1", seq: 1, kind: "tool", text: "Run the build", status: "running" }], step_count: 1 });
+    await next();
+    assert.equal(chatTurnSteps.live("c").lostContact, false);
+    assert.equal(chatTurnSteps.live("c").steps.length, 1);
+
+    answer = () => Response.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": "30" } });
+    await next();
+    assert.equal(chatTurnSteps.live("c").lostContact, false, "the API answered, so contact is not lost");
+    assert.equal(chatTurnSteps.has("flaky"), true);
+
+    // A "not registered yet" answer is an answer too.
+    answer = () => Response.json({ error: "praxis_unavailable" }, { status: 503 });
+    await next();
+    assert.equal(chatTurnSteps.live("c").lostContact, true);
+    answer = () => Response.json({ error: "turn_not_found" }, { status: 404 });
+    await next();
+    assert.equal(chatTurnSteps.live("c").lostContact, false);
+    assert.equal(chatTurnSteps.has("flaky"), true, "the send is still open");
+});
+
+test("a followed turn reads at the pace the API publishes", async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    let reads = 0;
+    const original = globalThis.fetch;
+    globalThis.fetch = async () => {
+        reads += 1;
+        return Response.json({ state: "in_progress", steps: [], step_count: 0 }, { headers: { "RateLimit-Limit": "1000", "RateLimit-Policy": "1000;w=60" } });
+    };
+    t.after(() => { globalThis.fetch = original; });
+    chatTurnSteps.resetForTests();
+    const hook = mountStepsHook(t);
+    t.after(() => { chatTurnSteps.resetForTests(); });
+
+    chatTurnSteps.begin("paced", "c", "Working");
+    act(() => hook.api.followWithoutStream("paced"));
+    await flush();
+    assert.equal(reads, 1, "the first read goes at once");
+    assert.equal(chatTurnSteps.followSpacing(), 960);
+    await act(async () => { t.mock.timers.tick(959); });
+    await flush();
+    assert.equal(reads, 1);
+    await act(async () => { t.mock.timers.tick(1); });
+    await flush();
+    assert.equal(reads, 2);
+});
+
+test("a check on a turn from before a reload keeps asking through failures until it has an answer", async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    const turnId = "in-flight-flaky-1";
+    let respond = () => Response.json({ error: "praxis_unavailable" }, { status: 503 });
+    const chat = installChat(t, (href) => (href.includes(`/turns/${turnId}`) ? respond() : null));
+    const { container } = begin(t, [{ id: turnId, role: "user", content: "Build it", timestamp: new Date() }]);
+    t.after(() => t.mock.timers.tick(6_000));
+    await flush();
+    assert.equal(chat.reads.length, 1);
+    assert.equal(live(container), null, "an unanswered check shows nothing it cannot confirm");
+    for (let read = 2; read <= 6; read += 1) {
+        await act(async () => { t.mock.timers.tick(chatTurnSteps.followSpacing()); });
+        await flush();
+        assert.equal(chat.reads.length, read, "it does not give up after a few failures");
+    }
+    respond = () => Response.json({ state: "in_progress", steps: [{ id: "s1", seq: 1, kind: "tool", text: "Run the build", status: "running" }], step_count: 1, elapsed_ms: 30_000, duration_ms: null });
+    await act(async () => { t.mock.timers.tick(chatTurnSteps.followSpacing()); });
+    await flush();
+    assert.deepEqual(rows(live(container)), [["Run the build", "running"]]);
+});
+
+test("a check cut short by the terminal remounting is asked again", async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    const turnId = "remount-turn-1";
+    const messages = [{ id: turnId, role: "user", content: "Build it", timestamp: new Date() }];
+    let respond = () => Response.json({ error: "praxis_unavailable" }, { status: 503 });
+    const chat = installChat(t, (href) => (href.includes(`/turns/${turnId}`) ? respond() : null));
+    const first = begin(t, messages);
+    t.after(() => t.mock.timers.tick(6_000));
+    await flush();
+    assert.equal(chat.reads.length, 1);
+    first.unmount();
+    await flush();
+
+    respond = () => Response.json({ state: "in_progress", steps: [{ id: "s1", seq: 1, kind: "tool", text: "Run the build", status: "running" }], step_count: 1, elapsed_ms: 30_000, duration_ms: null });
+    const second = mountTerminal(messages);
+    t.after(() => second.unmount());
+    await flush();
+    assert.equal(chat.reads.length, 2, "the remount asked again");
+    assert.deepEqual(rows(live(second.container)), [["Run the build", "running"]]);
+});
+
+test("a burst of steps renders the panel as one batch, not once per step", async (t) => {
+    // Real scheduling, as in the browser: act() would flush each step on its own.
+    const wasActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT;
+    globalThis.IS_REACT_ACT_ENVIRONMENT = false;
+    chatTurnSteps.resetForTests();
+    const errors = [];
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host, { onUncaughtError: (error) => errors.push(error), onCaughtError: (error) => errors.push(error) });
+    t.after(() => {
+        root.unmount();
+        host.remove();
+        chatTurnSteps.resetForTests();
+        globalThis.IS_REACT_ACT_ENVIRONMENT = wasActEnvironment;
+    });
+    let renders = 0;
+    chatTurnSteps.begin("burst", "c", "Working");
+    root.render(createElement(Profiler, { id: "panel", onRender: () => { renders += 1; } },
+        createElement(LiveTurnSteps, { conversationId: "c", busy: true, onGrow: () => {} })));
+    for (let tick = 0; tick < 5; tick += 1) await new Promise(setImmediate);
+
+    renders = 0;
+    const total = 300;
+    for (let seq = 1; seq <= total; seq += 1) {
+        // A frame read sooner after it was sent than the last one moves the start earlier.
+        chatTurnSteps.noteStep("burst", { id: `s${seq}`, seq, kind: "tool", text: `Step ${seq}`, status: "done", elapsed_ms: 1_000 + seq * 20 });
+        // One read of the stream per step: React's own microtask runs between them.
+        await Promise.resolve();
+    }
+    for (let tick = 0; tick < 5; tick += 1) await new Promise(setImmediate);
+    assert.deepEqual(errors.map(String), []);
+    assert.equal(host.querySelectorAll("[data-step-status]").length, total);
+    // One commit for the batch of steps, and one when the clock catches up with the moved start.
+    assert.ok(renders <= 2, `the panel committed ${renders} times for ${total} steps`);
+});
+
+test("the live panel does not re-render when only the terminal around it does", (t) => {
+    chatTurnSteps.resetForTests();
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    t.after(() => {
+        act(() => root.unmount());
+        host.remove();
+        chatTurnSteps.resetForTests();
+    });
+    const onGrow = () => {};
+    const panel = () => createElement(LiveTurnSteps, { conversationId: "c", busy: true, onGrow });
+    act(() => {
+        chatTurnSteps.begin("around", "c", "Working");
+        chatTurnSteps.noteStep("around", { id: "s1", seq: 1, kind: "tool", text: "Read a file", status: "done" });
+        root.render(panel());
+    });
+    assert.equal(host.querySelectorAll("[data-step-status]").length, 1);
+
+    const reads = t.mock.method(chatTurnSteps, "live");
+    for (let render = 0; render < 5; render += 1) act(() => root.render(panel()));
+    assert.equal(reads.mock.callCount(), 0);
 });
 
 test("the saved-turn page lists the steps of an in-flight turn and still copes without any", async (t) => {

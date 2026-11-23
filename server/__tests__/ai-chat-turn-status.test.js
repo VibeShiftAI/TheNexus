@@ -32,7 +32,7 @@ test('relay forwards working steps field by field and keeps them out of the save
         { type: 'step', turn_id: 'synthetic-client', id: 's1', seq: 1, kind: 'tool', text: 'Run git status', status: 'running', started_ms: 1300, elapsed_ms: 1300, raw_command: 'must-not-pass' },
         { type: 'step', turn_id: 'synthetic-client', id: 's1', seq: 1, kind: 'tool', text: 'Run git status', status: 'done', started_ms: 1300, elapsed_ms: 1900 },
         { type: 'step', turn_id: 'synthetic-client', id: 'bad', seq: 'not-a-number', kind: 'tool', text: 'Malformed step', status: 'done' },
-        { type: 'final', response: 'Actual verified answer', duration_ms: 2400, step_count: 1, omitted_steps: 0 },
+        { type: 'final', response: 'Actual verified answer', duration_ms: 2400, step_count: 1 },
     ]));
     const res = await originalFetch(base, { method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ message: 'Synthetic request', clientMessageId: 'synthetic-client', stream: true }) });
@@ -44,10 +44,10 @@ test('relay forwards working steps field by field and keeps them out of the save
     expect(body).not.toContain('must-not-pass');
     expect(body).not.toContain('Malformed step');
     expect(events.find(event => event.type === 'status')).toMatchObject({ elapsed_ms: 1200, conversation_id: 'synthetic-conversation' });
-    expect(events.find(event => event.type === 'final')).toMatchObject({ duration_ms: 2400, step_count: 1, omitted_steps: 0 });
+    expect(events.find(event => event.type === 'final')).toMatchObject({ duration_ms: 2400, step_count: 1 });
     const saved = db.saveChatMessage.mock.calls.map(([row]) => JSON.stringify(row));
     expect(saved.length).toBeGreaterThan(0);
-    for (const row of saved) expect(row).not.toMatch(/Run git status|duration_ms|step_count|omitted_steps|"steps"/);
+    for (const row of saved) expect(row).not.toMatch(/Run git status|duration_ms|step_count|"steps"/);
 });
 test.each([false, true])('nonstream/async path retains the same turn key (async=%s)', async async => {
     global.fetch = jest.fn(async () => Response.json({ response: 'Synthetic reply' }));

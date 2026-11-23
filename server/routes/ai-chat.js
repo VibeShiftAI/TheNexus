@@ -102,7 +102,7 @@ function relayStepFrame(event) {
 /** Timing for the client's collapsed line. It is never part of the saved message. */
 function turnTimingOf(event) {
     const timing = {};
-    for (const field of ['duration_ms', 'step_count', 'omitted_steps']) {
+    for (const field of ['duration_ms', 'step_count']) {
         const value = finiteMs(event[field]);
         if (value !== undefined) timing[field] = value;
     }

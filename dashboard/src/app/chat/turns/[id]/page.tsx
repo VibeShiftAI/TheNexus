@@ -13,7 +13,7 @@ type TurnReceipt = {
     started_at?: string;
     reply?: { response?: string; error?: string };
     error?: string;
-    /** Held in Praxis's memory while the turn runs and briefly after; not part of the saved receipt. */
+    /** Held in Praxis's memory until a later turn of the conversation finishes; not part of the saved receipt. */
     steps?: unknown;
     step_count?: number;
 };

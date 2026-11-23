@@ -35,7 +35,6 @@ export interface TurnReceiptSteps {
     state?: string;
     steps?: unknown;
     step_count?: number;
-    omitted_steps?: number;
     elapsed_ms?: number;
     duration_ms?: number | null;
 }
@@ -53,7 +52,7 @@ export interface LiveTurn {
     /** Set when the status route has stopped answering. */
     lostContact: boolean;
     steps: readonly TurnStep[];
-    /** Every step Praxis counted, including any this view no longer holds. */
+    /** Every step Praxis counted, including any that have not reached this page. */
     stepCount: number;
     /** Clock reading at which the turn started. */
     startedAt: number;
@@ -68,10 +67,29 @@ export interface FoldedTurn {
     stepCount: number;
 }
 
-/** Page memory per turn, matching what Praxis itself keeps for one turn. */
-export const MAX_HELD_STEPS = 500;
-/** Folded turns kept for this page; an older reply simply loses its line, as it would after a reload. */
-export const MAX_FOLDED_TURNS = 64;
+/**
+ * The allowance server/middleware/api-rate-limit.js applies to a client, used
+ * until a response has published the current one. A server test holds the two
+ * equal.
+ */
+export const API_ALLOWANCE_FALLBACK = { limit: 5_758, windowMs: 900_000 };
+/**
+ * The share of that allowance one followed turn may spend: 360 reads per
+ * 15-minute window at the current policy. Every open tab draws on the same
+ * allowance. An idle page measured 795 reads per window on 2026-11-23, so a page
+ * following a turn uses 1,155 of the 5,758. The browser check measures this again.
+ */
+const FOLLOW_ALLOWANCE_SHARE = 1 / 16;
+
+/** Milliseconds between status reads of a followed turn, from what the API publishes. */
+export function followSpacingMs(headers?: Pick<Headers, "get"> | null): number {
+    const published = Number(headers?.get("RateLimit-Limit"));
+    const windowSeconds = Number(headers?.get("RateLimit-Policy")?.match(/;\s*w=(\d+)/)?.[1]);
+    const { limit, windowMs } = published > 0 && windowSeconds > 0
+        ? { limit: published, windowMs: windowSeconds * 1000 }
+        : API_ALLOWANCE_FALLBACK;
+    return Math.ceil(windowMs / (limit * FOLLOW_ALLOWANCE_SHARE));
+}
 
 const WARNING_STATES = new Set(["degraded", "uncertain"]);
 const STEP_KINDS = new Set<string>(["tool", "reasoning"]);
@@ -84,26 +102,55 @@ export function isTurnStep(value: unknown): value is TurnStep {
         && STEP_KINDS.has(step.kind as string) && STEP_STATUSES.has(step.status as string);
 }
 
-/** Insert or update one step, keeping Praxis's order. A closed step never reopens. */
-export function upsertTurnStep(steps: readonly TurnStep[], incoming: TurnStep): readonly TurnStep[] {
+/** A step's display fields after an update. A closed step never reopens. */
+function mergedStep(previous: TurnStep | undefined, incoming: TurnStep): TurnStep {
     const step: TurnStep = {
         id: incoming.id, seq: incoming.seq, kind: incoming.kind, text: incoming.text, status: incoming.status,
         ...(incoming.started_ms === undefined ? {} : { started_ms: incoming.started_ms }),
     };
-    const at = steps.findIndex(existing => existing.id === step.id);
+    if (!previous) return step;
+    const status = previous.status !== "running" && step.status === "running" ? previous.status : step.status;
+    if (previous.text === step.text && previous.status === status) return previous;
+    return { ...step, status };
+}
+
+/** Insert or update one step, keeping Praxis's order. */
+export function upsertTurnStep(steps: readonly TurnStep[], incoming: TurnStep): readonly TurnStep[] {
+    const at = steps.findIndex(existing => existing.id === incoming.id);
     if (at >= 0) {
-        const previous = steps[at];
-        const status = previous.status !== "running" && step.status === "running" ? previous.status : step.status;
-        if (previous.text === step.text && previous.status === status) return steps;
+        const merged = mergedStep(steps[at], incoming);
+        if (merged === steps[at]) return steps;
         const next = [...steps];
-        next[at] = { ...step, status };
+        next[at] = merged;
         return next;
     }
     const next = [...steps];
     let index = next.length;
-    while (index > 0 && next[index - 1].seq > step.seq) index -= 1;
-    next.splice(index, 0, step);
-    return next.length > MAX_HELD_STEPS ? next.slice(next.length - MAX_HELD_STEPS) : next;
+    while (index > 0 && next[index - 1].seq > incoming.seq) index -= 1;
+    next.splice(index, 0, mergedStep(undefined, incoming));
+    return next;
+}
+
+/** Merge a status read's steps in one pass, so replaying a long turn stays cheap. */
+export function mergeTurnSteps(steps: readonly TurnStep[], incoming: unknown): readonly TurnStep[] {
+    const byId = new Map(steps.map(step => [step.id, step]));
+    let changed = false;
+    for (const raw of Array.isArray(incoming) ? incoming : []) {
+        if (!isTurnStep(raw)) continue;
+        const previous = byId.get(raw.id);
+        const merged = mergedStep(previous, raw);
+        if (merged === previous) continue;
+        byId.set(raw.id, merged);
+        changed = true;
+    }
+    return changed ? [...byId.values()].sort((a, b) => a.seq - b.seq) : steps;
+}
+
+/** A turn that is over has nothing still running: a step that never reported back says so. */
+function closedSteps(steps: readonly TurnStep[]): readonly TurnStep[] {
+    return steps.some(step => step.status === "running")
+        ? steps.map(step => (step.status === "running" ? { ...step, status: "unfinished" as const } : step))
+        : steps;
 }
 
 export function formatElapsed(ms: number): string {
@@ -143,6 +190,7 @@ export function createTurnStepsStore(clock: () => number = () => performance.now
     const unconfirmed = new Set<string>();
     const listeners = new Set<() => void>();
     let folded: ReadonlyMap<string, FoldedTurn> = new Map();
+    let followSpacing = followSpacingMs();
 
     const emit = () => listeners.forEach(listener => listener());
     const patch = (id: string, change: (turn: LiveTurn) => LiveTurn) => {
@@ -172,7 +220,11 @@ export function createTurnStepsStore(clock: () => number = () => performance.now
         /** True once this page has started, adopted or checked the turn. */
         known: (id: string) => seen.has(id),
         noteKnown(id: string) { seen.add(id); },
-        forget(id: string) { seen.delete(id); },
+        /** Keep the read pace to the allowance the API last published. */
+        noteAllowance(headers?: Pick<Headers, "get"> | null) {
+            if (headers?.get("RateLimit-Limit")) followSpacing = followSpacingMs(headers);
+        },
+        followSpacing: () => followSpacing,
         following: () => [...turns.values()].filter(turn => turn.following).map(turn => turn.id),
         isSending: (id: string) => turns.get(id)?.sending === true,
         /** The turn ended with no confirmed reply. The chat says so until a later message follows it. */
@@ -220,10 +272,7 @@ export function createTurnStepsStore(clock: () => number = () => performance.now
         /** Merge what the status route reports; it answers after a stream was lost. */
         applyReceipt(id: string, receipt: TurnReceiptSteps) {
             patch(id, turn => {
-                let steps = turn.steps;
-                for (const step of Array.isArray(receipt.steps) ? receipt.steps : []) {
-                    if (isTurnStep(step)) steps = upsertTurnStep(steps, step);
-                }
+                const steps = mergeTurnSteps(turn.steps, receipt.steps);
                 const counted = typeof receipt.step_count === "number" ? receipt.step_count : 0;
                 const highest = steps.reduce((max, step) => Math.max(max, step.seq), 0);
                 const stepCount = Math.max(turn.stepCount, counted, highest);
@@ -237,23 +286,40 @@ export function createTurnStepsStore(clock: () => number = () => performance.now
         noteLostContact(id: string) {
             patch(id, turn => (turn.lostContact ? turn : { ...turn, lostContact: true }));
         },
+        /** The status route answered, whatever it said. */
+        noteContact(id: string) {
+            patch(id, turn => (turn.lostContact ? { ...turn, lostContact: false } : turn));
+        },
         /** Close the turn. With steps and a reply to sit above, it becomes one line. */
         fold(id: string, messageId: string | null | undefined, timing?: TurnReceiptSteps) {
             const turn = turns.get(id);
             if (!turn) return;
             turns.delete(id);
             if (messageId && turn.steps.length > 0) {
-                const steps = turn.steps.map(step => (step.status === "running" ? { ...step, status: "unfinished" as const } : step));
                 const next = new Map(folded);
                 next.set(messageId, {
                     turnId: id,
                     durationMs: typeof timing?.duration_ms === "number" ? timing.duration_ms : Math.max(0, clock() - turn.startedAt),
-                    steps,
+                    steps: closedSteps(turn.steps),
                     stepCount: Math.max(turn.stepCount, typeof timing?.step_count === "number" ? timing.step_count : 0),
                 });
-                while (next.size > MAX_FOLDED_TURNS) next.delete(next.keys().next().value as string);
                 folded = next;
             }
+            emit();
+        },
+        /** The status route's word on a turn that has already folded. It can only add to the line. */
+        completeFold(id: string, messageId: string | null | undefined, receipt: TurnReceiptSteps) {
+            if (!messageId) return;
+            const line = folded.get(messageId);
+            const steps = closedSteps(mergeTurnSteps(line?.steps ?? [], receipt.steps));
+            if (steps.length === 0) return;
+            const durationMs = typeof receipt.duration_ms === "number" ? receipt.duration_ms
+                : line?.durationMs ?? (typeof receipt.elapsed_ms === "number" ? receipt.elapsed_ms : 0);
+            const stepCount = Math.max(line?.stepCount ?? 0, typeof receipt.step_count === "number" ? receipt.step_count : 0, steps.length);
+            if (line && steps === line.steps && durationMs === line.durationMs && stepCount === line.stepCount) return;
+            const next = new Map(folded);
+            next.set(messageId, { turnId: id, durationMs, steps, stepCount });
+            folded = next;
             emit();
         },
         /** The send's request has ended. Unless the turn is being followed, that ends the turn here too. */
@@ -275,6 +341,7 @@ export function createTurnStepsStore(clock: () => number = () => performance.now
             seen.clear();
             unconfirmed.clear();
             folded = new Map();
+            followSpacing = followSpacingMs();
             emit();
         },
     };

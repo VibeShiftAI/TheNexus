@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    MAX_FOLDED_TURNS, MAX_HELD_STEPS, createTurnStepsStore, foldedLabel, formatElapsed, hiddenStepCount, isTurnStep,
+    createTurnStepsStore, followSpacingMs, foldedLabel, formatElapsed, hiddenStepCount, isTurnStep, mergeTurnSteps,
     upsertTurnStep, type TurnStep,
 } from '../chat-turn-steps';
 
@@ -91,14 +91,53 @@ test('a turn with no steps leaves no folded line', () => {
     assert.equal(store.live('c'), null);
 });
 
-test('a very long turn discloses the steps this view no longer holds', () => {
+test('a very long turn keeps every step with all of its text, from the first on', () => {
     const store = createTurnStepsStore(() => 0);
     store.begin('t', 'c', 'Working');
-    for (let seq = 1; seq <= MAX_HELD_STEPS + 3; seq += 1) store.noteStep('t', step(seq, { status: 'done' }));
+    const longText = `${'Review the complete change '.repeat(400)}END_OF_TEXT`;
+    store.noteStep('t', step(1, { status: 'done', text: longText }));
+    for (let seq = 2; seq <= 2_003; seq += 1) store.noteStep('t', step(seq, { status: 'done' }));
     const turn = store.live('c')!;
-    assert.equal(turn.steps.length, MAX_HELD_STEPS);
-    assert.equal(turn.steps[0].seq, 4);
-    assert.equal(hiddenStepCount(turn), 3);
+    assert.equal(turn.steps.length, 2_003);
+    assert.equal(turn.steps[0].seq, 1);
+    assert.equal(turn.steps[0].text, longText);
+    assert.equal(turn.steps[2_002].seq, 2_003);
+    assert.equal(hiddenStepCount(turn), 0);
+    store.fold('t', 'reply', { duration_ms: 1_000, step_count: 2_003 });
+    const line = store.getFolded().get('reply')!;
+    assert.equal(line.steps.length, 2_003);
+    assert.equal(line.steps[0].text, longText);
+    assert.equal(hiddenStepCount(line), 0);
+});
+
+test('a count above what reached the page is reported, never made up', () => {
+    const store = createTurnStepsStore(() => 0);
+    store.begin('t', 'c', 'Working');
+    store.noteStep('t', step(4, { status: 'done' }));
+    assert.equal(hiddenStepCount(store.live('c')!), 3);
+    store.applyReceipt('t', { state: 'in_progress', steps: [step(1), step(2), step(3)], step_count: 4 });
+    assert.equal(hiddenStepCount(store.live('c')!), 0);
+    assert.deepEqual(store.live('c')!.steps.map(s => s.seq), [1, 2, 3, 4]);
+});
+
+test('a batch merge keeps order, closes nothing back open and returns the same list when nothing changed', () => {
+    const held = [step(1, { status: 'done' }), step(3)];
+    const merged = mergeTurnSteps(held, [step(1, { status: 'running' }), step(2, { status: 'failed' }), step(3, { status: 'done', text: 'Read a file' }), { bad: true }]);
+    assert.deepEqual(merged.map(s => [s.seq, s.status]), [[1, 'done'], [2, 'failed'], [3, 'done']]);
+    assert.equal(merged[2].text, 'Read a file');
+    assert.equal(mergeTurnSteps(merged, merged), merged);
+    assert.equal(mergeTurnSteps(merged, undefined), merged);
+});
+
+test('replaying a long turn is one pass over its steps', () => {
+    const incoming = Array.from({ length: 200_000 }, (_, at) => step(at + 1, { status: 'done' }));
+    const started = performance.now();
+    const merged = mergeTurnSteps([], incoming);
+    const again = mergeTurnSteps(merged, incoming);
+    assert.equal(merged.length, 200_000);
+    assert.equal(again, merged);
+    // Inserting one by one takes minutes at this size, so a quadratic merge cannot pass.
+    assert.ok(performance.now() - started < 10_000);
 });
 
 test('the status route fills in steps a dropped stream missed', () => {
@@ -147,14 +186,73 @@ test('the conversation the server saved a turn in replaces the page\'s guess at 
     assert.equal(store.live('new')!.id, 't');
 });
 
-test('folded turns are bounded in page memory', () => {
+test('every folded line stays expandable for the life of the page', () => {
     const store = createTurnStepsStore(() => 0);
-    for (let n = 0; n < MAX_FOLDED_TURNS + 2; n += 1) {
+    const turns = 1_000;
+    for (let n = 0; n < turns; n += 1) {
         store.begin(`t${n}`, 'c', 'Working');
-        store.noteStep(`t${n}`, step(1, { status: 'done' }));
+        store.noteStep(`t${n}`, step(1, { status: 'done', text: `Step of turn ${n}` }));
         store.fold(`t${n}`, `reply-${n}`);
     }
-    assert.equal(store.getFolded().size, MAX_FOLDED_TURNS);
-    assert.equal(store.getFolded().has('reply-0'), false);
-    assert.equal(store.getFolded().has(`reply-${MAX_FOLDED_TURNS + 1}`), true);
+    assert.equal(store.getFolded().size, turns);
+    assert.equal(store.getFolded().get('reply-0')!.steps[0].text, 'Step of turn 0');
+    assert.equal(store.getFolded().get(`reply-${turns - 1}`)!.steps[0].text, `Step of turn ${turns - 1}`);
+});
+
+test('the status read completes a line that already folded and can only add to it', () => {
+    let clock = 0;
+    const store = createTurnStepsStore(() => clock);
+    store.begin('t', 'c', 'Working');
+    store.noteStep('t', step(1));
+    clock = 7_000;
+    store.fold('t', 'reply');
+    assert.deepEqual(store.getFolded().get('reply')!.steps.map(s => s.status), ['unfinished']);
+    assert.equal(store.getFolded().get('reply')!.durationMs, 7_000);
+
+    store.completeFold('t', 'reply', { state: 'completed', steps: [step(1, { status: 'done' }), step(2, { status: 'done' })], step_count: 2, duration_ms: 5_000 });
+    let line = store.getFolded().get('reply')!;
+    assert.deepEqual(line.steps.map(s => [s.seq, s.status]), [[1, 'done'], [2, 'done']]);
+    assert.equal(line.durationMs, 5_000);
+    assert.equal(line.stepCount, 2);
+
+    // An answer from before the turn ended cannot take anything back.
+    store.completeFold('t', 'reply', { state: 'in_progress', steps: [step(1)], step_count: 1, duration_ms: null, elapsed_ms: 1_000 });
+    line = store.getFolded().get('reply')!;
+    assert.deepEqual(line.steps.map(s => [s.seq, s.status]), [[1, 'done'], [2, 'done']]);
+    assert.equal(line.durationMs, 5_000);
+    assert.equal(line.stepCount, 2);
+});
+
+test('the status read creates the line when the page held no steps, and an empty answer creates none', () => {
+    const store = createTurnStepsStore(() => 0);
+    store.completeFold('empty', 'no-line', { state: 'completed', steps: [], step_count: 0, duration_ms: 1_000 });
+    assert.equal(store.getFolded().has('no-line'), false);
+    store.completeFold('t', 'reply', { state: 'completed', steps: [step(1), step(2, { status: 'done' })], step_count: 2, duration_ms: 4_000 });
+    const line = store.getFolded().get('reply')!;
+    assert.deepEqual(line.steps.map(s => s.status), ['unfinished', 'done']);
+    assert.equal(line.durationMs, 4_000);
+    assert.equal(line.stepCount, 2);
+});
+
+test('the read pace is a fixed share of the allowance the API publishes', () => {
+    const headers = (limit: string, policy: string) => new Headers({ 'RateLimit-Limit': limit, 'RateLimit-Policy': policy });
+    assert.equal(followSpacingMs(headers('1000', '1000;w=60')), 960);
+    assert.equal(followSpacingMs(headers('5758', '5758;w=900')), 2_501);
+    // A halved allowance doubles the spacing, so a turn never spends more than its share.
+    assert.equal(followSpacingMs(headers('2879', '2879;w=900')), 5_002);
+    for (const absent of [undefined, null, new Headers(), headers('nonsense', 'nonsense'), headers('10', '10')]) {
+        assert.equal(followSpacingMs(absent), 2_501, 'without a published allowance it uses the limiter\'s own');
+    }
+});
+
+test('the store follows the last allowance published and ignores responses that publish none', () => {
+    const store = createTurnStepsStore(() => 0);
+    assert.equal(store.followSpacing(), followSpacingMs());
+    store.noteAllowance(new Headers({ 'RateLimit-Limit': '1000', 'RateLimit-Policy': '1000;w=60' }));
+    assert.equal(store.followSpacing(), 960);
+    store.noteAllowance(new Headers());
+    store.noteAllowance(null);
+    assert.equal(store.followSpacing(), 960);
+    store.resetForTests();
+    assert.equal(store.followSpacing(), followSpacingMs());
 });
