@@ -5,7 +5,7 @@
  * snapshot as fallback for runs that started before this page loaded),
  * the local LLM worker (queue counts), and anything the registry knows.
  *
- * Powers the crew strip on the main viewer and the synthesized "active
+ * Powers the main viewer's active-work readout and the synthesized "active
  * runs" rows on the Ops console, so activity is visible even when the
  * running Praxis process predates the registry code.
  */
@@ -50,7 +50,7 @@ export function useCrewActivity(): {
   // connection for the whole deck.
   const { recentEvents } = useLiveBoardState();
   // Deck-wide shared dispatch-state poller — one fetch loop no matter how
-  // many components call this hook (crew strip, task board, Ops console).
+  // many components call this hook (main viewer, task board, Ops console).
   const { state: dispatchState } = useDispatchState();
   // Re-render periodically so settle timeouts and orphan-lane expiry take
   // effect visually; `tick` is a memo dependency so the fold really reruns.

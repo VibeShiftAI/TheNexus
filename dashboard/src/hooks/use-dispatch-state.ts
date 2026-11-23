@@ -6,7 +6,7 @@
  * aggressively, so N panels reading dispatch telemetry must not mean N poll
  * loops. A module-level store runs a single 20s fetch while anyone is
  * subscribed, concurrent refresh() calls coalesce into one request, and every
- * subscriber — the Ops station, the crew strip, the task board — shares the
+ * subscriber (the Ops station, the main viewer, the task board) shares the
  * same snapshot.
  *
  * Consumers that only want derived crew/lane data should use useCrewActivity,
