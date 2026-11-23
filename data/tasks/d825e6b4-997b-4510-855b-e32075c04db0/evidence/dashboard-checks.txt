@@ -1,0 +1,31 @@
+dashboard/ at 5b31530c6189 — npm test (exit 1)
+ℹ tests 1419
+ℹ pass 1417
+ℹ fail 2
+✖ Praxis journal exposes stock analysis and YouTube script tabs (0.37775ms)
+✖ fetched comparison renders lane/model estimates, metric sample sizes and exact run links (76.69375ms)
+
+dashboard/ with the source committed in acc5c321 — npm test (exit 1)
+ℹ tests 1420
+ℹ pass 1418
+ℹ fail 2
+✖ Praxis journal exposes stock analysis and YouTube script tabs (1.164042ms)
+✖ fetched comparison renders lane/model estimates, metric sample sizes and exact run links (69.950291ms)
+
+dashboard/ — npx tsc --noEmit (no diagnostics)
+exit 0
+
+Isolated production build with dispatch-source fix — npm run build -- --webpack
+✓ Compiled successfully in 16.9s
+✓ Generating static pages using 15 workers (31/31) in 3.6s
+exit 0
+
+Original provider, same 150-frame input — node --import ./test/register.mjs --test --test-name-pattern="a burst between paints" src/components/__tests__/live-board-state-recovery.test.mjs
+'51' !== '150'
+2 !== 1
+
+Fixed provider — node --import ./test/register.mjs --test src/components/__tests__/live-board-state-recovery.test.mjs
+✔ a burst between paints folds every SSE frame and counts a socket duplicate once (2.381084ms)
+ℹ tests 6
+ℹ pass 6
+ℹ fail 0
