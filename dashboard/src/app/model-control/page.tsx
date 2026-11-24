@@ -889,7 +889,7 @@ export default function ModelControlPage() {
                     </div>
                 </section>
 
-                <section className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+                <section className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:grid-rows-[auto_1fr]">
                     <div className={`rounded-lg border p-4 ${state.localOnly?.enabled ? "border-amber-500/40 bg-amber-500/10" : "border-slate-800 bg-slate-950/50"}`}>
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-center gap-3">
@@ -936,7 +936,11 @@ export default function ModelControlPage() {
                         </div>
                     </div>
 
-                    <ModelAliasManager projectId={projectId || null} localModel />
+                    {/* On wide screens the alias card, tall with the local model list, spans both rows,
+                        so the role manager sits right under the local-only box instead of below the card. */}
+                    <div className="lg:row-span-2">
+                        <ModelAliasManager projectId={projectId || null} localModel />
+                    </div>
                     <div className="mt-4">
                         <ModelRoleManager />
                     </div>
