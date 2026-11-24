@@ -76,6 +76,9 @@ function createDispatchesRouter({ dbPath = DEFAULT_DB_PATH } = {}) {
             );
             CREATE INDEX IF NOT EXISTS idx_task_dispatches_task ON task_dispatches(task_id, started_at);
             CREATE INDEX IF NOT EXISTS idx_task_dispatches_outcome ON task_dispatches(outcome);
+            -- Global recency readers cannot use the task-prefixed index to
+            -- stop at their LIMIT; otherwise every poll scans/sorts history.
+            CREATE INDEX IF NOT EXISTS idx_task_dispatches_started ON task_dispatches(started_at DESC);
         `);
         // Migration: the tokens columns were added after the table shipped, so
         // back-fill them on pre-existing databases. ALTER throws if a column
