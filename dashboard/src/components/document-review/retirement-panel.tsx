@@ -80,11 +80,11 @@ export function RetirementBanner({ retirement }: { retirement: DocumentRetiremen
                     <span className="mr-2 inline-flex items-center rounded-full border border-slate-500 px-1.5 py-px text-[11px] text-slate-300">{manual ? "Closed by hand" : "Retired"}</span>
                     <strong className="font-semibold">Moved to Reference {formatWhen(retirement.retired_at)}</strong>
                 </p>
-                <p data-retirement-replaced-by="">
+                {(retirement.replaced_by || manual) && <p data-retirement-replaced-by="">
                     {retirement.replaced_by
                         ? <>Replaced by <DocumentLink doc={retirement.replaced_by} attr="data-retirement-replacement-link" />.</>
                         : <>No replacing document was recorded.</>}
-                </p>
+                </p>}
                 <p data-retirement-reason="">Reason: {retirement.reason}</p>
                 {(retirement.task_id || retirement.registration_id) && (
                     <p className="text-slate-400">

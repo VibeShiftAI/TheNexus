@@ -419,7 +419,7 @@ export interface DocumentRetirementRef {
 /** A document moved to Reference because a later one replaced it, or closed by hand; never a decision. */
 export interface DocumentRetirement {
     id: string | null;
-    source: 'replacement' | 'manual';
+    source: 'replacement' | 'manual' | 'chat_ruling' | 'purpose_changed' | 'revision_task_cancelled';
     state: 'retired' | 'reopened';
     retired_at: string;
     retired_by: string | null;
@@ -429,7 +429,7 @@ export interface DocumentRetirement {
     registration_id: string | null;
     task_id: string | null;
     task_path: string | null;
-    trigger: 'registration' | 'review_requested' | 'ready' | 'manual';
+    trigger: 'registration' | 'review_requested' | 'ready' | 'manual' | 'chat_ruling' | 'purpose_changed' | 'revision_task_cancelled';
     named_as: ReplacedName | null;
     previous: { requires_review?: boolean; review_status?: DocumentReviewStatus; list_bucket?: string; blocking_task_ids?: string[]; intended_action?: string } | null;
     reopened_at: string | null;
