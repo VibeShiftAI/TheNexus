@@ -28,8 +28,8 @@ test('quiet hours and rate interval provide a concrete future wakeup', () => {
   assert.equal(alertDelay(new Date(2026, 8, 7, 23).getTime(), 0), 9 * 3600000);
   assert.equal(alertDelay(new Date(2026, 8, 7, 8).getTime(), 0), 0);
 });
-function fixture(active = true) {
-  let now = new Date(2026, 8, 7, 12).getTime(); const timers = new Map<number, { callback: () => void; delay: number }>(); let id = 0; const spoken: string[] = [];
+function fixture(active = true, start = new Date(2026, 8, 7, 12).getTime()) {
+  let now = start; const timers = new Map<number, { callback: () => void; delay: number }>(); let id = 0; const spoken: string[] = [];
   const alerts = new VoiceAlerts({ mountedAt: now - 1, now: () => now, active: async () => active,
     announce: e => { spoken.push(e.eventId); return Promise.resolve(); },
     setTimer: (callback, delay) => { timers.set(++id, { callback, delay }); return id; }, clearTimer: timer => { timers.delete(timer as number); } });
@@ -321,4 +321,73 @@ test('failed recovery owner leaves an unowned failure independently deliverable'
   f.alerts.update([fallback], 'attention'); await tick();
   assert.deepEqual(f.spoken.map(s => s.event.eventId), ['fallback']);
   assert.equal(eligibleAlert(event('task.failed', { failureRecoveryOwner: 'unknown' }), 'attention'), true);
+});
+
+test('only the owed success changes eligibility across alert modes', () => {
+  for (const mode of ['off', 'attention', 'conversational'] as const) {
+    const owner = { outcomeFollowUpId: 'watch' };
+    assert.equal(eligibleAlert(event('task.qa-passed', owner), mode), false);
+    assert.equal(eligibleAlert(event('task.qa-passed'), mode), mode === 'conversational');
+    assert.equal(eligibleAlert(event('task.blocked', owner), mode), mode === 'conversational');
+    assert.equal(eligibleAlert(event('task.failed', owner), mode), mode !== 'off');
+    assert.equal(eligibleAlert(event('hitl.created', { ...owner, request: { question: 'Approve?' } }), mode), mode !== 'off');
+  }
+});
+
+test('conversational reports keep FIFO order beyond the ordinary age window', async () => {
+  localStorage.clear();
+  const f = fixture();
+  const deliveredAt = new Date(2026, 8, 7, 12).toISOString();
+  const outcomes = Array.from({ length: 8 }, (_, i) => ({ id: `follow-up:${i}:trigger`, speech: `Finding ${i}. The details are in chat.`, deliveredAt }));
+  f.alerts.update([], 'conversational');
+  f.alerts.updateOutcomes(outcomes);
+  await tick();
+  for (const _ of outcomes.slice(1)) { f.advance(120000); await tick(); }
+  assert.deepEqual(f.spoken, outcomes.map(row => row.id));
+  f.alerts.dispose();
+});
+
+for (const mode of ['off', 'attention'] as const) test(`three days in ${mode} expire muted reports on this device, including after reload`, async () => {
+  localStorage.clear();
+  const start = new Date(2026, 8, 7, 12).getTime();
+  const elapsed = 3 * 24 * 60 * 60_000;
+  const f = fixture(true, start);
+  const report = (id: string, time: number) => ({ id, speech: 'The archive is ready. The details are in chat.', deliveredAt: new Date(time).toISOString() });
+  const stale = report('stale', start);
+  const recent = report('recent', start + elapsed - 10 * 60_000);
+  f.alerts.update([], mode);
+  f.alerts.updateOutcomes([stale]);
+  f.advance(elapsed); await tick();
+  assert.deepEqual(f.spoken, []);
+  f.alerts.update([], 'conversational');
+  f.alerts.updateOutcomes([stale, recent]); // First archive fetch on unmute.
+  await tick();
+  assert.deepEqual(f.spoken, ['recent']);
+  f.alerts.dispose();
+
+  // A continuously conversational device keeps a report delayed overnight,
+  // but fetching the archive again cannot resurrect the older muted report.
+  const reload = fixture(true, start + 2 * elapsed);
+  reload.alerts.update([], 'conversational');
+  reload.alerts.updateOutcomes([stale, report('queued', start + elapsed)]);
+  await tick();
+  assert.deepEqual(reload.spoken, ['queued']);
+  reload.alerts.dispose();
+});
+
+test('a sleeping tab observes the device cutoff even when it misses both mode changes', async () => {
+  localStorage.clear();
+  const start = new Date(2026, 8, 7, 12).getTime();
+  const elapsed = 3 * 24 * 60 * 60_000;
+  const sleeping = fixture(true, start);
+  const settings = fixture(true, start);
+  settings.alerts.update([], 'off');
+  settings.advance(elapsed);
+  settings.alerts.update([], 'conversational');
+  sleeping.advance(elapsed);
+  sleeping.alerts.updateOutcomes([{ id: 'stale', speech: 'Keep the archive offline.', deliveredAt: new Date(start).toISOString() }]);
+  await tick();
+  assert.deepEqual(sleeping.spoken, []);
+  settings.alerts.dispose();
+  sleeping.alerts.dispose();
 });

@@ -7,6 +7,9 @@ import { briefFromMetadata, briefQuestions, renderHumanBrief } from './human-bri
 export type AlertMode = 'off' | 'attention' | 'conversational';
 export const ALERT_MODE_KEY = 'nexus.voice.alertMode';
 export const ALERT_STORE_KEY = 'nexus.voice.announcedEvents';
+const OUTCOME_SINCE_KEY = 'nexus.voice.outcomesSince';
+export type OutcomeAlert = { type: 'chat.outcome'; eventId: string; speech: string; deliveredAt: number };
+type AlertEvent = StreamEvent | OutcomeAlert;
 const RATE_MS = 120_000;
 const MAX_AGE_MS = 10 * 60_000;
 const STORE_MAX = 300;
@@ -24,9 +27,11 @@ export function readAlertMode(): AlertMode {
   } catch { /* session defaults when storage is unavailable */ }
   return 'conversational';
 }
-export function eligibleAlert(e: StreamEvent, mode: AlertMode): boolean {
+export function eligibleAlert(e: AlertEvent, mode: AlertMode): boolean {
   if (mode === 'off') return false;
+  if (e.type === 'chat.outcome') return mode === 'conversational';
   if (callbackOwnsFailure(e)) return false;
+  if (e.type === 'task.qa-passed' && 'outcomeFollowUpId' in e && e.outcomeFollowUpId) return false;
   // Review worker lifecycle is presence telemetry, not the parent task verdict.
   if ('taskId' in e && e.taskId?.startsWith('qa--')) return false;
   if (e.type === 'task.completed' && e.result?.summary?.trimStart().startsWith('⏸️')) return false;
@@ -140,15 +145,21 @@ function readRegistry(): Registry {
     return { ids: Array.isArray(value.ids) ? value.ids.filter((v: unknown) => typeof v === 'string').slice(-STORE_MAX) : [], lastAt: Number.isFinite(value.lastAt) ? value.lastAt : 0 };
   } catch { return { ids: [], lastAt: 0 }; }
 }
+function readOutcomeSince(): number {
+  try { return Number(localStorage.getItem(OUTCOME_SINCE_KEY)) || 0; }
+  catch { return 0; }
+}
 /** A cancellable wakeup, including checks that await active-device and tab locks. */
 export class VoiceAlerts {
-  private events: StreamEvent[] = []; private mode: AlertMode = 'off'; private disposed = false;
+  private outcomes: OutcomeAlert[] = [];
+  private outcomeSince = readOutcomeSince();
+  private events: StreamEvent[] = []; private mode: AlertMode = readAlertMode(); private disposed = false;
   private running = false; private updatedDuringCheck = false; private timer: ReturnType<typeof setTimeout> | number | null = null;
   private local: Registry = { ids: [], lastAt: 0 };
   private reservation?: { ids: string[]; at: number; previousAt: number };
   private unsubscribe: () => void;
   constructor(private options: {
-    mountedAt: number; announce: (event: StreamEvent, blocked?: BlockedEvent) => Promise<void> | null;
+    mountedAt: number; announce: (event: AlertEvent, blocked?: BlockedEvent) => Promise<boolean | void> | null;
     now?: () => number; active?: (signal?: AbortSignal) => Promise<boolean>;
     setTimer?: (callback: () => void, delay: number) => ReturnType<typeof setTimeout> | number;
     clearTimer?: (timer: ReturnType<typeof setTimeout> | number) => void;
@@ -160,17 +171,43 @@ export class VoiceAlerts {
     this.events = [...new Map([...this.events, ...events].map(e => [e.eventId, e])).values()]
       .filter(e => e.eventId && eligibleAlert(e, 'conversational') && now - Date.parse(e.at) <= MAX_AGE_MS)
       .sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, STORE_MAX);
-    this.mode = mode; this.clear();
+    this.setMode(mode);
+    this.clear();
+    this.updatedDuringCheck = this.running;
+    this.wake();
+  }
+  setMode(mode: AlertMode) {
+    if (mode === this.mode) return;
+    this.mode = mode;
+    if (mode === 'conversational') {
+      // Age the muted backlog once, when speech resumes. Reloads, quiet hours
+      // and spacing within that conversational period retain the same cutoff.
+      const saved = readAlertMode() === mode ? readOutcomeSince() : 0;
+      this.outcomeSince = saved || (this.options.now ?? Date.now)() - MAX_AGE_MS;
+    }
+    try {
+      if (mode === 'conversational') localStorage.setItem(OUTCOME_SINCE_KEY, String(this.outcomeSince));
+      localStorage.setItem(ALERT_MODE_KEY, mode);
+    } catch { /* The preference and cutoff still apply for this session. */ }
+  }
+  private outcomeCutoff(): number {
+    // A suspended tab may miss both settings changes before it next checks.
+    return Math.max(this.outcomeSince, readOutcomeSince());
+  }
+  updateOutcomes(rows: { id: string; speech: string; deliveredAt: string }[]) {
+    this.outcomes = rows.map(row => ({ type: 'chat.outcome', eventId: row.id, speech: row.speech,
+      deliveredAt: Date.parse(row.deliveredAt) || 0 }));
     this.updatedDuringCheck = this.running;
     this.wake();
   }
   dispose() { this.disposed = true; this.clear(); this.unsubscribe(); }
   /** Recheck playback after prose generation; this event already owns its ID and rate reservation. */
-  async canPlay(event: StreamEvent, signal: AbortSignal, owns: () => boolean, preparedBlock?: BlockedEvent): Promise<boolean> {
+  async canPlay(event: AlertEvent, signal: AbortSignal, owns: () => boolean, preparedBlock?: BlockedEvent): Promise<boolean> {
     const eligible = () => {
       const now = (this.options.now ?? Date.now)();
       if (this.disposed || signal.aborted || !owns() || !eligibleAlert(event, this.mode)
-        || now - Date.parse(event.at) > MAX_AGE_MS || alertDelay(now, 0) !== 0) return false;
+        || (event.type === 'chat.outcome' ? event.deliveredAt < this.outcomeCutoff() : now - Date.parse(event.at) > MAX_AGE_MS)
+        || alertDelay(now, 0) !== 0) return false;
       const current = pairVoiceAlerts(this.events).find(a => a.ids.includes(event.eventId));
       if (current?.blocked && (event.type === 'task.blocked' || current.blocked.eventId !== preparedBlock?.eventId)) {
         // Prose was prepared before the incident was complete. Cancel either
@@ -218,7 +255,7 @@ export class VoiceAlerts {
       if (this.updatedDuringCheck) { this.updatedDuringCheck = false; this.wake(); }
     });
   }
-  private nextAlert(ids: Set<string>, now: number): VoiceAlert | undefined {
+  private nextAlert(ids: Set<string>, now: number): (Omit<VoiceAlert, 'event'> & { event: AlertEvent }) | undefined {
     let wait = Infinity;
     for (const alert of pairVoiceAlerts(this.events)) {
       const e = alert.event;
@@ -229,6 +266,11 @@ export class VoiceAlerts {
       wait = Math.min(wait, alert.readyAt - now);
     }
     if (Number.isFinite(wait)) this.schedule(wait);
+    else if (this.mode === 'conversational') {
+      const cutoff = this.outcomeCutoff();
+      const outcome = this.outcomes.find(e => e.deliveredAt >= cutoff && !ids.has(e.eventId));
+      if (outcome) return { event: outcome, ids: [outcome.eventId], readyAt: now };
+    }
     return undefined;
   }
   private async check() {
@@ -255,10 +297,17 @@ export class VoiceAlerts {
       const playback = this.options.announce(alert.event, alert.blocked);
       if (!playback) { this.schedule(1000); return; }
       const reservedAt = (this.options.now ?? Date.now)();
+      if (alert.event.type === 'chat.outcome') {
+        // Nexus owns this ID across devices. Leave it recoverable through a reload
+        // during preparation. Only started audio consumes the local spacing slot.
+        const started = await playback;
+        this.outcomes = this.outcomes.filter(e => e.eventId !== alert.event.eventId);
+        if (started === false) { this.updatedDuringCheck = true; return; }
+      }
       this.reservation = { ids: alert.ids, at: reservedAt, previousAt: Math.max(latest.lastAt, this.local.lastAt) };
       alert.ids.forEach(id => ids.add(id)); this.local = { ids: [...ids].slice(-STORE_MAX), lastAt: reservedAt };
       try { localStorage.setItem(ALERT_STORE_KEY, JSON.stringify(this.local)); } catch { /* bounded session fallback */ }
-      await playback;
+      if (alert.event.type !== 'chat.outcome') await playback;
       this.reservation = undefined;
       if (!this.disposed) this.schedule(Math.max(1, alertDelay((this.options.now ?? Date.now)(), this.local.lastAt)));
     };

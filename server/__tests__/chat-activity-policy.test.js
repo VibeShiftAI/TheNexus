@@ -162,3 +162,28 @@ test('system notices default to Activity, including new event types and untyped 
     await db.saveChatMessage({ id: 'direct-failure', conversation_id: conversation.id, role: 'system', content: 'Your reply failed', metadata: { responseFailed: true, replyTo: 'question' } });
     expect((await db.getChatMessages(conversation.id, { chatVisibleOnly: true })).map(r => r.id)).toEqual(['direct-failure']);
 });
+
+test('one archived follow-up authorizes one playback across independent clients, reload and a restarted producer', async () => {
+    const conversation = await db.createConversation('praxis', 'Outcomes');
+    const id = 'follow-up:watch:trigger';
+    const speech = 'Keep the archive offline. The details are in chat.';
+    const message = { id, conversation_id: conversation.id, role: 'assistant', content: 'Keep the archive offline. Full report.', mode: 'praxis',
+        metadata: { followUpId: 'watch', source: 'praxis:chat-follow-ups', outcomeSpeech: speech } };
+    const archived = await db.saveChatMessage(message);
+    // Reload may send a keepalive release while the original claim is in flight.
+    db.releaseOutcomeSpeech(id, 'closing-tab');
+    expect(db.claimOutcomeSpeech(id, 'closing-tab')).toBe(false);
+    expect(db.pendingOutcomeSpeech()).toContainEqual({ id, speech, deliveredAt: archived.created_at });
+    const hear = async (client, connection = db) => {
+        const pending = connection.pendingOutcomeSpeech();
+        return pending.some(row => row.id === id) && connection.claimOutcomeSpeech(id, client) ? [speech] : [];
+    };
+    expect((await Promise.all([hear('first'), hear('second')])).flat()).toEqual([speech]);
+    expect(await hear('reloaded')).toEqual([]);
+    let reconnected;
+    jest.isolateModules(() => { reconnected = require('../../db'); });
+    // A lost chat receipt can make the restarted Praxis outbox resend this same ID.
+    await reconnected.saveChatMessage(message);
+    expect(await hear('after-restart', reconnected)).toEqual([]);
+    expect(reconnected.claimOutcomeSpeech(id, 'late-client')).toBe(false);
+});

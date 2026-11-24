@@ -641,3 +641,49 @@ test('recomposed question uses a fresh archive identity instead of replaying que
   assert.equal(speech.length, 1);
   assert.equal(speech[0].body.text, 'Blocked because Connection is missing. Which connection?');
 });
+
+test('the watched QA event stays silent and the delivered report plays once with its chat pointer', async t => {
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout', 'setInterval'], now: new Date(2026, 9, 28, 12).getTime() });
+  t.mock.method(document, 'hasFocus', () => true);
+  const report = { id: 'follow-up:watch:trigger', speech: 'Keep the archive offline until verified. The details are in chat.' };
+  let delivered = false, claimed = false;
+  const f = await mount(t, false, async url => {
+    if (url.endsWith('/voice/outcomes')) return Response.json(delivered && !claimed ? [report] : []);
+    if (url.endsWith('/claim')) { const won = !claimed; claimed = true; return Response.json({ claimed: won }); }
+  }, true);
+  const socket = __sockets.at(-1);
+  await act(async () => {
+    t.mock.timers.tick(1);
+    socket.__emit('praxis:event', { type: 'task.qa-passed', eventId: 'accepted', taskId: 'task', outcomeFollowUpId: 'watch', at: new Date().toISOString() });
+    await tick();
+  });
+  assert.equal(FakeAudio.all.length, 0);
+  delivered = true;
+  const message = { message: { id: report.id, metadata: { outcomeSpeech: report.speech } } };
+  await act(async () => { socket.__emit('chat-message', message); await tick(); });
+  await act(async () => { t.mock.timers.tick(400); await tick(); await tick(); });
+  assert.deepEqual(f.requests.filter(r => r.url.endsWith('/speak')).map(r => r.body.text), [report.speech]);
+  assert.equal(claimed, true);
+  await act(async () => { FakeAudio.all[0].onended?.(); await tick(); FakeAudio.all[1].onended?.(); await tick(); });
+  await act(async () => { socket.__emit('chat-message', message); t.mock.timers.tick(120000); await tick(); });
+  assert.equal(FakeAudio.all.length, 2, 'one cue and one spoken report');
+  assert.equal(f.requests.some(r => r.url.endsWith('/voice-prose') || r.url.endsWith('/sync')), false);
+});
+
+test('reloading during the cue returns the unheard report to the durable queue', async t => {
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout', 'setInterval'], now: new Date(2026, 9, 28, 12).getTime() });
+  t.mock.method(document, 'hasFocus', () => true);
+  let owner: string | undefined;
+  const f = await mount(t, false, async (url, body) => {
+    if (url.endsWith('/voice/outcomes')) return Response.json([{ id: 'follow-up:reload:trigger', speech: 'Wait for review. The details are in chat.' }]);
+    if (url.endsWith('/claim')) { owner = body.token; return Response.json({ claimed: true }); }
+    if (url.endsWith('/release')) { assert.equal(body.token, owner); owner = undefined; return Response.json({ ok: true }); }
+  });
+  await act(async () => { await tick(); });
+  assert.ok(owner);
+  assert.equal(FakeAudio.all.length, 1, 'only the cue has started');
+  await act(async () => { window.dispatchEvent(new window.Event('pagehide')); await tick(); });
+  assert.equal(owner, undefined);
+  assert.equal(FakeAudio.all.length, 1);
+  assert.ok(f.requests.find(r => r.url.endsWith('/release')));
+});

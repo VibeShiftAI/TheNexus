@@ -574,6 +574,16 @@ CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation ON chat_messages(conve
 CREATE INDEX IF NOT EXISTS idx_chat_messages_mode ON chat_messages(mode);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(created_at);
 
+-- Playback ownership is separate from the immutable chat and Activity receipts.
+CREATE TABLE IF NOT EXISTS chat_outcome_speech_claims (
+    message_id TEXT NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE,
+    token TEXT NOT NULL,
+    released INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (message_id, token)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_outcome_speech_owner
+    ON chat_outcome_speech_claims(message_id) WHERE released = 0;
+
 -- ─── Push Notification Tokens ───────────────────────────────
 
 CREATE TABLE IF NOT EXISTS push_tokens (

@@ -26,7 +26,8 @@ import { useParams, usePathname, useRouter } from "next/navigation";
 import { Mic, Square, Loader2, Volume2, VolumeX, X, Settings2, Ear, EarOff } from "lucide-react";
 import { useCortex } from "@/components/cortex-provider";
 import { archiveVoiceDeliveryNotice, archiveVoiceAnnouncement, archiveVoiceExchange, mergeVoiceMessages, sendVoiceChat, voiceChatRequest, type SavedVoiceMessage, type VoiceChatTurn } from "@/lib/voice-chat";
-import { useLiveBoardState } from "@/components/live-board-state";
+import { pendingOutcomeSpeech, playOutcomeSpeech } from '@/lib/outcome-speech';
+import { useLiveRefetch, useLiveBoardState } from "@/components/live-board-state";
 import { useVoiceStatus } from "@/hooks/use-voice-status";
 import { setLocalOnlyMode } from "@/lib/model-control";
 import { getAmbientIdleMinutes, setAmbientIdleMinutes } from "@/components/bridge/ambient-mode";
@@ -118,7 +119,7 @@ export function VoiceCommandBar() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [setupFocusRequest, setSetupFocusRequest] = useState(0);
   const [wakeEnabled, setWakeEnabled] = useState(false);
-  const [alertMode, setAlertMode] = useState<AlertMode>('off');
+  const [alertMode, setAlertMode] = useState<AlertMode>();
   const [conversationActive, setConversationActive] = useState(false);
   const [wakeSuspended, setWakeSuspended] = useState(false);
   const wakeSuspendedRef = useRef(false);
@@ -146,9 +147,13 @@ export function VoiceCommandBar() {
 
   useEffect(() => {
     // Microphone arming is explicit for each page session, never restored.
-    setAlertMode(readAlertMode());
+    const syncMode = () => setAlertMode(readAlertMode());
+    syncMode();
+    const onStorage = (event: StorageEvent) => { if (event.key === ALERT_MODE_KEY) syncMode(); };
+    window.addEventListener('storage', onStorage);
     try { setAmbientIdle(getAmbientIdleMinutes()); } catch { /* Default when storage is blocked. */ }
     setWakeSupported(Boolean(createRecognition()));
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
   wakeEnabledRef.current = wakeEnabled;
 
@@ -570,9 +575,14 @@ export function VoiceCommandBar() {
 
   const alertsRef = useRef<VoiceAlerts | null>(null);
   useEffect(() => {
-    const alerts = new VoiceAlerts({ mountedAt: mountedAtRef.current, announce: (event, blocked) => {
+    const alerts: VoiceAlerts = new VoiceAlerts({ mountedAt: mountedAtRef.current, announce: (event, blocked) => {
       if (settingsOpenRef.current || document.hidden) return null;
       const session = speech.begin(true); if (!session) return null;
+      if (event.type === 'chat.outcome') {
+        return playOutcomeSpeech(event, speech, session,
+          () => alerts.canPlay(event, session.signal, () => session.owns() && !settingsOpenRef.current && !document.hidden),
+          () => { setResponse(event.speech); setTranscript(null); setSpeechNotice(null); setPanelOpen(true); }, setSpeechNotice);
+      }
       // Recomposition must not retrieve the earlier question-only archive row.
       const announcementId = blocked ? `${event.eventId}:blocked:${blocked.eventId}` : event.eventId;
       const announcementConversationId = chatRef.current.conversationId;
@@ -665,7 +675,23 @@ export function VoiceCommandBar() {
     alertsRef.current = alerts;
     return () => { alerts.dispose(); alertsRef.current = null; };
   }, [speak, speech, setMessages]);
-  useEffect(() => { alertsRef.current?.update(recentEvents, alertMode); }, [recentEvents, alertMode]);
+  useEffect(() => { if (alertMode) alertsRef.current?.update(recentEvents, alertMode); }, [recentEvents, alertMode]);
+
+  const pendingRead = useRef<AbortController | null>(null);
+  const refreshOutcomes = useCallback(() => {
+    pendingRead.current?.abort();
+    if (alertMode !== 'conversational') return;
+    const read = new AbortController();
+    pendingRead.current = read;
+    void pendingOutcomeSpeech(read.signal).then(rows => {
+      if (!read.signal.aborted) alertsRef.current?.updateOutcomes(rows);
+    }).catch(() => { /* The archived queue survives a failed read. */ });
+  }, [alertMode]);
+  useLiveRefetch(['outcomeSpeech'], refreshOutcomes, { immediate: false });
+  useEffect(() => {
+    refreshOutcomes();
+    return () => pendingRead.current?.abort();
+  }, [alertMode, refreshOutcomes]);
 
   const onMicClick = () => {
     if (stateRef.current === 'recording') stopRecording();
@@ -824,11 +850,11 @@ export function VoiceCommandBar() {
             </span>
             <select
               aria-label="Spoken alert mode"
-              value={alertMode}
+              value={alertMode ?? 'off'}
               onChange={e => {
                 const mode = e.target.value as AlertMode;
+                alertsRef.current?.setMode(mode);
                 setAlertMode(mode);
-                try { window.localStorage.setItem(ALERT_MODE_KEY, mode); } catch { /* session preference */ }
               }}
               className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-xs text-slate-200"
             >

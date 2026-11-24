@@ -250,6 +250,12 @@ export function LiveBoardStateProvider({ children }: { children: ReactNode }) {
             );
         };
 
+        const onChatMessage = (event: { message?: { metadata?: { outcomeSpeech?: string } } }) => {
+            if (event?.message?.metadata?.outcomeSpeech) setSocketState(prev => ({
+                ...prev, revisions: { ...prev.revisions, outcomeSpeech: prev.revisions.outcomeSpeech + 1 },
+            }));
+        };
+        socket.on("chat-message", onChatMessage);
         socket.on("praxis:event", onEvent);
         socket.on("praxis:resync", onResync);
         socket.on("connect", onConnect);
@@ -257,6 +263,7 @@ export function LiveBoardStateProvider({ children }: { children: ReactNode }) {
         if (socket.connected) onConnect();
 
         return () => {
+            socket.off("chat-message", onChatMessage);
             socket.off("praxis:event", onEvent);
             socket.off("praxis:resync", onResync);
             socket.off("connect", onConnect);
