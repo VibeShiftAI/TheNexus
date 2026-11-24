@@ -277,11 +277,26 @@ function createLocalModelSelection({
         return { model: row.api_model_id, label: row.display_name || row.name || row.api_model_id, rowId: row.id };
     }
 
-    /** The models row for an LM Studio key: an existing local row (made active again if it was not), else a new one. */
+    /** The local models row for an LM Studio key, an active one first, else null. Reads only. */
+    async function findLocalModelRow(key, rows) {
+        const all = rows || (await db.getModels(false)) || [];
+        const matches = all.filter(r => String(r.provider || '').toLowerCase() === 'local' && sameModel(r.api_model_id, key));
+        return matches.find(r => r.is_active === true || r.is_active === 1) || matches[0] || null;
+    }
+
+    /** The name a new local row shows: LM Studio's name for the model, marked local. */
+    function localRowLabel(label, key) {
+        return `${label || key} (local)`;
+    }
+
+    /**
+     * The models row for an LM Studio key: an existing local row (made active
+     * again if it was not), else a new one. Only apply calls this, so choosing
+     * changes no row; a choice replaced before it took effect leaves none behind.
+     */
     async function ensureLocalModelRow({ key, label, reasoning = false }) {
         const rows = (await db.getModels(false)) || [];
-        const matches = rows.filter(r => String(r.provider || '').toLowerCase() === 'local' && sameModel(r.api_model_id, key));
-        const existing = matches.find(r => r.is_active === true || r.is_active === 1) || matches[0];
+        const existing = await findLocalModelRow(key, rows);
         if (existing) {
             if (existing.is_active === true || existing.is_active === 1) return existing;
             return db.upsertModel({ id: existing.id, name: existing.name, provider: existing.provider, is_active: 1, created_at: existing.created_at });
@@ -296,7 +311,7 @@ function createLocalModelSelection({
             name: label || key,
             provider: 'local',
             api_model_id: key,
-            display_name: `${label || key} (local)`,
+            display_name: localRowLabel(label, key),
             is_active: 1,
             capabilities: { chat: true, local: true, ...(reasoning ? { reasoning: true } : {}) },
             parameters: {},
@@ -408,8 +423,15 @@ function createLocalModelSelection({
                 if (row.type !== 'llm') return failure(422, 'not_a_chat_model', `${label} is not a chat model (LM Studio lists it as ${nonEmpty(row.type) || 'no type'}).`);
                 const savedContext = readSavedLoadContext(lmStudioHome(), row.key);
                 if (savedContext === null) return failure(422, 'no_saved_context', `${label}: ${noSavedContextReason(row, totalMemBytes())}`, { model: row.key });
-                const saved = await ensureLocalModelRow({ key: row.key, label, reasoning: !!row.capabilities?.reasoning });
-                target = { key: row.key, label: saved.display_name || saved.name || label, rowId: saved.id, savedContext };
+                // Read only: apply makes or reactivates the row when the switch takes effect.
+                const known = await findLocalModelRow(row.key);
+                target = {
+                    key: row.key,
+                    label: known ? known.display_name || known.name || label : localRowLabel(label, row.key),
+                    rowId: known?.id || null,
+                    savedContext,
+                    row: { label, reasoning: !!row.capabilities?.reasoning },
+                };
             }
 
             const at = nowIso();
@@ -443,6 +465,8 @@ function createLocalModelSelection({
                 requestedAt: at,
                 status: backToActive ? 'applied' : 'waiting',
                 ...(backToActive ? { appliedAt: at } : {}),
+                // What apply needs to make the models row if there is none by then.
+                ...(target.row ? { row: target.row } : {}),
                 previous,
             });
             return { ok: true, status: 200, body: { result: backToActive ? 'applied' : 'waiting', model: target.key, selectionId } };
@@ -483,7 +507,7 @@ function createLocalModelSelection({
             }
             const running = studioWork();
             if (running.length) return { status: 409, body: { error: 'busy', message: 'A Studio local job is running; the switch waits for it.', waitingFor: running } };
-            const row = await ensureLocalModelRow({ key: selection.model, label: selection.label });
+            const row = await ensureLocalModelRow({ key: selection.model, label: selection.row?.label || selection.model, reasoning: !!selection.row?.reasoning });
             await setLocalDefault(row.id);
             const at = nowIso();
             const record = await waitingSwitchRow(selectionId);

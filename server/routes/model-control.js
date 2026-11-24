@@ -857,17 +857,22 @@ function createModelControlRouter({ db, syncModelSources, callAI, io, localModel
     /**
      * The alias editor and local_default: a new local target becomes a choice
      * like the panel's (recorded, waits for local work); anything else would
-     * be a second way to set the local model, so it is refused. Returns null
-     * when the edit leaves the target alone.
+     * be a second way to set the local model, so it is refused, as is any
+     * edit that would leave it without a target or switched off. Returns null
+     * when the edit names the target it already has (a description edit).
      */
     async function localDefaultEdit(body) {
-        if (body.is_active === false || body.is_active === 0) {
+        // true, 1 or no value keep the alias on; the store would take anything else ("0", "false") as off.
+        if (!(body.is_active === undefined || body.is_active === true || body.is_active === 1)) {
             return { status: 400, body: { error: 'local_default_required', message: `${LOCAL_ALIAS} cannot be switched off: every role on the local model resolves through it. Choose the local model under Model Control.` } };
         }
         const target = typeof body.target === 'string' ? body.target.trim() : '';
+        if (!target) {
+            return { status: 400, body: { error: 'local_default_target', message: `${LOCAL_ALIAS} must name the local model, which is chosen under Model Control from LM Studio's list.` } };
+        }
         const aliases = (await db.getModelAliases(false)) || [];
         const existing = aliases.find(a => a.alias === LOCAL_ALIAS);
-        if (!target || target === existing?.target) return null;
+        if (target === existing?.target) return null;
         const row = target.startsWith('model:') ? await db.getModel(target.slice('model:'.length)) : null;
         if (!row || String(row.provider || '').toLowerCase() !== 'local' || !row.api_model_id) {
             return { status: 400, body: { error: 'local_default_target', message: `${LOCAL_ALIAS} names the local model, which is chosen under Model Control from LM Studio's list; it cannot point at ${target}.` } };
@@ -878,13 +883,16 @@ function createModelControlRouter({ db, syncModelSources, callAI, io, localModel
 
     router.put('/aliases/:alias', async (req, res) => {
         try {
+            let target = req.body.target;
             if (req.params.alias === LOCAL_ALIAS) {
                 const outcome = await localDefaultEdit(req.body || {});
                 if (outcome) return sendOutcome(res, outcome);
+                // The target it already has, as stored (localDefaultEdit compared it trimmed).
+                target = req.body.target.trim();
             }
             res.json(await db.upsertModelAlias({
                 alias: req.params.alias,
-                target: req.body.target,
+                target,
                 description: req.body.description,
                 is_active: req.body.is_active
             }));

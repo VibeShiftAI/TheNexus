@@ -102,7 +102,8 @@ function fakePraxis() {
     });
     async function sync(reason) {
         const current = await (await fetch(`${state.baseUrl}/api/model-control/local-model/current`)).json();
-        if (current.selected && current.active && current.selected !== current.active) {
+        // Praxis's planFrom: a choice Nexus holds as waiting goes through apply, even with no model in effect.
+        if (current.selected && (current.waiting === true || (current.active && current.selected !== current.active))) {
             state.pending = { model: current.selected, selectionId: current.selectionId, nexusWaitingFor: [], applying: false };
             if (!state.localWork.length) {
                 const res = await fetch(`${state.baseUrl}/api/model-control/local-model/apply`, {
@@ -407,6 +408,63 @@ describe('the local model chosen under Model Control', () => {
         expect((await api('GET', '/model-control/local-model/current')).body.active).toBe('thinkingmachines/inkling-2-mini');
     });
 
+    test('with no model in effect a choice is answered as waiting until Praxis applies it, and choosing makes no models row; the switch does', async () => {
+        // local_default names no local model (a target that is not a local row).
+        await db.upsertModelAlias({ alias: 'local_default', target: 'capability_best:local', is_active: 1 });
+        praxis.localWork = [{ kind: 'local_job', id: 'job-4', label: 'memory.synthesize' }];
+        const rowsBefore = await db.getModels(false);
+        expect(rowsBefore.some(r => r.api_model_id === 'thinkingmachines/inkling-2-mini')).toBe(false);
+
+        const chosen = await api('PUT', '/model-control/local-model', { model: 'thinkingmachines/inkling-2-mini', surface: 'model-control' });
+        expect(chosen.body).toEqual(expect.objectContaining({ result: 'waiting', praxisTold: true }));
+        expect((await api('GET', '/model-control/local-model/current')).body).toEqual(expect.objectContaining({
+            active: null, selected: 'thinkingmachines/inkling-2-mini', waiting: true,
+        }));
+        expect(await db.getModels(false)).toEqual(rowsBefore);
+        expect((await switches())[0]).toEqual(expect.objectContaining({
+            from_model: null, to_model: 'thinkingmachines/inkling-2-mini', to_label: 'Inkling 2 Mini (local)', status: 'waiting',
+        }));
+        expect(praxis.active).toBeNull();
+
+        praxis.localWork = [];
+        await praxis.praxisFetch('/local-model/sync', { method: 'POST', body: { reason: 'local-job-ended' } });
+        expect(praxis.active).toBe('thinkingmachines/inkling-2-mini');
+        expect((await api('GET', '/model-control/local-model/current')).body).toEqual(expect.objectContaining({
+            active: 'thinkingmachines/inkling-2-mini', waiting: false,
+        }));
+        const made = (await db.getModels(false)).filter(r => r.api_model_id === 'thinkingmachines/inkling-2-mini');
+        expect(made).toEqual([expect.objectContaining({
+            id: 'local-inkling-2-mini', name: 'Inkling 2 Mini', display_name: 'Inkling 2 Mini (local)', provider: 'local',
+            capabilities: expect.objectContaining({ chat: true, local: true, reasoning: true }),
+        })]);
+        expect([true, 1]).toContain(made[0].is_active);
+        expect((await db.getModelAliases(false)).find(a => a.alias === 'local_default').target).toBe('model:local-inkling-2-mini');
+        expect((await switches())[0].status).toBe('applied');
+    });
+
+    test('choosing a model whose row was switched off leaves it off until the switch takes effect, and a replaced choice leaves it off', async () => {
+        await db.upsertModel({ id: 'local-inkling-2-mini', name: 'Inkling 2 Mini', provider: 'local', api_model_id: 'thinkingmachines/inkling-2-mini', display_name: 'Inkling 2 Mini (local)', is_active: 0 });
+        praxis.localWork = [{ kind: 'local_call', label: '1 local call', count: 1 }];
+        const isActive = async () => (await db.getModel('local-inkling-2-mini')).is_active;
+
+        await api('PUT', '/model-control/local-model', { model: 'thinkingmachines/inkling-2-mini', surface: 'model-control' });
+        expect([false, 0]).toContain(await isActive());
+        // Replaced before it took effect: the row stays as it was.
+        await api('PUT', '/model-control/local-model', { model: 'google/gemma-4-31b', surface: 'model-control' });
+        expect([false, 0]).toContain(await isActive());
+
+        const again = await api('PUT', '/model-control/local-model', { model: 'thinkingmachines/inkling-2-mini', surface: 'model-control' });
+        expect(again.body.result).toBe('waiting');
+        expect([false, 0]).toContain(await isActive());
+        praxis.localWork = [];
+        await praxis.praxisFetch('/local-model/sync', { method: 'POST', body: { reason: 'local-call-ended' } });
+        expect((await api('GET', '/model-control/local-model/current')).body.active).toBe('thinkingmachines/inkling-2-mini');
+        expect([true, 1]).toContain(await isActive());
+        expect((await db.getModelAliases(false)).find(a => a.alias === 'local_default').target).toBe('model:local-inkling-2-mini');
+        // The choice of Gemma 4 31B (no row yet) made none either.
+        expect((await db.getModels(false)).some(r => r.api_model_id === 'google/gemma-4-31b')).toBe(false);
+    });
+
     test('a choice replaced before it took effect is refused as superseded, and a repeated choice is recorded once', async () => {
         praxis.localWork = [{ kind: 'local_call', label: '1 local call', count: 1 }];
         const first = await api('PUT', '/model-control/local-model', { model: 'thinkingmachines/inkling-2-mini' });
@@ -489,6 +547,34 @@ describe('the local model chosen under Model Control', () => {
         // Other aliases are untouched by any of this.
         const other = await api('PUT', '/model-control/aliases/coder', { target: 'model:openrouter-auto-free' });
         expect(other.body).toEqual(expect.objectContaining({ alias: 'coder', target: 'model:openrouter-auto-free' }));
+    });
+
+    test('the alias editor cannot leave local_default without a target or switched off, whatever the request carries', async () => {
+        const localDefault = async () => (await db.getModelAliases(false)).find(a => a.alias === 'local_default');
+        const before = await localDefault();
+        expect(before).toEqual(expect.objectContaining({ target: 'model:local-gemma-4-31b', is_active: true }));
+        for (const [label, body, error] of [
+            ['no target', {}, 'local_default_target'],
+            ['an empty target', { target: '  ' }, 'local_default_target'],
+            ['a target that is not text', { target: 42 }, 'local_default_target'],
+            ['a target that is an object', { target: { model: 'local-gemma-4-31b' } }, 'local_default_target'],
+            ['is_active "0"', { target: 'model:local-gemma-4-31b', is_active: '0' }, 'local_default_required'],
+            ['is_active "false"', { target: 'model:local-gemma-4-31b', is_active: 'false' }, 'local_default_required'],
+            ['is_active null', { target: 'model:local-gemma-4-31b', is_active: null }, 'local_default_required'],
+            ['is_active 0', { target: 'model:local-gemma-4-31b', is_active: 0 }, 'local_default_required'],
+            ['is_active false with no target', { is_active: false }, 'local_default_required'],
+        ]) {
+            const refused = await api('PUT', '/model-control/aliases/local_default', body);
+            expect([label, refused.status, refused.body.error]).toEqual([label, 400, error]);
+        }
+        expect(await localDefault()).toEqual(before);
+        expect(await switches()).toEqual([]);
+
+        // Naming the target it already has (a description edit) still saves, with the target as stored.
+        const kept = await api('PUT', '/model-control/aliases/local_default', { target: ' model:local-gemma-4-31b ', description: 'The local model', is_active: true });
+        expect(kept.status).toBe(200);
+        expect(kept.body).toEqual(expect.objectContaining({ alias: 'local_default', target: 'model:local-gemma-4-31b', description: 'The local model', is_active: true }));
+        expect((await api('GET', '/model-control/local-model/current')).body.active).toBe('google/gemma-4-31b-qat');
     });
 
     test('roles that resolve through local_default follow the setting, and say so to Praxis', async () => {
