@@ -1,0 +1,92 @@
+Before relocation 2026-11-23T19:57:52.675566-05:00
+Dispatch checkout ["/Volumes/Projects/.praxis-worktrees/539c4d99-17a4-4952-a7c9-4b0a63d1d8af/TheNexus", "praxis/run/539c4d99-17a4-4952-a7c9-4b0a63d1d8af", "11c41c37d2ce76adb59ae197fac3e14f164900c5", "", ""]
+Main checkout ["main", "c85e50c2941ab039e71c63850e48fd3045c01608"]
+git status of archived worktree:
+## praxis/archive/eed607d4-ac1d-4e28-98ce-659d835ba4e9/7e34d675de42
+ M docs/reviews/2026-11-23-chat-thought-stream/chat-live-desktop.png
+ M docs/reviews/2026-11-23-chat-thought-stream/chat-live-phone.png
+?? data/tasks/eed607d4-ac1d-4e28-98ce-659d835ba4e9/evidence/reviewer-round3-dashboard.txt
+?? data/tasks/eed607d4-ac1d-4e28-98ce-659d835ba4e9/evidence/reviewer-round3-praxis.txt
+?? data/tasks/eed607d4-ac1d-4e28-98ce-659d835ba4e9/evidence/reviewer-round3-results.json
+git log main..HEAD: 4d14bbc2 Revise "Chat thought stream: live steps in the chat" to v2 [docrev 45786547]
+git rev-list HEAD --not --remotes: 4d14bbc2 Revise "Chat thought stream: live steps in the chat" to v2 [docrev 45786547]
+Branch contains commit: + praxis/archive/eed607d4-ac1d-4e28-98ce-659d835ba4e9/7e34d675de42
+du -sh: 306M	/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus
+ 15M	/Volumes/Projects/.scratch-45b834d9
+  0B	/Volumes/Projects/.scratch-praxis-chat
+Worktree = main file = main Git blob (SHA-256) 40647c4e20187d5a6f57b37fb02d4a410bec9921361692c7caed2eb80fa6d853 chat-expanded-desktop.png
+Worktree = main file = main Git blob (SHA-256) e16cecfcc4583149e61363f6e76bf5786dcb543746e71b5febcbd2b1bd2667bb chat-expanded-phone.png
+Worktree = main file = main Git blob (SHA-256) 7cf42aefd4415a5d9eab030405326c5acf6849e4694413bff1bd7b5db28e1fcf chat-folded-desktop.png
+Worktree = main file = main Git blob (SHA-256) f7625d44611403e16c47aa3cd402837d53d39a07e097911cb1e7928c9757af0a chat-folded-phone.png
+Worktree = main file = main Git blob (SHA-256) 123bc340879e5b81aea32c4616c2f5df52549078916a0daa38f4187494372010 chat-live-desktop.png
+Worktree = main file = main Git blob (SHA-256) c70cd5155f6274f6407b8dea59dba5e4c5d49003e8abafba9ab231a5d5633e30 chat-live-phone.png
+Worktree = main file = main Git blob (SHA-256) 7b12bad7344eb028e33d3347fb09fb586a6d05d93304e928b02a2f557536b684 chat-thought-stream.design.json
+Worktree = main file = main Git blob (SHA-256) 5ffa3741b9403b87a4373b3158988f4eb51ea8e685fd6d093e8e97bdbebb32d5 viewer-left-column-desktop.png
+Worktree = main file = main Git blob (SHA-256) 69503570710de2b84b4f33ab8a7d3bcb79153951b41e742f8f021a8e4cf9a52c viewer-left-column-phone.png
+Untracked = existing operations copy (SHA-256) 3ea712ccaf9f2ba4e726e44c3225fe1c18835643f4af5e401c4ff95cc673c2b2 reviewer-round3-dashboard.txt
+Untracked = existing operations copy (SHA-256) 8571451e64a99d61af62d216bac3f243d8afad598da25024cff8ae820cc849c4 reviewer-round3-praxis.txt
+Untracked = existing operations copy (SHA-256) ab076eb937dedc109d9236655868ba5966db322fca52c5f70670ab8c85720a57 reviewer-round3-results.json
+Ignored paths (git ls-files --others --ignored --exclude-standard --directory):
+.env
+dashboard/.next-verify-steps/
+dashboard/next-env.d.ts
+dashboard/node_modules
+dashboard/tsconfig.tsbuildinfo
+data/presentation-captures/
+data/review-blobs/
+desktop/node_modules
+node_modules
+tmp/mail-format-npm-cache/_npx/b388654678d519d9/node_modules
+Nexus task ["eed607d4-ac1d-4e28-98ce-659d835ba4e9", "completed", "Show Praxis's working steps live in the chat and retire the 'taking longer than expected' message"]
+Nexus task ["45b834d9-bc6b-4da4-82c7-e4c3ca57297f", "completed", "Revise \"Chat thought stream: live steps in the chat\" to v2 [docrev 45786547]"]
+Nexus task ["282c64fa-fe6e-4541-b82b-69bd146fb8be", "completed", "Make 'approve with changes' approve the reviewed version and keep the note, without starting a document revision"]
+Previous task walkthrough: The scratch directory `/Volumes/Projects/.scratch-282c64fa` held my throwaway checks and has been deleted.
+GET document {"deliverable_key": "chat-thought-stream-review-package", "id": "a17976bd-8691-43ac-81a6-cc927292d3bf", "path": "/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus/docs/reviews/2026-11-23-chat-thought-stream/chat-thought-stream.design.json", "task_id": "eed607d4-ac1d-4e28-98ce-659d835ba4e9", "title": "Chat thought stream: live steps in the chat"}
+Review state {"file_state": "ok", "ready": true, "status": "approved", "version": {"capture_count": 3, "current_revision_id": "ee53253e-1d2d-4fed-9a55-2e16fdab7e82", "current_version": 2, "draft_count": 2, "revision_count": 3}}
+GET history [[1, "2a212aea-619b-4982-8890-0aad59110386", "b96bf9cdeac764cf6e71211b1d3d63dcede76ea39aee71968e6327be9d197287"], [1, "44d2b899-2d0c-4359-a52b-8ddb08f0a713", "52f022cea98be72934d2dbdefa93991ca69894f8ce47ce2ed0544f1a73339b90"], [2, "ee53253e-1d2d-4fed-9a55-2e16fdab7e82", "376ddb7ff2869314b375499a63a389fbb7c796794393556d4b3d8583dc8095c2"]]
+Current decision {"actor_id": "local_user", "applies_to_current_revision": true, "authority": "access_device", "client_decision_id": "56b4346b-e548-45ce-bab9-0ebe2fbe32f2", "content_hash": "376ddb7ff2869314b375499a63a389fbb7c796794393556d4b3d8583dc8095c2", "created_at": "2026-11-23T21:34:31.952Z", "decision": "approve", "document_id": "a17976bd-8691-43ac-81a6-cc927292d3bf", "id": "8757718d-c6b4-4c3e-82de-0bd2f61f03a2", "intended_action": "none", "note": "", "provenance": null, "recorded_by": "operator", "revision_id": "ee53253e-1d2d-4fed-9a55-2e16fdab7e82", "selection": null}
+Review rounds [["b02b625a-0ed1-47c5-8936-6b067fc93546", "submitted", 0]]
+Documents registered inside targeted folders [["a17976bd-8691-43ac-81a6-cc927292d3bf", "/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus/docs/reviews/2026-11-23-chat-thought-stream/chat-thought-stream.design.json"]]
+Usage {"active_praxis_workspaces": [], "exists": true, "lsof": ["p38002", "cwatchman", "f36", "n/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus", "p81390", "cnode", "fcwd", "n/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus/dashboard", "p81394", "cesbuild", "fcwd", "n/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus/dashboard"], "path": "/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus"}
+
+Praxis active workspace overlap and lsof +D {"active": [], "exists": true, "open": ["p38002", "cwatchman", "f36", "n/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus", "p81390", "cnode", "fcwd", "n/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus/dashboard", "p81394", "cesbuild", "fcwd", "n/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus/dashboard"], "path": "/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus"}
+Praxis active workspace overlap and lsof +D {"active": [], "exists": true, "open": [], "path": "/Volumes/Projects/.scratch-45b834d9"}
+Praxis active workspace overlap and lsof +D {"active": [], "exists": false, "open": [], "path": "/Volumes/Projects/.scratch-282c64fa"}
+Praxis active workspace overlap and lsof +D {"active": [], "exists": true, "open": [], "path": "/Volumes/Projects/.scratch-praxis-chat"}
+81390     1 Mon Nov 23 09:34:48 2026     /opt/homebrew/Cellar/node/23.7.0/bin/node --import ./test/register.mjs test/chat-turn-steps.test.mjs
+81394 81390 Mon Nov 23 09:34:48 2026     /Volumes/Projects/TheNexus/dashboard/node_modules/@esbuild/darwin-arm64/bin/esbuild --service=0.28.2 --ping
+
+POST /api/documents HTTP 200 with the stored key, review requirements and approved package SHA-256 as expected_content_hash.
+Keyed POST /api/documents {"content_hash": "376ddb7ff2869314b375499a63a389fbb7c796794393556d4b3d8583dc8095c2", "document_created": false, "id": "a9850a81-b3f7-40ca-8260-efb8601cb0d8", "path": "/Volumes/Projects/TheNexus/docs/reviews/2026-11-23-chat-thought-stream/chat-thought-stream.design.json", "review_status": "approved", "revision_created": false}
+GET document {"deliverable_key": "chat-thought-stream-review-package", "id": "a17976bd-8691-43ac-81a6-cc927292d3bf", "path": "/Volumes/Projects/TheNexus/docs/reviews/2026-11-23-chat-thought-stream/chat-thought-stream.design.json", "task_id": "eed607d4-ac1d-4e28-98ce-659d835ba4e9", "title": "Chat thought stream: live steps in the chat"}
+Review state {"file_state": "ok", "ready": true, "status": "approved", "version": {"capture_count": 3, "current_revision_id": "ee53253e-1d2d-4fed-9a55-2e16fdab7e82", "current_version": 2, "draft_count": 2, "revision_count": 3}}
+GET history [[1, "2a212aea-619b-4982-8890-0aad59110386", "b96bf9cdeac764cf6e71211b1d3d63dcede76ea39aee71968e6327be9d197287"], [1, "44d2b899-2d0c-4359-a52b-8ddb08f0a713", "52f022cea98be72934d2dbdefa93991ca69894f8ce47ce2ed0544f1a73339b90"], [2, "ee53253e-1d2d-4fed-9a55-2e16fdab7e82", "376ddb7ff2869314b375499a63a389fbb7c796794393556d4b3d8583dc8095c2"]]
+Current decision {"actor_id": "local_user", "applies_to_current_revision": true, "authority": "access_device", "client_decision_id": "56b4346b-e548-45ce-bab9-0ebe2fbe32f2", "content_hash": "376ddb7ff2869314b375499a63a389fbb7c796794393556d4b3d8583dc8095c2", "created_at": "2026-11-23T21:34:31.952Z", "decision": "approve", "document_id": "a17976bd-8691-43ac-81a6-cc927292d3bf", "id": "8757718d-c6b4-4c3e-82de-0bd2f61f03a2", "intended_action": "none", "note": "", "provenance": null, "recorded_by": "operator", "revision_id": "ee53253e-1d2d-4fed-9a55-2e16fdab7e82", "selection": null}
+Review rounds [["b02b625a-0ed1-47c5-8936-6b067fc93546", "submitted", 0]]
+Compared before/after GET document and history: only path and updated_at changed in the document row. All pre-existing registration receipts, drafts, byte captures, edits, replacements, decisions, reviews, submissions, comments, assets and manifest matched. One relocation receipt appended.
+SELECT id,path FROM review_documents: no document bound inside the target folders.
+GET /documents/a17976bd-8691-43ac-81a6-cc927292d3bf HTTP 200 review HTML, document ID present
+GET /api/documents/a17976bd-8691-43ac-81a6-cc927292d3bf/raw?revision=ee53253e-1d2d-4fed-9a55-2e16fdab7e82 HTTP 200 raw bytes equal main manifest, SHA-256 7b12bad7344eb028e33d3347fb09fb586a6d05d93304e928b02a2f557536b684 X-Document-Revision 376ddb7ff2869314b375499a63a389fbb7c796794393556d4b3d8583dc8095c2
+GET /api/documents/a17976bd-8691-43ac-81a6-cc927292d3bf/readiness?revision=ee53253e-1d2d-4fed-9a55-2e16fdab7e82 HTTP 200 ready=true; verified package members 8
+
+Chrome --headless --dump-dom on the local review page: visible title "Chat thought stream: live steps in the chat", "Document: approved", "Approved rev 376ddb7f 11/23/2026, 4:34:31 PM".
+git -C /Volumes/Projects/TheNexus rev-parse refs/heads/praxis/archive/eed607d4-ac1d-4e28-98ce-659d835ba4e9/7e34d675de42 4d14bbc20a484de474ca3762a6fe750910be9fa7
+Full worktree tar round-trip matched every relative path, mode, regular file SHA-256 and symlink target {"directories": 444, "files": 3948, "links": 5, "tree_sha256": "12c4cda43cb97db5728a656182b715d5c50c3e31816eb87be378712db2f8cb2c"}
+Archive SHA-256 cd40623edab8b3f59869fcc6794c6ec883cc7b3614879d585e13610cf0aff5ed  /Volumes/Projects/OperationsEvidence/chat-working-steps-eed607d4-2026-11-23/TheNexus-eed607d4.tar.gz
+Praxis active workspace overlap and lsof +D {"active": [], "exists": true, "open": ["p38002", "cwatchman", "f36", "n/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus", "p81390", "cnode", "fcwd", "n/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus/dashboard", "p81394", "cesbuild", "fcwd", "n/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus/dashboard"], "path": "/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus"}
+Skipped git worktree remove: the worktree is in use.
+Praxis active workspace overlap and lsof +D {"active": [], "exists": true, "open": [], "path": "/Volumes/Projects/.scratch-45b834d9"}
+Atomic archive move /Volumes/Projects/.scratch-45b834d9 -> /Volumes/Projects/OperationsEvidence/chat-working-steps-eed607d4-2026-11-23/scratch-45b834d9; same inode and contents {"directories": 10, "files": 70, "links": 0, "tree_sha256": "8a11019b7473aa04aea5b3d074a288755929de31ff0fc4025f85225c1ab5885e"}
+Absent at preflight and cleanup: /Volumes/Projects/.scratch-282c64fa
+Praxis active workspace overlap and lsof +D {"active": [], "exists": true, "open": [], "path": "/Volumes/Projects/.scratch-praxis-chat"}
+Atomic archive move /Volumes/Projects/.scratch-praxis-chat -> /Volumes/Projects/OperationsEvidence/chat-working-steps-eed607d4-2026-11-23/scratch-praxis-chat; same inode and contents {"directories": 0, "files": 0, "links": 0, "tree_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"}
+Worktree registrations added []
+Worktree registrations removed []
+
+After cleanup, the same document, history, prior registrations, review, submission and raw/readiness URL comparisons passed again.
+Post-cleanup worktree inventory still matches the archive. All three scratch source paths are absent. Both archived scratch inventories match their pre-move contents.
+Archive catalog: /Volumes/Projects/OperationsEvidence/chat-working-steps-eed607d4-2026-11-23/README.txt
+Command: ./node_modules/.bin/jest --runInBand --runTestsByPath server/__tests__/document-deliverables.test.js server/__tests__/document-media.test.js --cacheDirectory=/tmp/nexus-539c4d99.Rk10EW/jest-cache
+Test Suites: 2 passed, 2 total
+Tests:       34 passed, 34 total
+Snapshots:   0 total
