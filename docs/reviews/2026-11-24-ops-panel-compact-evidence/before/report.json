@@ -1,7 +1,7 @@
 {
   "label": "before",
-  "at": "2026-11-24T14:34:46.538Z",
-  "base": "http://localhost:60116",
+  "at": "2026-11-24T14:43:43.511Z",
+  "base": "http://localhost:65474",
   "dashboard": "/Volumes/Projects/.scratch-52b5db3d/baseline/dashboard",
   "scenarios": {
     "desktop idle": {
@@ -110,7 +110,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -160,7 +161,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -210,7 +212,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -260,7 +263,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -637,7 +641,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.126275 0.527451 0.617451)"
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -700,7 +705,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -789,7 +795,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.126275 0.527451 0.617451)"
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -865,7 +872,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -1940,7 +1948,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.126275 0.527451 0.617451)"
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -2016,7 +2025,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -2261,7 +2271,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -2415,7 +2426,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -2448,11 +2460,11 @@
       "opsShot": "overflow-desktop-ops-panel.png"
     },
     "desktop trouble": {
-      "expectedRuns": 2,
+      "expectedRuns": 3,
       "expectedSeats": 0,
       "map": {
         "live": "true",
-        "runCount": "2",
+        "runCount": "3",
         "map": {
           "left": 41,
           "top": 709,
@@ -2519,9 +2531,52 @@
               "width": 126,
               "height": 69
             }
+          },
+          {
+            "key": "fx-slot-numbers",
+            "provider": "codex",
+            "role": "building",
+            "title": "Number the day's schedule slots",
+            "aria": "Slot 3; Number the day's schedule slots; building on Codex; model GPT-6.2 Astra, effort xhigh; running 26m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "26m",
+            "slot": "S3",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-head",
+              "text": "S3Number the day's schedule slots"
+            },
+            "visibleTitle": "Number the day's schedule slots",
+            "titleShown": true,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 318,
+              "top": 893,
+              "right": 444,
+              "bottom": 976,
+              "width": 126,
+              "height": 83
+            }
           }
         ],
         "flows": [
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 164
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 173
+          },
           {
             "wire": "spoke-flow",
             "animation": "module-flow",
@@ -2634,7 +2689,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.594314 0.316078 0.39098)"
+              "color": "color(srgb 0.594314 0.316078 0.39098)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -2684,7 +2740,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -2731,12 +2788,12 @@
           },
           {
             "id": "codex",
-            "expanded": "false",
-            "active": "false",
+            "expanded": "true",
+            "active": "true",
             "trouble": null,
             "label": "Codex",
             "phase": "Suspended",
-            "runList": false,
+            "runList": true,
             "buttonText": "Codex\nSuspended",
             "glyph": null,
             "aria": "Inspect Codex: Suspended",
@@ -2760,7 +2817,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.594314 0.316078 0.39098)"
+              "color": "color(srgb 0.594314 0.316078 0.39098)",
+              "glow": "color(srgb 0.984314 0.443137 0.521569 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -2774,6 +2832,19 @@
                   {
                     "x": 387,
                     "y": 826
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 387,
+                    "y": 826
+                  },
+                  {
+                    "x": 444,
+                    "y": 935
                   }
                 ]
               }
@@ -2793,24 +2864,25 @@
             "title": "Open OpenRouter runs and reports",
             "button": {
               "left": 318,
-              "top": 901,
+              "top": 986,
               "right": 456,
-              "bottom": 984,
+              "bottom": 1068,
               "width": 138,
               "height": 82
             },
             "logo": {
               "left": 372,
-              "top": 903,
+              "top": 988,
               "right": 402,
-              "bottom": 933,
+              "bottom": 1018,
               "width": 30,
               "height": 30
             },
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -2823,7 +2895,7 @@
                   },
                   {
                     "x": 387,
-                    "y": 918
+                    "y": 1003
                   }
                 ]
               }
@@ -2948,7 +3020,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -2998,7 +3071,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -3048,7 +3122,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -3186,7 +3261,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -3236,7 +3312,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -3286,7 +3363,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -3336,7 +3414,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -3713,7 +3792,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.126275 0.527451 0.617451)"
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -3776,7 +3856,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -3865,7 +3946,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.126275 0.527451 0.617451)"
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -3941,7 +4023,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -5016,7 +5099,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.126275 0.527451 0.617451)"
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -5092,7 +5176,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -5337,7 +5422,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -5491,7 +5577,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -5524,18 +5611,18 @@
       "opsShot": "overflow-phone-ops-panel.png"
     },
     "phone trouble": {
-      "expectedRuns": 2,
+      "expectedRuns": 3,
       "expectedSeats": 0,
       "map": {
         "live": "true",
-        "runCount": "2",
+        "runCount": "3",
         "map": {
           "left": 29,
           "top": 1490,
           "right": 361,
-          "bottom": 2345,
+          "bottom": 2388,
           "width": 332,
-          "height": 856
+          "height": 899
         },
         "runs": [
           {
@@ -5595,9 +5682,52 @@
               "width": 316,
               "height": 40
             }
+          },
+          {
+            "key": "fx-slot-numbers",
+            "provider": "codex",
+            "role": "building",
+            "title": "Number the day's schedule slots",
+            "aria": "Slot 3; Number the day's schedule slots; building on Codex; model GPT-6.2 Astra, effort xhigh; running 26m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "26m",
+            "slot": "S3",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-head",
+              "text": "S3Number the day's schedule slots"
+            },
+            "visibleTitle": "Number the day's schedule slots",
+            "titleShown": true,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 31,
+              "top": 2161,
+              "right": 347,
+              "bottom": 2202,
+              "width": 316,
+              "height": 41
+            }
           }
         ],
         "flows": [
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 414
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 247
+          },
           {
             "wire": "spoke-flow",
             "animation": "module-flow",
@@ -5665,9 +5795,9 @@
             "tag": "SPAN",
             "box": {
               "left": 134,
-              "top": 2262,
+              "top": 2305,
               "right": 148,
-              "bottom": 2276,
+              "bottom": 2319,
               "width": 14,
               "height": 14
             },
@@ -5675,8 +5805,8 @@
           }
         ],
         "heights": {
-          "station": 1036,
-          "map": 856
+          "station": 1079,
+          "map": 899
         },
         "providers": [
           {
@@ -5710,7 +5840,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.594314 0.316078 0.39098)"
+              "color": "color(srgb 0.594314 0.316078 0.39098)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -5760,7 +5891,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -5807,12 +5939,12 @@
           },
           {
             "id": "codex",
-            "expanded": "false",
-            "active": "false",
+            "expanded": "true",
+            "active": "true",
             "trouble": null,
             "label": "Codex",
             "phase": "Suspended",
-            "runList": false,
+            "runList": true,
             "buttonText": "Codex\nSuspended",
             "glyph": null,
             "aria": "Inspect Codex: Suspended",
@@ -5836,7 +5968,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.594314 0.316078 0.39098)"
+              "color": "color(srgb 0.594314 0.316078 0.39098)",
+              "glow": "color(srgb 0.984314 0.443137 0.521569 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -5850,6 +5983,19 @@
                   {
                     "x": 195,
                     "y": 2094
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 2094
+                  },
+                  {
+                    "x": 347,
+                    "y": 2182
                   }
                 ]
               }
@@ -5869,24 +6015,25 @@
             "title": "Open OpenRouter runs and reports",
             "button": {
               "left": 31,
-              "top": 2169,
+              "top": 2212,
               "right": 359,
-              "bottom": 2251,
+              "bottom": 2294,
               "width": 328,
               "height": 82
             },
             "logo": {
               "left": 180,
-              "top": 2171,
+              "top": 2214,
               "right": 210,
-              "bottom": 2201,
+              "bottom": 2244,
               "width": 30,
               "height": 30
             },
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -5899,7 +6046,7 @@
                   },
                   {
                     "x": 195,
-                    "y": 2186
+                    "y": 2229
                   }
                 ]
               }
@@ -6024,7 +6171,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -6074,7 +6222,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -6124,7 +6273,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [

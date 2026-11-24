@@ -1,7 +1,7 @@
 {
   "label": "after",
-  "at": "2026-11-24T14:33:46.350Z",
-  "base": "http://localhost:58968",
+  "at": "2026-11-24T14:40:09.352Z",
+  "base": "http://localhost:62398",
   "dashboard": "/Volumes/Projects/.praxis-worktrees/52b5db3d-f88c-4e59-b733-8e05758b30ca/TheNexus/dashboard",
   "scenarios": {
     "desktop idle": {
@@ -110,7 +110,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -160,7 +161,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -210,7 +212,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -260,7 +263,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -637,7 +641,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.126275 0.527451 0.617451)"
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -700,7 +705,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -789,7 +795,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.126275 0.527451 0.617451)"
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -865,7 +872,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -893,7 +901,7 @@
       "viewer": {
         "crewSection": false,
         "crewChips": 0,
-        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Fable 5.2 · testing — unavailable Default RECONNECTING Offline Fable 5.2 · testing Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Fable 5.2 · testing — unavailable Default LIVE Offline Fable 5.2 · testing Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
       },
       "opsShot": "busy-desktop-ops-panel.png",
       "drillDownShot": "busy-desktop-drill-down-from-run-node.png"
@@ -1941,7 +1949,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.126275 0.527451 0.617451)"
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -2017,7 +2026,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -2262,7 +2272,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -2416,7 +2427,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -2449,11 +2461,11 @@
       "opsShot": "overflow-desktop-ops-panel.png"
     },
     "desktop trouble": {
-      "expectedRuns": 2,
+      "expectedRuns": 3,
       "expectedSeats": 0,
       "map": {
         "live": "true",
-        "runCount": "2",
+        "runCount": "3",
         "map": {
           "left": 41,
           "top": 709,
@@ -2520,9 +2532,52 @@
               "width": 126,
               "height": 40
             }
+          },
+          {
+            "key": "fx-slot-numbers",
+            "provider": "codex",
+            "role": "building",
+            "title": "Number the day's schedule slots",
+            "aria": "Slot 3; Number the day's schedule slots; building on Codex; model GPT-6.2 Astra, effort xhigh; running 26m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "26m",
+            "slot": "S3",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S3"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 318,
+              "top": 849,
+              "right": 444,
+              "bottom": 902,
+              "width": 126,
+              "height": 53
+            }
           }
         ],
         "flows": [
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 162
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 112
+          },
           {
             "wire": "spoke-flow",
             "animation": "module-flow",
@@ -2635,7 +2690,8 @@
             "ring": {
               "width": "2px",
               "style": "solid",
-              "color": "rgb(251, 113, 133)"
+              "color": "rgb(251, 113, 133)",
+              "glow": "rgba(251, 113, 133, 0.376) 0px 0px 10px 0px"
             },
             "badge": {
               "trouble": "failed",
@@ -2697,7 +2753,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -2744,12 +2801,12 @@
           },
           {
             "id": "codex",
-            "expanded": "false",
-            "active": "false",
+            "expanded": "true",
+            "active": "true",
             "trouble": "suspended",
             "label": null,
             "phase": null,
-            "runList": false,
+            "runList": true,
             "buttonText": "",
             "glyph": null,
             "aria": "Inspect Codex: Suspended",
@@ -2773,7 +2830,8 @@
             "ring": {
               "width": "2px",
               "style": "solid",
-              "color": "rgb(251, 191, 36)"
+              "color": "rgb(251, 191, 36)",
+              "glow": "rgba(251, 191, 36, 0.314) 0px 0px 10px 0px"
             },
             "badge": {
               "trouble": "suspended",
@@ -2801,6 +2859,19 @@
                     "y": 828
                   }
                 ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 387,
+                    "y": 828
+                  },
+                  {
+                    "x": 444,
+                    "y": 876
+                  }
+                ]
               }
             ]
           },
@@ -2818,24 +2889,25 @@
             "title": "OpenRouter: Standing by. Open OpenRouter runs and reports",
             "button": {
               "left": 318,
-              "top": 857,
+              "top": 912,
               "right": 456,
-              "bottom": 895,
+              "bottom": 950,
               "width": 138,
               "height": 38
             },
             "logo": {
               "left": 372,
-              "top": 861,
+              "top": 916,
               "right": 402,
-              "bottom": 891,
+              "bottom": 946,
               "width": 30,
               "height": 30
             },
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -2848,7 +2920,7 @@
                   },
                   {
                     "x": 387,
-                    "y": 876
+                    "y": 931
                   }
                 ]
               }
@@ -2973,7 +3045,8 @@
             "ring": {
               "width": "2px",
               "style": "dashed",
-              "color": "rgb(148, 163, 184)"
+              "color": "rgb(148, 163, 184)",
+              "glow": "none"
             },
             "badge": {
               "trouble": "delayed",
@@ -3035,7 +3108,8 @@
             "ring": {
               "width": "2px",
               "style": "dashed",
-              "color": "rgb(148, 163, 184)"
+              "color": "rgb(148, 163, 184)",
+              "glow": "none"
             },
             "badge": {
               "trouble": "delayed",
@@ -3097,7 +3171,8 @@
             "ring": {
               "width": "2px",
               "style": "dashed",
-              "color": "rgb(148, 163, 184)"
+              "color": "rgb(148, 163, 184)",
+              "glow": "none"
             },
             "badge": {
               "trouble": "delayed",
@@ -3247,7 +3322,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -3297,7 +3373,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -3347,7 +3424,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -3397,7 +3475,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -3774,7 +3853,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.126275 0.527451 0.617451)"
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -3837,7 +3917,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -3926,7 +4007,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.126275 0.527451 0.617451)"
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -4002,7 +4084,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -5078,7 +5161,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.126275 0.527451 0.617451)"
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -5154,7 +5238,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -5399,7 +5484,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -5553,7 +5639,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -5586,18 +5673,18 @@
       "opsShot": "overflow-phone-ops-panel.png"
     },
     "phone trouble": {
-      "expectedRuns": 2,
+      "expectedRuns": 3,
       "expectedSeats": 0,
       "map": {
         "live": "true",
-        "runCount": "2",
+        "runCount": "3",
         "map": {
           "left": 29,
           "top": 1490,
           "right": 361,
-          "bottom": 2124,
+          "bottom": 2151,
           "width": 332,
-          "height": 634
+          "height": 661
         },
         "runs": [
           {
@@ -5657,9 +5744,52 @@
               "width": 316,
               "height": 26
             }
+          },
+          {
+            "key": "fx-slot-numbers",
+            "provider": "codex",
+            "role": "building",
+            "title": "Number the day's schedule slots",
+            "aria": "Slot 3; Number the day's schedule slots; building on Codex; model GPT-6.2 Astra, effort xhigh; running 26m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "26m",
+            "slot": "S3",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S3"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 1,
+            "fontPx": 10,
+            "box": {
+              "left": 31,
+              "top": 1984,
+              "right": 347,
+              "bottom": 2009,
+              "width": 316,
+              "height": 25
+            }
           }
         ],
         "flows": [
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 283
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
           {
             "wire": "spoke-flow",
             "animation": "module-flow",
@@ -5727,9 +5857,9 @@
             "tag": "SPAN",
             "box": {
               "left": 134,
-              "top": 2041,
+              "top": 2068,
               "right": 148,
-              "bottom": 2055,
+              "bottom": 2082,
               "width": 14,
               "height": 14
             },
@@ -5737,8 +5867,8 @@
           }
         ],
         "heights": {
-          "station": 814,
-          "map": 634
+          "station": 841,
+          "map": 661
         },
         "providers": [
           {
@@ -5772,7 +5902,8 @@
             "ring": {
               "width": "2px",
               "style": "solid",
-              "color": "rgb(251, 113, 133)"
+              "color": "rgb(251, 113, 133)",
+              "glow": "rgba(251, 113, 133, 0.376) 0px 0px 10px 0px"
             },
             "badge": {
               "trouble": "failed",
@@ -5834,7 +5965,8 @@
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.413137 0.372157 0.643333)"
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
             },
             "badge": null,
             "wireEnds": [
@@ -5881,12 +6013,12 @@
           },
           {
             "id": "codex",
-            "expanded": "false",
-            "active": "false",
+            "expanded": "true",
+            "active": "true",
             "trouble": "suspended",
             "label": null,
             "phase": null,
-            "runList": false,
+            "runList": true,
             "buttonText": "",
             "glyph": null,
             "aria": "Inspect Codex: Suspended",
@@ -5910,7 +6042,8 @@
             "ring": {
               "width": "2px",
               "style": "solid",
-              "color": "rgb(251, 191, 36)"
+              "color": "rgb(251, 191, 36)",
+              "glow": "rgba(251, 191, 36, 0.314) 0px 0px 10px 0px"
             },
             "badge": {
               "trouble": "suspended",
@@ -5938,6 +6071,19 @@
                     "y": 1963
                   }
                 ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1963
+                  },
+                  {
+                    "x": 347,
+                    "y": 1997
+                  }
+                ]
               }
             ]
           },
@@ -5955,24 +6101,25 @@
             "title": "OpenRouter: Standing by. Open OpenRouter runs and reports",
             "button": {
               "left": 31,
-              "top": 1992,
+              "top": 2019,
               "right": 359,
-              "bottom": 2030,
+              "bottom": 2057,
               "width": 328,
               "height": 38
             },
             "logo": {
               "left": 180,
-              "top": 1996,
+              "top": 2023,
               "right": 210,
-              "bottom": 2026,
+              "bottom": 2053,
               "width": 30,
               "height": 30
             },
             "ring": {
               "width": "1px",
               "style": "solid",
-              "color": "color(srgb 0.268627 0.322549 0.403922)"
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
             },
             "badge": null,
             "wireEnds": [
@@ -5985,7 +6132,7 @@
                   },
                   {
                     "x": 195,
-                    "y": 2011
+                    "y": 2038
                   }
                 ]
               }
@@ -6110,7 +6257,8 @@
             "ring": {
               "width": "2px",
               "style": "dashed",
-              "color": "rgb(148, 163, 184)"
+              "color": "rgb(148, 163, 184)",
+              "glow": "none"
             },
             "badge": {
               "trouble": "delayed",
@@ -6172,7 +6320,8 @@
             "ring": {
               "width": "2px",
               "style": "dashed",
-              "color": "rgb(148, 163, 184)"
+              "color": "rgb(148, 163, 184)",
+              "glow": "none"
             },
             "badge": {
               "trouble": "delayed",
@@ -6234,7 +6383,8 @@
             "ring": {
               "width": "2px",
               "style": "dashed",
-              "color": "rgb(148, 163, 184)"
+              "color": "rgb(148, 163, 184)",
+              "glow": "none"
             },
             "badge": {
               "trouble": "delayed",
