@@ -758,6 +758,12 @@ export async function getLocalOnlyMode(projectId?: string | null): Promise<{ ena
     return data.localOnly || { enabled: false, reason: null };
 }
 
+/** The server's own sentence for a refused save (local_default edits explain what is missing), else the status. */
+async function refusal(response: Response, fallback: string): Promise<Error> {
+    const body = await response.json().catch(() => null);
+    return new Error(typeof body?.message === "string" && body.message ? body.message : `${fallback}: ${response.status}`);
+}
+
 export async function upsertGlobalModelAlias(alias: string, input: { target: string; description?: string | null; is_active?: boolean }): Promise<ModelControlAlias> {
     const response = await fetch(`/api/model-control/aliases/${encodeURIComponent(alias)}`, {
         method: "PUT",
@@ -765,7 +771,7 @@ export async function upsertGlobalModelAlias(alias: string, input: { target: str
         headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
         body: JSON.stringify(input),
     });
-    if (!response.ok) throw new Error(`Failed to save global alias: ${response.status}`);
+    if (!response.ok) throw await refusal(response, "Failed to save global alias");
     return response.json();
 }
 
@@ -776,8 +782,177 @@ export async function upsertProjectModelAlias(projectId: string, alias: string, 
         headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
         body: JSON.stringify(input),
     });
-    if (!response.ok) throw new Error(`Failed to save project alias: ${response.status}`);
+    if (!response.ok) throw await refusal(response, "Failed to save project alias");
     return response.json();
+}
+
+// ─── The local model (task fa032fc0) ─────────────────────────────────────
+// Chosen under Model Control from LM Studio's own list of downloaded models.
+// Shapes mirror server/services/local-model-selection.js (panel, select,
+// restore); Praxis's part mirrors Praxis src/llm/local-model-selection.ts.
+
+/** "tested": the Praxis capability table has an entry. "conservative": Praxis uses its conservative defaults. "unknown": Praxis did not answer. */
+export type LocalModelHandling = "tested" | "conservative" | "unknown";
+
+export interface LocalModelOption {
+    key: string;
+    label: string;
+    publisher: string | null;
+    sizeBytes: number | null;
+    params: string | null;
+    quantization: string | null;
+    format: string | null;
+    maxContext: number | null;
+    /** The context length saved in the model's LM Studio load profile; null when none is saved. */
+    savedContext: number | null;
+    loaded: boolean;
+    loadedContext: number | null;
+    handling: LocalModelHandling;
+    selectable: boolean;
+    unavailableReason: string | null;
+    active: boolean;
+    waiting: boolean;
+}
+
+/** A listing row the panel does not offer (an embedding model, or no model key), with why. */
+export interface LocalModelHiddenRow {
+    key: string | null;
+    label: string;
+    type: string | null;
+    reason: string;
+}
+
+/** One piece of local work a switch waits for: a Studio job in Nexus, or a Praxis job or call. */
+export interface LocalWorkItem {
+    kind: "local_job" | "local_call" | "studio_job";
+    label: string;
+    id?: string;
+    since?: string;
+    count?: number;
+}
+
+/** A recorded switch (table local_model_switches). */
+export interface LocalModelSwitch {
+    id: string;
+    selection_id: string;
+    action: string;
+    from_model: string | null;
+    from_label: string | null;
+    to_model: string;
+    to_label: string | null;
+    surface: string;
+    requested_at: string;
+    status: "waiting" | "applied" | "replaced" | string;
+    applied_at: string | null;
+    replaced_at: string | null;
+    details?: { note?: string; savedContext?: number } | null;
+}
+
+/** What Praxis answered for GET /local-model, or why it could not be asked. */
+export interface PraxisLocalModelState {
+    reachable: boolean;
+    error?: string;
+    active?: string;
+    source?: "nexus" | "env_fallback";
+    since?: string;
+    fallback?: { reason: string; envModel: string; since: string };
+    pending?: {
+        model: string;
+        selectionId: string;
+        requestedAt: string | null;
+        surface: string | null;
+        waitingFor: LocalWorkItem[];
+        nexusWaitingFor: LocalWorkItem[];
+        applying: boolean;
+        lastError?: string;
+    };
+    lastSync?: { at: string; ok: boolean; trigger: string; error?: string };
+    tested?: string[];
+}
+
+export interface LocalModelPanel {
+    active: { model: string; label: string; rowId: string } | null;
+    selection: {
+        selectionId: string;
+        model: string;
+        label: string;
+        action: string;
+        surface: string | null;
+        requestedAt: string | null;
+        status: string | null;
+        appliedAt: string | null;
+    } | null;
+    waiting: { model: string; label: string; requestedAt: string | null; studio: LocalWorkItem[]; praxis: LocalWorkItem[] } | null;
+    praxis: PraxisLocalModelState;
+    options: LocalModelOption[];
+    hidden: LocalModelHiddenRow[];
+    listing: { ok: boolean; url: string; error?: string };
+    restore: { model: string; label: string; available: boolean; reason: string | null } | null;
+    history: LocalModelSwitch[];
+    machine: { memoryBytes: number };
+    /** How often Praxis reads the setting on its own. */
+    praxisResyncSeconds?: number;
+}
+
+export interface LocalModelChoiceResult {
+    result: "waiting" | "applied" | "unchanged";
+    model: string;
+    selectionId?: string;
+    praxisTold?: boolean;
+    praxisError?: string;
+    panel?: LocalModelPanel;
+}
+
+/** A refusal from the local model routes, with the server's code (superseded, no_saved_context, ...) and sentence. */
+export class LocalModelRequestError extends Error {
+    readonly status: number;
+    readonly code: string | null;
+
+    constructor(status: number, code: string | null, message: string) {
+        super(message);
+        this.name = "LocalModelRequestError";
+        this.status = status;
+        this.code = code;
+    }
+}
+
+async function localModelRequest<T>(path: string, init: RequestInit, failure: string): Promise<T> {
+    const response = await fetch(`/api/model-control/local-model${path}`, { credentials: "include", cache: "no-store", ...init });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+        const code = typeof body?.error === "string" ? body.error : null;
+        const message = typeof body?.message === "string" && body.message ? body.message : `${failure} (${response.status}${code ? `: ${code}` : ""})`;
+        throw new LocalModelRequestError(response.status, code, message);
+    }
+    return body as T;
+}
+
+/** Everything the local model part of the alias manager shows. */
+export function getLocalModelPanel(): Promise<LocalModelPanel> {
+    return localModelRequest("", {}, "Could not load the local model panel");
+}
+
+/**
+ * Choose the local model. Loads nothing: the switch is recorded and Praxis
+ * puts it into effect when no local work runs. `selectionId` is the choice
+ * the panel was showing, so a choice made elsewhere in between is refused
+ * (409 superseded) instead of overwritten.
+ */
+export function chooseLocalModel(input: { model: string; selectionId: string | null }): Promise<LocalModelChoiceResult> {
+    return localModelRequest("", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: input.model, surface: "model-control", selectionId: input.selectionId }),
+    }, "Could not choose the local model");
+}
+
+/** Choose again the model the latest choice replaced. */
+export function restoreLocalModel(input: { selectionId: string | null }): Promise<LocalModelChoiceResult> {
+    return localModelRequest("/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ surface: "model-control", selectionId: input.selectionId }),
+    }, "Could not restore the previous local model");
 }
 
 export interface ModelControlRole {

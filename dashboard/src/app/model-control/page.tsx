@@ -936,7 +936,7 @@ export default function ModelControlPage() {
                         </div>
                     </div>
 
-                    <ModelAliasManager projectId={projectId || null} />
+                    <ModelAliasManager projectId={projectId || null} localModel />
                     <div className="mt-4">
                         <ModelRoleManager />
                     </div>

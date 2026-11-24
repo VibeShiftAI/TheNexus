@@ -624,6 +624,7 @@ function createLocalModelSelection({
             restore: restoreTo,
             history,
             machine: { memoryBytes },
+            praxisResyncSeconds: PRAXIS_RESYNC_S,
         };
     }
 

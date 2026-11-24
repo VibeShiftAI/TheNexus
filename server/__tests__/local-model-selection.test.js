@@ -256,6 +256,8 @@ describe('the local model chosen under Model Control', () => {
         const { status, body } = await api('GET', '/model-control/local-model');
         expect(status).toBe(200);
         expect(body.listing).toEqual({ ok: true, url: LISTING_URL });
+        // The panel words Praxis's own re-read from this (Praxis LOCAL_MODEL_RESYNC_MS).
+        expect(body.praxisResyncSeconds).toBe(60);
         expect(body.active).toEqual({ model: 'google/gemma-4-31b-qat', label: 'Gemma 4 31B QAT (local)', rowId: 'local-gemma-4-31b' });
         expect(body.options.map(o => o.key)).toEqual([
             'thinkingmachines/inkling-2-mini', 'qwen/qwen3.8-27b', 'google/gemma-4-31b-qat', 'google/gemma-4-31b',

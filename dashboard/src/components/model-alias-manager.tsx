@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { GitBranch, Loader2, Plus } from "lucide-react";
+import { LocalModelChooser } from "@/components/local-model-chooser";
 import {
     getModelControlState,
     upsertGlobalModelAlias,
@@ -13,9 +14,11 @@ import {
 interface ModelAliasManagerProps {
     projectId?: string | null;
     compact?: boolean;
+    /** Model Control only: choose the local model (local_default) from LM Studio's list above the aliases. */
+    localModel?: boolean;
 }
 
-export function ModelAliasManager({ projectId = null, compact = false }: ModelAliasManagerProps) {
+export function ModelAliasManager({ projectId = null, compact = false, localModel = false }: ModelAliasManagerProps) {
     const [state, setState] = useState<ModelControlOptionsResponse>({});
     const [alias, setAlias] = useState("coder");
     const [target, setTarget] = useState("");
@@ -23,6 +26,7 @@ export function ModelAliasManager({ projectId = null, compact = false }: ModelAl
     const [scope, setScope] = useState(projectId ? "project" : "global");
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [localRefresh, setLocalRefresh] = useState(0);
 
     const load = async () => {
         const next = await getModelControlState(projectId);
@@ -75,6 +79,8 @@ export function ModelAliasManager({ projectId = null, compact = false }: ModelAl
                 await upsertGlobalModelAlias(alias.trim(), { target, description: description.trim() || null, is_active: true });
             }
             setDescription("");
+            // A new local_default target is a choice of local model: it waits like one, so the panel shows it.
+            if (alias.trim() === "local_default") setLocalRefresh(n => n + 1);
             await load();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to save alias");
@@ -99,6 +105,13 @@ export function ModelAliasManager({ projectId = null, compact = false }: ModelAl
                 <GitBranch size={14} className="text-cyan-400" />
                 <h3 className="text-sm font-semibold text-slate-200">Model Aliases</h3>
             </div>
+
+            {localModel && (
+                <LocalModelChooser
+                    refreshKey={localRefresh}
+                    onChanged={() => { load().catch(err => setError(err.message)); }}
+                />
+            )}
 
             <div className="space-y-2">
                 {projectId && projectAliases.length > 0 && (
