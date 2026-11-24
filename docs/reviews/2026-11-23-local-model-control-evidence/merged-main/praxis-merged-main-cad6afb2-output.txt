@@ -1,0 +1,6 @@
+== Praxis: main 4d076f91, branch cad6afb2, base 1fcf4b59
+merge-base: 1fcf4b59
+merge-tree exit 0 (0 = merges without conflict); tree e159eaf19d3d
+patch applied: 17 files
+tsc on the merged tree: exit 0 (0 errors)
+== done

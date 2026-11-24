@@ -1,0 +1,89 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/tts_provider.test.ts
+
+Running 1 of 901 suite(s): tests/tts_provider.test.ts
+
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T19:21:05.562Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[Consolidator] LEG middleware ENABLED — tool outputs will be consolidated.
+[2026-11-24T19:21:05.597Z] [INFO] [Consolidator] LEG middleware ENABLED — tool outputs will be consolidated.
+[TTS-Health] ElevenLabs quota exhausted — voice is text-only until the quota refreshes (quota_exceeded)
+[2026-11-24T19:21:07.654Z] [WARN] [TTS-Health] ElevenLabs quota exhausted — voice is text-only until the quota refreshes (quota_exceeded)
+  🗣️ Synthesizing 21 chars
+✔ default provider and local settings preserve hosted compatibility (0.621875ms)
+✔ invalid provider, remote local URL, and unbounded deadline fail configuration (1997.899375ms)
+  🗣️ Agent chose to speak: "Ready to begin.…"
+✔ talk replies use local MP3 bytes without changing the hosted credit ledger (17.987375ms)
+[TTS-Health] ElevenLabs quota exhausted — voice is text-only until the quota refreshes (quota_exceeded)
+[2026-11-24T19:21:07.676Z] [WARN] [TTS-Health] ElevenLabs quota exhausted — voice is text-only until the quota refreshes (quota_exceeded)
+  💳 [Newsletter] TTS budget — Local Qwen speech · no hosted credits · briefing ceiling 4000 chars
+[2026-11-24T19:21:07.676Z] [INFO]   💳 [Newsletter] TTS budget — Local Qwen speech · no hosted credits · briefing ceiling 4000 chars
+✔ speak tool queues local audio and keeps text fallback (3.735583ms)
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/tts_provider.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-24T19:21:07.680Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/tts_provider.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[2026-11-24T19:21:07.680Z] [WARN] [ContextWindow] Local context window unknown: LM Studio catalog unavailable
+  🔊 [Newsletter] audio summary synthesized (1 KB)
+[2026-11-24T19:21:07.682Z] [INFO]   🔊 [Newsletter] audio summary synthesized (1 KB)
+  ⚠️ Talk mode: speech is disabled or not configured, sending text only
+  💳 [Newsletter] TTS budget — Speech output disabled
+[2026-11-24T19:21:07.683Z] [INFO]   💳 [Newsletter] TTS budget — Speech output disabled
+  🔇 [Newsletter] speech is disabled or not configured — skipping MP3
+[2026-11-24T19:21:07.683Z] [INFO]   🔇 [Newsletter] speech is disabled or not configured — skipping MP3
+  🗣️ Synthesizing 6 chars
+✔ local briefing ignores exhausted ElevenLabs credits while retaining its ceiling (7.86325ms)
+✔ off disables talk, tool and briefing without network calls (2.724292ms)
+  ❌ TTS synthesis failed: Error: Local Qwen TTS HTTP 503
+    at synthesizeLocalSpeech (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/voice/local-qwen.ts:101:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async textToVoice (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/voice/talk-mode.ts:45:12)
+    at async <anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/tts_provider.test.ts:149:18)
+    at async localServer (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/tts_provider.test.ts:49:9)
+    at async TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/tts_provider.test.ts:148:3)
+    at async Test.run (node:internal/test_runner/test:981:9)
+    at async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  🗣️ Agent chose to speak: "Hello.…"
+[TTS-Health] ElevenLabs quota exhausted — voice is text-only until the quota refreshes (quota_exceeded)
+[2026-11-24T19:21:07.691Z] [WARN] [TTS-Health] ElevenLabs quota exhausted — voice is text-only until the quota refreshes (quota_exceeded)
+✔ local failure falls back to text without any hosted retry (5.031958ms)
+✔ local health is ready before lazy loading and ignores stale hosted quota errors (2.3475ms)
+✔ malformed local health cannot report speech as available (1.436375ms)
+✔ unreachable local service is unavailable (1.071625ms)
+  🗣️ Synthesizing 4000 chars
+✔ local transport rejects empty and oversized input before sending anything (0.394334ms)
+  🗣️ Agent chose to speak: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"
+✔ talk and speak trim long input within the service's 4000 character contract (3.741833ms)
+✔ local transport rejects empty response (1.741458ms)
+✔ local transport rejects JSON disguised as MP3 (1.420958ms)
+✔ local transport rejects an ID3 tag without audio frames (1.183ms)
+✔ local transport rejects wrong media type (1.166375ms)
+✔ local transport rejects HTTP redirects without following them (1.903708ms)
+✔ local deadline covers both waiting for headers and stalled response bodies (2002.616ms)
+✔ all local service failure statuses produce errors, never audio (8.741084ms)
+✔ local health reports busy, inference failure and subsequent recovery (5.829958ms)
+✔ local URL validation accepts literal loopback only (0.367334ms)
+✔ oversized audio responses are rejected before buffering the announced payload (2.9475ms)
+✔ a healthy probe cannot erase a malformed-audio failure without a later synthesis success (7.742459ms)
+✔ a ready service recovers from disconnect without requiring another synthesis (2.581ms)
+✔ a ready service recovers from queue without requiring another synthesis (1.25775ms)
+✔ a ready service recovers from unavailable without requiring another synthesis (1.077833ms)
+  🗣️ Synthesizing 6 chars
+✔ voice HTTP routes expose selected-provider health and preserve base64 MP3 responses (12.395791ms)
+✔ local health accepts and displays the configured 100 WPM pace (1.056959ms)
+✔ local health accepts and displays the configured 240 WPM pace (0.677791ms)
+✔ local health accepts and displays the configured 315 WPM pace (0.719708ms)
+✔ local health accepts and displays the configured 350 WPM pace (0.586292ms)
+✔ local health rejects unsupported pace 99 (0.592709ms)
+✔ local health rejects unsupported pace 351 (0.578375ms)
+✔ local health rejects unsupported pace null (0.619667ms)
+✔ local health rejects unsupported pace "240" (0.974833ms)
+ℹ tests 35
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6220.903042
+exit 0

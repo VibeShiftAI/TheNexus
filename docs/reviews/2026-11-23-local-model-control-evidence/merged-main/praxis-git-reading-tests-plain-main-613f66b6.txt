@@ -1,0 +1,131 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/code_freshness_recovery.test.ts tests/webhook_routes_inventory.test.ts
+
+Running 2 of 904 suite(s): tests/code_freshness_recovery.test.ts tests/webhook_routes_inventory.test.ts
+
+✔ healthy activation: one restart, and only the replacement process records the activation (7.942416ms)
+✔ a replacement that loaded an uncommitted version does not claim the commit (5.595917ms)
+✔ target content that cannot be read proves nothing, in either direction (4.740375ms)
+✔ every target path is read back, not the first twenty-five (3.893041ms)
+✔ an obligation written with a sample of its paths is dropped unclaimed (2.33325ms)
+✔ committed content that arrived after the replacement started takes one more restart (3.000166ms)
+✔ a target edited again before the restart is waited on, not dropped and not restarted for (3.327625ms)
+✔ uncommitted edits alone never start a recovery (0.928042ms)
+✔ a new commit moves an unresolved obligation on, and takes the unanswered path with it (3.881625ms)
+✔ failed boot check: backs off, opens the circuit at the bound, and never claims activation (7.450166ms)
+✔ a new commit gets a fresh failure budget (6.285667ms)
+✔ a restart that throws is a failure, not an activation (1.833541ms)
+✔ active author, then a sibling, then the gap before QA: deferred every time, then exactly one restart (4.9975ms)
+✔ the obligation outlives the process that found it: an unrelated restart settles it (1.500375ms)
+✔ a busy probe that cannot answer counts as busy (0.4005ms)
+✔ every kind of in-flight work holds the restart (1.918333ms)
+✔ CLI children are read off the process table, not off their arguments (0.1115ms)
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T19:35:10.862Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[Consolidator] LEG middleware ENABLED — tool outputs will be consolidated.
+[2026-11-24T19:35:10.952Z] [INFO] [Consolidator] LEG middleware ENABLED — tool outputs will be consolidated.
+✔ guarded restart, healthy: boot check, drain gate, one SIGTERM, all through doubles (2278.500834ms)
+✔ guarded restart, failed boot preflight: aborted, nothing scheduled, nothing signalled (0.496542ms)
+✔ guarded restart, sibling active: deferred even when the drain mode is wait, and never forced (0.4765ms)
+✔ work that starts between armed and exit cancels the exit and puts the obligation back (3.202541ms)
+✔ a test run cannot build a restart that reaches the real process (0.329833ms)
+✔ armed but the process never exits: a failure with backoff, not an activation (1.830958ms)
+✔ restart, then the boot guard rolls the tree back: failed, and it stays failed (1.73125ms)
+✔ a rollback after a restart nobody armed is still not an activation (0.478417ms)
+✔ an old rollback is not held against a new obligation (1.560084ms)
+✔ a replacement whose revision cannot be read claims nothing until it can (1.513833ms)
+✔ a replacement that booted from a revision without the target drops the obligation unclaimed (0.931875ms)
+✔ the replacement has to be the listener before the target counts as served (3.892334ms)
+✔ listener identity comes from lsof, and this process wins when it is among the listeners (0.229583ms)
+✔ a process that has just booted does not restart itself (1.083125ms)
+✔ restarts are capped per day across targets (3.237167ms)
+✔ overlapping ticks share one step (3.2275ms)
+✔ the attempt is on disk before the boot check runs (1.2655ms)
+✔ observe records the obligation and never restarts; off does nothing (1.838458ms)
+✔ an unreadable tree attempts nothing and claims nothing (0.342167ms)
+✔ a corrupt state file reads as no obligation and is rebuilt from the tree (0.822459ms)
+[RepoState] Runtime evidence read failed for /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/freshness-workspace-ryUs9U: state unreadable
+[2026-11-24T19:35:12.643Z] [WARN] [RepoState] Runtime evidence read failed for /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/freshness-workspace-ryUs9U: state unreadable
+fatal: not a git repository (or any parent up to mount point /Volumes)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+✔ a loaded mismatched deletion stays owed after its untracked file disappears (489.750625ms)
+✔ drift is what was committed AND changed on disk after the process started (351.053542ms)
+✔ an edit made after the commit is not committed content waiting to be loaded (726.163542ms)
+✔ only files the runtime loads count (0.096917ms)
+✔ pending, armed, activated and failed are distinct states on the status surface (3.756917ms)
+✔ drift the service has not recorded yet already reads pending (0.182ms)
+✔ the brief carries the running daemon's identity, as context and only when registered (63.377208ms)
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only (15.848875ms)
+[CronRegistry] Job "freshness-test-broken" threw: handler failed
+[2026-11-24T19:35:12.676Z] [ERROR] [CronRegistry] Job "freshness-test-broken" threw: handler failed
+✔ a scheduled job is in flight from the moment its handler starts until it settles (8.907791ms)
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T19:35:10.543Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[Webhook] Ingestion control API mounted at /ingestion/*
+[2026-11-24T19:35:11.369Z] [INFO] [Webhook] Ingestion control API mounted at /ingestion/*
+[Webhook] Ingestion control API mounted at /ingestion/*
+[2026-11-24T19:35:11.376Z] [INFO] [Webhook] Ingestion control API mounted at /ingestion/*
+fatal: not a git repository (or any parent up to mount point /Volumes)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions (2833.839708ms)
+✔ each inventoried addition is registered by the module the inventory names (3.067417ms)
+✔ no two routers register the same (method, path) (0.819667ms)
+✔ no route is registered twice on the app as a whole (0.480083ms)
+ℹ tests 50
+ℹ suites 0
+ℹ pass 48
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4833.9715
+
+✖ failing tests:
+
+test at tests/code_freshness_recovery.test.ts:5:8564
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only (15.848875ms)
+  Error: Command failed: git -C /Volumes/Projects/.scratch-fa032fc0/plain-praxis-main6 rev-parse HEAD
+  fatal: not a git repository (or any parent up to mount point /Volumes)
+  Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+  
+      at genericNodeError (node:internal/errors:983:15)
+      at wrappedFn (node:internal/errors:537:14)
+      at checkExecSyncError (node:child_process:882:11)
+      at execFileSync (node:child_process:918:15)
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/plain-praxis-main6/tests/code_freshness_recovery.test.ts:1710:16)
+      at Test.runInAsyncScope (node:async_hooks:211:14)
+      at Test.run (node:internal/test_runner/test:980:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:678:18)
+      at Test.postRun (node:internal/test_runner/test:1091:19)
+      at Test.run (node:internal/test_runner/test:1019:12) {
+    status: 128,
+    signal: null,
+    output: [ null, '', 'fatal: not a git repository (or any parent up to mount point /Volumes)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n' ],
+    pid: 77594,
+    stdout: '',
+    stderr: 'fatal: not a git repository (or any parent up to mount point /Volumes)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n'
+  }
+
+test at tests/webhook_routes_inventory.test.ts:1:4771
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions (2833.839708ms)
+  Error: Command failed: git show 1cac649:src/webhook.ts
+  fatal: not a git repository (or any parent up to mount point /Volumes)
+  Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+  
+      at genericNodeError (node:internal/errors:983:15)
+      at wrappedFn (node:internal/errors:537:14)
+      at checkExecSyncError (node:child_process:882:11)
+      at execFileSync (node:child_process:918:15)
+      at snapshotFromHead (/Volumes/Projects/.scratch-fa032fc0/plain-praxis-main6/tests/webhook_routes_inventory.test.ts:71:18)
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/plain-praxis-main6/tests/webhook_routes_inventory.test.ts:209:18)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:297:3) {
+    status: 128,
+    signal: null,
+    output: [ null, '', 'fatal: not a git repository (or any parent up to mount point /Volumes)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n' ],
+    pid: 75185,
+    stdout: '',
+    stderr: 'fatal: not a git repository (or any parent up to mount point /Volumes)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n'
+  }
+exit 1

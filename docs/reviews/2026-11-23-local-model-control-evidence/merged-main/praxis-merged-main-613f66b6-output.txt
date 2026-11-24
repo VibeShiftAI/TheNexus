@@ -1,0 +1,18 @@
+== Praxis: main 613f66b6, branch cad6afb2, base 1fcf4b59
+merge-base: 1fcf4b59
+merge-tree exit 0 (0 = merges without conflict); tree 9d2f04c34ab7
+files both sides change since the base: src/config.ts src/index.ts src/llm/lmstudio-autoload.ts src/local-llm/worker.ts src/nexus/client.ts src/routes/ops.ts 
+patch applied: 17 files
+tsc on the merged tree: exit 0 (0 errors)
+suites on the merged tree: 92 (not on main: trading_reflection_local_model trading_reflections); new on main: proof_baseline_evidence proof_baseline_finality proof_baseline_release proof_baseline_release_event_loop proof_baseline_source 
+ℹ tests 1134 ℹ pass 1132 ℹ fail 2 ℹ cancelled 0 exit 1 
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+guards: lmstudio=1 net=6 live-port=0 cli-shims=9
+suites with failures on the merged tree: code_freshness_recovery webhook_routes_inventory 
+== the same suites on plain main 613f66b6
+ℹ tests 50 ℹ pass 48 ℹ fail 2 ℹ cancelled 0 exit 1 
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== done

@@ -1,0 +1,63 @@
+copy: HEAD 6f9fb79b plus 6 changed files
+== mutation s1 (src/llm/lmstudio-autoload.ts): applied
+   1503a1504
+   >   let waited = false;
+   1505a1507
+   >     waited = true;
+   1516c1518
+   <     const replaced = switchedAwayLocalModels().find((s) => s.model === requestedModel && (s.seq ?? 0) > switchesBefore);
+   ---
+   >     const replaced = switchedAwayLocalModels().find((s) => s.model === requestedModel && waited && switchesBefore >= 0);
+ℹ tests 41 ℹ pass 40 ℹ fail 1 exit 1 
+✖ a call that waited through a switch that took nothing into effect is not refused, though an earlier switch replaced the model it names
+guards: lmstudio=0 net=0
+== mutation s2 (src/llm/lmstudio-autoload.ts): applied
+   560c560
+   <   const entries: readonly SwitchedAway[] = "model" in switchedAway ? [switchedAway] : switchedAway;
+   ---
+   >   const entries: readonly SwitchedAway[] = "model" in switchedAway ? [switchedAway] : switchedAway.slice(-1);
+ℹ tests 41 ℹ pass 39 ℹ fail 2 exit 1 
+✖ after switches made one after another with no local call between them, the next call replaces the model still loaded without waiting out its idle period
+✖ each model a switch replaced may go without the idle period, judged by the latest switch away from it
+guards: lmstudio=0 net=0
+== mutation s3 (src/llm/local-model-selection.ts): applied
+   272c272
+   <     if (!sameModel(previous, model)) noteLocalModelSwitch(previous, model, Date.now(), sameModel);
+   ---
+   >     noteLocalModelSwitch(previous, model, Date.now(), sameModel);
+ℹ tests 41 ℹ pass 40 ℹ fail 1 exit 1 
+✖ a new spelling of the model in effect replaces no model: the model the switch replaced stays recorded and may still go without the idle period
+guards: lmstudio=0 net=0
+== mutation s4 (src/llm/local-model-state.ts): applied
+   99c99
+   <     ...switchedAway.filter((s) => !sameModel(s.model, previous) && !sameModel(s.model, next)),
+   ---
+   >     ...switchedAway.filter((s) => s.model !== previous && s.model !== next),
+ℹ tests 41 ℹ pass 40 ℹ fail 1 exit 1 
+✖ a replaced model chosen again, under another spelling, is no longer recorded as replaced
+guards: lmstudio=0 net=0
+== mutation s5 (src/llm/manager.ts): applied
+   587c587
+   <         const primary = this.activeProvider === "local" ? await trackLocalCall(tryPrimary) : await tryPrimary();
+   ---
+   >         const primary = await tryPrimary();
+ℹ tests 41 ℹ pass 40 ℹ fail 1 exit 1 
+✖ chat() on a local primary that finds LM Studio's slot empty is one local call through the reload and its retry: a switch chosen meanwhile waits, and the retry goes to the model the reload loaded
+guards: lmstudio=0 net=0
+== mutation s6 (src/llm/manager.ts): applied
+   272c272
+   <   return trackedLocalProvider(withOutputRoom(provider));
+   ---
+   >   return withOutputRoom(trackedLocalProvider(provider));
+ℹ tests 41 ℹ pass 40 ℹ fail 1 exit 1 
+✖ the local provider as the manager registers it counts a call and its retry after a stop for length as one local call: a switch chosen during the call waits for both
+guards: lmstudio=0 net=0
+== mutation s7 (src/llm/manager.ts): applied
+   1676c1676
+   <         const model = followsLocalModel ? config.localLlmModel : listedModel;
+   ---
+   >         const model = listedModel;
+ℹ tests 41 ℹ pass 40 ℹ fail 1 exit 1 
+✖ a streamed call whose role's own target fails after a switch took effect streams the local primary from the model now in effect, not the one the switch replaced
+guards: lmstudio=0 net=0
+== done

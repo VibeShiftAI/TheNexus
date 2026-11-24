@@ -1,8 +1,8 @@
-# Praxis: npm run check:encoding over the files changed 1fcf4b59..6f9fb79b (16 files), 2026-11-24 13:05 EST
+# Praxis: npm run check:encoding over the files changed 1fcf4b59..cad6afb2 (17 files), 2026-11-24 14:52 EST
 # working tree status: 0 changed files
 
 > praxis@0.1.0 check:encoding
-> tsx scripts/check-text-encoding.ts src/config.ts src/index.ts src/llm/lmstudio-autoload.ts src/llm/local-lane-policy.ts src/llm/local-model-capabilities.ts src/llm/local-model-selection.ts src/llm/local-model-state.ts src/llm/manager.ts src/llm/providers.ts src/local-llm/runtime.ts src/local-llm/worker.ts src/nexus/client.ts src/routes/ops.ts tests/local_model_primary.test.ts tests/local_model_selection.test.ts tests/webhook_routes_inventory.test.ts
+> tsx scripts/check-text-encoding.ts src/config.ts src/index.ts src/llm/lmstudio-autoload.ts src/llm/local-lane-policy.ts src/llm/local-model-capabilities.ts src/llm/local-model-selection.ts src/llm/local-model-state.ts src/llm/manager.ts src/llm/providers.ts src/local-llm/runtime.ts src/local-llm/worker.ts src/nexus/client.ts src/routes/ops.ts tests/local_model_primary.test.ts tests/local_model_selection.test.ts tests/quantized_tool_gate.test.ts tests/webhook_routes_inventory.test.ts
 
-Encoding scan passed: 16 text files checked; 0 binary files skipped.
+Encoding scan passed: 17 text files checked; 0 binary files skipped.
 exit 0

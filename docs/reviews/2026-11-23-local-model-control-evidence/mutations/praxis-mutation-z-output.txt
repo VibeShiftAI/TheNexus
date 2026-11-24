@@ -1,0 +1,13 @@
+copy: HEAD cad6afb2 plus 0 changed files
+== mutation Z (src/llm/manager.ts): applied
+   487c487
+   <           enforceQuantizedToolGate({
+   ---
+   >           void ({
+== mutation-z in /Volumes/Projects/.scratch-fa032fc0/praxis-mut-z: quantized_tool_gate
+ℹ tests 11 ℹ pass 10 ℹ fail 1 ℹ cancelled 0 exit 1 
+✖ chat skips a breached local primary and succeeds through the online fallback
+guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== mutation-z-restored in /Volumes/Projects/.scratch-fa032fc0/praxis-mut-z: quantized_tool_gate
+ℹ tests 11 ℹ pass 11 ℹ fail 0 ℹ cancelled 0 exit 0 
+guards: lmstudio=0 net=0 live-port=0 cli-shims=0

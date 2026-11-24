@@ -1,0 +1,1021 @@
+# extract of praxis-merged5-full-run.txt (44232 lines): lines 1-5, then lines 43219-end
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/agent_bridge_policy.test.ts tests/agent_bridge_route.test.ts tests/agent_bridge_token_io.test.ts tests/agent_dispatch.test.ts tests/agent_intermediate_abort.test.ts tests/agent_request_options.test.ts tests/agent_run_credential.test.ts tests/agent_tool_results_whole.test.ts tests/alert_investigation.test.ts tests/alert_ledger.test.ts tests/answer_hold_alert_e2e.test.ts tests/antigravity_agy_error_quota.test.ts tests/antigravity_cli.test.ts tests/antigravity_completion_recovery.test.ts tests/antigravity_stop_and_health.test.ts tests/antigravity_usage_limit_circuit.test.ts tests/approval_attempt_invariant.test.ts tests/approval_dispatch_stages.test.ts tests/approved_backlog.test.ts tests/arbitrary_limits_runtime.test.ts tests/archive_survivor.test.ts tests/artifact_parity_canary.test.ts tests/ask_robert_inbox.test.ts tests/attempt_ownership.test.ts tests/attempt_requeue.test.ts tests/attention_economics.test.ts tests/auth_failure.test.ts tests/auth_recovery.test.ts tests/automatic_start.test.ts tests/automatic_start_auth.test.ts tests/automatic_start_corruption.test.ts tests/automatic_start_launch.test.ts tests/automation_questions.test.ts tests/autonomous_qa_skill.test.ts tests/autonomy_api_routes.test.ts tests/autonomy_pause.test.ts tests/autonomy_usage.test.ts tests/background_auto_recovery.test.ts tests/background_obligation_abandonment.test.ts tests/background_obligations.test.ts tests/backup_neo4j_export_failure_naming.test.ts tests/backups.test.ts tests/binding_constraints.test.ts tests/binding_reviewer_disclosure.test.ts tests/blocking_decision_lifecycle.test.ts tests/board_groundskeeper.test.ts tests/board_summary.test.ts tests/boot_guard_deliberate_restart.test.ts tests/boot_smoke.test.ts tests/calendar_dispatch.test.ts tests/calendar_dispatch_recovery.test.ts tests/calendar_tools.test.ts tests/canonical_task_mutations.test.ts tests/captains_log.test.ts tests/chat_cli_context.test.ts tests/chat_cli_failure_receipts.test.ts tests/chat_cli_session.test.ts tests/chat_cli_usage_limit_circuit.test.ts tests/chat_credential_isolation.test.ts tests/chat_dispatch.test.ts tests/chat_follow_up_bridge.test.ts tests/chat_follow_up_checks.test.ts tests/chat_follow_up_runtime.test.ts tests/chat_follow_up_turn.test.ts tests/chat_follow_ups.test.ts tests/chat_idempotency.test.ts tests/chat_identity_context.test.ts tests/chat_morning_trigger.test.ts tests/chat_outcome_voice_integration.test.ts tests/chat_pause.test.ts tests/chat_revision_dispatch.test.ts tests/chat_route_reliability.test.ts tests/chat_schedule_intent.test.ts tests/chat_schedule_resolution.test.ts tests/chat_turn_reliability.test.ts tests/chat_turn_steps.test.ts tests/chat_turn_steps_legacy.test.ts tests/chat_usage_unknown.test.ts tests/chatstream_role_guard.test.ts tests/checkpoint_end_to_end.test.ts tests/checkpoint_planning.test.ts tests/checkpoint_prune.test.ts tests/checkpoint_stages.test.ts tests/checkpoint_task_evidence.test.ts tests/classifier_inputs_whole.test.ts tests/claude_launch_effort_record.test.ts tests/claude_stream.test.ts tests/cli_concurrency.test.ts tests/cli_concurrency_local_lane.test.ts tests/cli_council.test.ts tests/cli_dispatch_gate_persistence.test.ts tests/cli_dispatch_gate_wakeup.test.ts tests/cli_dispatch_gate_warm_first.test.ts tests/cli_gate_queue_counts.test.ts tests/cli_gate_watchdog.test.ts tests/cli_lane.test.ts tests/cli_queue_reconcile_command.test.ts tests/cli_queue_startup.test.ts tests/cli_run_footprint.test.ts tests/cli_seat_agy_startup.test.ts tests/cli_seat_evidence_access.test.ts tests/cli_seat_lean_args.test.ts tests/cli_seat_unlimited.test.ts tests/cli_seat_usage.test.ts tests/cli_upgrade.test.ts tests/cli_upgrade_false_positive.test.ts tests/client_approved_leads.test.ts tests/client_capability_escalation.test.ts tests/client_follow_ups.test.ts tests/client_intake.test.ts tests/client_messaging.test.ts tests/client_pause.test.ts tests/client_portal_consumer.test.ts tests/client_request_dedup.test.ts tests/client_review_requests.test.ts tests/client_route_policy.test.ts tests/client_wait_concurrency.test.ts tests/co_mention_linker.test.ts tests/code_freshness_recovery.test.ts tests/codebase_digest.test.ts tests/codex_executor.test.ts tests/codex_suspend_context.test.ts tests/codex_write_receipt.test.ts tests/community_assign_on_write.test.ts tests/community_assign_plan.test.ts tests/community_title_drain.test.ts tests/completion_boot_recovery.test.ts tests/completion_dispatch_history.test.ts tests/completion_recovery.test.ts tests/completion_recovery_service.test.ts tests/consolidator_empty_content_fallback.test.ts tests/consolidator_room.test.ts tests/consultation_followup.test.ts tests/consultation_inbound_source.test.ts tests/consultation_memory.test.ts tests/context_experiment.test.ts tests/context_manifest.test.ts tests/context_mode.test.ts tests/context_pack.test.ts tests/context_pruning_ceiling.test.ts tests/continuation_reconciliation.test.ts tests/contract_authority.test.ts tests/contract_dispatch_gate.test.ts tests/conversation_evolve_batch_workflow.test.ts tests/conversation_evolve_sweep.test.ts tests/conversation_history.test.ts tests/conversation_notifications.test.ts tests/cortex_executor_contract.test.ts tests/cortex_long_answers.test.ts tests/cortex_tool_recovery.test.ts tests/council_arbiter.test.ts tests/council_auth_recovery.test.ts tests/council_bench_config.test.ts tests/council_best_free_seat.test.ts tests/council_collaboration.test.ts tests/council_collaboration_tools.test.ts tests/council_config.test.ts tests/council_evidence_access.test.ts tests/council_evidence_packet.test.ts tests/council_free_lane_presets.test.ts tests/council_members.test.ts tests/council_reply_budget_no_invented_cap.test.ts tests/council_reputation.test.ts tests/council_seat_quota_pools.test.ts tests/council_stream_events.test.ts tests/credit_exhaustion_preflight.test.ts tests/credit_failover.test.ts tests/criteria_attestation.test.ts tests/criteria_gate.test.ts tests/critic_deadline_routes.test.ts tests/cron_registry_schedule.test.ts tests/cross_repo.test.ts tests/dashboard_record_header.test.ts tests/day_availability.test.ts tests/day_schedule_approval.test.ts tests/day_schedule_midnight_spillover.test.ts tests/day_schedule_routing.test.ts tests/day_scheduler_eod_quiet.test.ts tests/day_scheduler_exports.test.ts tests/decisions_first_writing.test.ts tests/deep_research_wiring.test.ts tests/delegation_monotonicity.test.ts tests/demo_mode.test.ts tests/design_pipeline.test.ts tests/detached_run_reconcile.test.ts tests/detached_runs.test.ts tests/diff_attribution_l14.test.ts tests/dispatch_admission_review.test.ts tests/dispatch_context_focus.test.ts tests/dispatch_decision_trace.test.ts tests/dispatch_history.test.ts tests/dispatch_launch_boundary.test.ts tests/dispatch_prevention.test.ts tests/dispatch_prompt_no_duplicate_brief.test.ts tests/dispatch_provenance.test.ts tests/dispatch_reply.test.ts tests/dispatch_reservation.test.ts tests/dispatch_routing_guard.test.ts tests/dispatch_routing_preparation.test.ts tests/dispatch_task_status.test.ts tests/dispatch_trace.test.ts tests/display_chat_commands.test.ts tests/display_chat_route.test.ts tests/display_intent.test.ts tests/display_nexus_contract.test.ts tests/display_session_isolation.test.ts tests/docs_sync.test.ts tests/document_decisions.test.ts tests/document_delivery.test.ts tests/document_delivery_chat_failure.test.ts tests/document_delivery_contract.test.ts tests/document_delivery_dual_markers.test.ts tests/document_delivery_title_declaration.test.ts tests/document_lifecycle_error_body.test.ts tests/document_marker_briefs.test.ts tests/document_media.test.ts tests/document_replacement_declaration.test.ts tests/document_replacement_retirement.test.ts tests/document_review_approved_note.test.ts tests/document_review_candidates.test.ts tests/document_review_notifications.test.ts tests/document_review_routes.test.ts tests/document_review_tools.test.ts tests/document_revision_brief.test.ts tests/document_revision_chat.test.ts tests/document_revision_lifecycle.test.ts tests/dpp_reranker.test.ts tests/duplicate_merge.test.ts tests/edge_timestamp_backfill.test.ts tests/email_intake_attribution.test.ts tests/email_intake_council.test.ts tests/email_intake_runtime.test.ts tests/email_reply_evidence_binding.test.ts tests/email_reply_preparation.test.ts tests/end_state_verify.test.ts tests/endpoint_planning.test.ts tests/entity_source_backfill.test.ts tests/entity_type_backfill.test.ts tests/entity_type_llm_wave.test.ts tests/entity_type_on_write.test.ts tests/eod_commit_branches.test.ts tests/eod_commit_no_size_limit.test.ts tests/eod_commit_run_worktrees.test.ts tests/eod_quiet_arming.test.ts tests/eod_review_wakeup.test.ts tests/episodic_metabolism.test.ts tests/epistemic-defense.test.ts tests/estimate_calibration.test.ts tests/eval_arbitrary_limits.test.ts tests/eval_availability.test.ts tests/eval_baseline.test.ts tests/eval_e1_dispatch.test.ts tests/eval_e2_control_set.test.ts tests/eval_e2_evidence.test.ts tests/eval_e2_qa_fidelity.test.ts tests/eval_e2_reference_labels.test.ts tests/eval_e5_gate.test.ts tests/eval_failure_stages.test.ts tests/eval_harness_core.test.ts tests/eval_judge_comparability.test.ts tests/eval_model_policy.test.ts tests/eval_regression_watch.test.ts tests/eval_stratified_selection.test.ts tests/evidence_bundle.test.ts tests/evidence_chain.test.ts tests/evidence_extraction.test.ts tests/evidence_extraction_cli_boundary.test.ts tests/evidence_extraction_concurrency.test.ts tests/evidence_extraction_resume.test.ts tests/evidence_json_repair.test.ts tests/evidence_ledger.test.ts tests/evidence_ledger_review_binding.test.ts tests/evidence_ledger_roots.test.ts tests/evidence_ledger_suffix.test.ts tests/evidence_prompt_deduplication.test.ts tests/evidence_recovery_cache.test.ts tests/evidence_source_dedup.test.ts tests/execution_log.test.ts tests/execution_scorecard.test.ts tests/execution_state_projection.test.ts tests/executor_callback_delivery.test.ts tests/executor_discovery.test.ts tests/executor_forbidden_env.test.ts tests/executor_health.test.ts tests/executor_memory_harvest.test.ts tests/executor_persistence_guard.test.ts tests/executor_quality_gates.test.ts tests/executor_retry_stickiness.test.ts tests/executor_rotation_persistence.test.ts tests/executor_routing_pins.test.ts tests/executor_routing_preparation.test.ts tests/executor_run_redaction.test.ts tests/executor_seam.test.ts tests/executor_state_sandbox.test.ts tests/executor_token_recovery.test.ts tests/executor_token_usage.test.ts tests/executor_trace_redaction.test.ts tests/executor_usage_meters.test.ts tests/fallback_policy.test.ts tests/fault_domain.test.ts tests/feedback.test.ts tests/fleet_degraded_mode.test.ts tests/fleet_preflight.test.ts tests/follow_up.test.ts tests/follow_up_attribution.test.ts tests/follow_up_restart.test.ts tests/followup_activity_route.test.ts tests/followup_approval_route.test.ts tests/followup_dispositions.test.ts tests/followup_evidence.test.ts tests/followup_evidence_review.test.ts tests/followup_idle.test.ts tests/followup_slate.test.ts tests/followup_slate_card.test.ts tests/free_model_ranking.test.ts tests/frontier_policy.test.ts tests/git_get_diff_no_size_gate.test.ts tests/github_discovery_digest.test.ts tests/gmail_history_recovery.test.ts tests/gmail_reply_preparation.test.ts tests/graceful_restart.test.ts tests/graph_cull.test.ts tests/graph_densify_plan.test.ts tests/graph_health_breach_escalation.test.ts tests/graph_health_cull_check.test.ts tests/graph_health_metabolism_metrics.test.ts tests/graph_health_read_availability.test.ts tests/graph_health_regression_guard.test.ts tests/graph_health_state_isolation.test.ts tests/groundrules_clause.test.ts tests/groundrules_contracts.test.ts tests/groundrules_contracts_v2.test.ts tests/groundrules_decode.test.ts tests/groundrules_jev.test.ts tests/groundrules_reading.test.ts tests/groundrules_runner.test.ts tests/harness_fault_retry.test.ts tests/harness_watchdog.test.ts tests/health_investigation_tools.test.ts tests/hitl_answer_attachments.test.ts tests/hitl_deeplink_contract.test.ts tests/hitl_dispatch_refusal.test.ts tests/hitl_resolve_body_validation.test.ts tests/home_hub_command_handler.test.ts tests/home_hub_intent_router.test.ts tests/hosted_credit.test.ts tests/http_body_deadline.test.ts tests/human_brief.test.ts tests/identity_operator_address.test.ts tests/identity_resolution.test.ts tests/identity_seed.test.ts tests/immutable_context_consolidator.test.ts tests/improvement_governance.test.ts tests/improvement_ledger_declines.test.ts tests/improvement_ledger_incidents.test.ts tests/improvement_migration_dispatch.test.ts tests/improvement_migration_evidence.test.ts tests/improvement_report.test.ts tests/improvement_verification.test.ts tests/inbound_email_poll.test.ts tests/inbox_lifecycle_repair.test.ts tests/incident_taxonomy.test.ts tests/ingest_empty_content_hardening.test.ts tests/ingestion_arbitrary_limits.test.ts tests/ingestion_brave.test.ts tests/ingestion_cli_routing.test.ts tests/ingestion_collection.test.ts tests/ingestion_dedup_item.test.ts tests/ingestion_evidence_preparation.test.ts tests/ingestion_finalizer.test.ts tests/ingestion_finalizer_isolation.test.ts tests/ingestion_item_graph.test.ts tests/ingestion_item_workflow.test.ts tests/ingestion_retrieval_details.test.ts tests/ingestion_run_store.test.ts tests/ingestion_salience_triage.test.ts tests/ingestion_source_failures.test.ts tests/ingestion_source_gate.test.ts tests/ingestion_source_improvements.test.ts tests/ingestion_sources.test.ts tests/ingestion_summary_health.test.ts tests/ingestion_sweep_jobs.test.ts tests/ingestion_web_search_topic_gate.test.ts tests/intake_backlog_handoff.test.ts tests/intake_backlog_morning.test.ts tests/intake_checkpoint_board.test.ts tests/intake_council.test.ts tests/intake_council_tools.test.ts tests/intake_need_reconciliation.test.ts tests/intake_project_background.test.ts tests/intake_project_plan.test.ts tests/intake_questionnaire_relay.test.ts tests/intake_requested_research.test.ts tests/intake_research_policy.test.ts tests/intake_stages.test.ts tests/intake_status_report.test.ts tests/knowledge_arbitrary_limits.test.ts tests/knowledge_council.test.ts tests/knowledge_council_admission.test.ts tests/knowledge_council_delivery.test.ts tests/knowledge_council_evidence_override.test.ts tests/knowledge_council_filing.test.ts tests/knowledge_council_publish.test.ts tests/knowledge_flow_fixes.test.ts tests/knowledge_lifecycle.test.ts tests/knowledge_needs.test.ts tests/knowledge_normalize.test.ts tests/knowledge_research.test.ts tests/knowledge_retrieval_eval.test.ts tests/knowledge_retrieval_preparation.test.ts tests/knowledge_retrieval_replay.test.ts tests/knowledge_routing.test.ts tests/knowledge_routing_calibration.test.ts tests/knowledge_source_access.test.ts tests/knowledge_source_bridge.test.ts tests/knowledge_source_replay.test.ts tests/knowledge_source_session.test.ts tests/lane_credit.test.ts tests/lars_analysis_workflow.test.ts tests/lars_cli.test.ts tests/lars_portfolio.test.ts tests/lars_weekly_digest.test.ts tests/launchd_plist.test.ts tests/ledger_refresh.test.ts tests/linked_improvement_task.test.ts tests/llm_cascade_request_shape.test.ts tests/llm_cli_lane_complete.test.ts tests/llm_context_window.test.ts tests/llm_gateway_cortex_roles.test.ts tests/llm_gateway_output_budget.test.ts tests/llm_output_room.test.ts tests/lmstudio_autoload.test.ts tests/local_inference_safety.test.ts tests/local_lane_manager_reroute.test.ts tests/local_lane_policy.test.ts tests/local_llm_calendar.test.ts tests/local_llm_pause_persistence.test.ts tests/local_llm_queue.test.ts tests/local_llm_recurring.test.ts tests/local_llm_scheduler.test.ts tests/local_llm_spillover.test.ts tests/local_llm_tools.test.ts tests/local_llm_worker.test.ts tests/local_llm_youtube_handler.test.ts tests/local_model_capabilities.test.ts tests/local_model_demand_callers.test.ts tests/local_model_primary.test.ts tests/local_model_selection.test.ts tests/logger_dedupe.test.ts tests/long_task_activity.test.ts tests/long_task_executors.test.ts tests/long_task_payload.test.ts tests/long_task_scheduling.test.ts tests/machine_resource_governor.test.ts tests/mail_drafts_review.test.ts tests/mail_network.test.ts tests/mailbox.test.ts tests/maintenance_deployment.test.ts tests/maintenance_dispatch_gate.test.ts tests/maintenance_schedule.test.ts tests/maintenance_schedule_append.test.ts tests/manual_callback_replay.test.ts tests/mcp_connector_gating.test.ts tests/mcp_loader_precedence.test.ts tests/member_answer_directory_scope.test.ts tests/member_answer_experiment.test.ts tests/member_answer_tools.test.ts tests/member_answers.test.ts tests/member_briefing_experiment.test.ts tests/member_briefing_tools.test.ts tests/member_briefings.test.ts tests/member_capability_gap_tools.test.ts tests/member_conversation_eval.test.ts tests/member_memory_tools.test.ts tests/member_portal.test.ts tests/member_preparation.test.ts tests/member_preparation_approval.test.ts tests/member_preparation_client.test.ts tests/member_preparation_delivery.test.ts tests/member_preparation_document_e2e.test.ts tests/member_preparation_draft_tools.test.ts tests/member_preparation_drafts.test.ts tests/member_preparation_integration.test.ts tests/member_preparation_reply_routing.test.ts tests/member_profile_pilot.test.ts tests/member_profile_updates.test.ts tests/memory_crystallization.test.ts tests/memory_transition_verifier.test.ts tests/mobile_contract_sync.test.ts tests/model_inputs_whole.test.ts tests/model_prices.test.ts tests/model_registry.test.ts tests/model_rejected.test.ts tests/model_status_board.test.ts tests/morning_alert_action_guidance.test.ts tests/morning_archive_audit.test.ts tests/morning_candidate_pool.test.ts tests/morning_cli_oneshot.test.ts tests/morning_condition_red.test.ts tests/morning_consensus.test.ts tests/morning_consensus_audit.test.ts tests/morning_council_ballots.test.ts tests/morning_council_coordinator.test.ts tests/morning_daily_research.test.ts tests/morning_decision_snapshot.test.ts tests/morning_empty_content_guard.test.ts tests/morning_executor_readiness.test.ts tests/morning_finalize.test.ts tests/morning_health_investigations.test.ts tests/morning_health_plan.test.ts tests/morning_health_recovery.test.ts tests/morning_inputs_whole.test.ts tests/morning_local_admission.test.ts tests/morning_orchestrator.test.ts tests/morning_preparation.test.ts tests/morning_preparation_readiness.test.ts tests/morning_recovery_council.test.ts tests/morning_research_refresh.test.ts tests/morning_restart_recovery.test.ts tests/morning_run_record.test.ts tests/morning_staged_presentation.test.ts tests/need_equivalence.test.ts tests/need_hunting.test.ts tests/newsletter_audio_kind.test.ts tests/newsletter_hot_repos.test.ts tests/newsletter_ingestion.test.ts tests/nexus_admission_contention.test.ts tests/nexus_board_lease_contention.test.ts tests/nexus_client_funnel.test.ts tests/nexus_event_publisher.test.ts tests/nexus_gotcha_checks.test.ts tests/nexus_runtime_traffic.test.ts tests/nexus_schema_validation.test.ts tests/nexus_task_context.test.ts tests/nexus_tasks_update_fields.test.ts tests/nexus_write_failures.test.ts tests/nightly_synthesis_workflow.test.ts tests/norm_key_on_write.test.ts tests/notification_recovery_copy.test.ts tests/openai_chat_suspension.test.ts tests/openai_gateway.test.ts tests/openrouter_executor.test.ts tests/openrouter_free_lane.test.ts tests/openrouter_roster.test.ts tests/operational_brief.test.ts tests/operator_copy.test.ts tests/operator_project_scope.test.ts tests/operator_provenance.test.ts tests/operator_restart_bridge_route.test.ts tests/operator_restart_chat_turn.test.ts tests/operator_turn_grant.test.ts tests/ops_bridge_delivery.test.ts tests/ops_event_action_guidance.test.ts tests/ops_event_durable_delivery.test.ts tests/ops_events.test.ts tests/ops_events_routing.test.ts tests/ops_events_routing_precedence.test.ts tests/orchestration_prompt_objectivity.test.ts tests/orchestrator_consolidator_integration.test.ts tests/orphan_attach_llm.test.ts tests/orphan_triage_knn.test.ts tests/orphan_triage_plan.test.ts tests/outbound_email_hold.test.ts tests/outcomes_predictions.test.ts tests/pact_record.test.ts tests/parked_findings_resume.test.ts tests/pasted_transcript.test.ts tests/payload_surface_inventory.test.ts tests/per_pass_window_fit.test.ts tests/podcast_ingestion.test.ts tests/podcast_transcription.test.ts tests/pollination_debt.test.ts tests/post_council_broker.test.ts tests/praxis_events_digest.test.ts tests/predictive_action_gate.test.ts tests/presence_background.test.ts tests/presence_run_projection.test.ts tests/problem_council.test.ts tests/problem_intake.test.ts tests/project_intake_tools.test.ts tests/project_knowledge_tool.test.ts tests/project_need_resolution.test.ts tests/project_reflection.test.ts tests/project_steward.test.ts tests/project_steward_checkpoints.test.ts tests/project_tagger_parse.test.ts tests/prolog_mcp_integration.test.ts tests/prompt_composition.test.ts tests/prompt_experiment.test.ts tests/prompt_quality_adjudication.test.ts tests/prompt_quality_calibration.test.ts tests/prompt_quality_resolution.test.ts tests/prompt_quality_review.test.ts tests/prompt_security_activation.test.ts tests/prompt_surface_audit.test.ts tests/prompt_surface_runner.test.ts tests/protocol_retro_eval_gate.test.ts tests/protocol_retrospective.test.ts tests/protocol_telemetry.test.ts tests/qa_adversarial.test.ts tests/qa_adversarial_trial.test.ts tests/qa_baseline_brief.test.ts tests/qa_baseline_probe.test.ts tests/qa_blocked_escalation.test.ts tests/qa_callback_phases.test.ts tests/qa_completion_announcement.test.ts tests/qa_contract_artifacts.test.ts tests/qa_contract_gate.test.ts tests/qa_contract_gate_notice.test.ts tests/qa_contract_hold_route.test.ts tests/qa_criteria_verdicts.test.ts tests/qa_criterion_acceptance.test.ts tests/qa_critic_evidence.test.ts tests/qa_critic_resolution.test.ts tests/qa_deferred.test.ts tests/qa_diff_artifacts.test.ts tests/qa_dispatch.test.ts tests/qa_document_replacements.test.ts tests/qa_empty_diff.test.ts tests/qa_evidence_recovery.test.ts tests/qa_executor_readiness.test.ts tests/qa_failure_layer.test.ts tests/qa_improvement_request.test.ts tests/qa_learning_loop.test.ts tests/qa_lesson_reconciliation.test.ts tests/qa_lessons.test.ts tests/qa_lessons_pipeline_contract.test.ts tests/qa_long_tasks.test.ts tests/qa_pass_commit.test.ts tests/qa_pass_commit_pathspec.test.ts tests/qa_prompt_tail.test.ts tests/qa_proof_baseline_event_loop.test.ts tests/qa_release_receipts.test.ts tests/qa_repeat_policy.test.ts tests/qa_requery.test.ts tests/qa_review_depth.test.ts tests/qa_reviewer_contract.test.ts tests/qa_reviewer_contract_e2e.test.ts tests/qa_round_ledger.test.ts tests/qa_run_evidence.test.ts tests/qa_sibling_disclosure.test.ts tests/qa_spot_audit.test.ts tests/qa_state_persistence.test.ts tests/qa_task_attribution.test.ts tests/qa_task_type.test.ts tests/qa_trajectory.test.ts tests/qa_verdict_is_the_reviewers.test.ts tests/quantized_tool_gate.test.ts tests/quota_session_continuity.test.ts tests/quota_yellow_alert.test.ts tests/rag_parallel_retrieval.test.ts tests/receipt_runner.test.ts tests/recent_nodes_window.test.ts tests/reconcile_contract_holds.test.ts tests/red_alert.test.ts tests/red_alert_ack_route.test.ts tests/red_alert_human_brief.test.ts tests/refinement_workflow.test.ts tests/relay_project_tokens.test.ts tests/release_closure.test.ts tests/replay_cache.test.ts tests/reply_preparation_envelope_binding.test.ts tests/repo_state_evidence.test.ts tests/report-intake-section.test.ts tests/report_file_route.test.ts tests/report_intake_questions.test.ts tests/report_intake_slot_failure.test.ts tests/report_upload_workflow.test.ts tests/research_dispatch.test.ts tests/research_dispatch_transcript.test.ts tests/research_source_routing.test.ts tests/research_web_retrieval.test.ts tests/research_worker_outcomes.test.ts tests/reserved_actions.test.ts tests/reserved_content_review.test.ts tests/restore_project_stats.test.ts tests/resume_effort_executor.test.ts tests/resume_model_policy.test.ts tests/retrieval_status_labels.test.ts tests/review_evidence_redaction.test.ts tests/routing_escalation.test.ts tests/routing_gate.test.ts tests/rubric_induction.test.ts tests/run_budget_concurrency.test.ts tests/run_consumption_budget.test.ts tests/run_landing_lifecycle.test.ts tests/run_merge.test.ts tests/run_model_dispatch_state.test.ts tests/run_model_truth.test.ts tests/run_multi_repo.test.ts tests/run_record_redaction.test.ts tests/run_registry.test.ts tests/run_worktree.test.ts tests/run_worktree_dispatch.test.ts tests/run_worktree_qa_diff.test.ts tests/run_worktree_repoint.test.ts tests/run_worktree_report.test.ts tests/running_code_freshness.test.ts tests/schedule_approval_candidates.test.ts tests/schedule_approval_reject_routes.test.ts tests/schedule_completion_progress.test.ts tests/schedule_day_validation.test.ts tests/schedule_snapshot.test.ts tests/scope_change_gate.test.ts tests/self_evolving_sweep.test.ts tests/self_knowledge_recall_anchor.test.ts tests/self_knowledge_sync.test.ts tests/selfdoubt_guardrails.test.ts tests/service_restore.test.ts tests/session_effort_recovery.test.ts tests/session_registry.test.ts tests/session_resume_recovery.test.ts tests/session_synthesis_worker.test.ts tests/sibling_attribution.test.ts tests/silent_night_deadman.test.ts tests/skill_amendment_author.test.ts tests/skill_amendment_inputs.test.ts tests/skill_amendment_pairs.test.ts tests/skill_amendment_review.test.ts tests/skill_attribution.test.ts tests/skill_candidate_screen_refusal.test.ts tests/skill_curator.test.ts tests/skill_curator_v2.test.ts tests/skill_evidence_cleanup.test.ts tests/skill_gardener.test.ts tests/skill_harvest_screen.test.ts tests/skill_inductive_enrichment.test.ts tests/skill_knowledge.test.ts tests/slate_reconciliation.test.ts tests/slot_numbering.test.ts tests/source_per_source_cap.test.ts tests/source_provenance.test.ts tests/source_registry.test.ts tests/source_revival_identity.test.ts tests/spillover.test.ts tests/spoken_briefing_delivery.test.ts tests/spoken_briefing_transcript.test.ts tests/spoken_prose.test.ts tests/stakeholder-living-report.test.ts tests/stakeholder-report-checkpoint.test.ts tests/stakeholder-report-design-system.test.ts tests/stakeholder-report-feedback.test.ts tests/stakeholder-report-phone-email.test.ts tests/stakeholder-report-policy.test.ts tests/stakeholder-report-publication.test.ts tests/stakeholder-report-questions-first.test.ts tests/stakeholder-report-render-snapshots.test.ts tests/stakeholder-report-template-themes.test.ts tests/stakeholder-report-test-copy.test.ts tests/stakeholder-weekly-progress.test.ts tests/stakeholder_capability_gaps.test.ts tests/stakeholders.test.ts tests/stale_run_answer_canary.test.ts tests/stale_run_answer_reconciliation.test.ts tests/stale_task_exit.test.ts tests/stalled_cli_dispatch.test.ts tests/stalled_qa_review.test.ts tests/standing_consent_review.test.ts tests/standing_fact_sweep.test.ts tests/state_doc.test.ts tests/state_validator_json_contract.test.ts tests/state_validator_small_deliverable.test.ts tests/status_audio.test.ts tests/status_report.test.ts tests/stdio_log_rotation.test.ts tests/stream_tool_calls.test.ts tests/structured_state.test.ts tests/structured_usage_limit.test.ts tests/stuck_run_judgment.test.ts tests/subtask_gate.test.ts tests/supervisor_escalation.test.ts tests/supervisor_failure_detail.test.ts tests/supervisor_lifecycle.test.ts tests/supervisor_options.test.ts tests/supervisor_processes.test.ts tests/supervisor_respawn_throttle.test.ts tests/swap_pressure.test.ts tests/swarm_local_provider.test.ts tests/system_exchange.test.ts tests/system_map.test.ts tests/system_map_dispatch_yield.test.ts tests/system_map_generate.test.ts tests/system_map_rebuild.test.ts tests/system_map_rebuild_e2e.test.ts tests/task_answer_contention_retry.test.ts tests/task_commits_visible_to_qa.test.ts tests/task_context_artifacts.test.ts tests/task_failure_notification.test.ts tests/task_knowledge.test.ts tests/task_knowledge_backfill.test.ts tests/task_knowledge_creation.test.ts tests/task_knowledge_delivery.test.ts tests/task_knowledge_producers.test.ts tests/task_post_mortem.test.ts tests/task_question_answer_delivery.test.ts tests/task_saved_model_dispatch.test.ts tests/task_selection.test.ts tests/task_set_skip.test.ts tests/teacher_convergence.test.ts tests/temporal_traversal.test.ts tests/term_rotation.test.ts tests/terminal_hitl_route.test.ts tests/terminal_operator_note.test.ts tests/terminal_qa_advance_race.test.ts tests/terminal_qa_finalization.test.ts tests/terminal_reconciliation.test.ts tests/terminal_reconciliation_board_lease.test.ts tests/test_runner_stdout_frames.test.ts tests/text_encoding_guard.test.ts tests/thinking_levels.test.ts tests/token_attribution.test.ts tests/token_report.test.ts tests/tool_call_arguments.test.ts tests/tool_execution_logger.test.ts tests/tool_router_self_management.test.ts tests/tool_router_us_trends.test.ts tests/tool_schema_honesty.test.ts tests/tools_registry_guard.test.ts tests/tools_registry_shape.test.ts tests/trace_extractor.test.ts tests/trace_extractor_claude_results.test.ts tests/trading_retired_startup.test.ts tests/tts_budget.test.ts tests/tts_health.test.ts tests/tts_provider.test.ts tests/typed_skill_graph.test.ts tests/upgrade_preflight.test.ts tests/upgrade_slate.test.ts tests/upgrade_slate_standing_decisions.test.ts tests/usage_alerts.test.ts tests/usage_cost_coverage.test.ts tests/usage_limit_availability_wait.test.ts tests/usage_limit_callback_endpoint.test.ts tests/usage_limit_circuit_provider_independent.test.ts tests/usage_limit_clear.test.ts tests/usage_limit_dependency_retry.test.ts tests/usage_limit_resume_persistence.test.ts tests/usage_limit_schedule_transfer.test.ts tests/usage_limit_suspension_boundaries.test.ts tests/usage_log_accounting.test.ts tests/usage_monitor.test.ts tests/usage_monitor_persistence.test.ts tests/usage_monitor_router.test.ts tests/usage_quota_pools.test.ts tests/usage_recorded_readiness.test.ts tests/usage_reset.test.ts tests/vault_source_delivery.test.ts tests/vault_supersession.test.ts tests/vault_write.test.ts tests/verification_anchor_schema.test.ts tests/verification_proof.test.ts tests/verification_proof_capture.test.ts tests/verification_proof_integration.test.ts tests/verification_proof_recovery.test.ts tests/verification_proof_snapshot.test.ts tests/verification_protocol.test.ts tests/verified_background_recovery.test.ts tests/visual_review_package_controls.test.ts tests/voice_conversation.test.ts tests/voice_producers.test.ts tests/voice_prose_deadline.test.ts tests/voice_prose_routes.test.ts tests/wakeup.test.ts tests/watchdog_diagnostics.test.ts tests/webhook_body_limit.test.ts tests/webhook_callback_route.test.ts tests/webhook_routes_inventory.test.ts tests/work_admission.test.ts tests/work_admission_review.test.ts tests/work_admission_warnings.test.ts tests/worker_observability.test.ts tests/workspace_addition_sanction.test.ts tests/workspace_binding.test.ts tests/workspace_change.test.ts tests/workspace_change_warning.test.ts tests/workspace_inference.test.ts tests/workspace_preflight.test.ts tests/workspace_tracking.test.ts tests/workspace_transition_integration.test.ts tests/worktree_baseline.test.ts tests/worktree_baseline_quota_retention.test.ts tests/write_fence.test.ts tests/write_fence_amendments.test.ts tests/write_fence_dispatch.test.ts tests/write_lease.test.ts tests/write_receipt_hash_transport.test.ts tests/write_receipts_shell.test.ts tests/yellow_alert.test.ts tests/youtube_bot_check.test.ts tests/youtube_control_api.test.ts tests/youtube_discovery.test.ts tests/youtube_feed_recovery.test.ts tests/youtube_intake_queue.test.ts tests/youtube_rate_limit_repair.test.ts tests/youtube_stage_recovery.test.ts
+
+Running 895 of 901 suite(s): tests/agent_bridge_policy.test.ts tests/agent_bridge_route.test.ts tests/agent_bridge_token_io.test.ts tests/agent_dispatch.test.ts tests/agent_intermediate_abort.test.ts tests/agent_request_options.test.ts tests/agent_run_credential.test.ts tests/agent_tool_results_whole.test.ts tests/alert_investigation.test.ts tests/alert_ledger.test.ts tests/answer_hold_alert_e2e.test.ts tests/antigravity_agy_error_quota.test.ts tests/antigravity_cli.test.ts tests/antigravity_completion_recovery.test.ts tests/antigravity_stop_and_health.test.ts tests/antigravity_usage_limit_circuit.test.ts tests/approval_attempt_invariant.test.ts tests/approval_dispatch_stages.test.ts tests/approved_backlog.test.ts tests/arbitrary_limits_runtime.test.ts tests/archive_survivor.test.ts tests/artifact_parity_canary.test.ts tests/ask_robert_inbox.test.ts tests/attempt_ownership.test.ts tests/attempt_requeue.test.ts tests/attention_economics.test.ts tests/auth_failure.test.ts tests/auth_recovery.test.ts tests/automatic_start.test.ts tests/automatic_start_auth.test.ts tests/automatic_start_corruption.test.ts tests/automatic_start_launch.test.ts tests/automation_questions.test.ts tests/autonomous_qa_skill.test.ts tests/autonomy_api_routes.test.ts tests/autonomy_pause.test.ts tests/autonomy_usage.test.ts tests/background_auto_recovery.test.ts tests/background_obligation_abandonment.test.ts tests/background_obligations.test.ts tests/backup_neo4j_export_failure_naming.test.ts tests/backups.test.ts tests/binding_constraints.test.ts tests/binding_reviewer_disclosure.test.ts tests/blocking_decision_lifecycle.test.ts tests/board_groundskeeper.test.ts tests/board_summary.test.ts tests/boot_guard_deliberate_restart.test.ts tests/boot_smoke.test.ts tests/calendar_dispatch.test.ts tests/calendar_dispatch_recovery.test.ts tests/calendar_tools.test.ts tests/canonical_task_mutations.test.ts tests/captains_log.test.ts tests/chat_cli_context.test.ts tests/chat_cli_failure_receipts.test.ts tests/chat_cli_session.test.ts tests/chat_cli_usage_limit_circuit.test.ts tests/chat_credential_isolation.test.ts tests/chat_dispatch.test.ts tests/chat_follow_up_bridge.test.ts tests/chat_follow_up_checks.test.ts tests/chat_follow_up_runtime.test.ts tests/chat_follow_up_turn.test.ts tests/chat_follow_ups.test.ts tests/chat_idempotency.test.ts tests/chat_identity_context.test.ts tests/chat_morning_trigger.test.ts tests/chat_outcome_voice_integration.test.ts tests/chat_pause.test.ts tests/chat_revision_dispatch.test.ts tests/chat_route_reliability.test.ts tests/chat_schedule_intent.test.ts tests/chat_schedule_resolution.test.ts tests/chat_turn_reliability.test.ts tests/chat_turn_steps.test.ts tests/chat_turn_steps_legacy.test.ts tests/chat_usage_unknown.test.ts tests/chatstream_role_guard.test.ts tests/checkpoint_end_to_end.test.ts tests/checkpoint_planning.test.ts tests/checkpoint_prune.test.ts tests/checkpoint_stages.test.ts tests/checkpoint_task_evidence.test.ts tests/classifier_inputs_whole.test.ts tests/claude_launch_effort_record.test.ts tests/claude_stream.test.ts tests/cli_concurrency.test.ts tests/cli_concurrency_local_lane.test.ts tests/cli_council.test.ts tests/cli_dispatch_gate_persistence.test.ts tests/cli_dispatch_gate_wakeup.test.ts tests/cli_dispatch_gate_warm_first.test.ts tests/cli_gate_queue_counts.test.ts tests/cli_gate_watchdog.test.ts tests/cli_lane.test.ts tests/cli_queue_reconcile_command.test.ts tests/cli_queue_startup.test.ts tests/cli_run_footprint.test.ts tests/cli_seat_agy_startup.test.ts tests/cli_seat_evidence_access.test.ts tests/cli_seat_lean_args.test.ts tests/cli_seat_unlimited.test.ts tests/cli_seat_usage.test.ts tests/cli_upgrade.test.ts tests/cli_upgrade_false_positive.test.ts tests/client_approved_leads.test.ts tests/client_capability_escalation.test.ts tests/client_follow_ups.test.ts tests/client_intake.test.ts tests/client_messaging.test.ts tests/client_pause.test.ts tests/client_portal_consumer.test.ts tests/client_request_dedup.test.ts tests/client_review_requests.test.ts tests/client_route_policy.test.ts tests/client_wait_concurrency.test.ts tests/co_mention_linker.test.ts tests/code_freshness_recovery.test.ts tests/codebase_digest.test.ts tests/codex_executor.test.ts tests/codex_suspend_context.test.ts tests/codex_write_receipt.test.ts tests/community_assign_on_write.test.ts tests/community_assign_plan.test.ts tests/community_title_drain.test.ts tests/completion_boot_recovery.test.ts tests/completion_dispatch_history.test.ts tests/completion_recovery.test.ts tests/completion_recovery_service.test.ts tests/consolidator_empty_content_fallback.test.ts tests/consolidator_room.test.ts tests/consultation_followup.test.ts tests/consultation_inbound_source.test.ts tests/consultation_memory.test.ts tests/context_experiment.test.ts tests/context_manifest.test.ts tests/context_mode.test.ts tests/context_pack.test.ts tests/context_pruning_ceiling.test.ts tests/continuation_reconciliation.test.ts tests/contract_authority.test.ts tests/contract_dispatch_gate.test.ts tests/conversation_evolve_batch_workflow.test.ts tests/conversation_evolve_sweep.test.ts tests/conversation_history.test.ts tests/conversation_notifications.test.ts tests/cortex_executor_contract.test.ts tests/cortex_long_answers.test.ts tests/cortex_tool_recovery.test.ts tests/council_arbiter.test.ts tests/council_auth_recovery.test.ts tests/council_bench_config.test.ts tests/council_best_free_seat.test.ts tests/council_collaboration.test.ts tests/council_collaboration_tools.test.ts tests/council_config.test.ts tests/council_evidence_access.test.ts tests/council_evidence_packet.test.ts tests/council_free_lane_presets.test.ts tests/council_members.test.ts tests/council_reply_budget_no_invented_cap.test.ts tests/council_reputation.test.ts tests/council_seat_quota_pools.test.ts tests/council_stream_events.test.ts tests/credit_exhaustion_preflight.test.ts tests/credit_failover.test.ts tests/criteria_attestation.test.ts tests/criteria_gate.test.ts tests/critic_deadline_routes.test.ts tests/cron_registry_schedule.test.ts tests/cross_repo.test.ts tests/dashboard_record_header.test.ts tests/day_availability.test.ts tests/day_schedule_approval.test.ts tests/day_schedule_midnight_spillover.test.ts tests/day_schedule_routing.test.ts tests/day_scheduler_eod_quiet.test.ts tests/day_scheduler_exports.test.ts tests/decisions_first_writing.test.ts tests/deep_research_wiring.test.ts tests/delegation_monotonicity.test.ts tests/demo_mode.test.ts tests/design_pipeline.test.ts tests/detached_run_reconcile.test.ts tests/detached_runs.test.ts tests/diff_attribution_l14.test.ts tests/dispatch_admission_review.test.ts tests/dispatch_context_focus.test.ts tests/dispatch_decision_trace.test.ts tests/dispatch_history.test.ts tests/dispatch_launch_boundary.test.ts tests/dispatch_prevention.test.ts tests/dispatch_prompt_no_duplicate_brief.test.ts tests/dispatch_provenance.test.ts tests/dispatch_reply.test.ts tests/dispatch_reservation.test.ts tests/dispatch_routing_guard.test.ts tests/dispatch_routing_preparation.test.ts tests/dispatch_task_status.test.ts tests/dispatch_trace.test.ts tests/display_chat_commands.test.ts tests/display_chat_route.test.ts tests/display_intent.test.ts tests/display_nexus_contract.test.ts tests/display_session_isolation.test.ts tests/docs_sync.test.ts tests/document_decisions.test.ts tests/document_delivery.test.ts tests/document_delivery_chat_failure.test.ts tests/document_delivery_contract.test.ts tests/document_delivery_dual_markers.test.ts tests/document_delivery_title_declaration.test.ts tests/document_lifecycle_error_body.test.ts tests/document_marker_briefs.test.ts tests/document_media.test.ts tests/document_replacement_declaration.test.ts tests/document_replacement_retirement.test.ts tests/document_review_approved_note.test.ts tests/document_review_candidates.test.ts tests/document_review_notifications.test.ts tests/document_review_routes.test.ts tests/document_review_tools.test.ts tests/document_revision_brief.test.ts tests/document_revision_chat.test.ts tests/document_revision_lifecycle.test.ts tests/dpp_reranker.test.ts tests/duplicate_merge.test.ts tests/edge_timestamp_backfill.test.ts tests/email_intake_attribution.test.ts tests/email_intake_council.test.ts tests/email_intake_runtime.test.ts tests/email_reply_evidence_binding.test.ts tests/email_reply_preparation.test.ts tests/end_state_verify.test.ts tests/endpoint_planning.test.ts tests/entity_source_backfill.test.ts tests/entity_type_backfill.test.ts tests/entity_type_llm_wave.test.ts tests/entity_type_on_write.test.ts tests/eod_commit_branches.test.ts tests/eod_commit_no_size_limit.test.ts tests/eod_commit_run_worktrees.test.ts tests/eod_quiet_arming.test.ts tests/eod_review_wakeup.test.ts tests/episodic_metabolism.test.ts tests/epistemic-defense.test.ts tests/estimate_calibration.test.ts tests/eval_arbitrary_limits.test.ts tests/eval_availability.test.ts tests/eval_baseline.test.ts tests/eval_e1_dispatch.test.ts tests/eval_e2_control_set.test.ts tests/eval_e2_evidence.test.ts tests/eval_e2_qa_fidelity.test.ts tests/eval_e2_reference_labels.test.ts tests/eval_e5_gate.test.ts tests/eval_failure_stages.test.ts tests/eval_harness_core.test.ts tests/eval_judge_comparability.test.ts tests/eval_model_policy.test.ts tests/eval_regression_watch.test.ts tests/eval_stratified_selection.test.ts tests/evidence_bundle.test.ts tests/evidence_chain.test.ts tests/evidence_extraction.test.ts tests/evidence_extraction_cli_boundary.test.ts tests/evidence_extraction_concurrency.test.ts tests/evidence_extraction_resume.test.ts tests/evidence_json_repair.test.ts tests/evidence_ledger.test.ts tests/evidence_ledger_review_binding.test.ts tests/evidence_ledger_roots.test.ts tests/evidence_ledger_suffix.test.ts tests/evidence_prompt_deduplication.test.ts tests/evidence_recovery_cache.test.ts tests/evidence_source_dedup.test.ts tests/execution_log.test.ts tests/execution_scorecard.test.ts tests/execution_state_projection.test.ts tests/executor_callback_delivery.test.ts tests/executor_discovery.test.ts tests/executor_forbidden_env.test.ts tests/executor_health.test.ts tests/executor_memory_harvest.test.ts tests/executor_persistence_guard.test.ts tests/executor_quality_gates.test.ts tests/executor_retry_stickiness.test.ts tests/executor_rotation_persistence.test.ts tests/executor_routing_pins.test.ts tests/executor_routing_preparation.test.ts tests/executor_run_redaction.test.ts tests/executor_seam.test.ts tests/executor_state_sandbox.test.ts tests/executor_token_recovery.test.ts tests/executor_token_usage.test.ts tests/executor_trace_redaction.test.ts tests/executor_usage_meters.test.ts tests/fallback_policy.test.ts tests/fault_domain.test.ts tests/feedback.test.ts tests/fleet_degraded_mode.test.ts tests/fleet_preflight.test.ts tests/follow_up.test.ts tests/follow_up_attribution.test.ts tests/follow_up_restart.test.ts tests/followup_activity_route.test.ts tests/followup_approval_route.test.ts tests/followup_dispositions.test.ts tests/followup_evidence.test.ts tests/followup_evidence_review.test.ts tests/followup_idle.test.ts tests/followup_slate.test.ts tests/followup_slate_card.test.ts tests/free_model_ranking.test.ts tests/frontier_policy.test.ts tests/git_get_diff_no_size_gate.test.ts tests/github_discovery_digest.test.ts tests/gmail_history_recovery.test.ts tests/gmail_reply_preparation.test.ts tests/graceful_restart.test.ts tests/graph_cull.test.ts tests/graph_densify_plan.test.ts tests/graph_health_breach_escalation.test.ts tests/graph_health_cull_check.test.ts tests/graph_health_metabolism_metrics.test.ts tests/graph_health_read_availability.test.ts tests/graph_health_regression_guard.test.ts tests/graph_health_state_isolation.test.ts tests/groundrules_clause.test.ts tests/groundrules_contracts.test.ts tests/groundrules_contracts_v2.test.ts tests/groundrules_decode.test.ts tests/groundrules_jev.test.ts tests/groundrules_reading.test.ts tests/groundrules_runner.test.ts tests/harness_fault_retry.test.ts tests/harness_watchdog.test.ts tests/health_investigation_tools.test.ts tests/hitl_answer_attachments.test.ts tests/hitl_deeplink_contract.test.ts tests/hitl_dispatch_refusal.test.ts tests/hitl_resolve_body_validation.test.ts tests/home_hub_command_handler.test.ts tests/home_hub_intent_router.test.ts tests/hosted_credit.test.ts tests/http_body_deadline.test.ts tests/human_brief.test.ts tests/identity_operator_address.test.ts tests/identity_resolution.test.ts tests/identity_seed.test.ts tests/immutable_context_consolidator.test.ts tests/improvement_governance.test.ts tests/improvement_ledger_declines.test.ts tests/improvement_ledger_incidents.test.ts tests/improvement_migration_dispatch.test.ts tests/improvement_migration_evidence.test.ts tests/improvement_report.test.ts tests/improvement_verification.test.ts tests/inbound_email_poll.test.ts tests/inbox_lifecycle_repair.test.ts tests/incident_taxonomy.test.ts tests/ingest_empty_content_hardening.test.ts tests/ingestion_arbitrary_limits.test.ts tests/ingestion_brave.test.ts tests/ingestion_cli_routing.test.ts tests/ingestion_collection.test.ts tests/ingestion_dedup_item.test.ts tests/ingestion_evidence_preparation.test.ts tests/ingestion_finalizer.test.ts tests/ingestion_finalizer_isolation.test.ts tests/ingestion_item_graph.test.ts tests/ingestion_item_workflow.test.ts tests/ingestion_retrieval_details.test.ts tests/ingestion_run_store.test.ts tests/ingestion_salience_triage.test.ts tests/ingestion_source_failures.test.ts tests/ingestion_source_gate.test.ts tests/ingestion_source_improvements.test.ts tests/ingestion_sources.test.ts tests/ingestion_summary_health.test.ts tests/ingestion_sweep_jobs.test.ts tests/ingestion_web_search_topic_gate.test.ts tests/intake_backlog_handoff.test.ts tests/intake_backlog_morning.test.ts tests/intake_checkpoint_board.test.ts tests/intake_council.test.ts tests/intake_council_tools.test.ts tests/intake_need_reconciliation.test.ts tests/intake_project_background.test.ts tests/intake_project_plan.test.ts tests/intake_questionnaire_relay.test.ts tests/intake_requested_research.test.ts tests/intake_research_policy.test.ts tests/intake_stages.test.ts tests/intake_status_report.test.ts tests/knowledge_arbitrary_limits.test.ts tests/knowledge_council.test.ts tests/knowledge_council_admission.test.ts tests/knowledge_council_delivery.test.ts tests/knowledge_council_evidence_override.test.ts tests/knowledge_council_filing.test.ts tests/knowledge_council_publish.test.ts tests/knowledge_flow_fixes.test.ts tests/knowledge_lifecycle.test.ts tests/knowledge_needs.test.ts tests/knowledge_normalize.test.ts tests/knowledge_research.test.ts tests/knowledge_retrieval_eval.test.ts tests/knowledge_retrieval_preparation.test.ts tests/knowledge_retrieval_replay.test.ts tests/knowledge_routing.test.ts tests/knowledge_routing_calibration.test.ts tests/knowledge_source_access.test.ts tests/knowledge_source_bridge.test.ts tests/knowledge_source_replay.test.ts tests/knowledge_source_session.test.ts tests/lane_credit.test.ts tests/lars_analysis_workflow.test.ts tests/lars_cli.test.ts tests/lars_portfolio.test.ts tests/lars_weekly_digest.test.ts tests/launchd_plist.test.ts tests/ledger_refresh.test.ts tests/linked_improvement_task.test.ts tests/llm_cascade_request_shape.test.ts tests/llm_cli_lane_complete.test.ts tests/llm_context_window.test.ts tests/llm_gateway_cortex_roles.test.ts tests/llm_gateway_output_budget.test.ts tests/llm_output_room.test.ts tests/lmstudio_autoload.test.ts tests/local_inference_safety.test.ts tests/local_lane_manager_reroute.test.ts tests/local_lane_policy.test.ts tests/local_llm_calendar.test.ts tests/local_llm_pause_persistence.test.ts tests/local_llm_queue.test.ts tests/local_llm_recurring.test.ts tests/local_llm_scheduler.test.ts tests/local_llm_spillover.test.ts tests/local_llm_tools.test.ts tests/local_llm_worker.test.ts tests/local_llm_youtube_handler.test.ts tests/local_model_capabilities.test.ts tests/local_model_demand_callers.test.ts tests/local_model_primary.test.ts tests/local_model_selection.test.ts tests/logger_dedupe.test.ts tests/long_task_activity.test.ts tests/long_task_executors.test.ts tests/long_task_payload.test.ts tests/long_task_scheduling.test.ts tests/machine_resource_governor.test.ts tests/mail_drafts_review.test.ts tests/mail_network.test.ts tests/mailbox.test.ts tests/maintenance_deployment.test.ts tests/maintenance_dispatch_gate.test.ts tests/maintenance_schedule.test.ts tests/maintenance_schedule_append.test.ts tests/manual_callback_replay.test.ts tests/mcp_connector_gating.test.ts tests/mcp_loader_precedence.test.ts tests/member_answer_directory_scope.test.ts tests/member_answer_experiment.test.ts tests/member_answer_tools.test.ts tests/member_answers.test.ts tests/member_briefing_experiment.test.ts tests/member_briefing_tools.test.ts tests/member_briefings.test.ts tests/member_capability_gap_tools.test.ts tests/member_conversation_eval.test.ts tests/member_memory_tools.test.ts tests/member_portal.test.ts tests/member_preparation.test.ts tests/member_preparation_approval.test.ts tests/member_preparation_client.test.ts tests/member_preparation_delivery.test.ts tests/member_preparation_document_e2e.test.ts tests/member_preparation_draft_tools.test.ts tests/member_preparation_drafts.test.ts tests/member_preparation_integration.test.ts tests/member_preparation_reply_routing.test.ts tests/member_profile_pilot.test.ts tests/member_profile_updates.test.ts tests/memory_crystallization.test.ts tests/memory_transition_verifier.test.ts tests/mobile_contract_sync.test.ts tests/model_inputs_whole.test.ts tests/model_prices.test.ts tests/model_registry.test.ts tests/model_rejected.test.ts tests/model_status_board.test.ts tests/morning_alert_action_guidance.test.ts tests/morning_archive_audit.test.ts tests/morning_candidate_pool.test.ts tests/morning_cli_oneshot.test.ts tests/morning_condition_red.test.ts tests/morning_consensus.test.ts tests/morning_consensus_audit.test.ts tests/morning_council_ballots.test.ts tests/morning_council_coordinator.test.ts tests/morning_daily_research.test.ts tests/morning_decision_snapshot.test.ts tests/morning_empty_content_guard.test.ts tests/morning_executor_readiness.test.ts tests/morning_finalize.test.ts tests/morning_health_investigations.test.ts tests/morning_health_plan.test.ts tests/morning_health_recovery.test.ts tests/morning_inputs_whole.test.ts tests/morning_local_admission.test.ts tests/morning_orchestrator.test.ts tests/morning_preparation.test.ts tests/morning_preparation_readiness.test.ts tests/morning_recovery_council.test.ts tests/morning_research_refresh.test.ts tests/morning_restart_recovery.test.ts tests/morning_run_record.test.ts tests/morning_staged_presentation.test.ts tests/need_equivalence.test.ts tests/need_hunting.test.ts tests/newsletter_audio_kind.test.ts tests/newsletter_hot_repos.test.ts tests/newsletter_ingestion.test.ts tests/nexus_admission_contention.test.ts tests/nexus_board_lease_contention.test.ts tests/nexus_client_funnel.test.ts tests/nexus_event_publisher.test.ts tests/nexus_gotcha_checks.test.ts tests/nexus_runtime_traffic.test.ts tests/nexus_schema_validation.test.ts tests/nexus_task_context.test.ts tests/nexus_tasks_update_fields.test.ts tests/nexus_write_failures.test.ts tests/nightly_synthesis_workflow.test.ts tests/norm_key_on_write.test.ts tests/notification_recovery_copy.test.ts tests/openai_chat_suspension.test.ts tests/openai_gateway.test.ts tests/openrouter_executor.test.ts tests/openrouter_free_lane.test.ts tests/openrouter_roster.test.ts tests/operational_brief.test.ts tests/operator_copy.test.ts tests/operator_project_scope.test.ts tests/operator_provenance.test.ts tests/operator_restart_bridge_route.test.ts tests/operator_restart_chat_turn.test.ts tests/operator_turn_grant.test.ts tests/ops_bridge_delivery.test.ts tests/ops_event_action_guidance.test.ts tests/ops_event_durable_delivery.test.ts tests/ops_events.test.ts tests/ops_events_routing.test.ts tests/ops_events_routing_precedence.test.ts tests/orchestration_prompt_objectivity.test.ts tests/orchestrator_consolidator_integration.test.ts tests/orphan_attach_llm.test.ts tests/orphan_triage_knn.test.ts tests/orphan_triage_plan.test.ts tests/outbound_email_hold.test.ts tests/outcomes_predictions.test.ts tests/pact_record.test.ts tests/parked_findings_resume.test.ts tests/pasted_transcript.test.ts tests/payload_surface_inventory.test.ts tests/per_pass_window_fit.test.ts tests/podcast_ingestion.test.ts tests/podcast_transcription.test.ts tests/pollination_debt.test.ts tests/post_council_broker.test.ts tests/praxis_events_digest.test.ts tests/predictive_action_gate.test.ts tests/presence_background.test.ts tests/presence_run_projection.test.ts tests/problem_council.test.ts tests/problem_intake.test.ts tests/project_intake_tools.test.ts tests/project_knowledge_tool.test.ts tests/project_need_resolution.test.ts tests/project_reflection.test.ts tests/project_steward.test.ts tests/project_steward_checkpoints.test.ts tests/project_tagger_parse.test.ts tests/prolog_mcp_integration.test.ts tests/prompt_composition.test.ts tests/prompt_experiment.test.ts tests/prompt_quality_adjudication.test.ts tests/prompt_quality_calibration.test.ts tests/prompt_quality_resolution.test.ts tests/prompt_quality_review.test.ts tests/prompt_security_activation.test.ts tests/prompt_surface_audit.test.ts tests/prompt_surface_runner.test.ts tests/protocol_retro_eval_gate.test.ts tests/protocol_retrospective.test.ts tests/protocol_telemetry.test.ts tests/qa_adversarial.test.ts tests/qa_adversarial_trial.test.ts tests/qa_baseline_brief.test.ts tests/qa_baseline_probe.test.ts tests/qa_blocked_escalation.test.ts tests/qa_callback_phases.test.ts tests/qa_completion_announcement.test.ts tests/qa_contract_artifacts.test.ts tests/qa_contract_gate.test.ts tests/qa_contract_gate_notice.test.ts tests/qa_contract_hold_route.test.ts tests/qa_criteria_verdicts.test.ts tests/qa_criterion_acceptance.test.ts tests/qa_critic_evidence.test.ts tests/qa_critic_resolution.test.ts tests/qa_deferred.test.ts tests/qa_diff_artifacts.test.ts tests/qa_dispatch.test.ts tests/qa_document_replacements.test.ts tests/qa_empty_diff.test.ts tests/qa_evidence_recovery.test.ts tests/qa_executor_readiness.test.ts tests/qa_failure_layer.test.ts tests/qa_improvement_request.test.ts tests/qa_learning_loop.test.ts tests/qa_lesson_reconciliation.test.ts tests/qa_lessons.test.ts tests/qa_lessons_pipeline_contract.test.ts tests/qa_long_tasks.test.ts tests/qa_pass_commit.test.ts tests/qa_pass_commit_pathspec.test.ts tests/qa_prompt_tail.test.ts tests/qa_proof_baseline_event_loop.test.ts tests/qa_release_receipts.test.ts tests/qa_repeat_policy.test.ts tests/qa_requery.test.ts tests/qa_review_depth.test.ts tests/qa_reviewer_contract.test.ts tests/qa_reviewer_contract_e2e.test.ts tests/qa_round_ledger.test.ts tests/qa_run_evidence.test.ts tests/qa_sibling_disclosure.test.ts tests/qa_spot_audit.test.ts tests/qa_state_persistence.test.ts tests/qa_task_attribution.test.ts tests/qa_task_type.test.ts tests/qa_trajectory.test.ts tests/qa_verdict_is_the_reviewers.test.ts tests/quantized_tool_gate.test.ts tests/quota_session_continuity.test.ts tests/quota_yellow_alert.test.ts tests/rag_parallel_retrieval.test.ts tests/receipt_runner.test.ts tests/recent_nodes_window.test.ts tests/reconcile_contract_holds.test.ts tests/red_alert.test.ts tests/red_alert_ack_route.test.ts tests/red_alert_human_brief.test.ts tests/refinement_workflow.test.ts tests/relay_project_tokens.test.ts tests/release_closure.test.ts tests/replay_cache.test.ts tests/reply_preparation_envelope_binding.test.ts tests/repo_state_evidence.test.ts tests/report-intake-section.test.ts tests/report_file_route.test.ts tests/report_intake_questions.test.ts tests/report_intake_slot_failure.test.ts tests/report_upload_workflow.test.ts tests/research_dispatch.test.ts tests/research_dispatch_transcript.test.ts tests/research_source_routing.test.ts tests/research_web_retrieval.test.ts tests/research_worker_outcomes.test.ts tests/reserved_actions.test.ts tests/reserved_content_review.test.ts tests/restore_project_stats.test.ts tests/resume_effort_executor.test.ts tests/resume_model_policy.test.ts tests/retrieval_status_labels.test.ts tests/review_evidence_redaction.test.ts tests/routing_escalation.test.ts tests/routing_gate.test.ts tests/rubric_induction.test.ts tests/run_budget_concurrency.test.ts tests/run_consumption_budget.test.ts tests/run_landing_lifecycle.test.ts tests/run_merge.test.ts tests/run_model_dispatch_state.test.ts tests/run_model_truth.test.ts tests/run_multi_repo.test.ts tests/run_record_redaction.test.ts tests/run_registry.test.ts tests/run_worktree.test.ts tests/run_worktree_dispatch.test.ts tests/run_worktree_qa_diff.test.ts tests/run_worktree_repoint.test.ts tests/run_worktree_report.test.ts tests/running_code_freshness.test.ts tests/schedule_approval_candidates.test.ts tests/schedule_approval_reject_routes.test.ts tests/schedule_completion_progress.test.ts tests/schedule_day_validation.test.ts tests/schedule_snapshot.test.ts tests/scope_change_gate.test.ts tests/self_evolving_sweep.test.ts tests/self_knowledge_recall_anchor.test.ts tests/self_knowledge_sync.test.ts tests/selfdoubt_guardrails.test.ts tests/service_restore.test.ts tests/session_effort_recovery.test.ts tests/session_registry.test.ts tests/session_resume_recovery.test.ts tests/session_synthesis_worker.test.ts tests/sibling_attribution.test.ts tests/silent_night_deadman.test.ts tests/skill_amendment_author.test.ts tests/skill_amendment_inputs.test.ts tests/skill_amendment_pairs.test.ts tests/skill_amendment_review.test.ts tests/skill_attribution.test.ts tests/skill_candidate_screen_refusal.test.ts tests/skill_curator.test.ts tests/skill_curator_v2.test.ts tests/skill_evidence_cleanup.test.ts tests/skill_gardener.test.ts tests/skill_harvest_screen.test.ts tests/skill_inductive_enrichment.test.ts tests/skill_knowledge.test.ts tests/slate_reconciliation.test.ts tests/slot_numbering.test.ts tests/source_per_source_cap.test.ts tests/source_provenance.test.ts tests/source_registry.test.ts tests/source_revival_identity.test.ts tests/spillover.test.ts tests/spoken_briefing_delivery.test.ts tests/spoken_briefing_transcript.test.ts tests/spoken_prose.test.ts tests/stakeholder-living-report.test.ts tests/stakeholder-report-checkpoint.test.ts tests/stakeholder-report-design-system.test.ts tests/stakeholder-report-feedback.test.ts tests/stakeholder-report-phone-email.test.ts tests/stakeholder-report-policy.test.ts tests/stakeholder-report-publication.test.ts tests/stakeholder-report-questions-first.test.ts tests/stakeholder-report-render-snapshots.test.ts tests/stakeholder-report-template-themes.test.ts tests/stakeholder-report-test-copy.test.ts tests/stakeholder-weekly-progress.test.ts tests/stakeholder_capability_gaps.test.ts tests/stakeholders.test.ts tests/stale_run_answer_canary.test.ts tests/stale_run_answer_reconciliation.test.ts tests/stale_task_exit.test.ts tests/stalled_cli_dispatch.test.ts tests/stalled_qa_review.test.ts tests/standing_consent_review.test.ts tests/standing_fact_sweep.test.ts tests/state_doc.test.ts tests/state_validator_json_contract.test.ts tests/state_validator_small_deliverable.test.ts tests/status_audio.test.ts tests/status_report.test.ts tests/stdio_log_rotation.test.ts tests/stream_tool_calls.test.ts tests/structured_state.test.ts tests/structured_usage_limit.test.ts tests/stuck_run_judgment.test.ts tests/subtask_gate.test.ts tests/supervisor_escalation.test.ts tests/supervisor_failure_detail.test.ts tests/supervisor_lifecycle.test.ts tests/supervisor_options.test.ts tests/supervisor_processes.test.ts tests/supervisor_respawn_throttle.test.ts tests/swap_pressure.test.ts tests/swarm_local_provider.test.ts tests/system_exchange.test.ts tests/system_map.test.ts tests/system_map_dispatch_yield.test.ts tests/system_map_generate.test.ts tests/system_map_rebuild.test.ts tests/system_map_rebuild_e2e.test.ts tests/task_answer_contention_retry.test.ts tests/task_commits_visible_to_qa.test.ts tests/task_context_artifacts.test.ts tests/task_failure_notification.test.ts tests/task_knowledge.test.ts tests/task_knowledge_backfill.test.ts tests/task_knowledge_creation.test.ts tests/task_knowledge_delivery.test.ts tests/task_knowledge_producers.test.ts tests/task_post_mortem.test.ts tests/task_question_answer_delivery.test.ts tests/task_saved_model_dispatch.test.ts tests/task_selection.test.ts tests/task_set_skip.test.ts tests/teacher_convergence.test.ts tests/temporal_traversal.test.ts tests/term_rotation.test.ts tests/terminal_hitl_route.test.ts tests/terminal_operator_note.test.ts tests/terminal_qa_advance_race.test.ts tests/terminal_qa_finalization.test.ts tests/terminal_reconciliation.test.ts tests/terminal_reconciliation_board_lease.test.ts tests/test_runner_stdout_frames.test.ts tests/text_encoding_guard.test.ts tests/thinking_levels.test.ts tests/token_attribution.test.ts tests/token_report.test.ts tests/tool_call_arguments.test.ts tests/tool_execution_logger.test.ts tests/tool_router_self_management.test.ts tests/tool_router_us_trends.test.ts tests/tool_schema_honesty.test.ts tests/tools_registry_guard.test.ts tests/tools_registry_shape.test.ts tests/trace_extractor.test.ts tests/trace_extractor_claude_results.test.ts tests/trading_retired_startup.test.ts tests/tts_budget.test.ts tests/tts_health.test.ts tests/tts_provider.test.ts tests/typed_skill_graph.test.ts tests/upgrade_preflight.test.ts tests/upgrade_slate.test.ts tests/upgrade_slate_standing_decisions.test.ts tests/usage_alerts.test.ts tests/usage_cost_coverage.test.ts tests/usage_limit_availability_wait.test.ts tests/usage_limit_callback_endpoint.test.ts tests/usage_limit_circuit_provider_independent.test.ts tests/usage_limit_clear.test.ts tests/usage_limit_dependency_retry.test.ts tests/usage_limit_resume_persistence.test.ts tests/usage_limit_schedule_transfer.test.ts tests/usage_limit_suspension_boundaries.test.ts tests/usage_log_accounting.test.ts tests/usage_monitor.test.ts tests/usage_monitor_persistence.test.ts tests/usage_monitor_router.test.ts tests/usage_quota_pools.test.ts tests/usage_recorded_readiness.test.ts tests/usage_reset.test.ts tests/vault_source_delivery.test.ts tests/vault_supersession.test.ts tests/vault_write.test.ts tests/verification_anchor_schema.test.ts tests/verification_proof.test.ts tests/verification_proof_capture.test.ts tests/verification_proof_integration.test.ts tests/verification_proof_recovery.test.ts tests/verification_proof_snapshot.test.ts tests/verification_protocol.test.ts tests/verified_background_recovery.test.ts tests/visual_review_package_controls.test.ts tests/voice_conversation.test.ts tests/voice_producers.test.ts tests/voice_prose_deadline.test.ts tests/voice_prose_routes.test.ts tests/wakeup.test.ts tests/watchdog_diagnostics.test.ts tests/webhook_body_limit.test.ts tests/webhook_callback_route.test.ts tests/webhook_routes_inventory.test.ts tests/work_admission.test.ts tests/work_admission_review.test.ts tests/work_admission_warnings.test.ts tests/worker_observability.test.ts tests/workspace_addition_sanction.test.ts tests/workspace_binding.test.ts tests/workspace_change.test.ts tests/workspace_change_warning.test.ts tests/workspace_inference.test.ts tests/workspace_preflight.test.ts tests/workspace_tracking.test.ts tests/workspace_transition_integration.test.ts tests/worktree_baseline.test.ts tests/worktree_baseline_quota_retention.test.ts tests/write_fence.test.ts tests/write_fence_amendments.test.ts tests/write_fence_dispatch.test.ts tests/write_lease.test.ts tests/write_receipt_hash_transport.test.ts tests/write_receipts_shell.test.ts tests/yellow_alert.test.ts tests/youtube_bot_check.test.ts tests/youtube_control_api.test.ts tests/youtube_discovery.test.ts tests/youtube_feed_recovery.test.ts tests/youtube_intake_queue.test.ts tests/youtube_rate_limit_repair.test.ts tests/youtube_stage_recovery.test.ts
+# ... lines 6-43218 left out (passing output and per-test detail) ...
+ℹ tests 10649
+ℹ suites 4
+ℹ pass 10586
+ℹ fail 47
+ℹ cancelled 0
+ℹ skipped 16
+ℹ todo 0
+ℹ duration_ms 503159.541625
+
+✖ failing tests:
+
+test at tests/agent_tool_results_whole.test.ts:1:2308
+✖ interactive Claude tool remains alive beyond its old five-minute run ceiling (8.431208ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + '(Claude Code returned empty output)'
+  - 'complete response'
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/agent_tool_results_whole.test.ts:81:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '(Claude Code returned empty output)',
+    expected: 'complete response',
+    operator: 'strictEqual'
+  }
+
+test at tests/alert-investigation-audit-cases.ts:10:3461
+✖ real Antigravity completion reaches the shared audit and retains findings with explicit unsupported evidence (150.815458ms)
+  AssertionError [ERR_ASSERTION]: undefined == true
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/alert-investigation-audit-cases.ts:470:46)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: '=='
+  }
+
+test at tests/alert_investigation.test.ts:3:15169
+✖ 5: real registry recovery reads full completed findings instead of the truncated preview (68.991917ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'inconclusive'
+  - 'reported'
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/alert_investigation.test.ts:607:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'inconclusive',
+    expected: 'reported',
+    operator: 'strictEqual'
+  }
+
+test at tests/alert_investigation.test.ts:3:19826
+✖ 3: callback records execution-scoped usage already captured from the native CLI stream (44.49325ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'inconclusive'
+  - 'reported'
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/alert_investigation.test.ts:671:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'inconclusive',
+    expected: 'reported',
+    operator: 'strictEqual'
+  }
+
+test at tests/checkpoint_end_to_end.test.ts:1:1
+✖ tests/checkpoint_end_to_end.test.ts (1133.928791ms)
+  'test failed'
+
+test at tests/cli_seat_agy_startup.test.ts:9:1258
+✖ seat removes the temp log dir it created (295.417584ms)
+  AssertionError [ERR_ASSERTION]: temp log dir must be removed after the run
+  
+  true !== false
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/cli_seat_agy_startup.test.ts:116:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual'
+  }
+
+test at tests/cli_seat_unlimited.test.ts:1:1441
+✖ cli:claude-code/claude-opus-5-5 zero timeout survives the actual one-shot/lane/seat path without inactivity termination (16.279041ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  null !== 'reviewed'
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/cli_seat_unlimited.test.ts:40:12)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:297:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: 'reviewed',
+    operator: 'strictEqual'
+  }
+
+test at tests/cli_seat_unlimited.test.ts:1:1441
+✖ cli:codex/gpt-6-astra zero timeout survives the actual one-shot/lane/seat path without inactivity termination (40.324833ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  null !== 'reviewed'
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/cli_seat_unlimited.test.ts:40:12)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: 'reviewed',
+    operator: 'strictEqual'
+  }
+
+test at tests/code_freshness_recovery.test.ts:5:8564
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only (10.951833ms)
+  Error: Command failed: git -C /Volumes/Projects/.scratch-fa032fc0/merged-praxis5 rev-parse HEAD
+  fatal: not a git repository (or any parent up to mount point /Volumes)
+  Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+  
+      at genericNodeError (node:internal/errors:983:15)
+      at wrappedFn (node:internal/errors:537:14)
+      at checkExecSyncError (node:child_process:882:11)
+      at execFileSync (node:child_process:918:15)
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/code_freshness_recovery.test.ts:1710:16)
+      at Test.runInAsyncScope (node:async_hooks:211:14)
+      at Test.run (node:internal/test_runner/test:980:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:678:18)
+      at Test.postRun (node:internal/test_runner/test:1091:19)
+      at Test.run (node:internal/test_runner/test:1019:12) {
+    status: 128,
+    signal: null,
+    output: [ null, '', 'fatal: not a git repository (or any parent up to mount point /Volumes)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n' ],
+    pid: 66347,
+    stdout: '',
+    stderr: 'fatal: not a git repository (or any parent up to mount point /Volumes)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n'
+  }
+
+test at tests/consultation_memory.test.ts:1:3894
+✖ delivery survives lost acknowledgment and restart without duplicating real ledger evidence (3.564875ms)
+  Error: Cannot find module '../../TheNexus/db/member-memory.js'
+  Require stack:
+  - /Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/consultation_memory.test.ts
+      at node:internal/modules/cjs/loader:1394:15
+      at nextResolveSimple (/Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:4:1004)
+      at /Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:3:2630
+      at /Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:3:1542
+      at resolveTsPaths (/Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:4:760)
+      at /Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:4:1102
+      at m._resolveFilename (file:///Volumes/Projects/Praxis/node_modules/tsx/dist/register-B7jrtLTO.mjs:1:789)
+      at defaultResolveImpl (node:internal/modules/cjs/loader:1050:19)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1055:22)
+      at Function._load (node:internal/modules/cjs/loader:1204:37) {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/consultation_memory.test.ts' ]
+  }
+
+test at tests/dashboard_record_header.test.ts:1:1237
+✖ finalization keeps full JSON detail and regenerates the header on every save (42.098209ms)
+  RangeError [Error]: Maximum call stack size exceeded
+      at String.replace (<anonymous>)
+      at applyRedactionRules (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:137:13)
+      at <anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:308:16)
+      at Array.map (<anonymous>)
+      at screenRunProse (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:306:56)
+      at screenRunText (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:299:14)
+      at screenRunValue (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:323:22)
+      at <anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:339:22)
+      at Array.map (<anonymous>)
+      at screenRunValue (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:333:40)
+
+test at tests/dashboard_record_header.test.ts:1:2882
+✖ header stays bounded for escaping, unicode and huge suggestion text without losing report detail (44.414417ms)
+  RangeError [Error]: Maximum call stack size exceeded
+      at String.replace (<anonymous>)
+      at applyRedactionRules (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:137:13)
+      at <anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:308:16)
+      at Array.map (<anonymous>)
+      at screenRunProse (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:306:56)
+      at screenRunText (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:299:14)
+      at screenRunValue (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:323:22)
+      at <anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:339:22)
+      at Array.map (<anonymous>)
+      at screenRunValue (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:333:40)
+
+test at tests/dashboard_record_header.test.ts:1:3448
+✖ review-only completion retains reason and per-finding evidence in the bounded header (35.463042ms)
+  RangeError [Error]: Maximum call stack size exceeded
+      at String.replace (<anonymous>)
+      at applyRedactionRules (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:137:13)
+      at <anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:308:16)
+      at Array.map (<anonymous>)
+      at screenRunProse (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:306:56)
+      at screenRunText (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:299:14)
+      at screenRunValue (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:323:22)
+      at <anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:339:22)
+      at Array.map (<anonymous>)
+      at screenRunValue (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/telemetry/step-redaction.ts:333:40)
+
+test at tests/email_intake_council.test.ts:1:1
+✖ tests/email_intake_council.test.ts (1539.879917ms)
+  'test failed'
+
+test at tests/email_intake_runtime.test.ts:1:1
+✖ tests/email_intake_runtime.test.ts (2385.316292ms)
+  'test failed'
+
+test at tests/evidence_bundle.test.ts:1:6778
+✖ synthesis success seals a bundle and cross-references it from the item output (5.584875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + '[redacted]'
+  - 'synthesis_run_20260812_010101_3c61b58db3ae01f3467c339759c0216bbf135aa45382510b46d935d6f5f31ddf'
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/evidence_bundle.test.ts:295:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '[redacted]',
+    expected: 'synthesis_run_20260812_010101_3c61b58db3ae01f3467c339759c0216bbf135aa45382510b46d935d6f5f31ddf',
+    operator: 'strictEqual'
+  }
+
+test at tests/executor_discovery.test.ts:1:7224
+✖ a CLI counts as busy only while its own binary runs (5.579833ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'process 101'
+  - ]
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/executor_discovery.test.ts:169:10)
+      at Test.runInAsyncScope (node:async_hooks:211:14)
+      at Test.run (node:internal/test_runner/test:980:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:678:18)
+      at Test.postRun (node:internal/test_runner/test:1091:19)
+      at Test.run (node:internal/test_runner/test:1019:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'process 101' ],
+    operator: 'deepStrictEqual'
+  }
+
+test at tests/followup_evidence.test.ts:1:400
+✖ retrieves full five-million-character tail with exact source hash and offsets (125.257ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    catalog.hasReceipt(found.id)
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/followup_evidence.test.ts:13:10)
+      at Test.runInAsyncScope (node:async_hooks:211:14)
+      at Test.run (node:internal/test_runner/test:980:25)
+      at Test.start (node:internal/test_runner/test:878:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:297:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: '=='
+  }
+
+test at tests/followup_evidence_review.test.ts:1:949
+✖ retrieves tail evidence in a five million character source with bounded prompts (137.842875ms)
+  AssertionError [ERR_ASSERTION]: [{"index":0,"disposition":"retain","reason":"Needs focused investigation: The expression evaluated to a falsy value:\n\n  assert.match(data.response.text,/TAIL_REPAIR/)\n","evidence":[]}]
+  + actual - expected
+  
+  + 'retain'
+  - 'complete'
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/followup_evidence_review.test.ts:27:9)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:297:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'retain',
+    expected: 'complete',
+    operator: 'strictEqual'
+  }
+
+test at tests/long_task_executors.test.ts:1:1555
+✖ claude-code piped run survives simulated elapsed time beyond three hours until process exit (8.889667ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      exitCode: 0,
+  +   output: '',
+  -   output: 'work completed',
+      signal: null,
+      timedOut: false
+    }
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/long_task_executors.test.ts:53:12)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { exitCode: 0, signal: null, output: '', timedOut: false },
+    expected: { exitCode: 0, signal: null, output: 'work completed', timedOut: false },
+    operator: 'deepStrictEqual'
+  }
+
+test at tests/long_task_executors.test.ts:1:1555
+✖ codex piped run survives simulated elapsed time beyond three hours until process exit (27.197208ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      exitCode: 0,
+  +   output: '',
+  -   output: 'work completed',
+      signal: null,
+      timedOut: false
+    }
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/long_task_executors.test.ts:53:12)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { exitCode: 0, signal: null, output: '', timedOut: false },
+    expected: { exitCode: 0, signal: null, output: 'work completed', timedOut: false },
+    operator: 'deepStrictEqual'
+  }
+
+test at tests/long_task_executors.test.ts:1:1555
+✖ antigravity piped run survives simulated elapsed time beyond three hours until process exit (2.719375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      diagnostics: undefined,
+      exitCode: 0,
+  +   output: '',
+  -   output: 'work completed',
+      signal: null,
+      timedOut: false
+    }
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/long_task_executors.test.ts:53:12)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { exitCode: 0, signal: null, output: '', timedOut: false, diagnostics: undefined },
+    expected: { exitCode: 0, signal: null, output: 'work completed', timedOut: false, diagnostics: undefined },
+    operator: 'deepStrictEqual'
+  }
+
+test at tests/long_task_executors.test.ts:1:3864
+✖ claude-code reports a piped run finished only once its whole log is on disk (process exit) (5.921708ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /work completed\n=== Claude Code run ended [^\n]+ ===\n$/. Input:
+  
+  '\n' +
+    '=== Claude Code run started 2026-11-24T19:12:33.149Z ===\n' +
+    'Workspace: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/piped-run-log-mCYeR1\n' +
+    'Model: (CLI default)\n' +
+    '\n' +
+    '\n' +
+    '=== Claude Code run ended 2026-11-24T19:12:33.150Z ===\n'
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/long_task_executors.test.ts:100:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '\n=== Claude Code run started 2026-11-24T19:12:33.149Z ===\nWorkspace: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/piped-run-log-mCYeR1\nModel: (CLI default)\n\n\n=== Claude Code run ended 2026-11-24T19:12:33.150Z ===\n',
+    expected: /work completed\n=== Claude Code run ended [^\n]+ ===\n$/,
+    operator: 'match'
+  }
+
+test at tests/long_task_executors.test.ts:1:3864
+✖ claude-code reports a piped run finished only once its whole log is on disk (spawn error) (2.71825ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /work completed\n=== Claude Code run ended [^\n]+ ===\n$/. Input:
+  
+  '\n' +
+    '=== Claude Code run started 2026-11-24T19:12:33.154Z ===\n' +
+    'Workspace: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/piped-run-log-CZNeaI\n' +
+    'Model: (CLI default)\n' +
+    '\n' +
+    '\n' +
+    '=== Claude Code run ended 2026-11-24T19:12:33.156Z ===\n'
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/long_task_executors.test.ts:100:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '\n=== Claude Code run started 2026-11-24T19:12:33.154Z ===\nWorkspace: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/piped-run-log-CZNeaI\nModel: (CLI default)\n\n\n=== Claude Code run ended 2026-11-24T19:12:33.156Z ===\n',
+    expected: /work completed\n=== Claude Code run ended [^\n]+ ===\n$/,
+    operator: 'match'
+  }
+
+test at tests/mail_network.test.ts:1:1932
+✖ connection falls back before authentication when IPv6 is unreachable (4.741125ms)
+  Error: live port guard refused imap.gmail.com:50610
+      at Socket.guardedConnect [as connect] (file:///Volumes/Projects/.scratch-fa032fc0/live-port-guard.mjs:47:29)
+      at Object.connect (node:net:250:17)
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/mail_network.test.ts:38:24)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    code: 'ECONNREFUSED'
+  }
+
+test at tests/member_conversation_eval.test.ts:1:6678
+✖ model-only preload refuses fleet, external, TLS, and non-model fetch before loading application code (48.845916ms)
+  Error: Command failed: /opt/homebrew/Cellar/node/23.7.0/bin/node --require ./tests/fixtures/member-eval-model-only-network.cjs -e 
+      const assert = require('node:assert/strict');
+      const net = require('node:net');
+      const tls = require('node:tls');
+      for (const options of [{ host: '127.0.0.1', port: 54322 }, { host: 'example.invalid', port: 1234 }, { host: '127.0.0.1', port: 587 }, { path: '/tmp/untrusted.sock' }]) {
+        assert.throws(() => new net.Socket().connect(options), /Synthetic model-only/);
+      }
+      assert.throws(() => tls.connect({ host: '127.0.0.1', port: 1234 }), /Synthetic model-only/);
+      Promise.all([fetch('http://127.0.0.1:54322/'), fetch('http://127.0.0.1:1234/v1/models'), fetch('http://127.0.0.1:1234/v1/chat/completions')].map(p => assert.rejects(p, /Synthetic model-only/))).then(() => console.log('guard verified'));
+    
+  node:assert:128
+    throw new AssertionError(obj);
+    ^
+  
+  AssertionError [ERR_ASSERTION]: Missing expected exception.
+      at [eval]:6:14
+      at runScriptInThisContext (node:internal/vm:209:10)
+      at node:internal/process/execution:449:12
+      at [eval]-wrapper:6:24
+      at runScriptInContext (node:internal/process/execution:447:60)
+      at evalFunction (node:internal/process/execution:280:30)
+      at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:98:11) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /Synthetic model-only/,
+    operator: 'throws'
+  }
+  
+  Node.js v23.7.0
+  
+      at genericNodeError (node:internal/errors:983:15)
+      at wrappedFn (node:internal/errors:537:14)
+      at checkExecSyncError (node:child_process:882:11)
+      at execFileSync (node:child_process:918:15)
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/member_conversation_eval.test.ts:111:18)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    status: 1,
+    signal: null,
+    output: [ null, '', "node:assert:128\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: Missing expected exception.\n    at [eval]:6:14\n    at runScriptInThisContext (node:internal/vm:209:10)\n    at node:internal/process/execution:449:12\n    at [eval]-wrapper:6:24\n    at runScriptInContext (node:internal/process/execution:447:60)\n    at evalFunction (node:internal/process/execution:280:30)\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:98:11) {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: undefined,\n  expected: /Synthetic model-only/,\n  operator: 'throws'\n}\n\nNode.js v23.7.0\n" ],
+    pid: 27647,
+    stdout: '',
+    stderr: "node:assert:128\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: Missing expected exception.\n    at [eval]:6:14\n    at runScriptInThisContext (node:internal/vm:209:10)\n    at node:internal/process/execution:449:12\n    at [eval]-wrapper:6:24\n    at runScriptInContext (node:internal/process/execution:447:60)\n    at evalFunction (node:internal/process/execution:280:30)\n    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:98:11) {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: undefined,\n  expected: /Synthetic model-only/,\n  operator: 'throws'\n}\n\nNode.js v23.7.0\n"
+  }
+
+test at tests/member_profile_pilot.test.ts:1:242
+✖ synthetic profile pilot exercises capture, proposals, review, replay and exact-scoped briefings (1.829625ms)
+  Error: Cannot find module '../../../TheNexus/db/member-memory.js'
+  Require stack:
+  - /Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/evals/member-profile-pilot.ts
+      at node:internal/modules/cjs/loader:1394:15
+      at nextResolveSimple (/Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:4:1004)
+      at /Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:3:2630
+      at /Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:3:1542
+      at resolveTsPaths (/Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:4:760)
+      at /Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:4:1102
+      at m._resolveFilename (file:///Volumes/Projects/Praxis/node_modules/tsx/dist/register-B7jrtLTO.mjs:1:789)
+      at defaultResolveImpl (node:internal/modules/cjs/loader:1050:19)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1055:22)
+      at Function._load (node:internal/modules/cjs/loader:1204:37) {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/src/evals/member-profile-pilot.ts' ]
+  }
+
+test at tests/model_inputs_whole.test.ts:1:4139
+✖ a session larger than the window is read around its hit, with the counts and the whole session in a file (2.085625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/model_inputs_whole.test.ts:92:10)
+      at Test.runInAsyncScope (node:async_hooks:211:14)
+      at Test.run (node:internal/test_runner/test:980:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:678:18)
+      at Test.postRun (node:internal/test_runner/test:1091:19)
+      at Test.run (node:internal/test_runner/test:1019:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual'
+  }
+
+test at tests/model_inputs_whole.test.ts:1:5152
+✖ a MAP call whose session was cut is given the directory with the whole text (2.357291ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + undefined
+  - [
+  -   '/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-test-data-ntBryr/model-inputs'
+  - ]
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/model_inputs_whole.test.ts:110:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: [ '/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-test-data-ntBryr/model-inputs' ],
+    operator: 'deepStrictEqual'
+  }
+
+test at tests/model_inputs_whole.test.ts:1:10868
+✖ few-shot demonstrations are shown whole and the block says how many more matched (9.461541ms)
+  AssertionError [ERR_ASSERTION]: the result whole (150, shown at 80)
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/model_inputs_whole.test.ts:241:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '=='
+  }
+
+test at tests/quota_yellow_alert.test.ts:1:1309
+✖ a token event creates a persisted acknowledgment-only yellow card and owns its notification (32.648125ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.equal(metadata.notificationOwner, "yellow-alert")
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/quota_yellow_alert.test.ts:32:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:297:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '=='
+  }
+
+test at tests/quota_yellow_alert.test.ts:1:3281
+✖ the same pool dedupes across publishers and restart, including after acknowledgment (6.538458ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - 'acknowledged'
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/quota_yellow_alert.test.ts:80:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'acknowledged',
+    operator: 'strictEqual'
+  }
+
+test at tests/quota_yellow_alert.test.ts:1:3932
+✖ QA redirects attribute exhaustion to the failed executor rather than the healthy replacement (6.468166ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - 'claude-code'
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/quota_yellow_alert.test.ts:89:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'claude-code',
+    operator: 'strictEqual'
+  }
+
+test at tests/quota_yellow_alert.test.ts:1:4631
+✖ a quota hold lacking reviewer identity does not infer exhaustion from the author (3.389083ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - 'unknown'
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/quota_yellow_alert.test.ts:99:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'unknown',
+    operator: 'strictEqual'
+  }
+
+test at tests/report_intake_questions.test.ts:1:1
+✖ tests/report_intake_questions.test.ts (1991.874041ms)
+  'test failed'
+
+test at tests/report_intake_slot_failure.test.ts:1:205
+✖ slot conversion failures hold reports through the production runner and Mail gate (949.915125ms)
+  AssertionError [ERR_ASSERTION]: (node:85738) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+  (Use `node --trace-warnings ...` to show where the warning was created)
+  [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+  [2026-11-24T19:13:14.256Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+  node:internal/modules/cjs/loader:1394
+    const err = new Error(message);
+                ^
+  
+  Error: Cannot find module '../../../TheNexus/db'
+  Require stack:
+  - /Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/fixtures/report-intake-slot-failure.test.mts
+      at node:internal/modules/cjs/loader:1394:15
+      at m._resolveFilename (file:///Volumes/Projects/Praxis/node_modules/tsx/dist/register-B7jrtLTO.mjs:1:789)
+      at nextResolveSimple (/Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:4:1004)
+      at /Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:3:2630
+      at /Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:3:1542
+      at resolveTsPaths (/Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:4:760)
+      at /Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:4:1102
+      at Object.cjsMockModuleLoad (node:internal/test_runner/mock/mock:695:16)
+      at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:234:24) {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [
+      '/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/fixtures/report-intake-slot-failure.test.mts'
+    ]
+  }
+  
+  Node.js v23.7.0
+  ✖ /Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/fixtures/report-intake-slot-failure.test.mts (916.012917ms)
+  ℹ tests 1
+  ℹ suites 0
+  ℹ pass 0
+  ℹ fail 1
+  ℹ cancelled 0
+  ℹ skipped 0
+  ℹ todo 0
+  ℹ duration_ms 920.066167
+  
+  ✖ failing tests:
+  
+  test at tests/fixtures/report-intake-slot-failure.test.mts:1:1
+  ✖ /Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/fixtures/report-intake-slot-failure.test.mts (916.012917ms)
+    'test failed'
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/report_intake_slot_failure.test.ts:17:10)
+      at Test.runInAsyncScope (node:async_hooks:211:14)
+      at Test.run (node:internal/test_runner/test:980:25)
+      at Test.start (node:internal/test_runner/test:878:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:297:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual'
+  }
+
+test at tests/research_web_retrieval.test.ts:2:3668
+✖ the page connection refuses mixed public/private DNS answers and literal private addresses (20.887791ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'mixed.test'
+  - ]
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/research_web_retrieval.test.ts:152:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'mixed.test' ],
+    operator: 'deepStrictEqual'
+  }
+
+test at tests/stakeholder-living-report.test.ts:1:1829
+✖ weekly, activity and manual runs update one preview/link/document while freezing each email (1.560125ms)
+  Error: Cannot find module './db'
+  Require stack:
+  - /Volumes/Projects/.scratch-fa032fc0/TheNexus/package.json
+      at node:internal/modules/cjs/loader:1394:15
+      at nextResolveSimple (/Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:4:1004)
+      at /Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:3:2630
+      at /Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:3:1542
+      at resolveTsPaths (/Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:4:760)
+      at /Volumes/Projects/Praxis/node_modules/tsx/dist/register-D46fvsV_.cjs:4:1102
+      at m._resolveFilename (file:///Volumes/Projects/Praxis/node_modules/tsx/dist/register-B7jrtLTO.mjs:1:789)
+      at defaultResolveImpl (node:internal/modules/cjs/loader:1050:19)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1055:22)
+      at Function._load (node:internal/modules/cjs/loader:1204:37) {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Volumes/Projects/.scratch-fa032fc0/TheNexus/package.json' ]
+  }
+
+test at tests/tool_schema_honesty.test.ts:1:714
+✖ every registered tool declares every argument its handler reads (3683.894666ms)
+  AssertionError [ERR_ASSERTION]: Undeclared tool argument(s):
+    search_conversations.limit read at src/tools/core-tools.ts:1608
+    search_conversations.raw read at src/tools/core-tools.ts:1611
+  Declare each one in the tool's JSON schema, or — if it is internal machinery a model must never set — add it to INTERNAL_TOOL_ARGS in src/tools/internal-tool-args.ts with the caller that sets it and why.
+  + actual - expected
+  
+  + [
+  +   {
+  +     arg: 'limit',
+  +     at: 'src/tools/core-tools.ts:1608',
+  +     tool: 'search_conversations'
+  +   },
+  +   {
+  +     arg: 'raw',
+  +     at: 'src/tools/core-tools.ts:1611',
+  +     tool: 'search_conversations'
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/tool_schema_honesty.test.ts:69:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:297:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ { tool: 'search_conversations', arg: 'limit', at: 'src/tools/core-tools.ts:1608' }, { tool: 'search_conversations', arg: 'raw', at: 'src/tools/core-tools.ts:1611' } ],
+    expected: [],
+    operator: 'deepStrictEqual'
+  }
+
+test at tests/tool_schema_honesty.test.ts:20:7646
+✖ the allowlist is what exempts internal args — not the check skipping them (2509.353791ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   {
+  +     arg: 'limit',
+  +     at: 'src/tools/core-tools.ts:1608',
+  +     tool: 'search_conversations'
+  +   },
+  +   {
+  +     arg: 'raw',
+  +     at: 'src/tools/core-tools.ts:1611',
+  +     tool: 'search_conversations'
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/tool_schema_honesty.test.ts:454:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ { tool: 'search_conversations', arg: 'limit', at: 'src/tools/core-tools.ts:1608' }, { tool: 'search_conversations', arg: 'raw', at: 'src/tools/core-tools.ts:1611' } ],
+    expected: [],
+    operator: 'deepStrictEqual'
+  }
+
+test at tests/tts_provider.test.ts:1:9351
+✖ local deadline covers both waiting for headers and stalled response bodies (302395.830833ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /timeout|abort/i. Input:
+  
+  'TypeError: terminated'
+  
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async <anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/tts_provider.test.ts:237:7)
+      at async localServer (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/tts_provider.test.ts:49:9)
+      at async TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/tts_provider.test.ts:233:5)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: TypeError: terminated
+        at Fetch.onAborted (node:internal/deps/undici/undici:11124:53)
+        at Fetch.emit (node:events:507:28)
+        at Fetch.terminate (node:internal/deps/undici/undici:10282:14)
+        at Object.onError (node:internal/deps/undici/undici:11245:38)
+        at LegacyHandlerWrapper.onResponseError (/Volumes/Projects/Praxis/node_modules/undici/lib/dispatcher/dispatcher1-wrapper.js:47:19)
+        at Request.onResponseError (/Volumes/Projects/Praxis/node_modules/undici/lib/core/request.js:410:44)
+        at Object.errorRequest (/Volumes/Projects/Praxis/node_modules/undici/lib/core/util.js:820:13)
+        at Socket.onHttpSocketClose (/Volumes/Projects/Praxis/node_modules/undici/lib/dispatcher/client-h1.js:933:10)
+        at Socket.emit (node:events:519:35)
+        at TCP.<anonymous> (node:net:351:12) {
+      [cause]: BodyTimeoutError: Body Timeout Error
+          at FastTimer.onParserTimeout [as _onTimeout] (/Volumes/Projects/Praxis/node_modules/undici/lib/dispatcher/client-h1.js:753:28)
+          at Timeout.onTick [as _onTimeout] (/Volumes/Projects/Praxis/node_modules/undici/lib/util/timers.js:162:13)
+          at listOnTimeout (node:internal/timers:614:17)
+          at process.processTimers (node:internal/timers:549:7)
+    },
+    expected: /timeout|abort/i,
+    operator: 'rejects'
+  }
+
+test at tests/upgrade_preflight.test.ts:13:2942
+✖ a settled boot clears the counter and records the running revision as good (14.036583ms)
+  AssertionError [ERR_ASSERTION]: HEAD must be recorded as the rollback target
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/upgrade_preflight.test.ts:205:10)
+      at Test.runInAsyncScope (node:async_hooks:211:14)
+      at Test.run (node:internal/test_runner/test:980:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:678:18)
+      at Test.postRun (node:internal/test_runner/test:1091:19)
+      at Test.run (node:internal/test_runner/test:1019:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: '=='
+  }
+
+test at tests/vault_source_delivery.test.ts:1:757
+✖ approved global sections stay inline and complete source is readable within workspace (22.0315ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  'full' !== 'focused'
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/vault_source_delivery.test.ts:17:10)
+      at Test.runInAsyncScope (node:async_hooks:211:14)
+      at Test.run (node:internal/test_runner/test:980:25)
+      at Test.start (node:internal/test_runner/test:878:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:297:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'full',
+    expected: 'focused',
+    operator: 'strictEqual'
+  }
+
+test at tests/vault_source_delivery.test.ts:1:2773
+✖ context assembly changes only the approved expanded audit and preserves the full project section (25.764417ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Complete source reference/. Input:
+  
+  'Source delivery: complete snapshot could not be installed and verified; complete source retained inline.\n' +
+    '\n' +
+    '# Nexus backlog audit — September 7, 2026\n' +
+    '\n' +
+    "Prepared at Robert's explicit request: audit every Nexus task in idea or todo status, archive obsolete/unsuitable work, and recommend a full slate for tomorrow. Tomorrow is Tuesday, September 8, America/New_York.\n" +
+    '\n' +
+    '**Result: 218 tasks reviewed across all 26 projects (12 had eligible tasks). 113 retire; 35 retain as written; 70 retain only with corrected scope. 60 archives were applied and read back. 53 archives remain unapplied because nexus_task_update reached its enforced 60 task-updates/hour limit. The second batch returned five rate-limit refusals; no further mutation batch was started.**\n' +
+    '\n' +
+    'The 70 scope corrections below are documented recommendations; their Nexus descriptions/payloads have not been changed. Do not dispatch a retained-but-reframed card using its old instruction layer. Correct the selected card first. Retention is not a promise to execute every idea.\n' +
+    '\n' +
+    '## September 8 operator revision\n' +
+    '\n' +
+    'Robert reviewed the first selected task and approved executor freedom to follow work across relevant repositories. Task `39f9679a-0105-40f9-928f-239351d4b102` has a revised title, human description and executable prompt/acceptance criteria, all applied and verified. Its former never-repoint/path-majority prescription is retired. This is an additional correction to a card originally classified retain; the original audit disposition totals and the separate 20-brief batch remain historical/planning counts. Robert will dispatch the task himself. Original and updated records are preserved in `workspace-task-before-2026-09-08.json` and `workspace-task-after-2026-09-08.json`.\n' +
+    '\n' +
+    '## Tomorrow and continuation\n' +
+    '\n' +
+    'Read [[Praxis tomorrow slate - 2026-09-08]] (`projects/Praxis tomorrow slate - 2026-09-08.md`). Robert requested an expansion from five to **12 ranked delivery tasks**, keeping **20 corrected briefs** as a separate preparation target. The updated handoff and `tomorrow-delivery-slate.json` contain the twelve existing UUIDs, acceptance criteria, sequencing and owner checks. Meeple feedback/logging remains the primary community milestone, alongside one factual post draft and eight bounded Praxis repairs. The queue carries unfinished work forward; no measured claim is made that all twelve fit eight hours. September 8 live checks found all twelve still idea/todo; the mobile dashboard task is now completed and excluded. Parked projects remain conditional alternatives. This update changes the recommended slate, not Nexus task statuses or a dispatched schedule.\n' +
+    '\n' +
+    "Finish the authorized remaining archives using the ordinary permitted Nexus surface once its update budget is available. First read live status/version and the exact decision; skip/reconcile records that changed or started. Preserve original context and put the archive reason/canonical survivor in the task. Never bypass tool rate limits or alter credentials. Following Robert's request to increase throughput, tomorrow's target is 20 corrected briefs plus 53 pending archives (at least 73 task writes across two hourly windows if none changed). The exact ranked correction batch is in tomorrow's slate and tomorrow-brief-batch.json; the other 50 scope amendments remain in the backlog. Stop at any applicable budget rather than retrying refused writes.\n" +
+    '\n' +
+    'Local continuation file: [pending-actions.json](/Volumes/Projects/nexus-audit-2026-09-07/pending-actions.json). It contains all 53 pending archive decisions and 70 scope recommendations, their original status/timestamp, reasons and sources. `priority_for_morning=0` identifies the 20 selected briefs in `brief_batch_rank` order, `1` the pending archives and `2` deferred scope amendments. This file is an audit handoff, not a dispatched execution queue.\n' +
+    '\n' +
+    '## Basis for judgment\n' +
+    '\n' +
+    '- Read full descriptions and executable payloads for every scoped card, not titles alone; compare current project cards, recent accepted work, source code and the September 6–7 operating plan.\n' +
+    '- Archive duplicated outcomes, demonstrated already-shipped work, stale incident snapshots, false local premises, retired user directions, unsafe prescribed behavior and speculative infrastructure that conflicts with the selected operating plan. Keep distinct useful but unselected/uncertain ideas. Age, parked state, low priority or a paper citation alone is not a retirement reason.\n' +
+    "- Current user direction favors one real community deliverable, existing measurement systems and natural accepted-task evidence. Provider limits mean waiting for the same capable session/model, not automatically downgrading or restarting. The day begins with Robert's greeting. Manual inquiry triage is his chosen setup. No new automatic publishing or customer-message authority was inferred.\n" +
+    '- External sources are supporting practice checks, not evidence that the local implementation has shipped or that a research method is universally wrong. [OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html) supports checking authorization and default denial; [AWS](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/retry-backoff.html) supports bounded, idempotent retry; [W3C](https://www.w3.org/WAI/tutorials/forms/notifications/) supports truthful accessible form feedback; [Anthropic](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents) supports inspecting actual outcomes and proportionate evaluation. Task-specific citations are in the full ledger.\n' +
+    '\n' +
+    '## Material findings\n' +
+    '\n' +
+    '- Repeated watchdog/backoff/unknown-state and approval-delivery proposals were collapsed into one residual recovery task (`bb2fd937`) and one post-greeting approval task (`664e5cab`). Existing completed watchdog, requeue, continuity and schedule-convergence code must not be rebuilt.\n' +
+    '- Several QA proposals revive deliberately removed synthetic activation/evidence gates, add speculative scoring/critic layers or replace independent artifact checks with executor self-report. These should retire. The canonical reviewer-instructions task (`0029b0cc`) remains valid because active guidance still contradicts current behavior.\n' +
+    '- The task demanding missing/expired authorization tokens fail open (`cc7e3a44`) was archived. Its old token design is also superseded by completed `c3d1715c`. Current operator authentication remains a concern to inspect through the retained authorization-boundary task; this audit did not repair or certify the runtime.\n' +
+    '- The supposedly missing QA telemetry tables exist in the canonical `~/.praxis-mind/cost_ledger.sqlite` (166 QA rows at the check). Claude message dedup, board summaries, MCP retrieval repair, Current Focus and provider-reset visibility already have shipped owners. Active `d18ebc75` owns deployed token attribution and its natural acceptance observation.\n' +
+    "- Groundrules' two reciprocal anchor-fix cards are both superseded by completed `13347306`; independent source/walkthrough checks justify retiring both. Both Nexus attribution cards are superseded by Current Focus and active token attribution. These are not cases of archiving two unsatisfied duplicates with no survivor.\n" +
+    '- Meeple feedback closes before its asynchronous save settles; per-player scores are absent; name autocomplete must use existing Firebase/UID-scoped history. Customer reply briefs contain stale claims about the form/email policy and need factual correction before any authorized send.\n' +
+    '- The mobile design/quantization ideas conflict with the active shared-dashboard implementation. General new video-generation, hosted-monitor, model-tier, prompt-scorer and memory-architecture projects lack an adopted current need.\n' +
+    '\n' +
+    '## Coverage and decisions\n' +
+    '\n' +
+    '“Archived” below means a live Nexus status of archived was read back. “Pending archive” is a reviewed decision not yet applied. “Correct scope” remains in its original board status and must be rebriefed before execution. Full exact reasons, canonical UUIDs and source arrays: [all-decisions.json](/Volumes/Projects/nexus-audit-2026-09-07/all-decisions.json).\n' +
+    '\n' +
+    '| Project | Reviewed | Retire | Archived now | Retain | Correct scope |\n' +
+    '| --- | ---: | ---: | ---: | ---: | ---: |\n' +
+    '| AIClubs.net | 0 | 0 | 0 | 0 | 0 |\n' +
+    '| Adventures of Dean | 0 | 0 | 0 | 0 | 0 |\n' +
+    '| Build Your Own Ski Mountain | 2 | 0 | 0 | 0 | 2 |\n' +
+    '| Chores Tracker | 0 | 0 | 0 | 0 | 0 |\n' +
+    '| Daisy Hollow Farm Website | 0 | 0 | 0 | 0 | 0 |\n' +
+    '| Gay-I Club Concierge | 3 | 0 | 0 | 2 | 1 |\n' +
+    '| Get Noticed at Anthropic | 4 | 2 | 2 | 1 | 1 |\n' +
+    '| Groundrules.club | 11 | 8 | 6 | 3 | 0 |\n' +
+    '| Impossible Worlds Field Guide | 4 | 1 | 0 | 1 | 2 |\n' +
+    '| JP Lautrup Portfolio | 0 | 0 | 0 | 0 | 0 |\n' +
+    '| LARS-Autonomous-Revenue | 3 | 1 | 0 | 2 | 0 |\n' +
+    '| Meeple Magnate | 7 | 0 | 0 | 2 | 5 |\n' +
+    '| NYC-Home-Finder | 0 | 0 | 0 | 0 | 0 |\n' +
+    '| Nexus-Mobile-Android | 2 | 2 | 2 | 0 | 0 |\n' +
+    '| Praxis | 147 | 84 | 36 | 17 | 46 |\n' +
+    '| Praxis YouTube Channel | 1 | 1 | 0 | 0 | 0 |\n' +
+    '| Praxis iPad Home Hub | 0 | 0 | 0 | 0 | 0 |\n' +
+    '| Ski House Split | 0 | 0 | 0 | 0 | 0 |\n' +
+    '| TheCortex | 17 | 4 | 4 | 5 | 8 |\n' +
+    '| TheGayGuyde.com | 0 | 0 | 0 | 0 | 0 |\n' +
+    '| TheNexus | 17 | 10 | 10 | 2 | 5 |\n' +
+    '| Waiting Families Adoption Tracker | 0 | 0 | 0 | 0 | 0 |\n' +
+    '| Weekend House Split | 0 | 0 | 0 | 0 | 0 |\n' +
+    '| nexus-shared | 0 | 0 | 0 | 0 | 0 |\n' +
+    '| shared-mind | 0 | 0 | 0 | 0 | 0 |\n' +
+    '| vibeshiftai | 0 | 0 | 0 | 0 | 0 |\n' +
+    '\n' +
+    '### Build Your Own Ski Mountain\n' +
+    '\n' +
+    '| Task ID / title | Disposition | Audit reason (full evidence in ledger) |\n' +
+    '| --- | --- | --- |\n' +
+    '| `64349683-48b9-4ddd-91bd-9521de656840`<br>Refresh docs flagged stale by the 2026-08-26 docs-sync review | Correct scope | The automated brief guesses that docs are stale. Source inspection identifies a small real gap: README already documents counters/live checks and an August22 baseline, but its design tree omits /loop, lineage and arrival-source behavior. Keep a targeted documentation correction… |\n' +
+    '| `f2aeeb16-17a4-4d41-a566-1fdb524b5be8`<br>Record the first dated loop baseline as a file the re'... 88684 more characters
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/vault_source_delivery.test.ts:62:12)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: "Source delivery: complete snapshot could not be installed and verified; complete source retained inline.\n\n# Nexus backlog audit — September 7, 2026\n\nPrepared at Robert's explicit request: audit every Nexus task in idea or todo status, archive obsolete/unsuitable work, and recommend a full slate for tomorrow. Tomorrow is Tuesday, September 8, America/New_York.\n\n**Result: 218 tasks reviewed across all 26 projects (12 had eligible tasks). 113 retire; 35 retain as written; 70 retain only with corrected scope. 60 archives were applied and read back. 53 archives remain unapplied because nexus_task_update reached its enforced 60 task-updates/hour limit. The second batch returned five rate-limit refusals; no further mutation batch was started.**\n\nThe 70 scope corrections below are documented recommendations; their Nexus descriptions/payloads have not been changed. Do not dispatch a retained-but-reframed card using its old instruction layer. Correct the selected card first. Retention is not a promise to execute every idea.\n\n## September 8 operator revision\n\nRobert reviewed the first selected task and approved executor freedom to follow work across relevant repositories. Task `39f9679a-0105-40f9-928f-239351d4b102` has a revised title, human description and executable prompt/acceptance criteria, all applied and verified. Its former never-repoint/path-majority prescription is retired. This is an additional correction to a card originally classified retain; the original audit disposition totals and the separate 20-brief batch remain historical/planning counts. Robert will dispatch the task himself. Original and updated records are preserved in `workspace-task-before-2026-09-08.json` and `workspace-task-after-2026-09-08.json`.\n\n## Tomorrow and continuation\n\nRead [[Praxis tomorrow slate - 2026-09-08]] (`projects/Praxis tomorrow slate - 2026-09-08.md`). Robert requested an expansion from five to **12 ranked delivery tasks**, keeping **20 corrected briefs** as a separate preparation target. The updated handoff and `tomorrow-delivery-slate.json` contain the twelve existing UUIDs, acceptance criteria, sequencing and owner checks. Meeple feedback/logging remains the primary community milestone, alongside one factual post draft and eight bounded Praxis repairs. The queue carries unfinished work forward; no measured claim is made that all twelve fit eight hours. September 8 live checks found all twelve still idea/todo; the mobile dashboard task is now completed and excluded. Parked projects remain conditional alternatives. This update changes the recommended slate, not Nexus task statuses or a dispatched schedule.\n\nFinish the authorized remaining archives using the ordinary permitted Nexus surface once its update budget is available. First read live status/version and the exact decision; skip/reconcile records that changed or started. Preserve original context and put the archive reason/canonical survivor in the task. Never bypass tool rate limits or alter credentials. Following Robert's request to increase throughput, tomorrow's target is 20 corrected briefs plus 53 pending archives (at least 73 task writes across two hourly windows if none changed). The exact ranked correction batch is in tomorrow's slate and tomorrow-brief-batch.json; the other 50 scope amendments remain in the backlog. Stop at any applicable budget rather than retrying refused writes.\n\nLocal continuation file: [pending-actions.json](/Volumes/Projects/nexus-audit-2026-09-07/pending-actions.json). It contains all 53 pending archive decisions and 70 scope recommendations, their original status/timestamp, reasons and sources. `priority_for_morning=0` identifies the 20 selected briefs in `brief_batch_rank` order, `1` the pending archives and `2` deferred scope amendments. This file is an audit handoff, not a dispatched execution queue.\n\n## Basis for judgment\n\n- Read full descriptions and executable payloads for every scoped card, not titles alone; compare current project cards, recent accepted work, source code and the September 6–7 operating plan.\n- Archive duplicated outcomes, demonstrated already-shipped work, stale incident snapshots, false local premises, retired user directions, unsafe prescribed behavior and speculative infrastructure that conflicts with the selected operating plan. Keep distinct useful but unselected/uncertain ideas. Age, parked state, low priority or a paper citation alone is not a retirement reason.\n- Current user direction favors one real community deliverable, existing measurement systems and natural accepted-task evidence. Provider limits mean waiting for the same capable session/model, not automatically downgrading or restarting. The day begins with Robert's greeting. Manual inquiry triage is his chosen setup. No new automatic publishing or customer-message authority was inferred.\n- External sources are supporting practice checks, not evidence that the local implementation has shipped or that a research method is universally wrong. [OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html) supports checking authorization and default denial; [AWS](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/retry-backoff.html) supports bounded, idempotent retry; [W3C](https://www.w3.org/WAI/tutorials/forms/notifications/) supports truthful accessible form feedback; [Anthropic](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents) supports inspecting actual outcomes and proportionate evaluation. Task-specific citations are in the full ledger.\n\n## Material findings\n\n- Repeated watchdog/backoff/unknown-state and approval-delivery proposals were collapsed into one residual recovery task (`bb2fd937`) and one post-greeting approval task (`664e5cab`). Existing completed watchdog, requeue, continuity and schedule-convergence code must not be rebuilt.\n- Several QA proposals revive deliberately removed synthetic activation/evidence gates, add speculative scoring/critic layers or replace independent artifact checks with executor self-report. These should retire. The canonical reviewer-instructions task (`0029b0cc`) remains valid because active guidance still contradicts current behavior.\n- The task demanding missing/expired authorization tokens fail open (`cc7e3a44`) was archived. Its old token design is also superseded by completed `c3d1715c`. Current operator authentication remains a concern to inspect through the retained authorization-boundary task; this audit did not repair or certify the runtime.\n- The supposedly missing QA telemetry tables exist in the canonical `~/.praxis-mind/cost_ledger.sqlite` (166 QA rows at the check). Claude message dedup, board summaries, MCP retrieval repair, Current Focus and provider-reset visibility already have shipped owners. Active `d18ebc75` owns deployed token attribution and its natural acceptance observation.\n- Groundrules' two reciprocal anchor-fix cards are both superseded by completed `13347306`; independent source/walkthrough checks justify retiring both. Both Nexus attribution cards are superseded by Current Focus and active token attribution. These are not cases of archiving two unsatisfied duplicates with no survivor.\n- Meeple feedback closes before its asynchronous save settles; per-player scores are absent; name autocomplete must use existing Firebase/UID-scoped history. Customer reply briefs contain stale claims about the form/email policy and need factual correction before any authorized send.\n- The mobile design/quantization ideas conflict with the active shared-dashboard implementation. General new video-generation, hosted-monitor, model-tier, prompt-scorer and memory-architecture projects lack an adopted current need.\n\n## Coverage and decisions\n\n“Archived” below means a live Nexus status of archived was read back. “Pending archive” is a reviewed decision not yet applied. “Correct scope” remains in its original board status and must be rebriefed before execution. Full exact reasons, canonical UUIDs and source arrays: [all-decisions.json](/Volumes/Projects/nexus-audit-2026-09-07/all-decisions.json).\n\n| Project | Reviewed | Retire | Archived now | Retain | Correct scope |\n| --- | ---: | ---: | ---: | ---: | ---: |\n| AIClubs.net | 0 | 0 | 0 | 0 | 0 |\n| Adventures of Dean | 0 | 0 | 0 | 0 | 0 |\n| Build Your Own Ski Mountain | 2 | 0 | 0 | 0 | 2 |\n| Chores Tracker | 0 | 0 | 0 | 0 | 0 |\n| Daisy Hollow Farm Website | 0 | 0 | 0 | 0 | 0 |\n| Gay-I Club Concierge | 3 | 0 | 0 | 2 | 1 |\n| Get Noticed at Anthropic | 4 | 2 | 2 | 1 | 1 |\n| Groundrules.club | 11 | 8 | 6 | 3 | 0 |\n| Impossible Worlds Field Guide | 4 | 1 | 0 | 1 | 2 |\n| JP Lautrup Portfolio | 0 | 0 | 0 | 0 | 0 |\n| LARS-Autonomous-Revenue | 3 | 1 | 0 | 2 | 0 |\n| Meeple Magnate | 7 | 0 | 0 | 2 | 5 |\n| NYC-Home-Finder | 0 | 0 | 0 | 0 | 0 |\n| Nexus-Mobile-Android | 2 | 2 | 2 | 0 | 0 |\n| Praxis | 147 | 84 | 36 | 17 | 46 |\n| Praxis YouTube Channel | 1 | 1 | 0 | 0 | 0 |\n| Praxis iPad Home Hub | 0 | 0 | 0 | 0 | 0 |\n| Ski House Split | 0 | 0 | 0 | 0 | 0 |\n| TheCortex | 17 | 4 | 4 | 5 | 8 |\n| TheGayGuyde.com | 0 | 0 | 0 | 0 | 0 |\n| TheNexus | 17 | 10 | 10 | 2 | 5 |\n| Waiting Families Adoption Tracker | 0 | 0 | 0 | 0 | 0 |\n| Weekend House Split | 0 | 0 | 0 | 0 | 0 |\n| nexus-shared | 0 | 0 | 0 | 0 | 0 |\n| shared-mind | 0 | 0 | 0 | 0 | 0 |\n| vibeshiftai | 0 | 0 | 0 | 0 | 0 |\n\n### Build Your Own Ski Mountain\n\n| Task ID / title | Disposition | Audit reason (full evidence in ledger) |\n| --- | --- | --- |\n| `64349683-48b9-4ddd-91bd-9521de656840`<br>Refresh docs flagged stale by the 2026-08-26 docs-sync review | Correct scope | The automated brief guesses that docs are stale. Source inspection identifies a small real gap: README already documents counters/live checks and an August22 baseline, but its design tree omits /loop, lineage and arrival-source behavior. Keep a targeted documentation correction… |\n| `f2aeeb16-17a4-4d41-a566-1fdb524b5be8`<br>Record the first dated loop baseline as a file the re"... 88684 more characters,
+    expected: /Complete source reference/,
+    operator: 'match'
+  }
+
+test at tests/verification_protocol.test.ts:3:10571
+✖ verification records retain successful synthetic probe activation evidence (9.868708ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    {
+      evidence: 'POST /agent-tool with qa-probe-task-probed-123; execution trace tool_start invoked create_widget.',
+      outcome: 'pass',
+      targets: [
+        {
+  ...
+      ],
+  +   token: '[redacted]'
+  -   token: 'qa-probe-task-probed-123'
+    }
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/verification_protocol.test.ts:520:10)
+      at Test.runInAsyncScope (node:async_hooks:211:14)
+      at Test.run (node:internal/test_runner/test:980:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:678:18)
+      at Test.postRun (node:internal/test_runner/test:1091:19)
+      at Test.run (node:internal/test_runner/test:1019:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { outcome: 'pass', token: '[redacted]', targets: [ [Object] ], evidence: 'POST /agent-tool with qa-probe-task-probed-123; execution trace tool_start invoked create_widget.' },
+    expected: { outcome: 'pass', token: 'qa-probe-task-probed-123', targets: [ [Object] ], evidence: 'POST /agent-tool with qa-probe-task-probed-123; execution trace tool_start invoked create_widget.' },
+    operator: 'deepStrictEqual'
+  }
+
+test at tests/webhook_callback_route.test.ts:3:5409
+✖ A: a non-loopback caller is rejected with 403 before anything else runs (1281.473458ms)
+  TypeError [Error]: fetch failed (network guard refused http://192.168.86.205:51224/callback)
+      at globalThis.fetch (file:///Volumes/Projects/.scratch-fa032fc0/net-guard.mjs:34:11)
+      at globalThis.fetch (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/bootstrap.ts:92:10)
+      at postCallback (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/webhook_callback_route.test.ts:276:21)
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/webhook_callback_route.test.ts:343:21)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:297:3)
+
+test at tests/webhook_routes_inventory.test.ts:1:4815
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions (2440.260291ms)
+  Error: Command failed: git show 1cac649:src/webhook.ts
+  fatal: not a git repository (or any parent up to mount point /Volumes)
+  Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+  
+      at genericNodeError (node:internal/errors:983:15)
+      at wrappedFn (node:internal/errors:537:14)
+      at checkExecSyncError (node:child_process:882:11)
+      at execFileSync (node:child_process:918:15)
+      at snapshotFromHead (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/webhook_routes_inventory.test.ts:71:18)
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/webhook_routes_inventory.test.ts:212:18)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:297:3) {
+    status: 128,
+    signal: null,
+    output: [ null, '', 'fatal: not a git repository (or any parent up to mount point /Volumes)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n' ],
+    pid: 34061,
+    stdout: '',
+    stderr: 'fatal: not a git repository (or any parent up to mount point /Volumes)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n'
+  }
+exit 1

@@ -1,0 +1,19 @@
+== (1) route inventory on the merged tree (main 4d076f91 + branch diff), git shim
+✔ the split routers register exactly the pre-split route surface plus the inventoried additions
+✔ each inventoried addition is registered by the module the inventory names
+✔ no two routers register the same (method, path)
+✔ no route is registered twice on the app as a whole
+ℹ tests 4
+ℹ pass 4
+ℹ fail 0
+exit 0
+git shim log:
+forwarded: show 1cac649:src/webhook.ts
+guards: lmstudio=0 net=0
+== (2) plain main 4d076f91, archived, no branch diff
+ℹ tests 50 ℹ pass 48 ℹ fail 2 exit 1 
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+"not a git repository" lines: 8
+guards: lmstudio=0 net=0
+== done

@@ -1,0 +1,162 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/chat_turn_steps_legacy.test.ts tests/quantized_tool_gate.test.ts
+
+Running 2 of 899 suite(s): tests/chat_turn_steps_legacy.test.ts tests/quantized_tool_gate.test.ts
+
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T19:03:46.611Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[Consolidator] LEG middleware ENABLED — tool outputs will be consolidated.
+[2026-11-24T19:03:47.166Z] [INFO] [Consolidator] LEG middleware ENABLED — tool outputs will be consolidated.
+[ReasoningRouter] loaded router-config.json (mode=shadow)
+[2026-11-24T19:03:47.177Z] [INFO] [ReasoningRouter] loaded router-config.json (mode=shadow)
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:8100/api/status — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Identity] Canonical identity UNAVAILABLE (error) — Praxis has no persona to load and will not substitute one. Cause: Cortex gateway at http://127.0.0.1:8100 failed its health check
+[2026-11-24T19:03:47.183Z] [ERROR] [Identity] Canonical identity UNAVAILABLE (error) — Praxis has no persona to load and will not substitute one. Cause: Cortex gateway at http://127.0.0.1:8100 failed its health check
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/plain-praxis-main4/tests/chat_turn_steps_legacy.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-24T19:03:47.184Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/plain-praxis-main4/tests/chat_turn_steps_legacy.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[2026-11-24T19:03:47.184Z] [WARN] [ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[PromptActivation] identity=UNAVAILABLE — composing the scaffold prompt without a persona. Cause: Cortex gateway at http://127.0.0.1:8100 failed its health check
+[2026-11-24T19:03:47.185Z] [ERROR] [PromptActivation] identity=UNAVAILABLE — composing the scaffold prompt without a persona. Cause: Cortex gateway at http://127.0.0.1:8100 failed its health check
+[PromptActivation] security-instructions=present source=identity-unavailable
+[2026-11-24T19:03:47.185Z] [INFO] [PromptActivation] security-instructions=present source=identity-unavailable
+[ToolRouter] 20/63 tools included (43 excluded, categories: core, nexus, antigravity, cortex, skills, ingestion)
+[2026-11-24T19:03:47.186Z] [INFO] [ToolRouter] 20/63 tools included (43 excluded, categories: core, nexus, antigravity, cortex, skills, ingestion)
+⏱️ [SetupTiming] total=8ms state_and_memory=4ms context_fanout=2ms skills=1ms tool_routing=1ms (source=system)
+[ContextMode] lightweight provider=google model=antigravity-default history=0/0 tools=20/63
+[2026-11-24T19:03:47.186Z] [INFO] [ContextMode] lightweight provider=google model=antigravity-default history=0/0 tools=20/63
+[Agent] Pre-call prompt size: ~13061 tokens (2 messages, model window unknown, no ceiling)
+[2026-11-24T19:03:47.186Z] [INFO] [Agent] Pre-call prompt size: ~13061 tokens (2 messages, model window unknown, no ceiling)
+  🔄 Agent iteration 1/60
+[2026-11-24T19:03:47.186Z] [INFO]   🔄 Agent iteration 1/60
+  🔧 Tool call: get_current_time
+[2026-11-24T19:03:47.188Z] [INFO]   🔧 Tool call: get_current_time
+  🔄 Agent iteration 2/60
+[2026-11-24T19:03:47.190Z] [INFO]   🔄 Agent iteration 2/60
+✔ the buffered fallback loop reports steps and the reasoning the provider sent (1949.063292ms)
+[ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[2026-11-24T19:03:47.194Z] [WARN] [ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[LLM] Pinned call → local/gemini-3.1-pro-preview
+[2026-11-24T19:03:47.195Z] [INFO] [LLM] Pinned call → local/gemini-3.1-pro-preview
+[ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[2026-11-24T19:03:47.199Z] [WARN] [ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[PromptActivation] identity=UNAVAILABLE — composing the scaffold prompt without a persona. Cause: Cortex gateway at http://127.0.0.1:8100 failed its health check
+[2026-11-24T19:03:47.200Z] [ERROR] [PromptActivation] identity=UNAVAILABLE — composing the scaffold prompt without a persona. Cause: Cortex gateway at http://127.0.0.1:8100 failed its health check
+[PromptActivation] security-instructions=present source=identity-unavailable
+[2026-11-24T19:03:47.200Z] [INFO] [PromptActivation] security-instructions=present source=identity-unavailable
+[ToolRouter] 20/63 tools included (43 excluded, categories: core, nexus, antigravity, cortex, skills, ingestion)
+[2026-11-24T19:03:47.200Z] [INFO] [ToolRouter] 20/63 tools included (43 excluded, categories: core, nexus, antigravity, cortex, skills, ingestion)
+⏱️ [SetupTiming] total=2ms state_and_memory=0ms context_fanout=1ms skills=1ms tool_routing=0ms (source=system)
+[ContextMode] lightweight provider=google model=antigravity-default history=0/0 tools=20/63
+[2026-11-24T19:03:47.200Z] [INFO] [ContextMode] lightweight provider=google model=antigravity-default history=0/0 tools=20/63
+[Agent] Pre-call prompt size: ~13061 tokens (2 messages, model window unknown, no ceiling)
+[2026-11-24T19:03:47.200Z] [INFO] [Agent] Pre-call prompt size: ~13061 tokens (2 messages, model window unknown, no ceiling)
+  🔄 Agent iteration 1/60
+[2026-11-24T19:03:47.201Z] [INFO]   🔄 Agent iteration 1/60
+  🔧 Tool call: get_current_time
+[2026-11-24T19:03:47.201Z] [INFO]   🔧 Tool call: get_current_time
+  🔄 Agent iteration 2/60
+[2026-11-24T19:03:47.202Z] [INFO]   🔄 Agent iteration 2/60
+✔ the streamed fallback loop reports steps, and no reasoning step when none was sent (11.27175ms)
+[ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[2026-11-24T19:03:47.203Z] [WARN] [ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[LLM] Pinned call → local/gemini-3.1-pro-preview
+[2026-11-24T19:03:47.204Z] [INFO] [LLM] Pinned call → local/gemini-3.1-pro-preview
+[LLM] role "router.classify" (local/gemini-3.1-pro-preview) failed — escalating via cascade: Local inference deferred: live memory pressure before model load (swapout=? (probe unavailable) memFree=90% (swap resident=6298MB))
+[2026-11-24T19:03:47.224Z] [WARN] [LLM] role "router.classify" (local/gemini-3.1-pro-preview) failed — escalating via cascade: Local inference deferred: live memory pressure before model load (swapout=? (probe unavailable) memFree=90% (swap resident=6298MB))
+[CliSeat] cli:antigravity convening (timeout 240s)
+[2026-11-24T19:03:47.225Z] [INFO] [CliSeat] cli:antigravity convening (timeout 240s)
+[LLM] role "router.classify" (local/gemini-3.1-pro-preview) failed — escalating via cascade: Local inference deferred: live memory pressure before model load (swapout=? (probe unavailable) memFree=90% (swap resident=6298MB))
+[2026-11-24T19:03:47.239Z] [WARN] [LLM] role "router.classify" (local/gemini-3.1-pro-preview) failed — escalating via cascade: Local inference deferred: live memory pressure before model load (swapout=? (probe unavailable) memFree=90% (swap resident=6298MB))
+[CliSeat] cli:antigravity convening (timeout 240s)
+[2026-11-24T19:03:47.239Z] [INFO] [CliSeat] cli:antigravity convening (timeout 240s)
+  ⚠️ [CliLane/provider.google] cli:antigravity error: exit 1 with no usable reply — trying next
+[2026-11-24T19:03:47.451Z] [WARN]   ⚠️ [CliLane/provider.google] cli:antigravity error: exit 1 with no usable reply — trying next
+  ⚠️ [CliLane/provider.google] cli:antigravity error: exit 1 with no usable reply — trying next
+[2026-11-24T19:03:47.452Z] [WARN]   ⚠️ [CliLane/provider.google] cli:antigravity error: exit 1 with no usable reply — trying next
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/model-control/claude-default — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[CliSeat] cli:claude-code convening (timeout 240s)
+[2026-11-24T19:03:47.452Z] [INFO] [CliSeat] cli:claude-code convening (timeout 240s)
+[CliSeat] cli:claude-code convening (timeout 240s)
+[2026-11-24T19:03:47.454Z] [INFO] [CliSeat] cli:claude-code convening (timeout 240s)
+  ⚠️ [CliLane/provider.google] cli:claude-code error: exit 1 with no usable reply — trying next
+[2026-11-24T19:03:47.480Z] [WARN]   ⚠️ [CliLane/provider.google] cli:claude-code error: exit 1 with no usable reply — trying next
+[CliSeat] cli:codex convening (timeout 240s)
+[2026-11-24T19:03:47.480Z] [INFO] [CliSeat] cli:codex convening (timeout 240s)
+  ⚠️ [CliLane/provider.google] cli:claude-code error: exit 1 with no usable reply — trying next
+[2026-11-24T19:03:47.485Z] [WARN]   ⚠️ [CliLane/provider.google] cli:claude-code error: exit 1 with no usable reply — trying next
+[CliSeat] cli:codex convening (timeout 240s)
+[2026-11-24T19:03:47.485Z] [INFO] [CliSeat] cli:codex convening (timeout 240s)
+  ⚠️ [CliLane/provider.google] cli:codex error: exit 1 with no usable reply — trying next
+[2026-11-24T19:03:47.514Z] [WARN]   ⚠️ [CliLane/provider.google] cli:codex error: exit 1 with no usable reply — trying next
+  ⚠️ [CliLane/provider.google] no CLI seat answered — falling back to local/Gemini
+[2026-11-24T19:03:47.515Z] [WARN]   ⚠️ [CliLane/provider.google] no CLI seat answered — falling back to local/Gemini
+[LLM] ⚠️ google/gemini-3.1-pro-preview exhausted; starting fallback cascade
+[2026-11-24T19:03:47.515Z] [WARN] [LLM] ⚠️ google/gemini-3.1-pro-preview exhausted; starting fallback cascade
+[LLM] 🔄 Trying fallback: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+[2026-11-24T19:03:47.515Z] [INFO] [LLM] 🔄 Trying fallback: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+[OpenRouter] no price catalog available — falling back to the static free roster; slugs outside it will be refused
+[2026-11-24T19:03:47.515Z] [WARN] [OpenRouter] no price catalog available — falling back to the static free roster; slugs outside it will be refused
+  ⚠️ [CliLane/provider.google] cli:codex error: exit 1 with no usable reply — trying next
+[2026-11-24T19:03:47.529Z] [WARN]   ⚠️ [CliLane/provider.google] cli:codex error: exit 1 with no usable reply — trying next
+  ⚠️ [CliLane/provider.google] no CLI seat answered — falling back to local/Gemini
+[2026-11-24T19:03:47.529Z] [WARN]   ⚠️ [CliLane/provider.google] no CLI seat answered — falling back to local/Gemini
+[LLM] ⚠️ google/gemini-3.1-pro-preview exhausted; starting fallback cascade
+[2026-11-24T19:03:47.529Z] [WARN] [LLM] ⚠️ google/gemini-3.1-pro-preview exhausted; starting fallback cascade
+[LLM] 🔄 Trying fallback: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+[2026-11-24T19:03:47.529Z] [INFO] [LLM] 🔄 Trying fallback: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+[OpenRouter] no price catalog available — falling back to the static free roster; slugs outside it will be refused
+[2026-11-24T19:03:47.529Z] [WARN] [OpenRouter] no price catalog available — falling back to the static free roster; slugs outside it will be refused
+[LLM] ❌ Fallback openrouter/nvidia/nemotron-3-ultra-550b-a55b:free failed: Connection error.
+[2026-11-24T19:03:48.752Z] [WARN] [LLM] ❌ Fallback openrouter/nvidia/nemotron-3-ultra-550b-a55b:free failed: Connection error.
+[LLM] 💀 All providers and models failed — no fallback remaining
+[2026-11-24T19:03:48.753Z] [ERROR] [LLM] 💀 All providers and models failed — no fallback remaining
+[SubTaskGate:shadow] source=system effort=HIGH engine=pro-agent tier=reasoning needsTools=true confidence=0.00 classifier=edge_llm prompt="What time is it?"
+[2026-11-24T19:03:48.754Z] [INFO] [SubTaskGate:shadow] source=system effort=HIGH engine=pro-agent tier=reasoning needsTools=true confidence=0.00 classifier=edge_llm prompt="What time is it?"
+[LLM] ❌ Fallback openrouter/nvidia/nemotron-3-ultra-550b-a55b:free failed: Connection error.
+[2026-11-24T19:03:48.863Z] [WARN] [LLM] ❌ Fallback openrouter/nvidia/nemotron-3-ultra-550b-a55b:free failed: Connection error.
+[LLM] 💀 All providers and models failed — no fallback remaining
+[2026-11-24T19:03:48.864Z] [ERROR] [LLM] 💀 All providers and models failed — no fallback remaining
+[SubTaskGate:shadow] source=system effort=HIGH engine=pro-agent tier=reasoning needsTools=true confidence=0.00 classifier=edge_llm prompt="What time is it?"
+[2026-11-24T19:03:48.864Z] [INFO] [SubTaskGate:shadow] source=system effort=HIGH engine=pro-agent tier=reasoning needsTools=true confidence=0.00 classifier=edge_llm prompt="What time is it?"
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T19:03:45.562Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/plain-praxis-main4/tests/quantized_tool_gate.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-24T19:03:45.582Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/plain-praxis-main4/tests/quantized_tool_gate.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[QuantizedToolGate] blocked local/gemma-q4: nexus_tasks=5/5 (100% >= 30%) — escalating to online cascade
+[2026-11-24T19:03:45.588Z] [WARN] [QuantizedToolGate] blocked local/gemma-q4: nexus_tasks=5/5 (100% >= 30%) — escalating to online cascade
+[LLM] ⚠️ local/gemma-q4 exhausted; starting fallback cascade
+[2026-11-24T19:03:45.589Z] [WARN] [LLM] ⚠️ local/gemma-q4 exhausted; starting fallback cascade
+[LLM] 🔄 Trying fallback: google/antigravity-default
+[2026-11-24T19:03:45.589Z] [INFO] [LLM] 🔄 Trying fallback: google/antigravity-default
+[LLM] ✅ Fallback google/antigravity-default succeeded — keeping explicit primary google/gemini-3.1-pro-preview for next call
+[2026-11-24T19:03:45.591Z] [INFO] [LLM] ✅ Fallback google/antigravity-default succeeded — keeping explicit primary google/gemini-3.1-pro-preview for next call
+[LLM-stream] ❌ local/gemma-q4 create failed: [QuantizedToolGate] blocked local/gemma-q4: nexus_tasks=5/5 (100% >= 30%)
+[2026-11-24T19:03:45.598Z] [WARN] [LLM-stream] ❌ local/gemma-q4 create failed: [QuantizedToolGate] blocked local/gemma-q4: nexus_tasks=5/5 (100% >= 30%)
+[LLM-stream] ✅ Streaming via fallback google/antigravity-default
+[2026-11-24T19:03:45.598Z] [INFO] [LLM-stream] ✅ Streaming via fallback google/antigravity-default
+[QuantizedToolGate] telemetry unavailable (/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/missing-quantized-1795547025598.sqlite): unable to open database file
+[2026-11-24T19:03:45.599Z] [WARN] [QuantizedToolGate] telemetry unavailable (/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/missing-quantized-1795547025598.sqlite): unable to open database file
+[LLM] Pinned call → local/gemma-q4
+[2026-11-24T19:03:45.600Z] [INFO] [LLM] Pinned call → local/gemma-q4
+✔ gates a local quantized candidate when an exposed tool reaches its failure threshold (0.7215ms)
+✔ does not gate non-local candidates or channels below the minimum sample (0.082834ms)
+✔ applies per-tool overrides instead of one aggregate ceiling (0.123541ms)
+✔ unknown-tool hallucinations gate the whole local tool lane (0.048083ms)
+✔ loads bounded policy values and ignores invalid overrides (0.118458ms)
+✔ attributes failures by selected provider/model despite response aliases and provider name collisions (5.819375ms)
+✔ manager-facing enforcement rejects breached local tool calls but permits tool-less work (4.529791ms)
+✔ chatVia refuses a breached local candidate before invoking its provider (7.061875ms)
+✔ chat skips a breached local primary and succeeds through the online fallback (8.110958ms)
+✔ chatStream skips a breached local role candidate before stream creation (7.12075ms)
+✔ missing telemetry fails open and still invokes the local provider (3.346417ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4182.740917
+exit 0

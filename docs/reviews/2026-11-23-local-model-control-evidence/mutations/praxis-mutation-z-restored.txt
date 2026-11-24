@@ -1,0 +1,46 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/quantized_tool_gate.test.ts
+
+Running 1 of 889 suite(s): tests/quantized_tool_gate.test.ts
+
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T19:25:06.113Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-z/tests/quantized_tool_gate.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-24T19:25:06.129Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-z/tests/quantized_tool_gate.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[QuantizedToolGate] blocked local/gemma-q4: nexus_tasks=5/5 (100% >= 30%) — escalating to online cascade
+[2026-11-24T19:25:06.134Z] [WARN] [QuantizedToolGate] blocked local/gemma-q4: nexus_tasks=5/5 (100% >= 30%) — escalating to online cascade
+[LLM] ⚠️ local/gemma-q4 exhausted; starting fallback cascade
+[2026-11-24T19:25:06.134Z] [WARN] [LLM] ⚠️ local/gemma-q4 exhausted; starting fallback cascade
+[LLM] 🔄 Trying fallback: google/antigravity-default
+[2026-11-24T19:25:06.134Z] [INFO] [LLM] 🔄 Trying fallback: google/antigravity-default
+[LLM] ✅ Fallback google/antigravity-default succeeded; keeping explicit primary local/gemma-q4 for next call
+[2026-11-24T19:25:06.136Z] [INFO] [LLM] ✅ Fallback google/antigravity-default succeeded; keeping explicit primary local/gemma-q4 for next call
+[LLM-stream] ❌ local/gemma-q4 create failed: [QuantizedToolGate] blocked local/gemma-q4: nexus_tasks=5/5 (100% >= 30%)
+[2026-11-24T19:25:06.140Z] [WARN] [LLM-stream] ❌ local/gemma-q4 create failed: [QuantizedToolGate] blocked local/gemma-q4: nexus_tasks=5/5 (100% >= 30%)
+[LLM-stream] ✅ Streaming via fallback google/antigravity-default
+[2026-11-24T19:25:06.140Z] [INFO] [LLM-stream] ✅ Streaming via fallback google/antigravity-default
+[QuantizedToolGate] telemetry unavailable (/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/missing-quantized-1795548306140.sqlite): unable to open database file
+[2026-11-24T19:25:06.140Z] [WARN] [QuantizedToolGate] telemetry unavailable (/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/missing-quantized-1795548306140.sqlite): unable to open database file
+[LLM] Pinned call → local/gemma-q4
+[2026-11-24T19:25:06.140Z] [INFO] [LLM] Pinned call → local/gemma-q4
+✔ gates a local quantized candidate when an exposed tool reaches its failure threshold (0.6785ms)
+✔ does not gate non-local candidates or channels below the minimum sample (0.063625ms)
+✔ applies per-tool overrides instead of one aggregate ceiling (0.085291ms)
+✔ unknown-tool hallucinations gate the whole local tool lane (0.038292ms)
+✔ loads bounded policy values and ignores invalid overrides (0.100958ms)
+✔ attributes failures by selected provider/model despite response aliases and provider name collisions (5.345334ms)
+✔ manager-facing enforcement rejects breached local tool calls but permits tool-less work (3.943708ms)
+✔ chatVia refuses a breached local candidate before invoking its provider (4.414625ms)
+✔ chat skips a breached local primary and succeeds through the online fallback (6.402583ms)
+✔ chatStream skips a breached local role candidate before stream creation (4.0405ms)
+✔ missing telemetry fails open and still invokes the local provider (5.545ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 672.497834
+exit 0

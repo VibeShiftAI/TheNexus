@@ -1,0 +1,11 @@
+89208 fetch GET https://openrouter.ai/api/v1/models (non-loopback host openrouter.ai) :: 
+89208 fetch GET https://openrouter.ai/api/v1/models (non-loopback host openrouter.ai) :: 
+89209 fetch POST https://vibeshiftai.com/api/reports (non-loopback host vibeshiftai.com) :: 
+89206 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+89206 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+89206 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+89206 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+89206 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+89206 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+92160 fetch GET http://127.0.0.1:4000/api/tasks/background-test-19 (live local port 4000) :: 
+92160 fetch GET http://127.0.0.1:4000/api/tasks/background-test-19 (live local port 4000) :: 

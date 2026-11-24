@@ -1,0 +1,9 @@
+47654 fetch GET http://127.0.0.1:4000/api/tasks/background-test-19 (live local port 4000) :: 
+47654 fetch GET http://127.0.0.1:4000/api/tasks/background-test-19 (live local port 4000) :: 
+47623 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+47623 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+47623 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+31438 fetch GET https://openrouter.ai/api/v1/models (non-loopback host openrouter.ai) :: 
+31438 fetch GET https://openrouter.ai/api/v1/models (non-loopback host openrouter.ai) :: 
+95785 fetch POST https://vibeshiftai.com/api/reports (non-loopback host vibeshiftai.com) :: 
+23998 fetch POST http://192.168.86.205:51224/callback (non-loopback host 192.168.86.205) :: 

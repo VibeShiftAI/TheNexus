@@ -1,0 +1,5 @@
+#!/bin/sh
+# Stand-in for the real afplay in guarded test runs: records the call (first line of the
+# arguments and the test file of the process that spawned it) and fails.
+printf '%s %s :: %s\n' "afplay" "$(printf '%s' "$*" | head -c 80 | tr '\n' ' ')" "$(ps -o command= -p $PPID | tr ' ' '\n' | grep '/tests/' | grep -v bootstrap | tr '\n' ' ')" >> /Volumes/Projects/.scratch-fa032fc0/cli-shims.log
+exit 1

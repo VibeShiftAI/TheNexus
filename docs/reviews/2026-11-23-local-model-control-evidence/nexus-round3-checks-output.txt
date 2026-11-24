@@ -1,0 +1,27 @@
+== (1) TheNexus local-model-selection.test.js at 09b75ae8 plus the working change
+Tests:       17 passed, 17 total
+exit 0
+network guard refusals: 0
+== (2) mutation X in a scratch copy
+mutation X applied: every made row claims reasoning
+--- /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/TheNexus/server/services/local-model-selection.js	2026-11-24 11:48:31
++++ /Volumes/Projects/.scratch-fa032fc0/nexus-mutation-x/server/services/local-model-selection.js	2026-11-24 13:24:22
+@@ -313,7 +313,7 @@
+             api_model_id: key,
+             display_name: localRowLabel(label, key),
+             is_active: 1,
+-            capabilities: { chat: true, local: true, ...(reasoning ? { reasoning: true } : {}) },
++            capabilities: { chat: true, local: true, reasoning: true },
+             parameters: {},
+             default_parameters: {},
+             availability_status: 'available',
+Tests:       1 failed, 16 passed, 17 total
+exit 1
+    ✕ a choice replaced before it took effect is refused as superseded, and a repeated choice is recorded once (80 ms)
+network guard refusals: 0
+== (3) the 23 related TheNexus server suites on the working tree
+Test Suites: 23 passed, 23 total
+Tests:       268 passed, 268 total
+exit 0
+network guard refusals: 0
+== done

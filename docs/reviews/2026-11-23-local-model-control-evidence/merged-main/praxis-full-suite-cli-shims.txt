@@ -1,0 +1,13 @@
+agy -p You are the reasoning router for Praxis, an autonomous agent. Classify the us :: 
+claude --print --permission-mode bypassPermissions --output-format stream-json --verbos :: 
+codex exec --json --skip-git-repo-check -c sandbox_mode="read-only" -c approval_policy :: 
+codex --version :: 
+claude --version :: 
+codex --version :: 
+agy --version :: 
+codex --version :: 
+codex --version :: 
+codex --version :: 
+claude --version :: 
+agy --version :: 
+codex --version :: 

@@ -1,0 +1,3 @@
+55301 connect imap.gmail.com:53090 (host off this machine (imap.gmail.com)) :: /Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/mail_network.test.ts ::     at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/mail_network.test.ts:38:24)
+55526 connect 127.0.0.1:54322 (port 54322 was listening before the run) ::  :: 
+55492 connect mixed.test:443 (host off this machine (mixed.test)) :: /Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/research_web_retrieval.test.ts :: 
