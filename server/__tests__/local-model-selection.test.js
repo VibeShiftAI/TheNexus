@@ -409,36 +409,45 @@ describe('the local model chosen under Model Control', () => {
     });
 
     test('with no model in effect a choice is answered as waiting until Praxis applies it, and choosing makes no models row; the switch does', async () => {
+        // A reasoning model LM Studio lists and no models row names: a download
+        // newer than every seed. (Inkling cannot show this: main's seed, from the
+        // readiness task 9227d9b6, lists it.)
+        const NEW = 'acme/reasoner-12b';
+        lmStudio.listing.push(chatModel({
+            key: NEW, display_name: 'Reasoner 12B', publisher: 'acme', size_bytes: 7400000000, max_context_length: 131072, params_string: '12B',
+            capabilities: { vision: false, trained_for_tool_use: true, reasoning: { allowed_options: ['on', 'off'], default: 'on' } },
+        }));
+        saveProfile(home, NEW, 32768);
         // local_default names no local model (a target that is not a local row).
         await db.upsertModelAlias({ alias: 'local_default', target: 'capability_best:local', is_active: 1 });
         praxis.localWork = [{ kind: 'local_job', id: 'job-4', label: 'memory.synthesize' }];
         const rowsBefore = await db.getModels(false);
-        expect(rowsBefore.some(r => r.api_model_id === 'thinkingmachines/inkling-2-mini')).toBe(false);
+        expect(rowsBefore.some(r => r.api_model_id === NEW)).toBe(false);
 
-        const chosen = await api('PUT', '/model-control/local-model', { model: 'thinkingmachines/inkling-2-mini', surface: 'model-control' });
+        const chosen = await api('PUT', '/model-control/local-model', { model: NEW, surface: 'model-control' });
         expect(chosen.body).toEqual(expect.objectContaining({ result: 'waiting', praxisTold: true }));
         expect((await api('GET', '/model-control/local-model/current')).body).toEqual(expect.objectContaining({
-            active: null, selected: 'thinkingmachines/inkling-2-mini', waiting: true,
+            active: null, selected: NEW, waiting: true,
         }));
         expect(await db.getModels(false)).toEqual(rowsBefore);
         expect((await switches())[0]).toEqual(expect.objectContaining({
-            from_model: null, to_model: 'thinkingmachines/inkling-2-mini', to_label: 'Inkling 2 Mini (local)', status: 'waiting',
+            from_model: null, to_model: NEW, to_label: 'Reasoner 12B (local)', status: 'waiting',
         }));
         expect(praxis.active).toBeNull();
 
         praxis.localWork = [];
         await praxis.praxisFetch('/local-model/sync', { method: 'POST', body: { reason: 'local-job-ended' } });
-        expect(praxis.active).toBe('thinkingmachines/inkling-2-mini');
+        expect(praxis.active).toBe(NEW);
         expect((await api('GET', '/model-control/local-model/current')).body).toEqual(expect.objectContaining({
-            active: 'thinkingmachines/inkling-2-mini', waiting: false,
+            active: NEW, waiting: false,
         }));
-        const made = (await db.getModels(false)).filter(r => r.api_model_id === 'thinkingmachines/inkling-2-mini');
+        const made = (await db.getModels(false)).filter(r => r.api_model_id === NEW);
         expect(made).toEqual([expect.objectContaining({
-            id: 'local-inkling-2-mini', name: 'Inkling 2 Mini', display_name: 'Inkling 2 Mini (local)', provider: 'local',
+            id: 'local-reasoner-12b', name: 'Reasoner 12B', display_name: 'Reasoner 12B (local)', provider: 'local',
             capabilities: expect.objectContaining({ chat: true, local: true, reasoning: true }),
         })]);
         expect([true, 1]).toContain(made[0].is_active);
-        expect((await db.getModelAliases(false)).find(a => a.alias === 'local_default').target).toBe('model:local-inkling-2-mini');
+        expect((await db.getModelAliases(false)).find(a => a.alias === 'local_default').target).toBe('model:local-reasoner-12b');
         expect((await switches())[0].status).toBe('applied');
     });
 
@@ -482,6 +491,11 @@ describe('the local model chosen under Model Control', () => {
         expect(stale).toEqual({ status: 409, body: expect.objectContaining({ error: 'superseded', selectionId: second.body.selectionId }) });
         const applied = await api('POST', '/model-control/local-model/apply', { selectionId: second.body.selectionId, model: 'google/gemma-4-31b' });
         expect(applied).toEqual({ status: 200, body: { active: 'google/gemma-4-31b', selectionId: second.body.selectionId } });
+        // Its new row takes a free id: local-gemma-4-31b already names the QAT model, and keeps naming it.
+        expect(await db.getModel('local-gemma-4-31b')).toEqual(expect.objectContaining({ api_model_id: 'google/gemma-4-31b-qat' }));
+        expect((await db.getModels(false)).filter(r => r.api_model_id === 'google/gemma-4-31b')).toEqual([
+            expect.objectContaining({ id: 'local-gemma-4-31b-2', display_name: 'Gemma 4 31B (local)' }),
+        ]);
         // A repeated apply (a lost answer) is answered the same way, not as a new switch.
         const repeat = await api('POST', '/model-control/local-model/apply', { selectionId: second.body.selectionId, model: 'google/gemma-4-31b' });
         expect(repeat.body).toEqual(expect.objectContaining({ active: 'google/gemma-4-31b', alreadyApplied: true }));
