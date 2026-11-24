@@ -498,7 +498,10 @@ The guards log to the scratch folder named in each script, deleted at the end of
 the task; the logs cited below are copied here as `.txt`. Before the folder was
 deleted, `guards/guard-logs-scan.py` listed every guard log in it, with its line
 count and any line naming port 1234: 153 logs, no such line
-(`guards/guard-logs-scan.txt`).
+(`guards/guard-logs-scan.txt`). The files in `guards/` are byte-identical to the
+ones the scripts ran from that folder (checked with `cmp` before it was
+deleted). To rerun a script, first copy the contents of `guards/` into the
+scratch folder it names (`/Volumes/Projects/.scratch-fa032fc0`).
 
 | File | What ran | Result |
 | --- | --- | --- |

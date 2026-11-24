@@ -1,6 +1,6 @@
-# Final encoding and em-dash scans, 2026-11-24 16:20 EST, read-only (made by final-scans.sh)
+# Final encoding and em-dash scans, 2026-11-24 16:23 EST, read-only (made by final-scans.sh)
 
-## TheNexus f011c4ee plus working tree, every file changed against bd02642895fe6a914fe04e45af35bee773f3453e, and untracked files
+## TheNexus 1d74cad1 plus working tree, every file changed against bd02642895fe6a914fe04e45af35bee773f3453e, and untracked files
 files: 298 (8 PNG skipped)
 scanned 290 files, problems 0
 
@@ -14,15 +14,21 @@ scanned 17 files, problems 0
 ## Em dashes (U+2014) in added lines
 Praxis (1fcf4b59..HEAD, 17 files): 0
 TheCortex (5fdb76a..HEAD): 0
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/criterion-2-sites.txt 5
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/criterion-9-attribution.txt 6
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/criterion-9-final-readback.txt 7
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/criterion-9-live-readback.txt 1
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/dashboard-baseline-failing-tests.txt 2
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/dashboard-full-suite.txt 7
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/nexus-server-tests-first-run.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/nexus-server-tests-main-2a7952fc.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/nexus-server-tests-main-a2870083.txt 2
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/nexus-server-tests.txt 2
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-chat-turn-steps-and-quantized-plain-main.txt 42
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-merged-519530a9.txt 326
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-merged.txt 440
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-plain-main-519530a9.txt 324
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-plain-main-59cacac6.txt 288
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-plain-main.txt 440
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-tests-full-run.txt 1
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-tests-merged.txt 1
@@ -33,7 +39,16 @@ TheCortex (5fdb76a..HEAD): 0
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-git-reading-tests-plain-main-613f66b6.txt 2
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-git-reading-tests-plain-main-fbce5c26.txt 2
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-git-reading-tests-plain-main.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-lifecycle-alone-merged-519530a9.txt 36
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-lifecycle-alone-plain-main-519530a9.txt 36
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-network-hazard-suites-plain-main.txt 428
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-nexus-root-five-round4-run.txt 38
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-nexus-root-five-today-run.txt 38
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-nexus-root-round4-run.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-nexus-root-today-run.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-qa-state-alone-merged-519530a9.txt 49
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-qa-state-alone-plain-main-4d076f91.txt 72
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-qa-state-alone-plain-main-519530a9.txt 49
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-related-tests-main-4d076f91.txt 312
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-related-tests.txt 312
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-tests-merged-613f66b6.txt 839
@@ -72,21 +87,6 @@ TheCortex (5fdb76a..HEAD): 0
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/praxis-voice-deadline-rerun.txt 3
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/praxis-wider-tests-before-fixture-fix.txt 417
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/praxis-wider-tests.txt 419
-  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/criterion-2-sites.txt 5
-  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/nexus-server-tests-main-2a7952fc.txt 2
-  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/nexus-server-tests-main-a2870083.txt 2
-  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-merged-519530a9.txt 326
-  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-plain-main-519530a9.txt 324
-  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-plain-main-59cacac6.txt 288
-  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-lifecycle-alone-merged-519530a9.txt 36
-  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-lifecycle-alone-plain-main-519530a9.txt 36
-  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-nexus-root-five-round4-run.txt 38
-  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-nexus-root-five-today-run.txt 38
-  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-nexus-root-round4-run.txt 2
-  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-nexus-root-today-run.txt 2
-  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-qa-state-alone-merged-519530a9.txt 49
-  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-qa-state-alone-plain-main-4d076f91.txt 72
-  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-qa-state-alone-plain-main-519530a9.txt 49
 TheNexus code, docs and scripts this task wrote: 0
 TheNexus verbatim outputs in the evidence folder (products' own wording): 6686
 
