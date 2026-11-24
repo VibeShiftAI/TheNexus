@@ -25,8 +25,6 @@ const SOURCE_CLASS: Record<string, string> = {
     knowledge_journal: "border-violet-500/30 bg-violet-500/10 text-violet-200",
     nightly_synthesis: "border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-200",
     lars_analysis: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
-    stock_analysis: "border-amber-500/30 bg-amber-500/10 text-amber-200",
-    trade_reflection: "border-orange-500/30 bg-orange-500/10 text-orange-200",
     youtube_story_batch: "border-rose-500/30 bg-rose-500/10 text-rose-200",
     ad_hoc_local_prompt: "border-blue-500/30 bg-blue-500/10 text-blue-200",
 };

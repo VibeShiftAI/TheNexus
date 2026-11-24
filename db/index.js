@@ -586,7 +586,6 @@ function runModelControlMigrations(sqlite) {
               ('morning.goalgen',         'alias:local_default',  'Morning goal regression'),
               ('morning.self_assess',     'alias:local_default',  'Morning self-assessment'),
               ('morning.archive_audit',   'alias:local_default',  'Morning archive audit (obsolete/done task recommendations)'),
-              ('trading.council',         'cli:codex/gpt-6-astra@high', 'Trading council'),
               ('youtube.research',        'alias:local_default',  'YouTube story research'),
               ('agent.consolidate',       'alias:local_default',  'Tool-output fusion / compression'),
               ('rag.counter_query',       'alias:local_default',  'Counter-evidence query rewrite'),
