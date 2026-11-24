@@ -41,6 +41,7 @@ const { createAgentReviewStore } = require('./document-agent-reviews');
 const { ACTIVE_TASK_SQL, WAITING_TASKS_FROM_SQL } = require('./document-review-blockers');
 const { initializeDocumentOutgoing, createDocumentOutgoingStore } = require('./document-outgoing');
 const { initializeDocumentRetirements, createDocumentRetirementStore } = require('./document-retirements');
+const { hasOutstandingRequest } = require('../server/services/document-retirement-purpose');
 
 function now() { return new Date().toISOString(); }
 
@@ -875,6 +876,33 @@ function createDocumentReviewStore(db) {
         /** Every open replacement across documents, oldest first: list and count reads reconcile these before querying, so a queue agrees with detail without a document being opened. */
         listOpenReplacements() {
             return many(`SELECT * FROM review_document_replacements WHERE state IN (${sqlList(REPLACEMENT_OPEN_STATES)}) ORDER BY created_at ASC, rowid ASC`);
+        },
+        /**
+         * Called inside the board write that changed this task to cancelled.
+         * A report closing replacement work, or linking a task that was
+         * already cancelled, carries no such event.
+         */
+        closeReplacementsForCancelledTask(taskId) {
+            for (const replacement of this.listReplacementsForTask(taskId)) {
+                if (!REPLACEMENT_OPEN_STATES.includes(replacement.state)) continue;
+                this.updateReplacement(replacement.id, { state: 'cancelled', completed_at: now(),
+                    detail: `Task ${taskId} is cancelled; the replacement was not delivered` });
+                const doc = this.getDocument(replacement.document_id);
+                if (replacement.result_revision_id || doc.current_revision_id !== replacement.base_revision_id
+                    || this.getReviewStatus(doc.id) !== 'needs_review' || (doc.intended_action || 'none') !== 'none') continue;
+                const revision = this.getRevision(doc.current_revision_id);
+                const definitions = this.getDecisionDefinitions(doc.current_revision_id);
+                if (definitions === null || definitions?.length || hasOutstandingRequest(doc, revision)) continue;
+                // A separate feedback round, or a grant to approve after making
+                // the edits, can still ask for work on these very bytes.
+                const otherRequest = this.listReviews(doc.id).some(review => {
+                    if (review.revision_id !== doc.current_revision_id) return false;
+                    if (review.approval_delegated) return true;
+                    if (review.id === replacement.source_review_id || (review.status !== 'submitted' && review.replacement_id !== replacement.id)) return false;
+                    return Boolean(review.summary?.trim() || review.decision_answers?.length || this.listComments(review.id).length);
+                });
+                if (!otherRequest) this.retireOnGround({ target: doc, ground: { type: 'revision_task_cancelled', task_id: taskId, replacement_id: replacement.id } });
+            }
         },
         /** The newest replacement of a document in any state, or null: what the reader explains when nothing is open. */
         latestReplacement(documentId) {

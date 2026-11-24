@@ -1394,6 +1394,9 @@ function updateTask(taskId, updates, expectedVersion, context = {}) {
                 error.code = 'task_version_conflict';
                 throw error;
             }
+            if (normalized.status === 'cancelled' && normalizeTaskBoardStatus(existing.status) !== 'cancelled') {
+                documentReviews.closeReplacementsForCancelledTask(taskId);
+            }
             return deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId));
         })();
         queueFollowupEvidenceChange(existing, updated);
@@ -3038,10 +3041,14 @@ async function getChatMessages(conversationId, options = {}) {
     }
 
     try {
-        let sql = 'SELECT * FROM chat_messages WHERE conversation_id = ?';
+        const exactCursor = before && Number.isSafeInteger(options.beforeRowid);
+        let sql = `SELECT ${exactCursor ? 'rowid, ' : ''}* FROM chat_messages WHERE conversation_id = ?`;
         const params = [conversationId];
         
-        if (before) {
+        if (exactCursor) {
+            sql += ' AND (created_at < ? OR (created_at = ? AND rowid < ?))';
+            params.push(before, before, options.beforeRowid);
+        } else if (before) {
             sql += ' AND created_at < ?';
             params.push(before);
         }
