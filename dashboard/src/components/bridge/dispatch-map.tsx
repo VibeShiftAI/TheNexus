@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Cpu, Gavel, Landmark, Sparkles } from "lucide-react";
+import { ArrowUpRight, Clock, Cpu, Gavel, Landmark, Pause, Sparkles, X } from "lucide-react";
 import { effectiveReferenceVoices, isAggregatorVoice, type ArbiterSeat, type CouncilArbiterState, type CouncilSessionSummary, type CouncilBench } from "@/lib/council";
 import { formatDuration, gateStatusLabel, slotTag, type CliLaneView } from "@/lib/cli-lane";
 import { taskActivityHref, type ActivityItem } from "@/lib/bridge-activity";
@@ -41,6 +41,16 @@ const ROLE_COLOR: Record<OpsRunRole, string> = {
 const LOGO_PX = 20;
 /** Corner radius of a branch wire where it turns into the trunk and into a run node, in px. */
 const WIRE_BEND_PX = 6;
+
+/**
+ * Trouble an executor is in, drawn on its logo now that the node carries no
+ * status text: a ring and a corner badge (globals.css, .dispatch-logo[data-trouble]).
+ * The words stay in the button's aria-label and title.
+ */
+type ProviderTrouble = "failed" | "suspended" | "delayed";
+const TROUBLE_ICON: Record<ProviderTrouble, typeof X> = { failed: X, suspended: Pause, delayed: Clock };
+/** The council seat's state on the logo's corner mark (globals.css, .dispatch-seat[data-council]). */
+const COUNCIL_MARK: Record<string, string> = { "verdict writer": "writer", deliberating: "deliberating", reported: "reported", "council seat": "seat" };
 
 export interface DispatchMapProps {
   view: CliLaneView;
@@ -132,7 +142,9 @@ export function DispatchMap({ view, available, activeItems, recentItems, council
     const qa = work.some(r => r.role === "reviewing");
     const failed = lane?.suspended || (!work.length && terminal?.status === "failed");
     const color = failed ? "#fb7185" : qa ? "#a78bfa" : work.length ? "#22d3ee" : terminal?.channel === "qa" ? "#a78bfa" : terminal ? "#34d399" : speaking ? "#fbbf24" : "#64748b";
-    return { ...p, runs, work, lane, seats, speaking, terminal, qa, color, busy: runs.length > 0 };
+    // Same precedence as the status words below: a stale signal outranks what it last said.
+    const trouble: ProviderTrouble | null = !available ? "delayed" : lane?.suspended ? "suspended" : failed ? "failed" : null;
+    return { ...p, runs, work, lane, seats, speaking, terminal, qa, color, trouble, busy: runs.length > 0 };
   });
   const columns = (["left", "right"] as const).map(side => ({ side, nodes: nodes.filter(n => n.side === side) }));
 
@@ -230,12 +242,18 @@ export function DispatchMap({ view, available, activeItems, recentItems, council
           const next = arbiter?.preference === "auto" && arbiter.next === seatId;
           const workLabel = !available ? "Signal delayed" : n.lane?.suspended ? "Suspended" : n.work.length ? providerTally(n.work) : n.terminal ? n.terminal.status === "failed" ? "Run failed" : n.terminal.channel === "qa" ? "Review recorded" : "Completed" : "Standing by";
           const councilLabel = n.seats.length ? n.seats.some(isAggregatorVoice) ? "verdict writer" : n.speaking ? "deliberating" : n.seats.every(v => v.status === "success") ? "reported" : "council seat" : null;
-          return <div key={n.id} data-provider={n.id} data-side={n.side} data-active={n.busy} data-expanded={n.runs.length > 0} className="dispatch-provider" style={colorStyle(n.color)}>
-            <button type="button" onClick={() => onInspect(n.id)} className="dispatch-provider-button" aria-label={`Inspect ${n.label}: ${workLabel}${councilLabel ? `; council ${councilLabel}` : ""}`} title={`Open ${n.label} runs and reports`}>
-              <span className="dispatch-logo" data-vendor={providerLogo(n.id) != null}>{providerLogo(n.id) ? <ProviderLogo provider={n.id} size={LOGO_PX} /> : <span className="dispatch-logo-glyph" aria-hidden="true">{n.mark}</span>}</span>
-              <span className="dispatch-provider-label" title={n.label}>{n.label}</span>
-              <span className="dispatch-phase">{workLabel}</span>
-              <span className="dispatch-seat" aria-hidden={!councilLabel}>{councilLabel && <><Landmark size={9} />{councilLabel}</>}</span>
+          // The node shows the logo alone, so the wire passes straight through
+          // it; the name, status and council seat are spoken and on hover.
+          const status = `${workLabel}${councilLabel ? `; council ${councilLabel}` : ""}`;
+          const TroubleIcon = n.trouble ? TROUBLE_ICON[n.trouble] : null;
+          return <div key={n.id} data-provider={n.id} data-side={n.side} data-active={n.busy} data-expanded={n.runs.length > 0} data-trouble={n.trouble ?? undefined} className="dispatch-provider" style={colorStyle(n.color)}>
+            <button type="button" onClick={() => onInspect(n.id)} className="dispatch-provider-button" aria-label={`Inspect ${n.label}: ${status}`} title={`${n.label}: ${status}. Open ${n.label} runs and reports`}>
+              <span className="dispatch-logo" data-vendor={providerLogo(n.id) != null} data-trouble={n.trouble ?? undefined}>
+                {providerLogo(n.id) ? <ProviderLogo provider={n.id} size={LOGO_PX} /> : <span className="dispatch-logo-glyph" aria-hidden="true">{n.mark}</span>}
+                {TroubleIcon && <span className="dispatch-logo-badge" data-trouble={n.trouble} aria-hidden="true"><TroubleIcon size={8} strokeWidth={3} /></span>}
+                {/* The council seat caption became this corner mark: it costs no height, and its words are in the button's label and title. */}
+                <span className="dispatch-seat" data-council={councilLabel ? COUNCIL_MARK[councilLabel] : undefined} aria-hidden="true">{councilLabel && (councilLabel === "verdict writer" ? <Gavel size={8} /> : <Landmark size={8} />)}</span>
+              </span>
             </button>
             {arbiter && onSetArbiter && (n.id === "codex" || n.id === "claude-code") && <button type="button" className="dispatch-arbiter" data-selected={pin || next} aria-pressed={pin} aria-label={pin ? `Release ${n.label} arbiter pin` : `Pin ${n.label} as council arbiter`} title={pin ? "Pinned verdict writer · click for auto rotation" : next ? "Next verdict writer · click to pin" : "Pin as verdict writer"} onClick={() => onSetArbiter(seatId)}><Gavel size={11} /></button>}
             {n.runs.length > 0 && <ul className="dispatch-runs" aria-label={`${n.label} runs`}>
@@ -280,7 +298,13 @@ export function DispatchMap({ view, available, activeItems, recentItems, council
   );
 }
 
-/** One live run under its provider: slot tag, task, model, role, live phase and elapsed time. Opens the provider's drill-down. */
+/**
+ * One live run under its provider: slot tag, model, effort, role, live phase
+ * and elapsed time, on one row where the width allows. The task title is not
+ * drawn (the slot identifies the work); it stays in the hover title, the
+ * aria-label and the drill-down. A run without a slot leads with its role word
+ * instead, so the node never opens on an empty head and the role is not said twice.
+ */
 function RunNode({ run, provider, onOpen }: { run: OpsRunNode; provider: string; onOpen: () => void }) {
   const elapsed = formatDuration(run.elapsedMs);
   const role = ROLE_LABEL[run.role];
@@ -293,17 +317,12 @@ function RunNode({ run, provider, onOpen }: { run: OpsRunNode; provider: string;
     elapsed ? `running ${elapsed}` : "just dispatched",
   ].filter(Boolean).join("; ");
   return <button type="button" className="dispatch-run" data-run={run.key} data-role={run.role} style={colorStyle(ROLE_COLOR[run.role])} onClick={onOpen} aria-label={`${spoken}. Open ${provider} runs`} title={[run.title, provenance].join("\n")}>
-    <span className="dispatch-run-head">
-      {run.slot && <span className="dispatch-run-slot">{run.slot}</span>}
-      <span className="dispatch-run-title">{run.title}</span>
-    </span>
-    <span className="dispatch-run-meta">
-      <span className="dispatch-run-model" data-known={run.model != null}>{run.model ?? UNKNOWN_MODEL}</span>
-      {run.effort && <span className="dispatch-run-effort">{run.effort}</span>}
-      <span className="dispatch-run-role">{role}</span>
-      {/* The live phase Praxis reports for the run (testing, writing, ...). A council seat has none of its own. */}
-      {run.phase && run.role !== "council" && run.phase !== role && <span className="dispatch-run-phase">{run.phase}</span>}
-      <span className="dispatch-run-elapsed" title={elapsed ? undefined : "Just dispatched: Praxis has not listed a start time yet"}>{elapsed ?? "new"}</span>
-    </span>
+    {run.slot ? <span className="dispatch-run-slot">{run.slot}</span> : <span className="dispatch-run-standin dispatch-run-role">{role}</span>}
+    <span className="dispatch-run-model" data-known={run.model != null}>{run.model ?? UNKNOWN_MODEL}</span>
+    {run.effort && <span className="dispatch-run-effort">{run.effort}</span>}
+    {run.slot && <span className="dispatch-run-role">{role}</span>}
+    {/* The live phase Praxis reports for the run (testing, writing, ...). A council seat has none of its own. */}
+    {run.phase && run.role !== "council" && run.phase !== role && <span className="dispatch-run-phase">{run.phase}</span>}
+    <span className="dispatch-run-elapsed" title={elapsed ? undefined : "Just dispatched: Praxis has not listed a start time yet"}>{elapsed ?? "new"}</span>
   </button>;
 }

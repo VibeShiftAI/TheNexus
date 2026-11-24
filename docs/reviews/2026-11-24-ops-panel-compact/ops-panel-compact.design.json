@@ -1,0 +1,25 @@
+{
+  "format": "nexus-design-package/1",
+  "title": "Ops panel, compact: before and after",
+  "summary": "Recommended: approve. The Ops panel is shorter in the same busy state: 886px to 652px on desktop (1440 wide) and 1210px to 928px on a phone (390 wide), measured on #station-dispatch in headless Chrome. Executor nodes are now the logo alone, so the wires run straight through it; the executor's name and status (for example 'Claude Code: 2 building · 1 reviewing') are in the button's hover title and aria-label, and clicking the logo still opens that executor's runs. Run nodes no longer draw the task title: a run with a slot leads with its slot tag (S2), a run without one leads with its role word in an outlined tag ('building', 'reviewing'), then model, effort, role, phase and elapsed time on one row where the width allows. The full title is in the hover title, the aria-label and the drill-down. Trouble shows on the logo itself: a failed executor gets a rose ring and an X badge, a suspended one an amber ring and a pause badge, a delayed signal a dashed grey ring with a clock badge (extra screenshots are in the task's evidence folder, not here). Same fixture state on both sides: six runs on three executors, three with a slot and three without, from the isolated stack in dashboard/scripts/ops-graphic-browser-check.mjs. No live task appears.",
+  "screens": [
+    {
+      "id": "ops-busy-desktop",
+      "title": "Ops panel, six runs on three executors (desktop), before and after",
+      "viewport": "1440x900",
+      "state": "busy",
+      "file": "after/busy-desktop-ops-panel.png",
+      "before": "before/busy-desktop-ops-panel.png",
+      "notes": "Panel height 886px before, 652px after (map 706px to 472px). Antigravity, Claude Code and Codex hold the six runs; OpenRouter stands by. S2, S5 and S3 are slot tags; the Antigravity run, the Codex run with no reported model and the Claude Code QA review have no slot, so they lead with 'building' or 'reviewing'. The gavel next to Claude Code and Codex is the verdict-writer pin, unchanged."
+    },
+    {
+      "id": "ops-busy-phone",
+      "title": "Ops panel, six runs on three executors (phone), before and after",
+      "viewport": "390x844 @2x",
+      "state": "busy",
+      "file": "after/busy-phone-ops-panel.png",
+      "before": "before/busy-phone-ops-panel.png",
+      "notes": "Panel height 1210px before, 928px after (map 1030px to 748px). Stacked layout: each run node has the full width, so its tag, model, effort, role, phase and elapsed time fit on one line. The hub wire runs down through every logo."
+    }
+  ]
+}

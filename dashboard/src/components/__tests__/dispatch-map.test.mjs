@@ -29,11 +29,12 @@ test('dispatch map represents execution and council roles together without fake 
   }, async container => {
     const pod = container.querySelector('[data-provider="codex"]');
     // The provider no longer wears one phase word: its run is a child node that
-    // names the task and carries the live phase.
+    // carries the live phase. The task's title is spoken and on hover, not drawn (task 52b5db3d).
     const run = pod.querySelector('[data-run]');
-    assert.match(run.textContent, /Build the cockpit/);
+    assert.match(run.getAttribute('aria-label'), /Build the cockpit/);
+    assert.match(run.getAttribute('title'), /^Build the cockpit\n/);
     assert.equal(run.querySelector('.dispatch-run-phase').textContent, 'writing');
-    assert.match(pod.textContent, /deliberating/);
+    assert.match(pod.querySelector('.dispatch-provider-button').getAttribute('aria-label'), /; council deliberating$/);
     assert.equal(pod.querySelector('[role="progressbar"]'), null);
     await act(async () => pod.querySelector('button').click());
     assert.equal(inspected, 'codex');
@@ -81,7 +82,7 @@ test('second-round council voices update the original seat and QA completion kee
     assert.equal(seats.querySelectorAll('a').length,1);
     assert.equal(seats.querySelector('a').dataset.status,'running');
     assert.equal(container.querySelector('[data-provider="codex"]').style.getPropertyValue('--module-color'),'#a78bfa');
-    assert.match(container.querySelector('[data-provider="codex"]').textContent,/Review recorded/);
+    assert.match(container.querySelector('[data-provider="codex"] .dispatch-provider-button').getAttribute('aria-label'),/Review recorded/);
   });
 });
 
@@ -119,10 +120,11 @@ test('active providers and council seats show actual models, including multiple 
   await mounted({activeItems: [{executor:'claude-code',model:'claude-fable-5-1',phase:'writing',status:'active'}],
     council:{phase:'deliberation',voices:[{name:'cli:claude-code/claude-opus-5',model:'cli:claude-code/claude-opus-5',status:'running'}]},
   }, container => {
-    // The provider label is the provider's name again; each model is on the run
-    // node it belongs to (before, the label joined them: "Fable 5.1 · Opus 5").
+    // The provider is named by its own name (spoken and on hover since task
+    // 52b5db3d); each model is on the run node it belongs to (before, the
+    // label joined them: "Fable 5.1 · Opus 5").
     const pod = container.querySelector('[data-provider="claude-code"]');
-    assert.equal(pod.querySelector('.dispatch-provider-label').textContent, 'Claude Code');
+    assert.match(pod.querySelector('.dispatch-provider-button').getAttribute('aria-label'), /^Inspect Claude Code: /);
     assert.deepEqual([...pod.querySelectorAll('.dispatch-run')].map(r => [r.dataset.role, r.querySelector('.dispatch-run-model').textContent]),
       [['building', 'Fable 5.1'], ['council', 'Opus 5']]);
     assert.equal(container.querySelector('.dispatch-voice span:last-child').textContent, 'Opus 5');
@@ -145,9 +147,9 @@ test('several runs on one provider each get a child node with task, model, role 
   ])}, async container => {
     const pod = container.querySelector('[data-provider="claude-code"]');
     assert.equal(pod.dataset.expanded, 'true');
-    assert.match(pod.querySelector('.dispatch-phase').textContent, /2 building · 1 reviewing/);
+    assert.equal(pod.querySelector('.dispatch-provider-button').getAttribute('aria-label'), 'Inspect Claude Code: 2 building · 1 reviewing');
     const rows = [...pod.querySelectorAll('.dispatch-run')].map(r => ({
-      key: r.dataset.run, role: r.querySelector('.dispatch-run-role').textContent, title: r.querySelector('.dispatch-run-title').textContent,
+      key: r.dataset.run, role: r.querySelector('.dispatch-run-role').textContent, title: r.getAttribute('title').split('\n')[0],
       model: r.querySelector('.dispatch-run-model').textContent, elapsed: r.querySelector('.dispatch-run-elapsed').textContent,
       slot: r.querySelector('.dispatch-run-slot')?.textContent ?? null, effort: r.querySelector('.dispatch-run-effort')?.textContent ?? null,
     }));
@@ -165,19 +167,106 @@ test('several runs on one provider each get a child node with task, model, role 
   });
 });
 
-test('a run with a slot shows S<number>; a run without one renders no tag and no placeholder', async () => {
+// Task 52b5db3d: the slot tag identifies the run, so the title is no longer drawn.
+test('run nodes draw no task title: a slotted run leads with S<number>, an unslotted run with its role word; the title stays on hover and in the aria-label', async () => {
   await mounted({now: NOW, view: laneView([
-    {taskId: 'a', executor: 'codex', title: 'Tagged run', kind: 'task', startedAt: ago(5_000), slotNumber: 7},
+    {taskId: 'a', executor: 'codex', title: 'Tagged run', kind: 'task', startedAt: ago(5_000), slotNumber: 7, requestedModel: 'gpt-5.5', requestedEffort: 'high'},
     {taskId: 'b', executor: 'codex', title: 'Untagged run', kind: 'task', startedAt: ago(4_000)},
+    {taskId: 'qa--c', executor: 'codex', title: 'Review: untagged review', kind: 'qa', startedAt: ago(3_000)},
   ])}, container => {
-    const [withSlot, without] = container.querySelectorAll('[data-provider="codex"] .dispatch-run');
-    assert.equal(withSlot.querySelector('.dispatch-run-slot').textContent, 'S7');
-    assert.equal(without.querySelector('.dispatch-run-slot'), null);
-    // Nothing stands in for the missing tag: the head holds the title alone.
-    assert.equal(without.querySelector('.dispatch-run-head').children.length, 1);
-    assert.equal(without.querySelector('.dispatch-run-head').textContent, 'Untagged run');
-    assert.doesNotMatch(without.getAttribute('aria-label'), /slot/i);
+    const [withSlot, without, review] = container.querySelectorAll('[data-provider="codex"] .dispatch-run');
+    for (const [node, title] of [[withSlot, 'Tagged run'], [without, 'Untagged run'], [review, 'Review: untagged review']]) {
+      assert.equal(node.querySelector('.dispatch-run-title')?.textContent ?? null, null);
+      assert.doesNotMatch(node.textContent, new RegExp(title));
+      assert.equal(node.getAttribute('title').split('\n')[0], title);
+      assert.match(node.getAttribute('aria-label'), new RegExp(`(^|; )${title}; `));
+    }
+    // Slotted: the slot tag first, then model, effort, role, elapsed; the role word is not doubled.
+    assert.equal(withSlot.firstElementChild.className, 'dispatch-run-slot');
+    assert.equal(withSlot.firstElementChild.textContent, 'S7');
+    assert.deepEqual([...withSlot.children].map(c => c.textContent), ['S7', 'gpt-5.5', 'high', 'building', formatDuration(5_000)]);
     assert.match(withSlot.getAttribute('aria-label'), /^Slot 7; Tagged run; building on Codex/);
+    // Unslotted: the role word stands in at the head, outlined, never an empty head and never a fake slot.
+    for (const [node, role] of [[without, 'building'], [review, 'reviewing']]) {
+      assert.equal(node.querySelector('.dispatch-run-slot')?.textContent ?? null, null);
+      assert.equal(node.firstElementChild.className, 'dispatch-run-standin dispatch-run-role');
+      assert.equal(node.firstElementChild.textContent, role);
+      assert.equal(node.querySelectorAll('.dispatch-run-role').length, 1);
+      assert.doesNotMatch(node.getAttribute('aria-label'), /slot/i);
+    }
+  });
+});
+
+test('an executor node is the logo alone: no name or status text, both kept in the aria-label and title, and it still opens the runs', async () => {
+  const opened = [];
+  const lanes = laneView([
+    {taskId: 'a', executor: 'claude-code', title: 'One', kind: 'task', startedAt: ago(5_000)},
+    {taskId: 'qa--b', executor: 'claude-code', title: 'Two', kind: 'qa', startedAt: ago(4_000)},
+  ]);
+  const view = {...lanes, executors: [...lanes.executors, {name: 'openrouter', label: 'OpenRouter', runs: [], slots: 1, free: 1, suspended: false}]};
+  await mounted({now: NOW, onInspect: id => opened.push(id), view}, async container => {
+    assert.ok(container.querySelector('[data-provider="openrouter"]'));
+    for (const pod of container.querySelectorAll('[data-provider]')) {
+      const button = pod.querySelector('.dispatch-provider-button');
+      // A provider without a vendor logo file draws a glyph as its logo; that glyph is the logo, not a label.
+      const glyph = pod.querySelector('.dispatch-logo-glyph')?.textContent ?? '';
+      assert.equal(button.textContent.replace(glyph, '').trim(), '', `${pod.dataset.provider} shows no text besides its logo`);
+      assert.deepEqual([...button.children].map(c => c.className), ['dispatch-logo']);
+      assert.equal(pod.querySelector('.dispatch-provider-label')?.textContent ?? null, null);
+      assert.equal(pod.querySelector('.dispatch-phase')?.textContent ?? null, null);
+    }
+    const busy = container.querySelector('[data-provider="claude-code"] .dispatch-provider-button');
+    assert.equal(busy.getAttribute('aria-label'), 'Inspect Claude Code: 1 building · 1 reviewing');
+    assert.equal(busy.getAttribute('title'), 'Claude Code: 1 building · 1 reviewing. Open Claude Code runs and reports');
+    const idle = container.querySelector('[data-provider="codex"] .dispatch-provider-button');
+    assert.equal(idle.getAttribute('aria-label'), 'Inspect Codex: Standing by');
+    assert.match(idle.getAttribute('title'), /^Codex: Standing by\. /);
+    await act(async () => busy.click());
+    assert.deepEqual(opened, ['claude-code']);
+  });
+});
+
+test('a council seat keeps its meaning on the logo node: a corner mark, and the words in the label and title', async () => {
+  await mounted({council: {phase: 'deliberation', topic: 'Seat check', voices: [{name: 'cli:codex', status: 'running'}]}}, container => {
+    const button = container.querySelector('[data-provider="codex"] .dispatch-provider-button');
+    assert.ok(button.querySelector('.dispatch-seat svg'));
+    assert.equal(button.querySelector('.dispatch-seat').dataset.council, 'deliberating');
+    assert.match(button.getAttribute('title'), /; council deliberating\. /);
+    assert.equal(container.querySelector('[data-provider="claude-code"] .dispatch-seat').children.length, 0);
+    assert.equal(container.querySelector('[data-provider="claude-code"] .dispatch-seat').dataset.council ?? null, null);
+  });
+  // Each caption state keeps its own mark: the verdict writer a gavel, a seat that has reported its own colour.
+  await mounted({council: {phase: 'deliberation', voices: [{name: 'cli:codex', status: 'success'}, {name: 'cli:claude-code (aggregator)', status: 'running'}]}}, container => {
+    const seat = id => container.querySelector(`[data-provider="${id}"] .dispatch-seat`);
+    assert.equal(seat('codex').dataset.council, 'reported');
+    assert.match(container.querySelector('[data-provider="codex"] .dispatch-provider-button').getAttribute('title'), /; council reported\. /);
+    assert.equal(seat('claude-code').dataset.council, 'writer');
+    assert.match(container.querySelector('[data-provider="claude-code"] .dispatch-provider-button').getAttribute('title'), /; council verdict writer\. /);
+    assert.notEqual(seat('claude-code').innerHTML, seat('codex').innerHTML, 'the writer draws a different glyph');
+  });
+});
+
+test('trouble shows on the logo itself: failed, suspended and signal-delayed executors each get their own ring and badge, healthy ones none', async () => {
+  const lanes = laneView([{taskId: 'a', executor: 'claude-code', title: 'Healthy run', kind: 'task', startedAt: ago(5_000)}]);
+  const view = {...lanes, executors: lanes.executors.map(e => e.name === 'codex' ? {...e, suspended: true} : e)};
+  const failedAt = new Date(NOW - 5_000).toISOString();
+  await mounted({now: NOW, view, recentItems: [{id: 'f', at: failedAt, executor: 'antigravity', channel: 'completed', status: 'failed', title: 'Task failed'}]}, container => {
+    const trouble = id => {
+      const pod = container.querySelector(`[data-provider="${id}"]`);
+      return {pod: pod.dataset.trouble ?? null, logo: pod.querySelector('.dispatch-logo').dataset.trouble ?? null,
+        badge: pod.querySelector('.dispatch-logo-badge')?.dataset.trouble ?? null, glyph: Boolean(pod.querySelector('.dispatch-logo-badge svg')),
+        label: pod.querySelector('.dispatch-provider-button').getAttribute('aria-label')};
+    };
+    assert.deepEqual(trouble('antigravity'), {pod: 'failed', logo: 'failed', badge: 'failed', glyph: true, label: 'Inspect Antigravity: Run failed'});
+    assert.deepEqual(trouble('codex'), {pod: 'suspended', logo: 'suspended', badge: 'suspended', glyph: true, label: 'Inspect Codex: Suspended'});
+    assert.deepEqual(trouble('claude-code'), {pod: null, logo: null, badge: null, glyph: false, label: 'Inspect Claude Code: 1 building'});
+  });
+  await mounted({available: false}, container => {
+    for (const pod of container.querySelectorAll('[data-provider]')) {
+      assert.equal(pod.querySelector('.dispatch-logo').dataset.trouble, 'delayed');
+      assert.equal(pod.querySelector('.dispatch-logo-badge').dataset.trouble, 'delayed');
+      assert.match(pod.querySelector('.dispatch-provider-button').getAttribute('aria-label'), /: Signal delayed$/);
+    }
   });
 });
 
@@ -188,7 +277,7 @@ test('more runs than fit one row: every run is present with its own title and wi
     const shown = [...container.querySelectorAll('.dispatch-run')];
     assert.equal(shown.length, 23);
     assert.deepEqual(shown.map(r => r.dataset.run).sort(), runs.map(r => r.taskId).sort());
-    for (const r of runs) assert.equal(container.querySelector(`[data-run="${r.taskId}"] .dispatch-run-title`).textContent, r.title);
+    for (const r of runs) assert.equal(container.querySelector(`[data-run="${r.taskId}"]`).getAttribute('title').split('\n')[0], r.title);
     assert.doesNotMatch(container.querySelector('[data-provider="claude-code"]').textContent, /\+\d+ more|and \d+ more/);
     assert.equal(container.querySelectorAll('path[data-wire="run"]').length, 23);
     assert.equal(container.querySelectorAll('path[data-wire="run-flow"].module-flow').length, 23);
@@ -202,7 +291,7 @@ test('work flows on the wires of busy providers only; an idle provider collapses
     const idle = container.querySelector('[data-provider="claude-code"]');
     assert.equal(idle.dataset.expanded, 'false');
     assert.equal(idle.querySelector('.dispatch-runs'), null);
-    assert.match(idle.textContent, /Standing by/);
+    assert.match(idle.querySelector('.dispatch-provider-button').getAttribute('aria-label'), /Standing by/);
     assert.equal(container.querySelectorAll('[data-wires="claude-code"] path[data-wire="run"]').length, 0);
   });
 });
