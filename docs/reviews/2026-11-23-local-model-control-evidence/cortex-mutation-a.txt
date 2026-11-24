@@ -1,0 +1,45 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________ test_concurrent_graphiti_calls_each_send_the_model_they_read _________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1144e6190>
+
+    async def test_concurrent_graphiti_calls_each_send_the_model_they_read(monkeypatch):
+        answers = iter([GEMMA, INKLING])
+        lock = threading.Lock()
+    
+        def fetch(url, timeout):
+            with lock:
+                return {"active": next(answers)}
+    
+        monkeypatch.setattr(local_model, "_fetch", fetch)
+        completions = _FakeCompletions()
+        client = _lmstudio_client(completions)
+        await asyncio.gather(
+            client.generate_response(_messages("one")),
+            client.generate_response(_messages("two")),
+        )
+        # Each call sent the model its own read returned, none sent another's.
+>       assert sorted(completions.models) == sorted([GEMMA, INKLING])
+E       AssertionError: assert ['thinkingmac...kling-2-mini'] == ['google/gemm...kling-2-mini']
+E         
+E         At index 0 diff: 'thinkingmachines/inkling-2-mini' != 'google/gemma-4-31b-qat'
+E         Use -v to get more diff
+
+tests/test_local_model_setting.py:308: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+DEBUG:asyncio:Using selector: KqueueSelector
+DEBUG:asyncio:Using selector: KqueueSelector
+------------------------------ Captured log setup ------------------------------
+DEBUG    asyncio:selector_events.py:64 Using selector: KqueueSelector
+DEBUG    asyncio:selector_events.py:64 Using selector: KqueueSelector
+=============================== warnings summary ===============================
+../../TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22
+  /Volumes/Projects/TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SearchInterface(BaseModel):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_local_model_setting.py::test_concurrent_graphiti_calls_each_send_the_model_they_read
+1 failed, 1 warning in 0.12s
+exit=1

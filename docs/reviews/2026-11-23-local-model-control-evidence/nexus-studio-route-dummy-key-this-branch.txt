@@ -1,0 +1,55 @@
+  console.log
+    [Studio] catalog for impossible-worlds-field-guide: 2 of 12 objects fit LM Studio llama3.2 loaded context; the whole text is in /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-model-inputs-ATZcIR/studio-catalog-impossible-worlds-field-guide-4cd563acedf639c9.txt
+
+      at log (server/routes/studio.js:322:13)
+
+FAIL server/__tests__/studio-route.test.js
+  ✓ serves a board when migrating legacy global studio settings (66 ms)
+  studio route
+    ✓ Studio prompts carry every catalog object and every spec when they fit, or the window is unknown (52 ms)
+    ✓ a catalog past its share of the window keeps the most relevant objects and says how many exist beyond (67 ms)
+    ✓ seeds editable Praxis and Impossible Worlds channel profiles (23 ms)
+    ✓ saves channel profile edits (23 ms)
+    ✓ returns channel-scoped boards and seeds Impossible Worlds once (28 ms)
+    ✓ stores source configuration by channel (25 ms)
+    ✓ creates local-only ingestion runs without calling cloud generation (31 ms)
+    ✓ creates object catalog records with spec values and wonder fields (25 ms)
+    ✓ stores reference image prompt metadata by channel and episode (24 ms)
+    ✓ builds prompts from the selected channel profile and catalog context (25 ms)
+    ✓ write_script runs a writer + critic agentic flow grounded in attached object params (26 ms)
+    ✕ the enrich endpoint drains un-enriched objects and reports remaining (36 ms)
+    ✓ interaction_idea builds a video idea from selected objects and links them (26 ms)
+    ✓ model answers are stored whole: idea fields, every critic note, and the full physics and source passes (30 ms)
+    ✓ an idea posted by hand is stored whole, on both idea routes (24 ms)
+    ✓ an answer cut at the model output limit is flagged, never saved as if whole (29 ms)
+    ✓ unreal_environment and physics_analysis prompts include the selected objects (40 ms)
+    ✓ exports a double-precision SI scene for Unreal (derived initial conditions) (27 ms)
+    ✓ export carries rotation, surface scattering, and suns render blocks (26 ms)
+    ✓ a starless rogue planet exports an empty suns list, not fake daylight (24 ms)
+    ✓ object jobs reject an empty selection (21 ms)
+    ✓ uploads a reference image and serves it back, scoped to channel + episode (27 ms)
+    ✓ serves a reference image stored under a dot folder (25 ms)
+    ✓ a source and an object posted by hand keep their whole name and type (22 ms)
+
+  ● studio route › the enrich endpoint drains un-enriched objects and reports remaining
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: 2
+
+      451 |     // No YouTube key in the test env → objects still get parameter-enriched and marked.
+      452 |     cursors = (await json(`${base}/ingestion/cursors`)).body;
+    > 453 |     expect(cursors.enrichRemaining).toBe(0);
+          |                                     ^
+      454 |   });
+      455 |
+      456 |   test('interaction_idea builds a video idea from selected objects and links them', async () => {
+
+      at Object.toBe (server/__tests__/studio-route.test.js:453:37)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 24 passed, 25 total
+Snapshots:   0 total
+Time:        0.874 s, estimated 2 s
+Ran all test suites matching server/__tests__/studio-route.test.js.

@@ -1,0 +1,7 @@
+port 1234 pid 651 started Sun Nov  8 08:54:46 2026     :: LM
+LM
+Studio
+port 3000 pid 68929 started Tue Nov 24 05:51:12 2026     :: next-server
+port 4000 pid 68822 started Tue Nov 24 05:51:10 2026     :: node
+port 8100 pid 68832 started Tue Nov 24 05:51:10 2026     :: Python
+port 54322 pid 68621 started Tue Nov 24 05:50:52 2026     :: node

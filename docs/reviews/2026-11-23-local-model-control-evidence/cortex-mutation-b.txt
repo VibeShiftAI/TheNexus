@@ -1,0 +1,35 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____ test_graphiti_lmstudio_route_names_the_model_in_effect_at_each_call ______
+
+nexus = <tests.test_local_model_setting.FakeNexus object at 0x115a30830>
+
+    async def test_graphiti_lmstudio_route_names_the_model_in_effect_at_each_call(nexus):
+        completions = _FakeCompletions()
+        client = _lmstudio_client(completions)  # built once, like MemoryClient's singleton
+        await client.generate_response(_messages("first episode"))
+        nexus.switch(INKLING)
+        await client.generate_response(_messages("second episode"))
+>       assert completions.models == [GEMMA, INKLING]
+E       AssertionError: assert ['placeholder', 'placeholder'] == ['google/gemm...kling-2-mini']
+E         
+E         At index 0 diff: 'placeholder' != 'google/gemma-4-31b-qat'
+E         Use -v to get more diff
+
+tests/test_local_model_setting.py:289: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+DEBUG:asyncio:Using selector: KqueueSelector
+DEBUG:asyncio:Using selector: KqueueSelector
+------------------------------ Captured log setup ------------------------------
+DEBUG    asyncio:selector_events.py:64 Using selector: KqueueSelector
+DEBUG    asyncio:selector_events.py:64 Using selector: KqueueSelector
+=============================== warnings summary ===============================
+../../TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22
+  /Volumes/Projects/TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SearchInterface(BaseModel):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_local_model_setting.py::test_graphiti_lmstudio_route_names_the_model_in_effect_at_each_call
+1 failed, 1 warning in 0.11s
+exit=1

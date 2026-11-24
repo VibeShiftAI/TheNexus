@@ -1,0 +1,56 @@
+# Criterion 9 read-back, 2026-11-24 10:59:52 EST, read-only
+
+## Live Nexus database (/Volumes/Projects/TheNexus/nexus.db, opened mode=ro)
+alias          target                   alias_updated_at     display_name             provider  api_model_id          
+-------------  -----------------------  -------------------  -----------------------  --------  ----------------------
+local_default  model:local-gemma-4-31b  2026-06-03 02:03:45  Gemma 4 31B QAT (local)  local     google/gemma-4-31b-qat
+
+Tables this task adds, present in the live database? (none expected: the change has not landed)
+model_control_settings
+  (model_control_settings is not new: it is in the baseline schema at db/schema-sqlite.sql:408; the live table has no local_model_selection key, and local_model_switches does not exist.)
+
+## LM Studio listing (one GET http://127.0.0.1:1234/api/v1/models at 11:00:20; the listing loads nothing)
+llm       thinkingmachines/inkling-2-mini        loaded_instances=0
+llm       qwen/qwen3.8-27b                       loaded_instances=0
+llm       google/gemma-4-31b-qat                 loaded_instances=1 ["google/gemma-4-31b-qat"]
+llm       google/gemma-4-31b                     loaded_instances=0
+embedding text-embedding-nomic-embed-text-v1.5   loaded_instances=1 ["text-embedding-nomic-embed-text-v1.5"]
+models listed: 5; loaded: 2
+
+## Live services: listener PID and start time now, against live-services-before-browser-check.txt
+port 1234 pid 651 started Sun Nov  8 08:54:46 2026    
+port 3000 pid 68929 started Tue Nov 24 05:51:12 2026    
+port 4000 pid 68822 started Tue Nov 24 05:51:10 2026    
+port 8100 pid 68832 started Tue Nov 24 05:51:10 2026    
+port 54322 pid 68621 started Tue Nov 24 05:50:52 2026    
+
+## Why Gemma 4 31B QAT shows loaded: the live system reloaded the model already in effect, at 10:25 ET, for TheCortex's Graphiti ingestion
+LM Studio's log (~/.lmstudio/server-logs/2026-11/2026-11-24.*.log), model load and unload events today:
+[2026-11-24 04:42:36][INFO] Unloading model google/gemma-4-31b-qat due to TTL expiration.
+[2026-11-24 04:48:57][INFO][LMSAuthenticator][Client=lms-cli][Endpoint=loadModel] Loading model: google/gemma-4-31b-qat
+[2026-11-24 05:01:29][INFO] Unloading model google/gemma-4-31b-qat due to TTL expiration.
+[2026-11-24 05:08:04][INFO][LMSAuthenticator][Client=lms-cli][Endpoint=loadModel] Loading model: google/gemma-4-31b-qat
+[2026-11-24 05:20:49][INFO] Unloading model google/gemma-4-31b-qat due to TTL expiration.
+[2026-11-24 05:27:00][INFO][LMSAuthenticator][Client=lms-cli][Endpoint=loadModel] Loading model: google/gemma-4-31b-qat
+[2026-11-24 06:02:01][INFO] Unloading model google/gemma-4-31b-qat due to TTL expiration.
+[2026-11-24 10:25:11][INFO][LMSAuthenticator][Client=lms-cli][Endpoint=loadModel] Loading model: google/gemma-4-31b-qat
+
+The two requests just before the 10:25:11 load (request bodies left out):
+63210:[2026-11-24 10:25:10][DEBUG] Received request: GET to /api/v0/models
+63228:[2026-11-24 10:25:10][DEBUG] Received request: GET to /api/v0/models
+63246:[2026-11-24 10:25:10][DEBUG] Received request: POST to /v1/chat/completions with body {
+63264:[2026-11-24 10:25:10][ERROR] No models loaded. Please load a model in the developer page or use the 'lms load' command.
+63265:[2026-11-24 10:25:10][DEBUG] Received request: POST to /v1/chat/completions with body {
+63283:[2026-11-24 10:25:10][ERROR] No models loaded. Please load a model in the developer page or use the 'lms load' command.
+63293:[2026-11-24 10:25:11][INFO][LMSAuthenticator][Client=lms-cli][Endpoint=loadModel] Loading model: google/gemma-4-31b-qat
+  (each request body begins: "You are an AI assistant that extracts entity nodes", model google/gemma-4-31b-qat: Graphiti entity extraction)
+
+Live Praxis log (/Volumes/Projects/Praxis/data/logs/praxis.log, pid 68621, running main's code since 05:50:52), same minute:
+[2026-11-24T15:25:10.697Z] [INFO] [LocalLane] ingestion.graphiti runs on the local model at 10:25 ET, outside the 22:00-06:00 ET window, under its standing grant: Robert selected alias:local_default for Graphiti episode extraction through the /v1/llm gateway, with on-demand reload (2026-11-07). Further uses today are counted, no
+[2026-11-24T15:25:11.029Z] [INFO] [LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 4 downloaded, unloaded model(s) from lms ls
+[2026-11-24T15:25:11.053Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-24T15:25:11.077Z] [INFO] [LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 600 (unloads after 600 s idle)
+[2026-11-24T15:25:49.028Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 38s
+[2026-11-24T15:26:34.128Z] [INFO] [Webhook] /v1/llm gateway ok route=role:ingestion.graphiti depth=1 model=google/gemma-4-31b-qat tokens=1543 caller=gateway.cortex.graphiti
+
+This session's calls to live Praxis (54322) were the workspace declaration at 08:00 ET and three GET /agent-tools at 09:36 ET; nothing near 10:25 ET. Browser-check run 1, running then, refused ports 1234, 3000, 3777, 4000, 4199, 8100 and 54322 inside its throwaway API (api-network-guard.mjs) and mapped the page's 1234 to the fake LM Studio. Test runs refused 1234 and port 1 (LM Studio guard), replaced lms with a refusing fake, and pointed TheCortex at port 1.

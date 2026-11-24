@@ -1,0 +1,48 @@
+✖ Praxis journal exposes stock analysis and YouTube script tabs (0.36925ms)
+✖ fetched comparison renders lane/model estimates, metric sample sizes and exact run links (38.903459ms)
+✔ empty registry model and lanes show no data, never zero dollars or perfect success (6.238791ms)
+✔ read failure is visibly unavailable, not empty history, with a retry control (7.80875ms)
+✔ an old deep-linked run is explicitly fetched and its output opens in the dispatch console (19.043ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 3
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 607.570166
+
+✖ failing tests:
+
+test at src/components/__tests__/daily-journal-tabs.test.ts:6:1
+✖ Praxis journal exposes stock analysis and YouTube script tabs (0.36925ms)
+  Error: ENOENT: no such file or directory, open '/Volumes/Projects/.scratch-fa032fc0/nexus-shared/src/notes.ts'
+      at Object.readFileSync (node:fs:443:20)
+      at TestContext.<anonymous> (file:///Volumes/Projects/.scratch-fa032fc0/baseline-dash/dashboard/src/components/__tests__/daily-journal-tabs.test.ts:8:23)
+      at Test.runInAsyncScope (node:async_hooks:211:14)
+      at Test.run (node:internal/test_runner/test:980:25)
+      at Test.start (node:internal/test_runner/test:878:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:297:17) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/Volumes/Projects/.scratch-fa032fc0/nexus-shared/src/notes.ts'
+  }
+
+test at src/components/__tests__/routing-economics.test.mjs:16:1
+✖ fetched comparison renders lane/model estimates, metric sample sizes and exact run links (38.903459ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /\$2\.525 estimate/. Input:
+  
+  'Measured routing economicsObserved attempts, including failures. Small samples describe history; they do not predict the next run.RefreshAll recorded dispatch attempts; includes failures and follow-ups. Activity commits are not additional runs.Routing economics by lane and model, with contributing run countsModel / laneWall-clock latencyToken totalCost subtotal · USDExecutor outcomeLocal lane0 runsNo data — no recorded runsCloud lane1 runs10.0s median10.0s worst observedfrom 1 of 1 runs~1,000,000 estincludes 1 estimated runsfrom 1 of 1 runs$1.820 estimatefrom 1 of 1 runs0% completedfrom 1 of 1 runs0 completed · 1 failed / timed out · 0 needed input · 0 cancelledgpt-5.6-solCloud · 1 runsView 1 runs / logsrun-a · failure · codex · 2026-09-01T00:00:00Z10.0s median10.0s worst observedfrom 1 of 1 runs~1,000,000 estincludes 1 estimated runsfrom 1 of 1 runs$1.820 estimatefrom 1 of 1 runs0% completedfrom 1 of 1 runs0 completed · 1 failed / timed out · 0 needed input · 0 cancelledCloud costs are estimates using the cockpit static rate table and assumed token mix (85% cache read, 2% input, 8% cache write, 5% output). API-equivalent value, not subscription charges or provider bills; rates are not live. Local $0 covers provider inference fees only, excluding hardware and electricity. No metered cost telemetry is recorded.Completion is executor-reported success among terminal attempts, not QA acceptance or a task-difficulty-adjusted quality score. Unfinished runs are excluded. Failed attempts remain in token and cost totals.'
+  
+      at file:///Volumes/Projects/.scratch-fa032fc0/baseline-dash/dashboard/src/components/__tests__/routing-economics.test.mjs:21:16
+      at renderWith (file:///Volumes/Projects/.scratch-fa032fc0/baseline-dash/dashboard/src/components/__tests__/routing-economics.test.mjs:13:97)
+      at async TestContext.<anonymous> (file:///Volumes/Projects/.scratch-fa032fc0/baseline-dash/dashboard/src/components/__tests__/routing-economics.test.mjs:18:5)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:297:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Measured routing economicsObserved attempts, including failures. Small samples describe history; they do not predict the next run.RefreshAll recorded dispatch attempts; includes failures and follow-ups. Activity commits are not additional runs.Routing economics by lane and model, with contributing run countsModel / laneWall-clock latencyToken totalCost subtotal · USDExecutor outcomeLocal lane0 runsNo data — no recorded runsCloud lane1 runs10.0s median10.0s worst observedfrom 1 of 1 runs~1,000,000 estincludes 1 estimated runsfrom 1 of 1 runs$1.820 estimatefrom 1 of 1 runs0% completedfrom 1 of 1 runs0 completed · 1 failed / timed out · 0 needed input · 0 cancelledgpt-5.6-solCloud · 1 runsView 1 runs / logsrun-a · failure · codex · 2026-09-01T00:00:00Z10.0s median10.0s worst observedfrom 1 of 1 runs~1,000,000 estincludes 1 estimated runsfrom 1 of 1 runs$1.820 estimatefrom 1 of 1 runs0% completedfrom 1 of 1 runs0 completed · 1 failed / timed out · 0 needed input · 0 cancelledCloud costs are estimates using the cockpit static rate table and assumed token mix (85% cache read, 2% input, 8% cache write, 5% output). API-equivalent value, not subscription charges or provider bills; rates are not live. Local $0 covers provider inference fees only, excluding hardware and electricity. No metered cost telemetry is recorded.Completion is executor-reported success among terminal attempts, not QA acceptance or a task-difficulty-adjusted quality score. Unfinished runs are excluded. Failed attempts remain in token and cost totals.',
+    expected: /\$2\.525 estimate/,
+    operator: 'match'
+  }
