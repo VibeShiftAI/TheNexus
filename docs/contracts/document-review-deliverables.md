@@ -1302,6 +1302,19 @@ been stranded that way, 14 of them waiting for Robert's review.
 - `task_id`, `reason`: recorded with each move (the reason at most 500
   characters, the purpose bound of a declaration).
 
+A request that is refused moves nothing:
+
+- `400 unsupported_relocation`: the body is in a shape this TheNexus does not
+  read: a field or a `source` it does not know, or `from_root` or `to_root`
+  left out. That is a client of another version; an update of either side
+  clears it, so a client may ask again.
+- `400 invalid_relocation`: a value it refuses: a body that is not a JSON
+  object, a root that is not an absolute normalized path, overlapping roots,
+  an empty `task_id`, a `reason` over 500 characters. The same request is
+  refused again.
+- `409 to_root_missing`: `to_root` is not an existing directory when it looks.
+- `403 cross_site`: a cross-site request.
+
 For every document registered at a path inside `from_root`, the landed copy is
 the file at the same relative path under `to_root`. The registration moves only
 when that file:
@@ -1365,7 +1378,10 @@ checked out in. The landing result names what moved and what was left (with
 both hashes). TheNexus unreachable or failing (a 5xx) makes the landing wait
 and retry with the worktree still in place, so its documents stay decidable; a
 404 (a Nexus API not yet restarted on this code) is reported and does not hold
-the landing.
+the landing. For a worktree kept for its documents, Praxis asks again at later
+landings after a 404 or a `400 unsupported_relocation` (either side updating
+clears them), and hands the worktree to a person after a
+`400 invalid_relocation` (the same request would be refused again).
 
 ### 14.5 Verification and activation
 
@@ -1376,7 +1392,9 @@ worktree is removed (and the same landing without the move answering 409
 hashes and no revision recorded, a repeated and a raced move moving once, a
 `path:` key moving with the path so later registrations from the main checkout
 (same and other task, same and new bytes) land on the same document, the
-store's refusals, request validation and `to_root: null`.
+store's refusals, request validation (each refusal with its code,
+`unsupported_relocation` told apart from `invalid_relocation`) and
+`to_root: null`.
 
 Activation: the table is created additively at API startup; the live :4000
 serves the route only after the Nexus API restarts on the new code.

@@ -1381,13 +1381,19 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         try {
             if (req.get('sec-fetch-site') === 'cross-site') return res.status(403).json({ error: 'Same-origin requests only', code: 'cross_site' });
             const body = req.body;
+            // A value this route refuses: the same request is refused again.
             const invalid = error => res.status(400).json({ error, code: 'invalid_relocation' });
-            if (!isPlainObject(body) || Object.keys(body).some(key => !RELOCATION_FIELDS.has(key))) {
-                return invalid(`Only ${[...RELOCATION_FIELDS].join(', ')} may be supplied`);
+            // A request in a shape this route does not read (a field or a source it does not know, a required field left
+            // out): a client of another version, which an update of either side clears, so the client may ask again.
+            const unsupported = error => res.status(400).json({ error, code: 'unsupported_relocation' });
+            if (!isPlainObject(body)) return invalid('The body must be a JSON object');
+            if (Object.keys(body).some(key => !RELOCATION_FIELDS.has(key))) {
+                return unsupported(`Only ${[...RELOCATION_FIELDS].join(', ')} may be supplied`);
             }
+            if (!('from_root' in body)) return unsupported('from_root is required: the run worktree');
             const fromRoot = parseRoot(body.from_root);
             if (!fromRoot) return invalid('from_root must be an absolute, normalized directory path');
-            if (!('to_root' in body)) return invalid('to_root is required: the checkout the run landed in, or null when none has the target branch checked out');
+            if (!('to_root' in body)) return unsupported('to_root is required: the checkout the run landed in, or null when none has the target branch checked out');
             const toRoot = body.to_root === null ? null : parseRoot(body.to_root);
             if (body.to_root !== null && !toRoot) return invalid('to_root must be an absolute, normalized directory path, or null');
             if (toRoot && rootsOverlap(fromRoot, toRoot)) return invalid('from_root and to_root must be separate directories');
@@ -1395,7 +1401,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 return res.status(409).json({ error: 'to_root is not an existing directory', code: 'to_root_missing' });
             }
             const source = body.source === undefined ? 'landing' : body.source;
-            if (!RELOCATION_SOURCES.includes(source)) return invalid(`source must be one of: ${RELOCATION_SOURCES.join(', ')}`);
+            if (!RELOCATION_SOURCES.includes(source)) return unsupported(`source must be one of: ${RELOCATION_SOURCES.join(', ')}`);
             // The task-id bound the registration path applies (observeOutgoingRegistration).
             const taskId = body.task_id == null ? null : text(body.task_id, 120);
             if (body.task_id != null && !taskId) return invalid('task_id must be a non-empty string');

@@ -261,23 +261,32 @@ test('the store refuses a stale revision and an occupied landed path or key; eac
 test('the request is validated; with no landed checkout nothing moves and every registration is named', async () => {
     const file = write(worktree, 'docs/report.md', '# Report\n');
     const { document } = (await api('POST', '/api/documents', declared(file, { key: 'report' }))).json;
+    // A refused value is `invalid_relocation`; a request in a shape this route does not read (a field or a source it
+    // does not know, a required field left out: a client of another version) is `unsupported_relocation`.
     const refusals = [
-        [{ from_root: 'relative/path' }, 400],
-        [{ from_root: `${worktree}/` }, 400],
-        [{ from_root: '/' }, 400],
-        [{ to_root: undefined }, 400],
-        [{ to_root: path.join(worktree, 'docs') }, 400],
-        [{ to_root: path.join(workspace, 'nowhere') }, 409],
-        [{ source: 'cleanup' }, 400],
-        [{ reason: 'x'.repeat(501) }, 400],
-        [{ extra: true }, 400],
+        [{ from_root: 'relative/path' }, 400, 'invalid_relocation'],
+        [{ from_root: `${worktree}/` }, 400, 'invalid_relocation'],
+        [{ from_root: '/' }, 400, 'invalid_relocation'],
+        [{ from_root: undefined }, 400, 'unsupported_relocation'],
+        [{ to_root: undefined }, 400, 'unsupported_relocation'],
+        [{ to_root: path.join(worktree, 'docs') }, 400, 'invalid_relocation'],
+        [{ to_root: path.join(workspace, 'nowhere') }, 409, 'to_root_missing'],
+        [{ source: 'cleanup' }, 400, 'unsupported_relocation'],
+        [{ task_id: '' }, 400, 'invalid_relocation'],
+        [{ reason: 'x'.repeat(501) }, 400, 'invalid_relocation'],
+        [{ extra: true }, 400, 'unsupported_relocation'],
     ];
-    for (const [body, status] of refusals) {
+    for (const [body, status, code] of refusals) {
         const sent = { from_root: worktree, to_root: projectRoot, ...body };
-        if ('to_root' in body && body.to_root === undefined) delete sent.to_root;
+        for (const key of Object.keys(body)) if (body[key] === undefined) delete sent[key];
         const response = await api('POST', '/api/documents/relocations', sent);
-        expect([JSON.stringify(body), response.status]).toEqual([JSON.stringify(body), status]);
+        const label = Object.entries(body).map(([key, value]) => `${key}=${value === undefined ? '(left out)' : JSON.stringify(value)}`).join(' ');
+        expect([label, response.status, response.json && response.json.code]).toEqual([label, status, code]);
     }
+    const notAnObject = await nativeFetch(base + '/api/documents/relocations', {
+        method: 'POST', headers: { 'content-type': 'application/json', 'x-test-user': 'local_user' }, body: '["not", "an", "object"]',
+    });
+    expect([notAnObject.status, (await notAnObject.json()).code]).toEqual([400, 'invalid_relocation']);
     expect((await api('POST', '/api/documents/relocations', { from_root: worktree, to_root: projectRoot }, { 'sec-fetch-site': 'cross-site' })).status).toBe(403);
     const none = await relocate({ to_root: null });
     expect(none.status).toBe(200);
