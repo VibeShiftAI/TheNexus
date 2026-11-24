@@ -39,8 +39,14 @@ const LOCAL_ALIAS_DESCRIPTION = 'Local model (LM Studio) for bulk and background
 const LISTING_TIMEOUT_MS = 3_000;
 /** Each read of Praxis: the 4 s Praxis gives each of its own requests for this setting (Praxis src/llm/local-model-selection.ts, NEXUS_TIMEOUT_MS). */
 const PRAXIS_TIMEOUT_MS = 4_000;
-/** Praxis answers a sync after reading the setting and, when nothing local runs, recording the switch: two of those requests. */
-const PRAXIS_SYNC_TIMEOUT_MS = 2 * PRAXIS_TIMEOUT_MS;
+/**
+ * Praxis answers a sync after reading the setting and, when nothing local runs,
+ * recording the switch, then reading it back if that answer was lost: up to
+ * three of those requests.
+ */
+const PRAXIS_SYNC_TIMEOUT_MS = 3 * PRAXIS_TIMEOUT_MS;
+/** Praxis reads the setting on its own this often (Praxis src/llm/local-model-selection.ts, LOCAL_MODEL_RESYNC_MS). */
+const PRAXIS_RESYNC_S = 60;
 /** Where a choice came from. Anything else is recorded as "api". */
 const SURFACES = new Set(['model-control', 'alias-editor', 'api']);
 const EVENT = 'model-control:local-model';
@@ -354,7 +360,7 @@ function createLocalModelSelection({
             timeoutMs: PRAXIS_SYNC_TIMEOUT_MS,
         });
         if (!outcome.ok) {
-            logger.warn(`[LocalModel] Praxis was not told to read the local model setting (${reason}: ${outcome.error}); it reads it at start-up and on its next check.`);
+            logger.warn(`[LocalModel] Praxis was not told to read the local model setting (${reason}: ${outcome.error}); it reads it on its own within ${PRAXIS_RESYNC_S} s, and at its start-up.`);
         }
         emit(`praxis-${outcome.ok ? 'told' : 'not-told'}`);
         return outcome.ok ? { ok: true, praxis: outcome.body } : { ok: false, error: outcome.error };
