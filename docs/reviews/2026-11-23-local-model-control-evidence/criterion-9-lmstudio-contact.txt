@@ -1,0 +1,76 @@
+# Made 2026-11-24 16:14:45 EST by a read-only script; no service contacted.
+
+## 1. LM Studio's server log from 2026-11-23 21:39:35 EST to now
+log file: /Users/robertwashko/.lmstudio/server-logs/2026-11/2026-11-23.1.log (9932567 bytes)
+log file: /Users/robertwashko/.lmstudio/server-logs/2026-11/2026-11-24.1.log (10485895 bytes)
+log file: /Users/robertwashko/.lmstudio/server-logs/2026-11/2026-11-24.2.log (7633437 bytes)
+requests by method and path (every client):
+5988 POST /v1/embeddings
+5691 GET /api/v0/models
+1560 POST /v1/chat/completions
+  10 GET /api/v1/models
+   6 GET /v1/models
+every GET /api/v1/models:
+  2026-11-23 21:47:18
+  2026-11-24 07:54:21
+  2026-11-24 08:26:31
+  2026-11-24 11:00:20
+  2026-11-24 12:46:21
+  2026-11-24 13:00:23
+  2026-11-24 14:39:55
+  2026-11-24 14:51:38
+  2026-11-24 15:52:55
+  2026-11-24 16:14:39
+every GET /v1/models:
+  2026-11-23 22:13:01
+  2026-11-23 22:20:41
+  2026-11-24 05:35:03
+  2026-11-24 05:40:03
+  2026-11-24 05:52:44
+  2026-11-24 06:15:33
+
+## 2. This run's Bash calls (session 55d225db-3825-46d5-a7e0-bcae377a4dce and its subagents)
+55d225db-3825-46d5-a7e0-bcae377a4dce.jsonl: 1567 Bash calls; 9 send to LM Studio; 16 other calls name port 1234
+ entries from 2026-11-23 21:39:35 to 2026-11-24 16:14:44; the longest pause between two entries: 2026-11-23 21:40:38 to 2026-11-24 07:42:09
+ calls that send to LM Studio:
+  2026-11-24 07:54:21: curl -s -m 5 http://127.0.0.1:1234/api/v1/models | python3 -c 'import json,sys; d=json.load(sys.stdin); print(
+  2026-11-24 08:26:30: S=/Volumes/Projects/.scratch-fa032fc0; curl -s -m 5 http://127.0.0.1:1234/api/v1/models -o $S/lmstudio-listing-start.json; echo "curl exit $?"; node 
+  2026-11-24 11:00:20: $(date '+%H:%M:%S'); the listing loads nothing)"; curl -s --max-time 10 http://127.0.0.1:1234/api/v1/models | node -e 'let s="";process.stdin.on("data",d=>s+=d)
+  2026-11-24 12:46:20: S=/Volumes/Projects/.scratch-fa032fc0; bash $S/criterion9-readback-final.sh > $S/criterion9-readback-final.txt 2>&1; echo "exit $?"; cat $S/criterion
+  2026-11-24 13:00:23: /reviews/2026-11-23-local-model-control-evidence; bash $S/criterion9-readback-final.sh > $E/criterion-9-final-readback.txt 2>&1; echo "exit $?"; sed -n 1,30p $E
+  2026-11-24 14:39:54: S=/Volumes/Projects/.scratch-fa032fc0; bash /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/TheNexus/docs/reviews/2026-11-23
+  2026-11-24 14:51:37: bash criterion-9-readback.sh > /Volumes/Projects/.scratch-fa032fc0/criterion-9-final-readback-r5.txt 2>&1; pyt
+  2026-11-24 15:52:55: /reviews/2026-11-23-local-model-control-evidence; bash $E/criterion-9-readback.sh > $E/criterion-9-final-readback.txt 2>&1; echo "exit $?"; diff /Volumes/Projec
+  2026-11-24 16:14:38: scratch-fa032fc0/criterion-9-readback-1552.txt && bash criterion-9-readback.sh > criterion-9-final-readback.txt 2>&1; echo "exit $?"; diff /Volumes/Projects/.sc
+ other calls that name port 1234:
+  2026-11-24 08:15:58: e"; for f in $FILES; do h=$(grep -nE "127\.0\.0\.1:1234|localhost:1234|PRAXIS_TEST_ALLOW_NEXUS|execFile|spawn\(|child_process|\"lms\"|'lms'|LMSTUDIO|LOCAL_LLM_U
+  2026-11-24 08:16:11: le="tests/$f.test.ts" h=$(grep -nE "127\.0\.0\.1:1234|localhost:1234|PRAXIS_TEST_ALLOW_NEXUS|execFile|spawn\(|child_process|\"lms\"|'lms'|LMSTUDIO|LOCAL_LLM_U
+  2026-11-24 08:38:37: grep -rln 'api/v1/models\|api/v0/models\|:1234\|user-concrete-model-default-config\|LMSTUDIO' server --include='*.js' | grep -v __tests__ | head -20; e
+  2026-11-24 08:58:40: nes)"; grep -nE "https?://|127\.0\.0\.1|localhost|:1234|:4000|:3005|fetch\(|NEXUS_DB_PATH|nexus\.db|PRAXIS_URL|LOCAL_LLM|LMSTUDIO|spawn|execFile|child_process|l
+  2026-11-24 09:57:09: |1234/v1\|LM_STUDIO\|lm_studio_base_url\|localhost:1234\|127.0.0.1:1234" $C/python/cortex $C/scripts --include='*.py' | head -40
+  2026-11-24 13:03:49: .match(/(curl[^|;\n]{0,80}(127\.0\.0\.1|localhost):1234[^ ;|\n]*)|(\.lmstudio\/bin\/lms [a-z]+)|(^|[;&|\s(])lms (ls|ps|load|unload|get)\b/g); if(hits)console.
+  2026-11-24 13:57:34: s/Projects|homedir|nexus\.db|hitl\.db|:4000|:8100|:1234|:3000|:54322|NEXUS_API_URL|CORTEX|api\.openai|googleapis|anthropic\.com|openrouter" $f | wc -l | tr -d '
+  2026-11-24 13:57:41: s/Projects|homedir|nexus\.db|hitl\.db|:4000|:8100|:1234|:3000|:54322|NEXUS_API_URL|CORTEX|api\.openai|googleapis|anthropic\.com|openrouter" tests/$n.test.ts | c
+  2026-11-24 14:06:08: s/Projects|homedir|nexus\.db|hitl\.db|:4000|:8100|:1234|:54322|NEXUS_API_URL|PRAXIS_TEST_ALLOW_NEXUS|api\.openai|googleapis|anthropic\.com|openrouter\.ai" $f | 
+  2026-11-24 14:31:00: c|exec\(|fetch\(|http\.|https\.|net\.|:4000|:8100|:1234|:3000|localhost|127\.0\.0\.1|/Volumes|homedir|HOME|mkdtemp|tmpdir|rmSync|rm\(|PRAXIS_DATA_DIR|process\.e
+  2026-11-24 14:44:28: oning 1234:"; grep -l -E '(127\.0\.0\.1|localhost):1234|:1234/' $S/*guard*.log $S/lms-calls*.log 2>/dev/null | head; grep -h -E '(127\.0\.0\.1|localhost):1234|:
+  2026-11-24 15:10:12: ld_process|spawn\(|execFile|execSync|exec\(|:4000|:1234|:8100|:3000|127\.0\.0\.1:[0-9]|localhost:[0-9]|https?://[a-z]|/Volumes/Projects/(TheNexus|Praxis|TheCort
+  2026-11-24 15:11:21: nE "child_process|spawn\(|execFile|execSync|:4000|:1234|:8100|:3000|127\.0\.0\.1:[0-9]|localhost:[0-9]|https?://[a-z]|/Volumes/Projects|nexus\.db|NEXUS_DB_PATH|
+  2026-11-24 15:58:00: tream(file), crlfDelay: Infinity }); const re = /(:1234\b|\blms\s+(load|unload|ps|ls|get)\b|lmstudio|LM_STUDIO)/i; let n = 0, hits = 0; for await (const line of
+  2026-11-24 15:58:55: ms-contact-scan.mjs "$f" 2>&1 | grep -E 'curl[^|]*:1234|lms (load|unload|ps|ls|get)|matching'; done
+  2026-11-24 16:06:56: spawn\(|execFile|execSync|fetch\(|https?://|:4000|:1234|:8100|:3000|:54322|127\.0\.0\.1|localhost|/Volumes/Projects|nexus\.db|NEXUS_DB_PATH|NEXUS_REVIEW_BLOB_DI
+agent-a08cf7af9dea76b28.jsonl: 72 Bash calls; 0 send to LM Studio; 1 other calls name port 1234
+ entries from 2026-11-24 11:07:27 to 2026-11-24 11:26:40; the longest pause between two entries: 2026-11-24 11:07:46 to 2026-11-24 11:09:47
+ other calls that name port 1234:
+  2026-11-24 11:13:58: /TheCortex/TheCortex && grep -rn "gemma\|inkling\|:1234\|lm_studio_base_url\|LM_STUDIO\|LOCAL_LLM_MODEL\|local_llm_model" --include='*.py' python/cortex scripts
+agent-a5ae836208b2b59c0.jsonl: 31 Bash calls; 0 send to LM Studio; 0 other calls name port 1234
+ entries from 2026-11-24 13:07:35 to 2026-11-24 13:26:29; the longest pause between two entries: 2026-11-24 13:21:22 to 2026-11-24 13:23:37
+agent-a6dddfa063220d43a.jsonl: 64 Bash calls; 0 send to LM Studio; 0 other calls name port 1234
+ entries from 2026-11-24 11:07:09 to 2026-11-24 11:32:36; the longest pause between two entries: 2026-11-24 11:22:24 to 2026-11-24 11:24:29
+agent-a753a128b5faab5fb.jsonl: 42 Bash calls; 0 send to LM Studio; 0 other calls name port 1234
+ entries from 2026-11-24 13:07:51 to 2026-11-24 13:20:18; the longest pause between two entries: 2026-11-24 13:08:15 to 2026-11-24 13:10:16
+agent-aa6690c5d5f99648a.jsonl: 31 Bash calls; 0 send to LM Studio; 0 other calls name port 1234
+ entries from 2026-11-24 13:07:42 to 2026-11-24 13:22:20; the longest pause between two entries: 2026-11-24 13:16:58 to 2026-11-24 13:19:04
+agent-ad4c737d8cebcd212.jsonl: 81 Bash calls; 0 send to LM Studio; 0 other calls name port 1234
+ entries from 2026-11-24 11:07:19 to 2026-11-24 11:33:55; the longest pause between two entries: 2026-11-24 11:30:35 to 2026-11-24 11:32:05
+# done

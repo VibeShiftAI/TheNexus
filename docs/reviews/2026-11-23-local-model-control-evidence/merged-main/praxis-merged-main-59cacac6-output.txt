@@ -1,0 +1,47 @@
+# 2026-11-24 16:09:37 EST
+== Praxis: main pinned at 59cacac68a6deb58cbda55f49836ba2e975c0f4e, branch cad6afb21630194fb87e7794eafe04b136b6fa1d, base 1fcf4b59
+main now: 59cacac6
+merge-base: 1fcf4b59
+merge-tree exit 0 (0 = merges without conflict); tree aec51fdc775d8938d1a158fcc6d8ddda0c9beac5
+files both sides change since the base: src/config.ts src/index.ts src/llm/lmstudio-autoload.ts src/local-llm/worker.ts src/nexus/client.ts src/routes/ops.ts 
+files main changed since 519530a9: 197; shared with the branch: src/nexus/client.ts 
+source files main changed since 519530a9: src/executors/run-worktree.ts src/nexus/client.ts src/orchestrator/run-documents.ts src/orchestrator/run-landing.ts src/orchestrator/run-merge.ts 
+patch applied: 17 files
+merged-praxis9 against the merge-tree's tree: 2241 tracked files compared, 0 differ, 0 extra files in the copy
+tsc on the merged tree: exit 0 (0 errors)
+suites main changed since 519530a9: run_merge_documents run_worktree 
+suites importing a module main changed since 519530a9: 60
+suites on the merged tree: 152 (not on the merged tree: none); added to the 144: run_merge_documents run_worktree eod_commit_run_worktrees run_merge run_multi_repo run_worktree_qa_diff run_worktree_repoint run_worktree_report 
+nexus-for-merged-praxis9: TheNexus 2a7952fc plus the branch diff bd02642..6e14bc87, 3936 files, nexus.db files: 0
+ℹ tests 2158 ℹ pass 2149 ℹ fail 9 ℹ cancelled 0 exit 1 
+✖ 3: callback records execution-scoped usage already captured from the native CLI stream
+✖ 3c: a reviewer that died with the daemon is retried on a different executor with NO strike
+✖ 5: real registry recovery reads full completed findings instead of the truncated preview
+✖ B′: after a restart, the reviewer's callback with the RIGHT qaReviewId is 200 and finalizes
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ accepted pass survives a failed finalization and periodic recovery retries completion only
+✖ real Antigravity completion reaches the shared audit and retains findings with explicit unsupported evidence
+✖ the page connection refuses mixed public/private DNS answers and literal private addresses
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+guards: lmstudio=1 net=6 live-port=1 cli-shims=9
+files written under nexus-for-merged-praxis9 during the run (node_modules left out): 0
+nexus.db files there: 0
+suites with failures on the merged tree: alert_investigation code_freshness_recovery qa_state_persistence research_web_retrieval webhook_routes_inventory 
+plain-praxis-main9 against 59cacac68a6deb58cbda55f49836ba2e975c0f4e: 2237 tracked files compared, 0 differ, 0 extra files in the copy
+nexus-for-plain-praxis9: TheNexus 2a7952fc, 3824 files, nexus.db files: 0
+== the same suites on plain main 59cacac68a6deb58cbda55f49836ba2e975c0f4e
+ℹ tests 211 ℹ pass 202 ℹ fail 9 ℹ cancelled 0 exit 1 
+✖ 3: callback records execution-scoped usage already captured from the native CLI stream
+✖ 3c: a reviewer that died with the daemon is retried on a different executor with NO strike
+✖ 5: real registry recovery reads full completed findings instead of the truncated preview
+✖ B′: after a restart, the reviewer's callback with the RIGHT qaReviewId is 200 and finalizes
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ accepted pass survives a failed finalization and periodic recovery retries completion only
+✖ real Antigravity completion reaches the shared audit and retains findings with explicit unsupported evidence
+✖ the page connection refuses mixed public/private DNS answers and literal private addresses
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+guards: lmstudio=0 net=0 live-port=1 cli-shims=0
+files written under nexus-for-plain-praxis9 during the run (node_modules left out): 0
+nexus.db files there: 0
+# 2026-11-24 16:11:34 EST
+== done

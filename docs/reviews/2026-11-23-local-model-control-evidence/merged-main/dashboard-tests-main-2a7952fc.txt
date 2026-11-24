@@ -1,0 +1,39 @@
+✔ the header shows which model is answering as Praxis without a click (25.54375ms)
+✔ picking a model saves through the shared chat-config helpers and repaints both surfaces (32.172167ms)
+✔ a change made in the settings modal repaints the header control (20.301333ms)
+✔ a backend switch is confirmed first; a model switch inside the backend is not (37.09275ms)
+✔ cancelling a backend switch leaves the executor alone (23.104125ms)
+✔ a failed save shows an error and never presents the un-saved model as active (15.379708ms)
+✔ a rejected free-text save restores the settings field to the confirmed model (15.901541ms)
+✔ the picker stops taking clicks while a save is in flight (21.8335ms)
+✔ clicking the trigger after a failed load actually retries, as its tooltip promises (14.60325ms)
+✔ the picker is keyboard-dismissable with Escape (10.180708ms)
+✔ the model choices are the registry's current models plus the configured slug (10.047584ms)
+✔ without a registry the picker keeps the configured slug and says the list is missing (9.56875ms)
+✔ a retired document's review page says what replaced it, with a link, when, why and from which task; Move to review queue is the way back (criteria 3, 5) (87.326958ms)
+✔ a chat retirement shows the cited reason without implying another document replaced it (2.7885ms)
+✔ a manual close of 2026-11-18/19 shows its reason and replacement in the same form (criterion 7) (26.450791ms)
+✔ the replacing document's page lists what it retired, and every reason a name retired nothing (criteria 3, 4, 6) (24.714583ms)
+✔ a document named but left waiting says who named it and why it stays; a pending name says it is not applied yet (0.708667ms)
+✔ nothing renders when the API predates retirements or there is nothing to show (22.028041ms)
+✔ a reopened name says how it came back: Move to review queue, or new bytes registered for review (1.068ms)
+✔ each downloaded chat model is offered with its name, size on disk, saved context and handling; the embedding model is not offered (45.52075ms)
+✔ a new download appears on the next read, with no code change: Nexus's event refreshes the list (14.651834ms)
+✔ a model with no saved load context cannot be picked, and its row says what is missing (10.031083ms)
+✔ choosing during a local job sends one request, loads nothing, and shows the switch waiting until Nexus reports it applied (25.067333ms)
+✔ each switch is listed with what changed, when and from where, and the previous choice restores in one action (13.156375ms)
+✔ a restore that cannot be made says why, and a choice made elsewhere in between is refused, not overwritten (14.120166ms)
+✔ with Praxis out of reach a waiting switch says how Praxis will pick it up (5.942083ms)
+✔ the alias editor shows Nexus's sentence when it refuses a local_default target, and reads the panel again after one it records (15.934667ms)
+✔ every module the root layout imports is a Fast Refresh boundary, except the ones already listed (1.490416ms)
+✔ the voice dock storage key is read from the lib module, not exported by the component (0.113875ms)
+✔ the export reader distinguishes components from values (0.358417ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5984.889542
+exit 0

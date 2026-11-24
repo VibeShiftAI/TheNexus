@@ -3,17 +3,31 @@
 The review package in `../2026-11-23-local-model-control/` holds only the three
 review screenshots (registered revision `5a481277`). Everything else that backs
 the task is here. Test and log outputs are copied verbatim, so they can contain
-the products' own wording (including dashes in their log messages). One file is
-an extract rather than a whole log: `merged-main/praxis-full-suite-summary-and-failures.txt`,
-cut verbatim from a 6.1 MB log by `merged-main/praxis-full-suite-extract.sh`.
+the products' own wording (including dashes in their log messages). Five files
+are extracts rather than whole logs, each cut verbatim by
+`merged-main/praxis-full-suite-extract.sh` (the command, the "Running N of M"
+line, then the runner's summary and every failure with its detail; the passing
+output is left out, and each extract says which lines):
+`merged-main/praxis-full-suite-summary-and-failures.txt` (from a 6.1 MB log),
+the three `merged-main/praxis-tests-*519530a9*-extract.txt` (from logs of 1.5
+to 1.6 MB) and `merged-main/praxis-tests-merged-59cacac6-extract.txt` (from a
+2.0 MB log).
 
 Three repositories changed, each on its own task branch:
 
 | Repository | Baseline | Branch head | Main at the merged checks |
 | --- | --- | --- | --- |
-| TheNexus | `bd02642` | `6e14bc87`, plus evidence-only commits after it (`f8761e33` and the one that adds this update) | `3189bb99` |
-| Praxis | `1fcf4b59` | `cad6afb2` | `24c1abaa`, `4d076f91`, `613f66b6`, then `fbce5c26` |
+| TheNexus | `bd02642` | `6e14bc87`, plus evidence-only commits after it (`f8761e33`, `f011c4ee` and the one that adds this update) | `3189bb99`, `a2870083`, then `2a7952fc` |
+| Praxis | `1fcf4b59` | `cad6afb2` | `24c1abaa`, `4d076f91`, `613f66b6`, `fbce5c26`, `519530a9`, then `59cacac6` |
 | TheCortex | `5fdb76a` | `e611edc` | `3617672` |
+
+Both mains kept moving while the task ran. The last merged checks are on
+TheNexus `2a7952fc` (main since 15:51:16 EST) and Praxis `59cacac6` (main since
+15:51:18; one task landed both), each pinned by its full hash and run from
+16:09:15 to 16:11:34 EST. TheCortex main has been `3617672` since 09:01:33. The
+times come from each shared checkout's reflog for `main`. At 16:20:01 EST
+none of the three mains had moved since. A main that moves later is not covered
+here.
 
 The task's commits, oldest first:
 
@@ -22,6 +36,333 @@ The task's commits, oldest first:
 | TheNexus | `fc23f07a`, `d93b3453`, `5d43f2c9`, `3770d86e`, `e1bfcc97` (round 1 and its evidence); `f2644c44`, `7f915704`, `09b75ae8` (the model row made at apply, the seed fix, the evidence update); `6e14bc87` (reasoning checked both ways) |
 | Praxis | `766635bc`, `ac0b13e0`, `90d44073`; `6f9fb79b` (switch findings held, local primary follows Model Control); `cad6afb2` (round 4, below) |
 | TheCortex | `42b67e2`, `ea37c44`, `0909b22`; `e611edc` (overlapping reads, below) |
+
+## Precondition (criterion 1)
+
+`criterion-1-precondition.sh` (output `criterion-1-precondition.txt`, 16:03:58
+EST, read-only) finds the readiness task's commits by their trailer
+(`git log main --grep=9227d9b6`). For each one it asks git whether the commit is
+on main and under the task branch's head (`git merge-base --is-ancestor`). Then
+it runs the brief's own check as the brief writes it.
+
+| Repository | Readiness commits (task `9227d9b6`) | On main | Under the branch head |
+| --- | --- | --- | --- |
+| TheNexus | `9de7bed6` (its merge, 2026-11-23 22:47:28), `1104ec89`, `22d86d03` | all 3 (main `2a7952fc`) | no |
+| Praxis | `1fcf4b59` (its merge, 2026-11-23 22:48:04), `de1c5916`, `884135de`, `1a82f9e8`, `694c867a`, `0bc2c8fb` | all 6 (main `59cacac6`) | yes (`cad6afb2`) |
+| TheCortex | `5fdb76a`, `2d7c015` | both (main `36176727`) | yes (`e611edc`) |
+
+The brief's check, `git -C /Volumes/Projects/Praxis grep -c
+'thinkingmachines/inkling-2-mini' main -- src/llm/local-model-capabilities.ts`,
+prints `main:src/llm/local-model-capabilities.ts:2` (exit 0).
+
+The precondition holds: every commit of the readiness task is on main in all
+three repositories.
+
+This run started twice. The first start, at 21:39:35 EST on 2026-11-23, came
+before the readiness task landed. The same check printed nothing then: Praxis
+main was at `9a49acc9`, and `0bc2c8fb` and `694c867a` were only on the readiness
+branch. So the run stopped at 21:40:38 with `PRAXIS_CLAUDE_STATUS: needs_input`
+and changed nothing in any repository. The readiness merge `1fcf4b59` is dated
+22:48:04, and the run resumed at 07:42:09 EST on 2026-11-24. These times come
+from this run's session transcript; `criterion-9-lmstudio-contact.txt` prints
+its first entry and the pause between the two starts.
+
+In TheNexus the branch was cut from `bd02642` (2026-11-23 20:16:56), before the
+readiness merge reached main, so its head does not contain those three commits.
+The merged checks below put the branch diff on mains that do contain them:
+`3189bb99` (270/270), `a2870083` (393/393) and `2a7952fc` (401/401). The
+combination broke one test, because main's seed adds an Inkling row;
+`7f915704` fixed it.
+
+## Where the local model was chosen before this task (criterion 2)
+
+`criterion-2-sites.sh` (output `criterion-2-sites.txt`) uses read-only
+`git grep` on commits. It prints each site below as it was at the QA baseline,
+beside the line that does the work at the branch head, then the sweep that
+found the sites. Line numbers are the baselines' (`1fcf4b59`, `bd02642`,
+`5fdb76a`) under "Before" and the branch heads' (`cad6afb2`, `6e14bc87`,
+`e611edc`) under "Now".
+
+Two read-only checks of this machine back the claims about settings:
+- `criterion-2-env-names.sh` (output `criterion-2-env-names.txt`) counts, in the
+  four env files the services read and in the six launch agents, every
+  environment name below that names or picks a local model. It prints counts
+  only. The Praxis `.env` sets `LOCAL_LLM_MODEL` (it names Gemma),
+  `LLM_PRIMARY_MODEL`, `LLM_PRIMARY_PROVIDER` (not `local`) and
+  `PRAXIS_EVAL_FALLBACK_MODEL` (a subscription CLI route, not a local one).
+  No other name is set anywhere.
+- `criterion-2-pins.sh` (output `criterion-2-pins.txt`) reads the live nexus.db
+  opened `mode=ro`. 19 of the 37 Model Control roles reach a local model, all 19
+  through `alias:local_default`. No role, global alias, project alias or project
+  setting names a local row directly, and there are no task-type pins (N6).
+
+### Praxis
+
+Before this task Praxis read the local model once, from the environment, when it
+started. Now `config.localLlmModel` is a getter over the model Praxis last
+applied from Nexus's setting, and everything that read the old value reads the
+getter each time it runs.
+
+- **P1, the one value, `config.localLlmModel`.**
+  - Before: `src/config.ts:323` took `LOCAL_LLM_MODEL`, else
+    `LLM_PRIMARY_MODEL`, else `"default"`, once at start-up.
+  - Now: a getter, `src/config.ts:336-337` (`runtimeLocalModel() ??
+    localLlmModelFromEnv`).
+    - `switchTo` (`src/llm/local-model-selection.ts:260-262`) sets it from
+      Nexus's setting. Praxis reads the setting at start-up
+      (`initLocalModelSelection`, `:450`) and again on every resync
+      (`startLocalModelResync`, `:459`). A switch takes effect only when no
+      local call is running.
+    - The environment value stays at `src/config.ts:299-300`. It is used only
+      while Nexus cannot be reached or names no model, and `useEnvFallback`
+      (`:245-258`) logs that it is in use (criterion 4).
+- **P2, readers of `config.localLlmModel` outside the manager.**
+  - Where (all under `src/`): `council/member-profile-updates.ts:206`;
+    `evals/inference-policy.ts:53`, `:132`; `groundrules/runner.ts:106`;
+    `ingestion/salience-triage.ts:250`; `llm/context-window.ts:216`;
+    `llm/credit-exhaustion-preflight.ts:147` (a log line);
+    `llm/credit-failover.ts:83`; `llm/lmstudio-autoload.ts:621`;
+    `maintenance/fleet-preflight.ts:1416`; `orchestrator/qa-lessons.ts:1838`,
+    `:1972`; `voice/spoken-prose.ts:114`.
+  - These are the same lines at both commits, except autoload's, which is now
+    `llm/lmstudio-autoload.ts:677`.
+  - Each reads the getter when it runs, so its next use after a switch gets the
+    new model.
+  - Autoload's load target and the slot check (`claimLocalSlot`, `:1494`) both
+    take the model from `expectedLocalModel()` (`:676-677`).
+- **P3, the LLM manager's local provider, local lanes and local fallback**
+  (`src/llm/manager.ts`).
+  - Before: `:294` gave the local provider the model as a value when the
+    manager was built. `:764`, `:809`, `:915`, `:1097`, `:1168`, `:1323-1324`
+    and `:1338` read `config.localLlmModel`.
+  - Now: the provider gets a function, `:317` (`() => config.localLlmModel`),
+    so it reads the model at each call. The other reads are now at `:831`,
+    `:876`, `:982`, `:1168`, `:1241`, `:1414-1415` and `:1429`.
+- **P4, a local primary (`LLM_PRIMARY_PROVIDER=local`).**
+  - Before: `manager.ts:302-308` set the primary's model to `LLM_PRIMARY_MODEL`.
+  - Now: `primaryModel()` (`:365-366`) returns `config.localLlmModel` when the
+    primary provider is local. `:332` still records `LLM_PRIMARY_MODEL` for any
+    other provider.
+  - On this machine the primary provider is not local.
+- **P5, `switchModel("local/<name>")`.**
+  - Before: `manager.ts:693` set `activeModel` to the name, and local calls ran
+    it.
+  - Now: `:760` still records the name, but local calls run
+    `config.localLlmModel`. The reply says so (`:750-751`: "local calls run
+    ..., the local model chosen under Model Control, not ...").
+- **P6, a role that resolves through `local_default`.**
+  - Before: `manager.ts:1139` built the role's target from the name Nexus sent,
+    the alias target's fixed model name.
+  - Now: Nexus marks such a role `followsLocalModel` (TheNexus
+    `server/services/model-control.js:373`). Praxis keeps the mark
+    (`manager.ts:1211-1212`) and runs `config.localLlmModel` for that role
+    (`:1164`). A streamed local primary does the same (`:1622`, `:1676`).
+  - The live board has 19 such roles (`criterion-2-pins.txt`).
+- **P7, the swarm and council local client (unchanged by this task).**
+  - `src/swarm/engine.ts:148` takes `cfg.localLlmModel ?? cfg.llmPrimaryModel`
+    each time the clients are built from `config` (`buildProviderClients`,
+    `:80`): once per swarm run (`:647`) and once per council aggregator call
+    (`src/council/moa.ts:374`).
+  - Each seat call is counted as a local call and claims the slot first
+    (`localLaneChatClient`, `:187-204`, counted at `:196`).
+    - A switch waits for a seat call that is in flight.
+    - A seat call that still names the replaced model, after a switch that took
+      effect while it waited, is refused (`switched_away`,
+      `llm/lmstudio-autoload.ts:1515-1517`).
+  - No preset in `src/` seats a local model: `council/moa.ts:179-194` and
+    `council/problem-council.ts:69-70` seat CLI and free models.
+- **P8, trading read the environment itself.**
+  - It took `TRADING_LOCAL_MODEL`, else `LOCAL_LLM_MODEL`, else
+    `LLM_PRIMARY_MODEL` (`src/trading/reflections.ts:65`; the council's env type
+    is at `src/trading/council/personas.ts:74`).
+  - These lines are the same at both commits: the branch leaves `src/trading`
+    untouched.
+  - Main deleted `src/trading` in `f8e444a2` (2026-11-23 22:22:54), which the
+    merge `ed8d0442` brought to main at 2026-11-24 08:28:32, during this task.
+    - Neither the baseline nor the branch head contains it, so landing takes
+      the deletion.
+    - `fbce5c26` and `519530a9` have no file under `src/trading`.
+  - `TRADING_LOCAL_MODEL` is set nowhere on this machine.
+- **P9, the eval and credit-failover routes: an optional override, else the
+  local model.**
+  - `src/evals/inference-policy.ts:53` takes `PRAXIS_EVAL_LOCAL_MODEL`, else
+    `config.localLlmModel`. `src/llm/credit-failover.ts:83` takes
+    `PRAXIS_CREDIT_FALLBACK_MODEL`, else `config.localLlmModel`. Both lines are
+    the same at both commits.
+  - Neither override is set on this machine, so both routes follow the getter.
+  - `PRAXIS_EVAL_FALLBACK_MODEL` (`inference-policy.ts:63`) and
+    `PRAXIS_EVAL_JUDGE_MODEL` (`:78`) add a route only when set.
+    - The first is set to a subscription CLI route, not a local one.
+    - The second is unset.
+- **P10, the teacher-convergence eval's teacher.**
+  - `src/evals/teacher-convergence.ts:58` sets `DEFAULT_TEACHER_MODEL =
+    "google/gemma-4-31b"`, and `PRAXIS_EVAL_TEACHER_MODEL` can override it
+    (`:63`). Both lines are the same at both commits.
+  - The teacher is a deliberate second model that judges the student. The
+    student is `evalLocalRoute()` (`:321`, P9), so the student follows the
+    setting.
+  - Robert's 2026-11-03 ruling keeps Gemma out of evaluations
+    (`src/llm/eval-model-policy.ts:3-4`), and `assertLocal` (`:263-264`)
+    refuses the default teacher.
+    - The eval runs only with `--teacher` (`scripts/run-teacher-convergence.ts:84-85`)
+      or with `PRAXIS_EVAL_TEACHER_MODEL` naming another model.
+    - `PRAXIS_EVAL_TEACHER_MODEL` is unset here.
+- **P11, the home-hub edge classifier.**
+  - `src/home-hub/edge-llm.ts:67` takes `HOME_HUB_EDGE_LLM_MODEL`, else
+    `EDGE_LLM_MODEL`, else `"gemma"`; `:14` has the same default. Both lines
+    are the same at both commits.
+  - It calls its own server, `HOME_HUB_EDGE_LLM_URL` or `EDGE_LLM_URL` (`:66`),
+    and is off when neither is set (`:11`). Neither is set on this machine, so
+    it names no model that runs here.
+
+### TheNexus
+
+- **N1, Studio jobs** (`server/routes/studio.js`).
+  - Before: `:710` took `LOCAL_STUDIO_MODEL`, else `'llama3.2'`.
+  - Now: `:719` takes `await local.localModelForWork()`. That is the model in
+    effect, or, inside a counted local job, the model that job started with
+    (`server/services/local-model-selection.js:595-600`).
+- **N2, Studio ingestion** (`server/services/studio-ingestion.js`).
+  - Before: `:37` took `LOCAL_STUDIO_MODEL`, else `'gemma4'`.
+  - Now: `:42` takes the same `localModelForWork()`.
+- **N3, the `local_default` alias and the Gemma row.**
+  - Before: both were seeded once (`db/index.js:599`, the alias; `:568`, the
+    row). After that, the alias was edited by hand in the alias editor.
+  - Now: the seeds are unchanged (`:621`, `:590`).
+    - Only `setLocalDefault` (`server/services/local-model-selection.js:325`)
+      writes the alias's target.
+    - `apply` (`:495`, `:511`) calls it, through the loopback-only
+      `POST /api/model-control/local-model/apply`
+      (`server/routes/model-control.js:841`). Praxis calls that route when no
+      local job is running.
+    - The alias editor refuses to switch the alias off or retarget it
+      (`model-control.js:867`, `:871`, `:878`). A project cannot shadow it
+      (`:975`, `local_default_is_global`).
+- **N4, role resolution through `local_default`**
+  (`server/services/model-control.js`).
+  - Before: `:456` returned the alias's model name.
+  - Now: `:464` is unchanged, and `resolveAlias` marks the result
+    `followsLocalModel` (`:373`), so Praxis runs its model in effect (P6).
+- **N5, the start-up fallback (new).**
+  - `modelInEffectOrFallback` (`server/services/local-model-selection.js:540-560`)
+    takes `LOCAL_STUDIO_MODEL`, else `LOCAL_LLM_MODEL`, else `'gemma4'`
+    (`:552-554`).
+  - It does so only while no local model is in effect, and logs that it does.
+  - `:677` is the stand-in for a Studio router built without the setting, which
+    only tests do. `server/server.js:163` and `:201` always pass the real one.
+- **N6, task-type pins** (`server/services/ai-service.js:221`, unchanged:
+  "Local pins stay pinned").
+  - A task type would reach a local model only through a models row marked
+    `is_default_for_task`, or through `agent-config.json`.
+  - The live database has no row with a task default, and the file is absent
+    (`criterion-2-pins.txt`).
+  - No route or panel writes the column: it appears only in `db/` and in the
+    migration that made it.
+  - So nothing chooses a local model this way.
+
+### TheCortex
+
+Paths are under `TheCortex/python/cortex/` unless named.
+
+- **C1, Graphiti's lmstudio route** (`memory/client.py`).
+  - Before: `:109` named `"google/gemma-4-31b-qat"`, and the
+    `cortex_graphiti_model` setting could override it (`:127`).
+  - Now: each call reads the local model chosen under Model Control
+    (`graphiti_local_model`, `:155`, read per call at `:182`) through
+    `local_model_or` (C5).
+    - Until Nexus has answered, the route uses `_graphiti_lmstudio_fallback()`
+      (`:113`, `:145-152`), which takes `CORTEX_GRAPHITI_MODEL`, else the
+      built-in Gemma name, and logs that it does.
+    - The override no longer applies to this route (`:134`).
+- **C2, the settings** (`config.py`): `CORTEX_GRAPHITI_MODEL` (`:286`, now
+  `:288`) and `CORTEX_TEACHER_MODEL` (default Gemma, `:315`, now `:320`).
+  - Both are unchanged, and both are now only the start-up fallback for C1 and
+    C3.
+  - Neither is set on this machine.
+- **C3, the eval teacher** (`evals/harness.py`, `teacher_model`).
+  - Before: `:128-130` read the `cortex_teacher_model` setting.
+  - Now: `:146` returns `local_model_or(fallback, purpose="the eval teacher",
+    ...)`: the model Nexus names, else the fallback, logged.
+- **C4, eval defaults that named Gemma** (`evals/`).
+  - Before:
+    - `acted_on_retrieval.py:91`, `curation_replay.py:80` and `referee.py:102`
+      set Gemma as the default. `relevance_labels.py:71` takes `referee.py`'s
+      default.
+    - The eval classes took that default as a parameter default:
+      `acted_on_retrieval.py:486`, `citation_recovery.py:384`,
+      `curation_replay.py:600`, `packet_format.py:177`, `referee.py:677`, and
+      `relevance_labels.py:291`, `:353`, `:421`, `:747`.
+  - Now: each resolves `harness.teacher_model(DEFAULT_...)` when it runs (C3),
+    with the constant as the fallback:
+    - `acted_on_retrieval.py:494`, `:893`;
+    - `citation_recovery.py:390`, `:848`;
+    - `curation_replay.py:609`, `:1036`;
+    - `packet_format.py:184`, `:783`;
+    - `referee.py:689`, `:708`, `:1167`;
+    - `relevance_labels.py:302`, `:373`, `:449`, `:783`.
+- **C5, the reader (new, `local_model.py`).**
+  - `local_model_or` (`:94`) reads `GET /api/model-control/local-model/current`.
+  - It keeps the newest answer it got (`:112`), for use during an outage.
+- **C6, the model registry's direct rows.**
+  - `TheCortex/config/model_registry.yaml:159` (`gemma-local`) and `:173`
+    (`inkling-local`) use provider `lm_studio`. They are unchanged and unused:
+    no role selects them (`llm_factory.py:285-289`).
+  - The roles reach the local model through the Praxis gateway
+    (`model_name: "role:cortex.*"`, `model_registry.yaml:99`, `:108`, `:126`,
+    `:135`, `:144`), which resolves them as in N4 and P6.
+
+### The sweep
+
+The sweep at the end of `criterion-2-sites.txt` is what found these sites. At
+each baseline it lists every code line (comment lines left out) that names a
+local model setting, the local provider or a local model by name. The patterns
+are in the script.
+
+Each of its 127 matches is one of the sites above or falls in one of these
+groups, none of which chooses the local model:
+- **Praxis, types and the generic primary.**
+  - Types: `src/config.ts:33`, `:39`; `src/swarm/engine.ts:56-57`.
+  - `src/config.ts:325`: `LLM_PRIMARY_MODEL` for any provider.
+  - `src/llm/manager.ts:304`: part of P4's condition.
+  - `src/llm/manager.ts:614`, `:619`: these keep an explicit primary after a
+    fallback.
+- **Praxis, the local speech model** (Qwen text to speech, not LM Studio):
+  - `src/chat-cli-session.ts:1675`;
+  - `src/morning/newsletter.ts:40`, `:520`;
+  - `src/prompt.ts:129`;
+  - `src/reports/status-report.ts:1346`;
+  - `src/voice/local-qwen.ts:101`, `:105`, `:108`, `:131`, `:139`, `:159-162`;
+  - `src/voice/tts-budget.ts:143`, `:177`;
+  - `src/voice/tts-health.ts:27`, `:349`, `:361`, `:429`;
+  - `src/voice/tts-provider.ts:2`, `:7`, `:11`;
+  - `src/voice/tts-settings.ts:2`, `:5`, `:6`.
+- **Praxis, model names as data.**
+  - Keyword lists: `src/council/reputation.ts:88`,
+    `src/skills/typed-skill-graph.ts:96`.
+  - Provider inference from a name: `src/groundrules/providers.ts:23`, `:25`.
+  - The capability table: `src/llm/local-model-capabilities.ts:41`, `:52`,
+    `:59-61`, `:69`, `:134`.
+  - OpenRouter's free models: `src/llm/free-model-ranking.ts:110`, `:121`,
+    `:158`; `src/llm/openrouter-free.ts:230`.
+  - The eval policy that excludes Gemma: `src/llm/eval-model-policy.ts:3-4`.
+- **Praxis, text in logs, reports, prompts and tool descriptions:**
+  - `src/ingestion/engine.ts:408`;
+  - `src/ingestion/processing/comparison-report.ts:144`, `:157`, `:286`;
+  - `src/morning/knowledge-council.ts:354`;
+  - `src/trading/tools.ts:173`;
+  - `src/trading/us-trend-radar.ts:79`. Its summary is a manager call by role,
+    at `:439` and `:453`.
+- **TheNexus:**
+  - display text on the Codex page, `dashboard/src/app/codex/page.tsx:181`,
+    `:184`;
+  - the brain tool's description, `services/praxis-mind-mcp/tools/brain.js:77`.
+- **TheCortex:**
+  - docstrings: `evals/referee.py:58`, `evals/relevance_labels.py:20`,
+    `llm_factory.py:68`, `:70`, `memory/entity_resolver.py:106`, `:135`,
+    `:281`, `memory/neo4j_layer.py:9`, `:252`, `memory/query_expander.py:5`,
+    and `evals/harness.py:129` (C3's);
+  - the fields of the C6 rows: `model_registry.yaml:161-163`, `:175-177`;
+  - the field lines of the C2 settings: `config.py:285`, `:314`.
 
 ## Changes since the 13:06 evidence update (`09b75ae8`)
 
@@ -156,7 +497,7 @@ Every run used guards, kept in `guards/`:
 The guards log to the scratch folder named in each script, deleted at the end of
 the task; the logs cited below are copied here as `.txt`. Before the folder was
 deleted, `guards/guard-logs-scan.py` listed every guard log in it, with its line
-count and any line naming port 1234: 87 logs, no such line
+count and any line naming port 1234: 153 logs, no such line
 (`guards/guard-logs-scan.txt`).
 
 | File | What ran | Result |
@@ -238,6 +579,44 @@ worktree, branch or clone was made.
   - TheCortex main `3617672` plus the diff at `e611edc`, 12 files: 293 passed
     (`cortex-offline-tests.txt`).
   - The guards refused nothing.
+- TheNexus main `a2870083` (moved at 14:58:26, retiring a review):
+  `nexus-merged-main-a2870083.sh`, output in
+  `nexus-merged-main-a2870083-output.txt`.
+  - Main is pinned by its full hash and merged with the branch's last code
+    commit `6e14bc87`. The commits after it change no file outside this
+    evidence folder (the output counts 0).
+  - `git merge-tree` merges without conflict (tree `3f593232`).
+    - Since the base, both sides change `db/index.js`, `db/schema-sqlite.sql`
+      and `server/server.js`.
+    - Main changed 14 files since `3189bb99`. Of those, only `db/index.js` is
+      one the branch also changes.
+  - The merged copy is `git archive` of main plus the branch diff (124 files).
+    It matches the merge-tree's tree file for file: 3933 files, 0 differ,
+    0 extra.
+  - Server suites: 27, the 23 of the earlier checks plus the four that main
+    changed (`document-chat-retirement`, `document-retirement-grounds-store`,
+    `document-retirements`, `document-revision-cancellation`). Result 393/393
+    (`nexus-server-tests-main-a2870083.txt`).
+  - Dashboard: `tsc` exit 0 (`dashboard-tsc-main-a2870083.txt`). The three
+    dashboard suites of the first merged check, plus `document-retirements`,
+    which main changed: 30/30 (`dashboard-tests-main-a2870083.txt`).
+  - The guards refused nothing. 60 ports were listening before each run.
+- TheNexus main `2a7952fc` (moved at 15:51:16; moving a document's registration
+  to its landed file when the run that wrote it lands):
+  `nexus-merged-main-2a7952fc.sh`, output in
+  `nexus-merged-main-2a7952fc-output.txt`, 16:09:15 to 16:09:37 EST. The same
+  steps as for `a2870083`:
+  - `git merge-tree` merges without conflict (tree `fbea1f17`). Main changed 6
+    files since `a2870083` (two db modules, the documents route, a new service,
+    its new test and a contract doc), none of them one the branch changes.
+  - The merged copy matches the merge-tree's tree file for file: 3936 files,
+    0 differ, 0 extra.
+  - Server suites: 28, the 27 above plus `document-relocations`, which main
+    added. Result 401/401 (`nexus-server-tests-main-2a7952fc.txt`).
+  - Dashboard: `tsc` exit 0 (`dashboard-tsc-main-2a7952fc.txt`). The same four
+    dashboard suites (main changed no dashboard file): 30/30
+    (`dashboard-tests-main-2a7952fc.txt`).
+  - The guards refused nothing. 60 ports were listening before each run.
 
 ### Praxis, earlier rounds
 
@@ -369,6 +748,160 @@ changed, and main's `src/research/deep-research-worker.ts` imports
   3 `--version` calls. The live-port guard refused nothing
   (`praxis-tests-merged-fbce5c26-*.txt`).
 
+Main `519530a9` (moved at 15:06:11, the research tool's official sources). On
+the way it passed through `e0dfe4ec` (15:01:16, document delivery records and
+the document retire route). Main changed 54 files since `fbce5c26`. The only one
+the branch also changes is `src/nexus/client.ts`, where the branch adds
+`nexusLocalModelCurrent` and `nexusLocalModelApply`.
+- `praxis-merged-main-519530a9.sh` (output beside it) pins main by its full
+  hash.
+  - Merge-tree clean (tree `1f7a90f8`). Since the base, both sides change
+    `src/config.ts`, `src/index.ts`, `src/llm/lmstudio-autoload.ts`,
+    `src/local-llm/worker.ts`, `src/nexus/client.ts` and `src/routes/ops.ts`.
+  - The merged copy matches the merge-tree's tree file for file (2238 files,
+    0 differ, 0 extra). The plain copy matches `519530a9` (2234 files).
+  - `tsc` exit 0 (`praxis-tsc-main-519530a9.txt`).
+- The suites, 144 on the merged tree (`praxis-suites144-519530a9.txt`), each
+  counted once:
+  - the 96 of the `fbce5c26` check;
+  - every suite main changed since `613f66b6`;
+  - the 56 that import `src/nexus/client.ts` or a module main changed since
+    `fbce5c26`.
+
+  The two trading suites of the earlier lists are not on main, so they were
+  left out.
+- First run: 1996 tests, 1984 pass, 12 fail
+  (`praxis-tests-merged-519530a9-extract.txt`).
+  - Ten of the twelve fail the same way on unchanged main (below, and under
+    "Failures that are not this task's").
+  - The other two failed in that run only. Both are in
+    `document_revision_lifecycle`: "the saved whole-scope reply retires the
+    three prose decisions in the podcast scope" (`'needs_review'` where
+    `'reference'` was expected, line 1581) and its parent, "document change
+    requests travel the shipped Nexus version lifecycle end to end".
+  - That suite passed alone, 42/42, on the merged tree and on plain main
+    (`praxis-lifecycle-alone-merged-519530a9.txt`,
+    `praxis-lifecycle-alone-plain-main-519530a9.txt`). It also passed in the
+    seven-suite run on the merged tree
+    (`praxis-failing-suites-merged-519530a9.txt`) and in the 144-suite rerun.
+  - It tests document code. The branch changes no document code in either
+    repository, and the TheNexus checkout it loads stayed on one commit
+    through every run (the last bullet below).
+- The seven suites with failures, on plain `519530a9` and then on the merged
+  tree (`praxis-failing-suites-plain-main-519530a9.txt`,
+  `praxis-failing-suites-merged-519530a9.txt`, guard logs beside them):
+  - 254 tests each. Plain main: 244 pass, 10 fail. Merged: 245 pass, 9 fail.
+  - The difference is `qa_state_persistence`'s "accepted pass survives a failed
+    finalization and periodic recovery retries completion only". It failed on
+    plain main in both runs there and in both 144-suite runs on the merged
+    tree, and passed in this one merged run.
+- The 144 suites under the same load, one after the other
+  (`praxis-144-load-compare-519530a9.sh`, output beside it, 15:21:21 to
+  15:23:39):
+  - on the merged tree: 1996 tests, 1986 pass, 10 fail
+    (`praxis-tests-merged-519530a9-rerun-extract.txt`);
+  - on plain `519530a9`: 142 suites, because the branch's
+    `local_model_primary` and `local_model_selection` are not on main. 1955
+    tests, 1945 pass, 10 fail (`praxis-tests-plain-main-519530a9-extract.txt`).
+
+  The ten failing tests are the same on both sides. The guards caught the same
+  calls in all three runs:
+  - 1 POST to the dead port 1 from `member_profile_updates`;
+  - 6 openrouter chat requests;
+  - 1 connection to `mixed.test` from `research_web_retrieval`;
+  - 9 CLI shim calls: 2 each for `agy`, `claude` and `codex`, and their 3
+    `--version` calls.
+
+  Guard logs: `praxis-tests-*-519530a9*-{net-guard,lmstudio-guard,live-port-guard,cli-shims}.txt`.
+- Praxis suites reach TheNexus code through `tests/fixtures/nexus-require.ts`:
+  `NEXUS_TEST_ROOT`, else a sibling `../TheNexus`, else
+  `/Volumes/Projects/TheNexus`. A scratch copy has no sibling. So in every
+  merged and plain-main Praxis check of this task up to `519530a9` (the
+  `59cacac6` check below sets `NEXUS_TEST_ROOT`), five suites loaded TheNexus
+  code from the shared checkout `/Volumes/Projects/TheNexus`. Its reflog shows
+  it on main at `a2870083` from 14:58:26 on, through all the `519530a9` runs,
+  and at 15:50 EST it had no tracked change (read with
+  `git --no-optional-locks`, which writes nothing).
+  - `praxis-nexus-root-check.sh` (output beside it, run logs
+    `praxis-nexus-root-today-run.txt` and `praxis-nexus-root-round4-run.txt`)
+    shows the fallback: without `NEXUS_TEST_ROOT`, a scratch copy resolves
+    TheNexus's `db` to `/Volumes/Projects/TheNexus/db/index.js`.
+  - Three of the suites (`document_delivery_contract`,
+    `document_revision_lifecycle`, `stakeholder-living-report`) set
+    `NEXUS_DB_PATH` to a temp file before they load TheNexus's `db`. The other
+    two (`document_replacement_retirement`, `scope_change_gate`) do not set it,
+    and TheNexus's `db/index.js` opens its own `nexus.db` when loaded without
+    it.
+  - Three of them also leave `NEXUS_REVIEW_BLOB_DIR` unset, and TheNexus keeps
+    review blobs under its own `data/review-blobs` when it is unset
+    (`server/services/review-media.js:89-91`).
+  - `praxis-nexus-root-check-five.sh` (output beside it, run logs
+    `praxis-nexus-root-five-today-run.txt` and
+    `praxis-nexus-root-five-round4-run.txt`) runs all five suites with
+    `NEXUS_TEST_ROOT` pointed at a scratch TheNexus copy that has no
+    `nexus.db`. It ran with today's code and with the code of the round-4
+    runs:
+    - today's code: 83 tests, 82 pass, 1 skipped, 0 fail;
+    - round-4 code: 76 tests, 75 pass, 1 skipped, 0 fail;
+    - each time no file at all was written in the TheNexus copy (no
+      `nexus.db`, no blob).
+
+    So these runs wrote nothing into the shared checkout and never opened the
+    live database.
+  - The skipped test is `scope_change_gate`'s test against TheNexus's real
+    policy module. It looks for `../TheNexus` itself, finds none beside a
+    scratch copy, and skips. When it runs, it uses an in-memory database.
+
+Main `59cacac6` (moved at 15:51:18, two seconds after TheNexus `2a7952fc`, by
+the same task: keep review documents approvable after the run that wrote them
+lands). Since `519530a9` main changed 197 files: five source modules
+(`src/executors/run-worktree.ts`, `src/nexus/client.ts` and
+`src/orchestrator/run-documents.ts`, `run-landing.ts` and `run-merge.ts`), two
+tests, one script, one doc and 188 data records. The only one the branch also
+changes is `src/nexus/client.ts`, where both sides only add lines.
+- `praxis-merged-main-59cacac6.sh` (output beside it, 16:09:37 to 16:11:34 EST)
+  pins main by its full hash.
+  - Merge-tree clean (tree `aec51fdc`). The files both sides change since the
+    base are the same six as for `519530a9`.
+  - The merged copy matches the merge-tree's tree file for file (2241 files,
+    0 differ, 0 extra). The plain copy matches `59cacac6` (2237 files).
+  - `tsc` exit 0 (`praxis-tsc-main-59cacac6.txt`).
+- The suites, 152 on the merged tree (`praxis-suites152-59cacac6.txt`): the 144
+  of the `519530a9` check, plus the 8 among the 60 suites that import a module
+  main changed since `519530a9` which were not already in it: `run_merge_documents`
+  and `run_worktree` (both changed by main), `eod_commit_run_worktrees`,
+  `run_merge`, `run_multi_repo`, `run_worktree_qa_diff`, `run_worktree_repoint`
+  and `run_worktree_report`.
+  - Each of the eight was read before it ran. They build their repositories
+    under the system temp folder (`tests/fixtures/run-worktree-project.ts`) and
+    serve TheNexus on local test servers. None names a path under
+    `/Volumes/Projects`. The only live port any of them names is
+    `127.0.0.1:3000`, inside a made-up error message in `run_worktree_report`;
+    nothing connects to it. None of the run-worktree environment names they read
+    (`PRAXIS_RUN_WORKTREES`, `PRAXIS_RUN_WORKTREE_ROOT`,
+    `PRAXIS_RUN_WORKTREE_LINKS`) was set in the environment the runs inherited.
+- This check set `NEXUS_TEST_ROOT` (see `nexus-require.ts` above), because
+  `run_merge_documents` loads TheNexus's `db` module and documents router. The
+  merged run used a scratch copy of TheNexus `2a7952fc` plus the TheNexus branch
+  diff, which is what lands with it. The plain-main run used TheNexus
+  `2a7952fc` alone. Neither copy had a `nexus.db`, and neither run wrote a file
+  in it.
+- Merged: 2158 tests, 2149 pass, 9 fail
+  (`praxis-tests-merged-59cacac6-extract.txt`). The nine are nine of the ten
+  `519530a9` failures under "Failures that are not this task's". The tenth,
+  `email_intake_runtime`, passed in this run, and so did
+  `document_revision_lifecycle`.
+- The five suites with failures, run on plain `59cacac6`
+  (`praxis-failing-suites-plain-main-59cacac6.txt`): 211 tests, 202 pass, and
+  the same nine fail.
+- The eight new suites pass on the merged tree.
+- The guards caught the same calls as in the `519530a9` runs: on the merged tree
+  1 POST to the dead port 1 from `member_profile_updates`, 6 openrouter chat
+  requests, 1 connection to `mixed.test` from `research_web_retrieval` and 9 CLI
+  shim calls (`praxis-tests-merged-59cacac6-*.txt`); on plain main the
+  `mixed.test` connection only
+  (`praxis-failing-suites-plain-main-59cacac6-live-port-guard.txt`).
+
 ## Mutations (`mutations/`)
 
 Each mutation was applied in a scratch copy, never in a worktree, one at a time,
@@ -493,9 +1026,9 @@ match exactly once.
   before the browser check.
 - `criterion-9-live-readback.txt`: the round-1 read-back (10:59 EST).
 - `criterion-9-final-readback.txt`, made by `criterion-9-readback.sh`: the
-  read-only read-back at the end of the task, 14:51:38 EST. Apart from its clock
-  times it is line for line the same as the 13:00 and 14:39 read-backs before
-  it.
+  read-only read-back at the end of the task, 16:14:39 EST, after the last test
+  run. Apart from its clock times it is line for line the same as the 13:00,
+  14:39, 14:51 and 15:52 read-backs before it.
   - The live `local_default` alias is still Gemma 4 31B QAT
     (`google/gemma-4-31b-qat`); the alias row was last updated 2026-06-03.
   - The live database has no `local_model_switches` table and no
@@ -524,15 +1057,31 @@ match exactly once.
     their first findings heading.
 
 This task loaded no model, unloaded none, called no local chat model and
-restarted no service. Its only contact with LM Studio was seven listing requests
+restarted no service. Its only contact with LM Studio was nine listing requests
 (`GET /api/v1/models`), and a listing loads nothing:
 - 07:54 and 08:26 EST, to read the real listing's shape before writing the fake;
-- one in each read-back, at 11:00, 12:46, 13:00, 14:39 and 14:51 EST.
+- one in each read-back, at 11:00, 12:46, 13:00, 14:39, 14:51, 15:52 and 16:14
+  EST.
+
+`criterion-9-lmstudio-contact.sh` (output `criterion-9-lmstudio-contact.txt`,
+16:14:45 EST, read-only) checks this from both sides, from this run's first
+start (21:39:35 EST on 2026-11-23) on:
+- LM Studio's own server log has ten `GET /api/v1/models` requests in that time.
+  Nine are the ones above, each within a second of the tool call that sent it.
+  The tenth, at 21:47:18 EST on 2026-11-23, came while this run's session was
+  idle (its longest pause, 21:40:38 to 07:42:09), so another client sent it.
+  The six `GET /v1/models` requests fall in the same pause.
+- In the session transcript and its six subagents' transcripts, 9 Bash calls
+  send to LM Studio: the nine above. The 17 other Bash calls whose text names
+  port 1234 are search patterns and scans; the file lists each one.
+- The `GET /api/v0/models` polls and every `POST` (chat completions and
+  embeddings) come from other clients. No Bash call of this run sends one, and
+  its test runs could not reach port 1234 (next paragraph).
 
 In every test run the guards refused LM Studio's port, 1234: the network guard
 and the LM Studio guard in the Praxis and TheNexus runs, the live-port guard as
 well in round 4, and TheCortex's offline guards with every service URL on port
-1. The 87 guard logs in the scratch folder, scanned before it was deleted, show
+1. The 153 guard logs in the scratch folder, scanned before it was deleted, show
 no request to port 1234 (`guards/guard-logs-scan.txt`).
 
 ## Failures that are not this task's
@@ -600,6 +1149,50 @@ no request to port 1234 (`guards/guard-logs-scan.txt`).
 | `webhook_callback_route` | 1 | `git show 1cac649:src/webhook...` failed |
 | `webhook_routes_inventory` | 1 | not a git repository |
 
+On main `519530a9` the 144 suites of that merged check fail ten tests. Each
+also fails on a plain copy of `519530a9`
+(`praxis-tests-plain-main-519530a9-extract.txt`,
+`praxis-failing-suites-plain-main-519530a9.txt`):
+- `alert_investigation`, the three of the table:
+  - "3: callback records execution-scoped usage already captured from the
+    native CLI stream" (line 671);
+  - "5: real registry recovery reads full completed findings instead of the
+    truncated preview" (line 607);
+  - "real Antigravity completion reaches the shared audit and retains findings
+    with explicit unsupported evidence", in `alert-investigation-audit-cases.ts`
+    (`undefined == true`).
+- `code_freshness_recovery`, `email_intake_runtime` (the whole file),
+  `research_web_retrieval` and `webhook_routes_inventory`, one each, as in the
+  table.
+- `qa_state_persistence`, three tests. They are not in the table: the suite
+  passed in the round-4 full run.
+  - The tests: "3c: a reviewer that died with the daemon is retried on a
+    different executor with NO strike" (`1 !== 2` at line 578); "B′: after a
+    restart, the reviewer's callback with the RIGHT qaReviewId is 200 and
+    finalizes" (a falsy check at line 739); "accepted pass survives a failed
+    finalization and periodic recovery retries completion only" (`2 !== 1` at
+    line 887).
+  - Alone, the suite fails those three on plain `519530a9` and on the merged
+    tree alike, 12/15, and passes on plain `4d076f91`, 15/15. Logs:
+    `praxis-qa-state-alone-plain-main-519530a9.txt`,
+    `praxis-qa-state-alone-merged-519530a9.txt` and
+    `praxis-qa-state-alone-plain-main-4d076f91.txt`, each run with
+    `guards/praxis-files-guarded.sh <copy> <tag> qa_state_persistence`. The
+    guards caught nothing.
+  - The test file is the same at both commits. Between them, main changed
+    three modules it imports: `src/executors/detached-run.ts`,
+    `src/executors/executor-callback.ts` and `src/orchestrator/qa-dispatch.ts`.
+    The branch changes none of them.
+
+`document_revision_lifecycle` failed two tests in the first merged run on
+`519530a9` only. They passed in every later run, alone on both trees as well
+(see the merged section).
+
+On main `59cacac6` the 152 suites of the last merged check fail nine of these
+ten tests on the merged tree (`email_intake_runtime` passed in that run). The
+five suites behind the nine fail the same nine on plain `59cacac6`
+(`praxis-failing-suites-plain-main-59cacac6.txt`).
+
 ## Round-1 records kept
 
 - `praxis-related-tests-earlier-run.txt`: 35 files, 470/470 at 09:18.
@@ -611,7 +1204,7 @@ no request to port 1234 (`guards/guard-logs-scan.txt`).
 
 `final-scans.sh` writes `encoding-and-dash-scans.txt` and
 `praxis-encoding-scan.txt`. At the end of the task:
-- UTF-8 (fatal decoder, BOM, U+FFFD): no problems in 221 TheNexus files (229
+- UTF-8 (fatal decoder, BOM, U+FFFD): no problems in 290 TheNexus files (298
   changed or added against `bd02642`, 8 PNGs skipped), 12 TheCortex files and 17
   Praxis files. Praxis's own `npm run check:encoding` passes on the same 17.
 - Em dashes in added lines: 0 in Praxis, 0 in TheCortex, 0 in the TheNexus code,

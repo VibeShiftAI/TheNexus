@@ -1,0 +1,26 @@
+# Criterion 1 precondition check, 2026-11-24 16:03:58 EST, read-only
+
+== TheNexus: main 2a7952fc, branch head f011c4ee, QA baseline bd026428
+  9de7bed6 2026-11-23 22:47:28 -0500 on main: yes; under the branch head: no; Merge praxis/run/9227d9b6-6215-4914-a760-b922e88a602b into main: Get the system ready for Inkling 2 Mini as th
+  1104ec89 2026-11-23 22:47:26 -0500 on main: yes; under the branch head: no; Get the system ready for Inkling 2 Mini as the local model, without loading it or switching yet
+  22d86d03 2026-11-23 19:46:41 -0500 on main: yes; under the branch head: no; List Inkling 2 Mini as a local model that no role selects
+  commits with the 9227d9b6 trailer on main: 3
+
+== Praxis: main 59cacac6, branch head cad6afb2, QA baseline 1fcf4b59
+  1fcf4b59 2026-11-23 22:48:04 -0500 on main: yes; under the branch head: yes; Merge praxis/run/9227d9b6-6215-4914-a760-b922e88a602b into main: Get the system ready for Inkling 2 Mini as th
+  de1c5916 2026-11-23 22:48:02 -0500 on main: yes; under the branch head: yes; Get the system ready for Inkling 2 Mini as the local model, without loading it or switching yet
+  884135de 2026-11-23 22:07:59 -0500 on main: yes; under the branch head: yes; Record that Gemma's overnight batch now runs on engine 2.82.0
+  1a82f9e8 2026-11-23 22:03:05 -0500 on main: yes; under the branch head: yes; Record the graph repair and the engine change in the Inkling report
+  694c867a 2026-11-23 20:09:27 -0500 on main: yes; under the branch head: yes; Report what Inkling 2 Mini needs before it can replace Gemma
+  0bc2c8fb 2026-11-23 19:46:40 -0500 on main: yes; under the branch head: yes; Select local request handling by model capability, not the Gemma name
+  commits with the 9227d9b6 trailer on main: 6
+
+== TheCortex: main 36176727, branch head e611edca, QA baseline 5fdb76a2
+  5fdb76a 2026-11-23 22:47:35 -0500 on main: yes; under the branch head: yes; Get the system ready for Inkling 2 Mini as the local model, without loading it or switching yet
+  2d7c015 2026-11-23 19:46:41 -0500 on main: yes; under the branch head: yes; Add Inkling 2 Mini to the Cortex model registry beside Gemma
+  commits with the 9227d9b6 trailer on main: 2
+
+== The brief's check, as written: git -C /Volumes/Projects/Praxis grep -c 'thinkingmachines/inkling-2-mini' main -- src/llm/local-model-capabilities.ts
+   (a count means the readiness task has landed; no output and exit 1 means it has not)
+main:src/llm/local-model-capabilities.ts:2
+   exit 0

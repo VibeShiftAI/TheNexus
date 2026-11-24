@@ -1,0 +1,19 @@
+# 2026-11-24 15:25:08 EST
+== which TheNexus a scratch copy loads
+without NEXUS_TEST_ROOT: /Volumes/Projects/TheNexus/db/index.js
+with NEXUS_TEST_ROOT: /Volumes/Projects/.scratch-fa032fc0/merged-nexus6/db/index.js
+== suites that load TheNexus code, and how many lines set NEXUS_DB_PATH in each
+document_delivery_contract.test.ts: requireNexus('./db') requireNexus('./server/routes/documents') | NEXUS_DB_PATH set: 1
+document_replacement_retirement.test.ts: requireNexus('./db/document-reviews') requireNexus('./server/routes/documents') | NEXUS_DB_PATH set: 0
+document_revision_lifecycle.test.ts: requireNexus('./db') requireNexus('./server/routes/documents') requireNexus('./server/services/document-review-format') | NEXUS_DB_PATH set: 1
+scope_change_gate.test.ts: requireNexus("./db/stakeholder-policy.js") requireNexus("better-sqlite3") | NEXUS_DB_PATH set: 0
+stakeholder-living-report.test.ts: requireNexus('./db') requireNexus('./server/routes/documents') | NEXUS_DB_PATH set: 1
+== today's code: merged-praxis8 with merged-nexus6
+ℹ tests 10 ℹ pass 9 ℹ fail 0 ℹ cancelled 0 exit 0 
+guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+files written under merged-nexus6 during the run: 0; nexus.db files there: 0
+== the round-4 code: plain-praxis-main4 with merged-main4
+ℹ tests 10 ℹ pass 9 ℹ fail 0 ℹ cancelled 0 exit 0 
+guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+files written under merged-main4 during the run: 0; nexus.db files there: 0
+== done

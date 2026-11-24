@@ -1,0 +1,49 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/document_replacement_retirement.test.ts tests/scope_change_gate.test.ts
+
+Running 2 of 899 suite(s): tests/document_replacement_retirement.test.ts tests/scope_change_gate.test.ts
+
+[Documents] retired c49ec0b9-0695-4764-b8b8-82064aeb3a46 (was needs_review) as replaced by 782a7c7f-3921-4a27-ac19-a07bc600a925 (named by document_id, registration 63016355-0c74-477d-9f46-f805ad0fce52, task 374eb3ab-6a26-49c2-a3e3-302aec4bf3a8, registration); retirement 9c7a3051-9738-4ca7-9df1-237878798bd2, no decision recorded
+[Documents] retired f0ebf047-0742-45e0-bac2-d20d94722f6c (was needs_review) as replaced by 782a7c7f-3921-4a27-ac19-a07bc600a925 (named by document_id, registration 63016355-0c74-477d-9f46-f805ad0fce52, task 374eb3ab-6a26-49c2-a3e3-302aec4bf3a8, registration); retirement 19573612-1cef-433c-961f-502a90640a75, no decision recorded
+[Documents] retired 3fcad828-7653-40b3-a809-839daf09da3b (was needs_review) as replaced by 782a7c7f-3921-4a27-ac19-a07bc600a925 (named by document_id, registration 63016355-0c74-477d-9f46-f805ad0fce52, task 374eb3ab-6a26-49c2-a3e3-302aec4bf3a8, registration); retirement 5857b4e8-5a64-4edb-b3eb-cc7b82bec52a, no decision recorded
+[Documents] retired d191e9bb-5936-4971-9154-fd124cbcbe4d (was needs_review) as replaced by 782a7c7f-3921-4a27-ac19-a07bc600a925 (named by document_id, registration 63016355-0c74-477d-9f46-f805ad0fce52, task 374eb3ab-6a26-49c2-a3e3-302aec4bf3a8, registration); retirement 456e5696-b47f-4eb2-9f87-8c4de9ae668c, no decision recorded
+[Documents] retired 7bbae0b6-582d-48a3-b2fd-188a12452b2a (was needs_review) as replaced by 782a7c7f-3921-4a27-ac19-a07bc600a925 (named by document_id, registration 63016355-0c74-477d-9f46-f805ad0fce52, task 374eb3ab-6a26-49c2-a3e3-302aec4bf3a8, registration); retirement ca27fd24-4110-4379-aee0-2830eda29a31, no decision recorded
+✔ November 18 modular report handoff with five named predecessors (125.6795ms)
+✔ November 18 modular report handoff with explicitly none (32.166167ms)
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T20:25:14.210Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+  ⚠️ Nexus project p-fixture description write refused: the project already has a description; changing it needs Robert's instruction relayed through nexus_projects update with operator_decision, or an approved stakeholder proposal through the legacy scope_change description path
+  ⚠️ Nexus project p-fixture description write refused: the project already has a description; changing it needs Robert's instruction relayed through nexus_projects update with operator_decision, or an approved stakeholder proposal through the legacy scope_change description path
+  ❌ Nexus GET /api/projects/p-fixture: 503  — boom
+  ⚠️ Nexus project p-fixture description write refused: the current project could not be read (TheNexus returned HTTP 503 for GET /api/projects/p-fixture: boom. Whether the write landed is UNKNOWN — check TheNexus before retrying.); refusing rather than risk an unapproved scope change
+  ⚠️ Nexus project p-fixture description write refused: the project already has a description; changing it needs Robert's instruction relayed through nexus_projects update with operator_decision, or an approved stakeholder proposal through the legacy scope_change description path
+✔ nexusUpdateProjectResult refuses a description change on a project that already has one; no PATCH is sent (2.154875ms)
+✔ nexusUpdateProjectResult: a first description is not a scope change; other fields still PATCH; an unverifiable current description refuses (1.986042ms)
+  ⚠️ Nexus project p-fixture end_state write refused: the project already has an end state; changing it needs Robert's instruction relayed through nexus_projects update with operator_decision, or an approved stakeholder proposal through the legacy scope_change description path
+  ⚠️ Nexus project p-fixture endpoint write refused: the project's endpoint scope is already defined; changing it needs Robert's instruction relayed through nexus_projects update with operator_decision, or an approved stakeholder proposal through the legacy scope_change description path
+  ⚠️ Nexus project p-fixture end_state write refused: the project's scope is already stated (by its description); adding an end state now would widen or narrow it, and changing it needs Robert's instruction relayed through nexus_projects update with operator_decision, or an approved stakeholder proposal through the legacy scope_change description path
+  ⚠️ Nexus project p-fixture end_state write refused: the project's scope is already stated (by its description); adding an end state now would widen or narrow it, and changing it needs Robert's instruction relayed through nexus_projects update with operator_decision, or an approved stakeholder proposal through the legacy scope_change description path
+  ⚠️ Nexus project p-fixture endpoint write refused: the project's scope is already stated (by its description); adding an endpoint scope now would widen or narrow it, and changing it needs Robert's instruction relayed through nexus_projects update with operator_decision, or an approved stakeholder proposal through the legacy scope_change description path
+  ⚠️ Nexus project p-fixture description write refused: the project's scope is already stated (by its end state); adding a description now would widen or narrow it, and changing it needs Robert's instruction relayed through nexus_projects update with operator_decision, or an approved stakeholder proposal through the legacy scope_change description path
+  ⚠️ Nexus project p-fixture end_state write refused: the project's scope is already stated (by its endpoint exclusions); adding an end state now would widen or narrow it, and changing it needs Robert's instruction relayed through nexus_projects update with operator_decision, or an approved stakeholder proposal through the legacy scope_change description path
+  ⚠️ Nexus project p-fixture end_state write refused: the project already has an end state; changing it needs Robert's instruction relayed through nexus_projects update with operator_decision, or an approved stakeholder proposal through the legacy scope_change description path
+  ⚠️ Nexus project p-fixture description write refused: the project already has a description; changing it needs Robert's instruction relayed through nexus_projects update with operator_decision, or an approved stakeholder proposal through the legacy scope_change description path
+  ⚠️ Nexus project p-fixture end_state write refused: the project's scope is already stated (by its description); adding an end state now would widen or narrow it, and changing it needs Robert's instruction relayed through nexus_projects update with operator_decision, or an approved stakeholder proposal through the legacy scope_change description path
+  ⚠️ Nexus project p-fixture end_state write refused: the project's scope is already stated (by its description); adding an end state now would widen or narrow it, and changing it needs Robert's instruction relayed through nexus_projects update with operator_decision, or an approved stakeholder proposal through the legacy scope_change description path
+✔ nexus_projects update: a description without a matching approved proposal is refused; with one it applies through the reserved gate, never as a bare PATCH (26.09075ms)
+✔ nexusUpdateProjectResult: end_state and endpoint boundaries are scope too; a first definition, a restatement and a proposed_next still PATCH (1.266833ms)
+✔ scope is judged per project: a blank end_state or endpoint on a project whose description already states its scope is a scope change, not a first definition (0.804375ms)
+✔ problem intake completes a fresh scaffold's initialization once; the tool's create opens no such window (1.032708ms)
+  ⚠️ Nexus project p-fixture end_state write refused: the project already has an end state; changing it needs Robert's instruction relayed through nexus_projects update with operator_decision, or an approved stakeholder proposal through the legacy scope_change description path
+✔ nexus_projects update: an approved end_state proposal is NOT applied by Praxis; refused before any claim, no PATCH, no receipt, the approval untouched (1.682875ms)
+﹣ against TheNexus's real policy module: an approved description applies atomically with the receipt and retries idempotently; a cockpit edit invalidates a pending approval; end_state and endpoint proposals are never applied by Praxis (0.0275ms) # TheNexus checkout (../TheNexus/db/stakeholder-policy.js) not found
+ℹ tests 10
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 1350.023959
+exit 0

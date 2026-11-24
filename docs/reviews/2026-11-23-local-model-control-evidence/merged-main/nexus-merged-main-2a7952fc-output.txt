@@ -1,0 +1,20 @@
+# 2026-11-24 16:09:15 EST
+== TheNexus: main pinned at 2a7952fcc63ea7b26d8148668c76800e73acc5c2, branch code head 6e14bc87ed5163cfabbf5499e7579eab78d4adce, base bd026428
+main now: 2a7952fc; branch head now: f011c4ee
+files the branch changed after 6e14bc87 outside the evidence folder: 0
+merge-tree exit 0 (0 = merges without conflict); tree fbea1f176750539f19c0c565446363af8ff0a7e7
+files both sides change since the base: db/index.js db/schema-sqlite.sql server/server.js 
+files main changed since a2870083: 6; shared with the branch: 
+patch applied: 124 files
+merged-nexus7 against the merge-tree's tree: 3936 tracked files compared, 0 differ, 0 extra files in the copy; symlinks in the tree: 0
+== server suites: 28
+Test Suites: 28 passed, 28 total
+Tests:       401 passed, 401 total
+exit 0
+guards: lmstudio=0 net=0 live-port=0 (live ports before the run: 60)
+== dashboard
+dashboard tsc: exit 0 (0 errors)
+ℹ tests 30 ℹ pass 30 ℹ fail 0 exit 0 
+guards: lmstudio=0 net=0 live-port=0 (live ports before the run: 60)
+# 2026-11-24 16:09:37 EST
+== done
