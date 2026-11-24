@@ -83,7 +83,7 @@ const { createDocumentOutgoingRouter } = require('./document-outgoing');
 const path = require('path');
 const fs = require('fs');
 const { randomUUID } = require('crypto');
-const { listProjectRoots, resolveDocumentPath, readDocumentFile, readArtifactFile, sha256, exactIdentity, revisionHash } = require('../services/document-registry');
+const { listProjectRoots, resolveDocumentPath, readDocumentFile, readArtifactFile, sha256 } = require('../services/document-registry');
 const { RELOCATION_SOURCES, parseRoot, rootsOverlap, relocateDocuments } = require('../services/document-relocation');
 const media = require('../services/review-media');
 const fmt = require('../services/document-review-format');
@@ -785,8 +785,15 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             .map(row => ({ ...supersessionView(row), replacing: documentRef(row.document_id) }));
     }
 
-    // Binary and design revisions are always identified by their exact bytes (contract §1): `exactIdentity` and
-    // `revisionHash` come from services/document-registry.js, shared with moving a registration (§14).
+    // Binary and design revisions are always identified by their exact bytes (contract §1).
+    function exactIdentity(doc, read) {
+        return Boolean(doc.deliverable_key) || read.binary || read.mediaType === 'design';
+    }
+
+    /** The hash recordRevision files these bytes under for this document. */
+    function revisionHash(doc, read) {
+        return exactIdentity(doc, read) ? read.exactHash : read.contentHash;
+    }
 
     /**
      * Find or record the revision for bytes just read. A declared deliverable

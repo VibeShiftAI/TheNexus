@@ -7,10 +7,14 @@
  * is the file at the same relative path under `toRoot`. A registration moves
  * only when that file resolves inside the registered project roots (the same
  * boundary every registration passes), sits at exactly that path (no link to
- * somewhere else), and hashes, by the identity rule revision capture uses
- * (`revisionHash`), to the document's current revision. Anything else leaves
- * the registration where it is, readable from its captured revision, and is
- * reported by name with both hashes when there is a landed file to hash.
+ * somewhere else), and holds exactly the bytes of the document's current
+ * revision: the bytes GET /api/documents/:id/raw serves for that revision.
+ * Bytes for every document, declared or not: a registration without a
+ * declaration files its revisions under the hash of its line-normalized text,
+ * which a landed file with other line endings or without the byte order mark
+ * also has. Anything else leaves the registration where it is, readable from
+ * its captured revision, and is reported by name with both byte hashes when
+ * there is a landed file to hash.
  *
  * Used by POST /api/documents/relocations (Praxis calls it when a run lands,
  * before the worktree is removed) and by the one-time repair of documents
@@ -19,10 +23,15 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { listProjectRoots, resolveDocumentPath, readArtifactFile, revisionHash } = require('./document-registry');
+const { createHash } = require('crypto');
+const { listProjectRoots, resolveDocumentPath, readArtifactFile } = require('./document-registry');
+const media = require('./review-media');
 
 /** Who asked for a move: the landing of a run, or the repair of documents stranded before landings moved them. */
 const RELOCATION_SOURCES = ['landing', 'repair'];
+
+/** Why a landed file with the revision's text but other bytes is left: its line endings or byte order mark changed. */
+const SAME_TEXT_DETAIL = 'only the line endings or byte order mark differ';
 
 /**
  * A root as the caller names it: an absolute path with no `..`, trailing
@@ -57,16 +66,32 @@ function rootsOverlap(a, b) {
 }
 
 /**
+ * The SHA-256 of the bytes a revision holds, which GET /api/documents/:id/raw
+ * serves for it (contract §5): a text revision's exact text when its capture
+ * kept one that differs from its normalized text, otherwise its text. A binary
+ * revision and a design package are already filed under the hash of their exact
+ * bytes (contract §1). A revision captured before exact text was kept for its
+ * document holds only its normalized text, so only a landed file of that text
+ * matches it.
+ */
+function revisionBytesHash(store, revision) {
+    if (revision.media_type === 'design' || !media.isTextMedia(revision.media_type)) return revision.content_hash;
+    return createHash('sha256').update(store.getRevisionExact(revision.id) ?? revision.content, 'utf8').digest('hex');
+}
+
+/**
  * What would happen to one registration: `{ action: 'move', toPath, landedHash,
  * registeredHash, rootProjectId }` or `{ action: 'leave', reason, toPath,
- * landedHash, registeredHash, detail }`. Reads files, writes nothing.
+ * landedHash, registeredHash, detail }`. Both hashes are of bytes: the bytes
+ * the current revision holds (`revisionBytesHash`) and the landed file's bytes
+ * (a design package's package hash). Reads files, writes nothing.
  *
  * `fromRoot` must contain `doc.path`; `toRoot` is the landed checkout (its real
  * path) or null when there is none.
  */
-function planDocumentRelocation({ doc, revision, fromRoot, toRoot, roots }) {
+function planDocumentRelocation({ store, doc, revision, fromRoot, toRoot, roots }) {
     const relative = path.relative(fromRoot, doc.path);
-    const registeredHash = revision?.content_hash ?? null;
+    const registeredHash = revision ? revisionBytesHash(store, revision) : null;
     const leave = (reason, extra = {}) => ({ action: 'leave', reason, toPath: null, landedHash: null, registeredHash, detail: null, ...extra });
     if (!insideRoot(doc.path, fromRoot)) return leave('outside_from_root');
     if (!toRoot) return leave('no_landed_checkout');
@@ -79,8 +104,13 @@ function planDocumentRelocation({ doc, revision, fromRoot, toRoot, roots }) {
     if (resolved.canonicalPath !== toPath) return leave('landed_path_is_a_link', { toPath, detail: resolved.canonicalPath });
     const read = readArtifactFile(resolved.canonicalPath, { mediaType: resolved.mediaType, root: resolved.root.root });
     if (!read.ok) return leave('landed_file_unreadable', { toPath, detail: read.code });
-    const landedHash = revisionHash(doc, read);
-    if (landedHash !== registeredHash) return leave('hash_mismatch', { toPath, landedHash });
+    // The exact bytes, never the line-normalized text revision capture files a legacy registration under: a move
+    // carries every decision and comment on to the landed file, so it must hold the bytes they were made on.
+    const landedHash = read.exactHash;
+    if (landedHash !== registeredHash) {
+        const sameText = !read.binary && read.mediaType !== 'design' && read.content === revision.content;
+        return leave('hash_mismatch', { toPath, landedHash, detail: sameText ? SAME_TEXT_DETAIL : null });
+    }
     return { action: 'move', toPath, landedHash, registeredHash, rootProjectId: resolved.root.projectId };
 }
 
@@ -101,7 +131,7 @@ function entry(doc, extra) {
  *
  *   relocated          moved by this call (with `apply: false`: would be moved)
  *   already_relocated  moved out of `fromRoot` by an earlier call and still at the path it was moved to
- *   left               not moved, each with `reason` (and both hashes when there is a landed file to hash)
+ *   left               not moved, each with `reason` (and both byte hashes when there is a landed file to hash)
  *
  * Idempotent by document: a document moved once is no longer inside
  * `fromRoot`, so a repeat (a retried landing, a restart between the merge and
@@ -126,7 +156,7 @@ async function relocateDocuments({ db, store, fromRoot, toRoot, source, taskId =
             if (seen.has(doc.id)) continue;
             seen.add(doc.id);
             const revision = doc.current_revision_id ? store.getRevision(doc.current_revision_id) : null;
-            const plan = planDocumentRelocation({ doc, revision, fromRoot: spelling, toRoot: toReal, roots });
+            const plan = planDocumentRelocation({ store, doc, revision, fromRoot: spelling, toRoot: toReal, roots });
             const base = { from_path: doc.path, to_path: plan.toPath, revision_id: doc.current_revision_id ?? null, registered_hash: plan.registeredHash, landed_hash: plan.landedHash };
             if (plan.action === 'leave') {
                 left.push(entry(doc, { ...base, reason: plan.reason, detail: plan.detail }));
@@ -167,4 +197,4 @@ async function relocateDocuments({ db, store, fromRoot, toRoot, source, taskId =
     return { from_root: fromRoot, to_root: toReal, applied: apply, relocated, already_relocated: already, left };
 }
 
-module.exports = { RELOCATION_SOURCES, parseRoot, rootsOverlap, planDocumentRelocation, relocateDocuments };
+module.exports = { RELOCATION_SOURCES, parseRoot, rootsOverlap, revisionBytesHash, planDocumentRelocation, relocateDocuments };

@@ -1349,11 +1349,24 @@ when that file:
 
 1. resolves inside the registered project roots (the boundary every
    registration passes) and sits at exactly that path, not behind a link; and
-2. hashes, by the identity rule revision capture uses (`revisionHash` in
-   `server/services/document-registry.js`: the exact file bytes for a document
-   with a deliverable key, a binary file or a design package, the
-   line-normalized text for a legacy registration), to the document's current
-   revision.
+2. holds exactly the bytes of the document's current revision: the bytes
+   `GET /api/documents/:id/raw?revision=` serves for it (section 5). That is
+   the revision's exact text when its capture kept one
+   (`review_document_revision_exact`, written whenever the file's exact text
+   differs from its normalized text), otherwise its text; a binary revision
+   and a design package (its package hash) are already filed under the hash of
+   their exact bytes.
+
+The rule is the same for every document, declared or not. A legacy
+registration files its revisions under the hash of its line-normalized text
+(section 1), which a landed file with other line endings or without the byte
+order mark also has; such a file is left, because a move carries every
+decision and comment on to bytes nobody reviewed. A legacy revision captured
+before its exact text was kept holds only its normalized text, so only a
+landed file of exactly that text matches it; a landed copy with CR line
+endings or a byte order mark is left and named. Revision capture itself is
+unchanged: a moved legacy registration's next capture files the same bytes
+under the same normalized hash and finds the same revision.
 
 A move changes the document's `path`, its `root_project_id` and, for a `path:`
 key (which is the registration's path), its `deliverable_key`
@@ -1371,14 +1384,19 @@ stays in force. Each move is recorded once in the append-only
 `200 { from_root, to_root, applied, relocated, already_relocated, left }`.
 Every entry names the document (`document_id`, `title`, `requires_review`,
 `task_id`), `from_path`, `to_path`, `revision_id`, `registered_hash` (the
-current revision's hash) and `landed_hash`:
+SHA-256 of the bytes the current revision holds, as in 14.1; for a legacy
+revision with CR line endings or a byte order mark this differs from its
+`content_hash`) and `landed_hash` (the SHA-256 of the landed file's bytes):
 
 - `relocated`: moved by this call, with `from_deliverable_key`,
-  `to_deliverable_key` and `relocation_id`.
+  `to_deliverable_key` and `relocation_id`. The record of the move keeps the
+  hash of the bytes that moved.
 - `already_relocated`: moved out of this `from_root` by an earlier call and
   still at the path it was moved to (`relocated_at`).
 - `left`: not moved, with `reason`:
-  `hash_mismatch` (both hashes given), `landed_file_missing`,
+  `hash_mismatch` (both hashes given; `detail` is
+  `only the line endings or byte order mark differ` when the landed file has
+  the revision's normalized text, otherwise null), `landed_file_missing`,
   `landed_file_refused` / `landed_file_unreadable` (`detail` is the registry
   code), `landed_path_is_a_link` (`detail` is where it resolves),
   `no_landed_checkout`, `no_revision`, or a refusal of the compare-and-set:
@@ -1417,7 +1435,11 @@ clears them), and hands the worktree to a person after a
 staying decidable with the same id, revision, review and comments after the
 worktree is removed (and the same landing without the move answering 409
 `file_unavailable`), a mismatched and a missing landed file named with both
-hashes and no revision recorded, a repeated and a raced move moving once, a
+hashes and no revision recorded, registrations without a declaration moving
+only to landed files with their exact bytes (LF and CRLF) while a landed copy
+with other line endings or without the byte order mark is left with both byte
+hashes, the same path, revision and revision count and no record of a move, a
+repeated and a raced move moving once, a
 `path:` key moving with the path so later registrations from the main checkout
 (same and other task, same and new bytes) land on the same document, the
 store's refusals, request validation (each refusal with its code,

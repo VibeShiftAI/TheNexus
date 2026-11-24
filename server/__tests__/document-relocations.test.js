@@ -184,6 +184,72 @@ test('a landed file with other bytes is not moved and is named with both hashes;
     expect(read.json).toMatchObject({ file_state: 'outside_roots', revision: { id: one.revision.id }, content: '# Plan\n\nVersion the run reviewed.\n' });
 });
 
+test('a registration without a declaration moves only to a landed file holding the exact bytes of its revision: other line endings or a dropped byte order mark leave it, named with both byte hashes', async () => {
+    // [bytes the run registered, bytes at the landed path]. Without a declaration a revision is filed under the hash of
+    // its line-normalized text, the same for every pair below, so only the bytes can tell them apart.
+    const cases = {
+        'same-lf.md': ['# Reviewed\n\nKept.\n', '# Reviewed\n\nKept.\n'],
+        'same-crlf.md': ['# Reviewed\r\n\r\nKept.\r\n', '# Reviewed\r\n\r\nKept.\r\n'],
+        'lf-to-crlf.md': ['# Reviewed\n', '# Reviewed\r\n'],
+        'crlf-to-lf.md': ['# Reviewed\r\n', '# Reviewed\n'],
+        'bom-dropped.md': ['﻿# Reviewed\n', '# Reviewed\n'],
+    };
+    const bytesHash = text => sha256(Buffer.from(text, 'utf8'));
+    const landedPath = name => path.join(projectRoot, 'docs', name);
+    const registered = {};
+    for (const [name, [bytes]] of Object.entries(cases)) {
+        const file = write(worktree, `docs/${name}`, bytes);
+        const response = await api('POST', '/api/documents', { path: file, title: name, project_id: PROJECT_ID, task_id: TASK_A });
+        expect(response.status).toBe(201);
+        expect(response.json.document.deliverable_key).toBeNull();
+        registered[name] = response.json;
+    }
+    land();
+    // Main changed the line endings or the byte order mark after the landing; the text the reviewer saw is the same.
+    for (const [name, [, bytes]] of Object.entries(cases)) write(projectRoot, `docs/${name}`, bytes);
+
+    const result = await relocate();
+    expect(result.status).toBe(200);
+    expect(result.json.relocated.map(entry => entry.title).sort()).toEqual(['same-crlf.md', 'same-lf.md']);
+    for (const name of ['same-lf.md', 'same-crlf.md']) {
+        const { document, revision } = registered[name];
+        expect(result.json.relocated).toContainEqual(expect.objectContaining({
+            document_id: document.id, to_path: landedPath(name), revision_id: revision.id,
+            registered_hash: bytesHash(cases[name][0]), landed_hash: sha256(fs.readFileSync(landedPath(name))),
+        }));
+    }
+    // The CRLF revision's identity is its normalized text, not its bytes: the move compared the bytes it holds.
+    expect(registered['same-crlf.md'].revision.content_hash).not.toBe(bytesHash(cases['same-crlf.md'][0]));
+    expect(result.json.left).toHaveLength(3);
+    for (const name of ['lf-to-crlf.md', 'crlf-to-lf.md', 'bom-dropped.md']) {
+        const { document, revision } = registered[name];
+        const [registeredBytes, landedBytes] = cases[name];
+        expect(result.json.left).toContainEqual(expect.objectContaining({
+            document_id: document.id, reason: 'hash_mismatch', detail: 'only the line endings or byte order mark differ',
+            from_path: document.path, to_path: landedPath(name), revision_id: revision.id,
+            registered_hash: bytesHash(registeredBytes), landed_hash: bytesHash(landedBytes),
+        }));
+        expect(bytesHash(registeredBytes)).not.toBe(bytesHash(landedBytes));
+        expect(db.documentReviews.getDocument(document.id)).toMatchObject({ path: document.path, current_revision_id: revision.id, deliverable_key: null });
+        expect(count('SELECT COUNT(*) AS n FROM review_document_revisions WHERE document_id = ?', document.id)).toBe(1);
+        expect(count('SELECT COUNT(*) AS n FROM review_document_relocations WHERE document_id = ?', document.id)).toBe(0);
+    }
+    // The CRLF landed file is reported by the hash of its bytes, not by the hash of its normalized text (the revision's).
+    const lfToCrlf = result.json.left.find(entry => entry.document_id === registered['lf-to-crlf.md'].document.id);
+    expect(lfToCrlf.registered_hash).toBe(registered['lf-to-crlf.md'].revision.content_hash);
+    expect(lfToCrlf.landed_hash).not.toBe(registered['lf-to-crlf.md'].revision.content_hash);
+
+    // A moved registration's next capture finds the same revision: capture keeps the identity it always had.
+    git(projectRoot, 'worktree', 'remove', worktree);
+    for (const name of ['same-lf.md', 'same-crlf.md']) {
+        const { document, revision } = registered[name];
+        const read = await api('GET', `/api/documents/${document.id}`);
+        expect(read.json).toMatchObject({ file_state: 'ok', document: { path: landedPath(name), current_revision_id: revision.id } });
+        expect(count('SELECT COUNT(*) AS n FROM review_document_revisions WHERE document_id = ?', document.id)).toBe(1);
+    }
+    expect(count('SELECT COUNT(*) AS n FROM review_document_relocations')).toBe(2);
+});
+
 test('repeating the move, or racing two of them, moves each document once: no duplicate document, revision or record', async () => {
     const file = write(worktree, 'docs/report.md', '# Report\n');
     const { document, revision } = (await api('POST', '/api/documents', declared(file, { key: 'report' }))).json;
