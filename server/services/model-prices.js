@@ -107,8 +107,22 @@ function openRouterSlugFor(value, catalog = readOpenRouterCatalog()) {
     return null;
 }
 
+/**
+ * Local LM Studio keys that are also the OpenRouter slug of a paid hosted
+ * model. They run on this machine with no provider fee, so they cost $0 rather
+ * than the hosted rate their name would find. Same list and key rule as Praxis
+ * src/llm/local-model-capabilities.ts; keep the two in step.
+ */
+const LOCAL_KEYS_WITH_A_HOSTED_SLUG = new Set(['thinkingmachines/inkling-2-mini']);
+
+function localModelKey(value) {
+    return String(value ?? '').trim().toLowerCase().replace(/@[^/]*$/, '');
+}
+
 /** $/MTok for a recorded model value: { in, out, cacheRead?, cacheWrite?, slug }, or null when unpriced. */
 function priceForModel(value) {
+    const localKey = localModelKey(value);
+    if (LOCAL_KEYS_WITH_A_HOSTED_SLUG.has(localKey)) return { in: 0, out: 0, slug: localKey };
     const catalog = readOpenRouterCatalog();
     const slug = openRouterSlugFor(value, catalog);
     const row = slug ? catalog?.prices?.[slug] : null;

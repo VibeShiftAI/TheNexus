@@ -107,6 +107,26 @@ describe('model prices without a usable catalog', () => {
         expect(prices.catalogSource()).toMatch(/no OpenRouter catalog yet/);
     });
 
+    test('local Inkling 2 Mini costs $0 although the catalog has a paid row of the same name', () => {
+        const file = path.join(dir, 'catalog.json');
+        fs.writeFileSync(file, JSON.stringify({
+            fetchedAt: 1793242992632,
+            prices: {
+                'thinkingmachines/inkling-2-mini': { in: 0.075, out: 0.3, cacheRead: 0.015 },
+                'thinkingmachines/inkling-2': { in: 1, out: 4 },
+            },
+        }));
+        process.env.PRAXIS_OPENROUTER_CATALOG_PATH = file;
+        const free = { in: 0, out: 0, slug: 'thinkingmachines/inkling-2-mini' };
+        expect(prices.priceForModel('thinkingmachines/inkling-2-mini')).toEqual(free);
+        expect(prices.priceForModel('ThinkingMachines/Inkling-2-Mini@q4_k_m')).toEqual(free);
+        // A neighbouring hosted model keeps its catalog price, and Gemma stays unpriced.
+        expect(prices.priceForModel('thinkingmachines/inkling-2')).toEqual({
+            in: 1, out: 4, slug: 'thinkingmachines/inkling-2',
+        });
+        expect(prices.priceForModel('google/gemma-4-31b-qat')).toBeNull();
+    });
+
     test('a catalog written before prices existed (verdicts only) prices nothing', () => {
         const file = path.join(dir, 'catalog.json');
         fs.writeFileSync(file, JSON.stringify({ fetchedAt: 1793242992632, verdicts: { 'openrouter/free': 'free' } }));
