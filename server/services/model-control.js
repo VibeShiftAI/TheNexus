@@ -361,10 +361,18 @@ async function resolveAlias(db, aliasName, context, requestedAssignment, fallbac
     if (!globalAlias) {
         return { unavailable: true, reason: `alias ${aliasName} not found` };
     }
-    return resolveAssignment(db, globalAlias.target, context, requestedAssignment, {
+    const resolved = await resolveAssignment(db, globalAlias.target, context, requestedAssignment, {
         ...fallbackState,
         sourceOverride: 'global_alias'
     });
+    // local_default is the local model chosen under Model Control (task
+    // fa032fc0). A role that reaches it follows that setting: Praxis uses the
+    // model it has in effect, which changes only between local jobs, rather
+    // than the name sent here (Praxis llm/manager.ts, followsLocalModel).
+    if (aliasName === 'local_default' && !resolved.unavailable && resolved.provider === 'local') {
+        resolved.followsLocalModel = true;
+    }
+    return resolved;
 }
 
 async function resolveFamilyLatest(db, assignment, requestedAssignment, fallbackState) {

@@ -509,6 +509,28 @@ function runModelControlMigrations(sqlite) {
                 updated_at TEXT DEFAULT (datetime('now'))
             );
 
+            -- Every choice of local model made under Model Control (task
+            -- fa032fc0): what it replaced, from which surface, and whether and
+            -- when it took effect. server/services/local-model-selection.js.
+            -- status: waiting (chosen, not in effect yet), applied, replaced
+            -- (a newer choice came first). Models are LM Studio keys.
+            CREATE TABLE IF NOT EXISTS local_model_switches (
+                id TEXT PRIMARY KEY,
+                selection_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                from_model TEXT,
+                from_label TEXT,
+                to_model TEXT NOT NULL,
+                to_label TEXT,
+                surface TEXT NOT NULL,
+                requested_at TEXT NOT NULL,
+                status TEXT NOT NULL,
+                applied_at TEXT,
+                replaced_at TEXT,
+                details TEXT DEFAULT '{}'
+            );
+            CREATE INDEX IF NOT EXISTS idx_local_model_switches_requested ON local_model_switches(requested_at);
+
             CREATE TABLE IF NOT EXISTS project_model_control_settings (
                 project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
                 key TEXT NOT NULL,
@@ -2244,6 +2266,60 @@ async function getModelControlSetting(key) {
     }
 }
 
+// Local model switches (task fa032fc0): one row per choice of local model.
+async function recordLocalModelSwitch(row) {
+    if (!db) throw new Error('Database connection required for local model switches');
+    try {
+        const record = {
+            id: row.id,
+            selection_id: row.selection_id,
+            action: row.action,
+            from_model: row.from_model || null,
+            from_label: row.from_label || null,
+            to_model: row.to_model,
+            to_label: row.to_label || null,
+            surface: row.surface,
+            requested_at: row.requested_at,
+            status: row.status,
+            applied_at: row.applied_at || null,
+            replaced_at: row.replaced_at || null,
+            details: row.details || {},
+        };
+        const { sql, values } = buildInsert('local_model_switches', record);
+        db.prepare(sql).run(...values);
+        return deserRow(db.prepare('SELECT * FROM local_model_switches WHERE id = ?').get(record.id));
+    } catch (err) {
+        console.error('[Database] Error recording local model switch:', err.message);
+        throw new Error(`Failed to record local model switch: ${err.message}`);
+    }
+}
+
+async function updateLocalModelSwitch(id, fields) {
+    if (!db) throw new Error('Database connection required for local model switches');
+    const allowed = ['status', 'applied_at', 'replaced_at', 'details'];
+    const keys = Object.keys(fields || {}).filter(k => allowed.includes(k));
+    if (!keys.length) return null;
+    try {
+        db.prepare(`UPDATE local_model_switches SET ${keys.map(k => `"${k}" = ?`).join(', ')} WHERE id = ?`)
+            .run(...keys.map(k => ser(fields[k])), id);
+        return deserRow(db.prepare('SELECT * FROM local_model_switches WHERE id = ?').get(id)) || null;
+    } catch (err) {
+        console.error('[Database] Error updating local model switch:', err.message);
+        throw new Error(`Failed to update local model switch: ${err.message}`);
+    }
+}
+
+/** Every recorded switch, newest first. */
+async function getLocalModelSwitches() {
+    if (!db) throw new Error('Database connection required for local model switches');
+    try {
+        return deserRows(db.prepare('SELECT * FROM local_model_switches ORDER BY requested_at DESC, rowid DESC').all());
+    } catch (err) {
+        console.error('[Database] Error fetching local model switches:', err.message);
+        throw new Error(`Failed to fetch local model switches: ${err.message}`);
+    }
+}
+
 async function setProjectModelControlSetting(projectId, key, value) {
     if (!db) throw new Error('Database connection required for project model control settings');
     try {
@@ -3636,6 +3712,9 @@ module.exports = {
     getProjectModelAliases,
     setModelControlSetting,
     getModelControlSetting,
+    recordLocalModelSwitch,
+    updateLocalModelSwitch,
+    getLocalModelSwitches,
     setProjectModelControlSetting,
     getProjectModelControlSetting,
     createModelExecutionSnapshot,

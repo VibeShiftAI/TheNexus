@@ -16,6 +16,7 @@
 const astro = require('./astro-parameters');
 const crypto = require('crypto');
 const { fitToWindow } = require('./context-window');
+const { environmentLocalModels } = require('./local-model-selection');
 
 // A source goes to extraction whole when it fits half of the local model's
 // context window (it used to be cut to its first 12,000 characters, silently).
@@ -27,14 +28,18 @@ const SOURCE_SHARE = 0.5;
 // callAI returns `truncated: true` when the model stopped at its output limit.
 const OUTPUT_LIMIT_NOTE = 'The model stopped at its output limit (finish_reason "length"), so this answer is cut short.';
 
-function createStudioIngestion({ sql, callAI, contextWindowFor, uuid, now, helpers, listSources, deps = {} }) {
+function createStudioIngestion({ sql, callAI, contextWindowFor, uuid, now, helpers, listSources, localModels = null, deps = {} }) {
   const { upsertSpecValues, insertWonderPoints, extractJSON } = helpers;
   // Injectable for tests; default to the real network-backed implementations.
   const youtube = deps.youtube || require('./youtube-api');
   const fetchSourceContent = deps.fetchSourceContent || require('./source-fetch').fetchSourceContent;
+  // The local model chosen under Model Control (services/local-model-selection.js):
+  // a run is local work, so a switch waits for it, and it names the model in
+  // effect when it started.
+  const local = localModels || environmentLocalModels();
 
-  function localModel() {
-    return { provider: 'local', model: process.env.LOCAL_STUDIO_MODEL || 'gemma4' };
+  async function localModel() {
+    return { provider: 'local', model: await local.localModelForWork() };
   }
 
   function hashOf(...parts) {
@@ -102,9 +107,14 @@ function createStudioIngestion({ sql, callAI, contextWindowFor, uuid, now, helpe
     ].filter((l) => l !== null).join('\n');
   }
 
-  async function runLocalExtraction(channel, item, text) {
+  function runLocalExtraction(channel, item, text) {
+    // Inside a run this joins the run's local work; alone it is its own.
+    return local.withLocalWork(`Studio extraction: ${item.title || item.url || 'untitled source'}`, () => extractLocally(channel, item, text));
+  }
+
+  async function extractLocally(channel, item, text) {
     if (!callAI) throw new Error('AI service is not available for local extraction.');
-    const model = localModel();
+    const model = await localModel();
     // No window lookup wired (or an unknown window): the source goes whole.
     const window = contextWindowFor ? await contextWindowFor(model) : null;
     const fit = fitToWindow(text, { window, share: SOURCE_SHARE, label: `Source "${item.title || item.url || 'untitled'}"` });
@@ -348,7 +358,12 @@ function createStudioIngestion({ sql, callAI, contextWindowFor, uuid, now, helpe
 
   // ---- orchestration ------------------------------------------------------
 
-  async function run({ channelId, trigger, channel, existingRunId }) {
+  /** One ingestion run is one piece of local work: a switch of local model waits until it ends. */
+  function run(args) {
+    return local.withLocalWork(`Studio ingestion (${args?.channel?.name || args?.channelId || 'channel'})`, () => runIngestion(args));
+  }
+
+  async function runIngestion({ channelId, trigger, channel, existingRunId }) {
     const ch = channel || sql.prepare('SELECT * FROM studio_channels WHERE id = ?').get(channelId);
     const runId = existingRunId || createRun(channelId, trigger);
     const notes = [];
@@ -412,7 +427,7 @@ function createStudioIngestion({ sql, callAI, contextWindowFor, uuid, now, helpe
     return runId;
   }
 
-  return { run, processItem, expandObjectFromYouTube, upsertObject, applyDerivedParams, createRun, updateRun, runLocalExtraction, localModel, alreadySeen, _findObjectByName: findObjectByName };
+  return { run, processItem, expandObjectFromYouTube, upsertObject, applyDerivedParams, createRun, updateRun, runLocalExtraction, localModel, withLocalWork: local.withLocalWork, alreadySeen, _findObjectByName: findObjectByName };
 }
 
 module.exports = createStudioIngestion;

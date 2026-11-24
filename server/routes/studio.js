@@ -4,6 +4,7 @@ const fs = require('fs');
 const multer = require('multer');
 const { openRaw, resolveNexusDbPath } = require('../../db/raw');
 const createStudioIngestion = require('../services/studio-ingestion');
+const { environmentLocalModels } = require('../services/local-model-selection');
 const { budgetChars, keepWholeText, wholeTextWhere } = require('../services/context-window');
 const createAstroNightly = require('../services/astro-nightly');
 const { startNightlyScheduler } = createAstroNightly;
@@ -35,8 +36,13 @@ const EDITABLE_CHANNEL_FIELDS = [
   'prompt_guardrails',
 ];
 
-function createStudioRouter({ callAI, contextWindowFor, ingestionDeps, astroDeps, referencesDir } = {}) {
+function createStudioRouter({ callAI, contextWindowFor, ingestionDeps, astroDeps, referencesDir, localModels } = {}) {
   const router = express.Router();
+  // The local model chosen under Model Control (services/local-model-selection.js).
+  // server.js passes the instance the model-control routes use, so a switch
+  // waits for Studio's local jobs and each job names the model in effect when
+  // it started. Without one (tests), the environment's model, as before.
+  const local = localModels || environmentLocalModels();
   // No window lookup wired (tests, or an unknown window): prompts carry the whole catalog and sources.
   const windowFor = typeof contextWindowFor === 'function' ? contextWindowFor : async () => null;
   // Resolved per router instance (tests point NEXUS_DB_PATH at temp files).
@@ -53,6 +59,7 @@ function createStudioRouter({ callAI, contextWindowFor, ingestionDeps, astroDeps
     sql, callAI, contextWindowFor: windowFor, uuid, now,
     helpers: { upsertSpecValues, insertWonderPoints, extractJSON, stringifyMaybe, slugify },
     listSources,
+    localModels: local,
     deps: ingestionDeps,
   });
   const astroNightly = createAstroNightly({ sql, uuid, now, ingestion, getChannel, callAI, deps: astroDeps });
@@ -705,10 +712,16 @@ function createStudioRouter({ callAI, contextWindowFor, ingestionDeps, astroDeps
     const channel = getChannel(params.channelId);
     if (!channel) throw new Error('Channel not found.');
     if (!callAI) throw new Error('AI service is not available.');
-    const mode = params.mode === 'local' ? 'local' : 'cloud';
-    const model = mode === 'local'
-      ? { provider: 'local', model: process.env.LOCAL_STUDIO_MODEL || 'llama3.2' }
-      : { provider: params.provider || 'anthropic', model: process.env.STUDIO_CLOUD_MODEL || 'claude-sonnet-4-6' };
+    if (params.mode === 'local') {
+      // A local job is local work: a switch of local model waits until it
+      // ends, and every call in it names the model in effect when it started.
+      return local.withLocalWork(`Studio ${def.label || type}`, async () =>
+        runJobOn(def, params, channel, { provider: 'local', model: await local.localModelForWork() }));
+    }
+    return runJobOn(def, params, channel, { provider: params.provider || 'anthropic', model: process.env.STUDIO_CLOUD_MODEL || 'claude-sonnet-4-6' });
+  }
+
+  async function runJobOn(def, params, channel, model) {
     const modelLabel = `${model.provider}/${model.model}`;
     // Jobs may define a `custom` runner for multi-call agentic flows (e.g. writer + critic).
     if (typeof def.custom === 'function') {

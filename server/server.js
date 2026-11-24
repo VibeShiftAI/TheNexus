@@ -27,6 +27,7 @@ const db = require('../db');
 const { callAI } = require('./services/ai-service');
 // The window of the model a callAI call reaches, asked of Praxis (unknown when it cannot say).
 const { contextWindowFor } = require('./services/context-window');
+const { createLocalModelSelection } = require('./services/local-model-selection');
 const { validateInitiativeRequest } = require('./services/initiative-router');
 
 // ─── Crash Handlers ─────────────────────────────────────────────────────────
@@ -157,7 +158,10 @@ const createFleetRouter     = require('./routes/fleet');
 app.use('/api/health',    createHealthRouter());
 app.use('/api/fleet',     createFleetRouter());
 app.use('/api/models',    createModelsRouter({ db, getModels }));
-app.use('/api/model-control', createModelControlRouter({ db, io, syncModelSources, callAI }));
+// The local model chosen under Model Control: one instance for the panel's
+// routes and for Studio, so a switch waits for Studio's local jobs.
+const localModels = createLocalModelSelection({ db, io });
+app.use('/api/model-control', createModelControlRouter({ db, io, syncModelSources, callAI, localModels }));
 app.use('/api/settings',  createSettingsRouter());
 app.use('/api/dashboard', createDashboardRouter({ db }));
 app.use('/api',        createSystemRouter({ db, systemMonitor, tokenTracker, isCriticEnabled, setCriticEnabled }));
@@ -194,7 +198,7 @@ app.use('/api/skill-candidates', require('./routes/skill-candidates')());
 app.use('/api/skill-wiki', require('./routes/skill-wiki')());
 app.use('/api/knowledge-activity', require('./routes/knowledge-activity')());
 app.use('/api/ingestion-control', createIngestionControlRouter());
-app.use('/api/studio',    createStudioRouter({ db, callAI, contextWindowFor }));
+app.use('/api/studio',    createStudioRouter({ db, callAI, contextWindowFor, localModels }));
 const dispatchesRouter = createDispatchesRouter();
 app.use('/api/dispatches', dispatchesRouter);
 // Eligibility + containment: why waiting tasks aren't running, per-run
@@ -307,4 +311,8 @@ server.listen(PORT, async () => {
     }).catch(err => {
         console.warn(`Model Sources: sync failed - ${err.message}`);
     });
+
+    // Praxis reads the local model setting at its own start-up; when Nexus
+    // restarts alone, ask it to read the setting again. Never throws.
+    localModels.pushSync('start');
 });
