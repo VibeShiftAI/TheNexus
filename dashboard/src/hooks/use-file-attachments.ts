@@ -33,7 +33,7 @@ export const MAX_ATTACHMENTS = 5;
 export type AttachmentAction =
     | { type: "add"; files: File[] }
     | { type: "remove"; index: number }
-    | { type: "clear" };
+    | { type: "clear"; previews?: AttachmentPreview[] };
 
 export interface AttachmentTransition {
     state: AttachmentState;
@@ -82,11 +82,17 @@ export function attachmentsReducer(
                 revoked: removed?.previewUrl ? [removed.previewUrl] : [],
             };
         }
-        case "clear":
+        case "clear": {
+            // Each addition gets its own preview, even when the same file is dropped twice.
+            const removed = action.previews ?? state.previews;
             return {
-                state: EMPTY_ATTACHMENTS,
-                revoked: state.previews.map((p) => p.previewUrl).filter((u): u is string => !!u),
+                state: {
+                    files: state.files.filter((_, i) => !removed.includes(state.previews[i])),
+                    previews: state.previews.filter(p => !removed.includes(p)),
+                },
+                revoked: state.previews.filter(p => removed.includes(p) && p.previewUrl).map(p => p.previewUrl!),
             };
+        }
     }
 }
 
@@ -102,8 +108,8 @@ export interface FileAttachmentsApi {
     handleDragLeave: (e: React.DragEvent) => void;
     handleDrop: (e: React.DragEvent) => void;
     removeFile: (index: number) => void;
-    /** Detach everything and revoke previews — used after a send. */
-    clearAttachments: () => void;
+    /** Detach the submitted entries and revoke their remaining previews. */
+    clearAttachments: (submitted: AttachmentPreview[]) => void;
 }
 
 export function useFileAttachments(): FileAttachmentsApi {
@@ -169,8 +175,8 @@ export function useFileAttachments(): FileAttachmentsApi {
         apply({ type: "remove", index });
     }, [apply]);
 
-    const clearAttachments = useCallback(() => {
-        apply({ type: "clear" });
+    const clearAttachments = useCallback((submitted: AttachmentPreview[]) => {
+        apply({ type: "clear", previews: submitted });
     }, [apply]);
 
     return {
