@@ -74,7 +74,7 @@ git -C /Volumes/Projects/TheNexus rev-parse refs/heads/praxis/archive/eed607d4-a
 Full worktree tar round-trip matched every relative path, mode, regular file SHA-256 and symlink target {"directories": 444, "files": 3948, "links": 5, "tree_sha256": "12c4cda43cb97db5728a656182b715d5c50c3e31816eb87be378712db2f8cb2c"}
 Archive SHA-256 cd40623edab8b3f59869fcc6794c6ec883cc7b3614879d585e13610cf0aff5ed  /Volumes/Projects/OperationsEvidence/chat-working-steps-eed607d4-2026-11-23/TheNexus-eed607d4.tar.gz
 Praxis active workspace overlap and lsof +D {"active": [], "exists": true, "open": ["p38002", "cwatchman", "f36", "n/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus", "p81390", "cnode", "fcwd", "n/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus/dashboard", "p81394", "cesbuild", "fcwd", "n/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus/dashboard"], "path": "/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus"}
-Skipped git worktree remove: the worktree is in use.
+First pass deferred removal because two test processes held the directory. The dispatch check and final removal are recorded below.
 Praxis active workspace overlap and lsof +D {"active": [], "exists": true, "open": [], "path": "/Volumes/Projects/.scratch-45b834d9"}
 Atomic archive move /Volumes/Projects/.scratch-45b834d9 -> /Volumes/Projects/OperationsEvidence/chat-working-steps-eed607d4-2026-11-23/scratch-45b834d9; same inode and contents {"directories": 10, "files": 70, "links": 0, "tree_sha256": "8a11019b7473aa04aea5b3d074a288755929de31ff0fc4025f85225c1ab5885e"}
 Absent at preflight and cleanup: /Volumes/Projects/.scratch-282c64fa
@@ -84,9 +84,47 @@ Worktree registrations added []
 Worktree registrations removed []
 
 After cleanup, the same document, history, prior registrations, review, submission and raw/readiness URL comparisons passed again.
-Post-cleanup worktree inventory still matches the archive. All three scratch source paths are absent. Both archived scratch inventories match their pre-move contents.
+At the end of the first pass the worktree inventory matched the archive. All three scratch source paths are absent. Both archived scratch inventories match their pre-move contents.
 Archive catalog: /Volumes/Projects/OperationsEvidence/chat-working-steps-eed607d4-2026-11-23/README.txt
 Command: ./node_modules/.bin/jest --runInBand --runTestsByPath server/__tests__/document-deliverables.test.js server/__tests__/document-media.test.js --cacheDirectory=/tmp/nexus-539c4d99.Rk10EW/jest-cache
 Test Suites: 2 passed, 2 total
 Tests:       34 passed, 34 total
 Snapshots:   0 total
+
+Final worktree retirement after QA, 2026-11-23
+Failure reproduced: git worktree list showed eed607d4 at 4d14bbc2. The shell absence check (test ! -e on the worktree path) exited 1.
+Ownership check: read task_dispatches and tasks from the live Nexus SQLite database. Dispatch e6fdcf29 began at 13:41:39Z and ended at 16:34:23Z. The test began at 14:34:48Z during that dispatch.
+task_dispatches: task completed closed 6 latest 2026-11-23T20:10:26.825Z open for task or overlapping workspace []
+ps/lsof 81390 1 Mon Nov 23 09:34:48 2026     /opt/homebrew/Cellar/node/23.7.0/bin/node --import ./test/register.mjs test/chat-turn-steps.test.mjs cwd /Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus/dashboard
+ps/lsof 81394 81390 Mon Nov 23 09:34:48 2026     /Volumes/Projects/TheNexus/dashboard/node_modules/@esbuild/darwin-arm64/bin/esbuild --service=0.28.2 --ping cwd /Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus/dashboard
+SIGTERM sent to 81394
+SIGTERM sent to 81390
+python3 -I -B /tmp/qa-539c4d99-check.py after both test processes exited
+worktree files 3948 dirs 444 links 5 missing 0 mismatched 0
+in tar docs/reviews/2026-11-23-chat-thought-stream/chat-live-desktop.png
+in tar docs/reviews/2026-11-23-chat-thought-stream/chat-live-phone.png
+in tar data/tasks/eed607d4-ac1d-4e28-98ce-659d835ba4e9/evidence/reviewer-round3-dashboard.txt
+in tar data/tasks/eed607d4-ac1d-4e28-98ce-659d835ba4e9/evidence/reviewer-round3-praxis.txt
+in tar data/tasks/eed607d4-ac1d-4e28-98ce-659d835ba4e9/evidence/reviewer-round3-results.json
+Restored archive and source match in path, type, mode, data hash and link target. Tree SHA-256 12c4cda43cb97db5728a656182b715d5c50c3e31816eb87be378712db2f8cb2c
+task_dispatches: task completed closed 6 latest 2026-11-23T20:10:26.825Z open for task or overlapping workspace []
+After SIGTERM, both test PIDs have exited. lsof +D holders: [38002]
+$ git -C /Volumes/Projects/TheNexus worktree remove --force /Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus
+exit 0 stdout '' stderr ''
+worktree list --porcelain: removed ['/Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus'] added []
+All 5 other worktree records match, including HEAD and branch.
+Confirmed absent: /Volumes/Projects/.praxis-worktrees/eed607d4-ac1d-4e28-98ce-659d835ba4e9/TheNexus .scratch-45b834d9 .scratch-282c64fa .scratch-praxis-chat
+Retained refs/heads/praxis/archive/eed607d4-ac1d-4e28-98ce-659d835ba4e9/7e34d675de42 4d14bbc20a484de474ca3762a6fe750910be9fa7
+Shared watchman after removal: 38002 Sun Nov  8 09:22:24 2026     /opt/homebrew/bin/watchman
+After removal: python3 -B /tmp/nexus-539c4d99.Rk10EW/verify.py exited 0. Historical snapshot and approval comparisons passed.
+GET document {"deliverable_key": "chat-thought-stream-review-package", "id": "a17976bd-8691-43ac-81a6-cc927292d3bf", "path": "/Volumes/Projects/TheNexus/docs/reviews/2026-11-23-chat-thought-stream/chat-thought-stream.design.json", "task_id": "eed607d4-ac1d-4e28-98ce-659d835ba4e9", "title": "Chat thought stream: live steps in the chat"}
+Review state {"file_state": "ok", "ready": true, "status": "approved", "version": {"capture_count": 3, "current_revision_id": "ee53253e-1d2d-4fed-9a55-2e16fdab7e82", "current_version": 2, "draft_count": 2, "revision_count": 3}}
+GET history [[1, "2a212aea-619b-4982-8890-0aad59110386", "b96bf9cdeac764cf6e71211b1d3d63dcede76ea39aee71968e6327be9d197287"], [1, "44d2b899-2d0c-4359-a52b-8ddb08f0a713", "52f022cea98be72934d2dbdefa93991ca69894f8ce47ce2ed0544f1a73339b90"], [2, "ee53253e-1d2d-4fed-9a55-2e16fdab7e82", "376ddb7ff2869314b375499a63a389fbb7c796794393556d4b3d8583dc8095c2"]]
+Current decision {"actor_id": "local_user", "applies_to_current_revision": true, "authority": "access_device", "client_decision_id": "56b4346b-e548-45ce-bab9-0ebe2fbe32f2", "content_hash": "376ddb7ff2869314b375499a63a389fbb7c796794393556d4b3d8583dc8095c2", "created_at": "2026-11-23T21:34:31.952Z", "decision": "approve", "document_id": "a17976bd-8691-43ac-81a6-cc927292d3bf", "id": "8757718d-c6b4-4c3e-82de-0bd2f61f03a2", "intended_action": "none", "note": "", "provenance": null, "recorded_by": "operator", "revision_id": "ee53253e-1d2d-4fed-9a55-2e16fdab7e82", "selection": null}
+GET /documents/a17976bd-8691-43ac-81a6-cc927292d3bf HTTP 200 review HTML, document ID present
+GET /api/documents/a17976bd-8691-43ac-81a6-cc927292d3bf/raw?revision=ee53253e-1d2d-4fed-9a55-2e16fdab7e82 HTTP 200 raw bytes equal main manifest, SHA-256 7b12bad7344eb028e33d3347fb09fb586a6d05d93304e928b02a2f557536b684 X-Document-Revision 376ddb7ff2869314b375499a63a389fbb7c796794393556d4b3d8583dc8095c2
+GET /api/documents/a17976bd-8691-43ac-81a6-cc927292d3bf/readiness?revision=ee53253e-1d2d-4fed-9a55-2e16fdab7e82 HTTP 200 ready=true; verified package members 8
+Archived scratch-45b834d9 recheck: 70 files, 10 subdirectories, tree SHA-256 8a11019b7473aa04aea5b3d074a288755929de31ff0fc4025f85225c1ab5885e. Archived scratch-praxis-chat is empty.
+./node_modules/.bin/jest --runInBand --runTestsByPath server/__tests__/document-deliverables.test.js server/__tests__/document-media.test.js --cacheDirectory=/tmp/nexus-retire-539c4d99.QqkWO2/jest-cache
+Test Suites: 2 passed, 2 total
+Tests:       34 passed, 34 total
