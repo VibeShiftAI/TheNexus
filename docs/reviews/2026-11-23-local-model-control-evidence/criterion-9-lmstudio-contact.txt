@@ -1,14 +1,14 @@
-# Made 2026-11-24 16:14:45 EST by a read-only script; no service contacted.
+# Made 2026-11-24 17:02:36 EST by a read-only script; no service contacted.
 
 ## 1. LM Studio's server log from 2026-11-23 21:39:35 EST to now
 log file: /Users/robertwashko/.lmstudio/server-logs/2026-11/2026-11-23.1.log (9932567 bytes)
 log file: /Users/robertwashko/.lmstudio/server-logs/2026-11/2026-11-24.1.log (10485895 bytes)
-log file: /Users/robertwashko/.lmstudio/server-logs/2026-11/2026-11-24.2.log (7633437 bytes)
+log file: /Users/robertwashko/.lmstudio/server-logs/2026-11/2026-11-24.2.log (7761710 bytes)
 requests by method and path (every client):
-5988 POST /v1/embeddings
-5691 GET /api/v0/models
+5997 POST /v1/embeddings
+5888 GET /api/v0/models
 1560 POST /v1/chat/completions
-  10 GET /api/v1/models
+  11 GET /api/v1/models
    6 GET /v1/models
 every GET /api/v1/models:
   2026-11-23 21:47:18
@@ -21,6 +21,7 @@ every GET /api/v1/models:
   2026-11-24 14:51:38
   2026-11-24 15:52:55
   2026-11-24 16:14:39
+  2026-11-24 16:41:22
 every GET /v1/models:
   2026-11-23 22:13:01
   2026-11-23 22:20:41
@@ -30,8 +31,8 @@ every GET /v1/models:
   2026-11-24 06:15:33
 
 ## 2. This run's Bash calls (session 55d225db-3825-46d5-a7e0-bcae377a4dce and its subagents)
-55d225db-3825-46d5-a7e0-bcae377a4dce.jsonl: 1567 Bash calls; 9 send to LM Studio; 16 other calls name port 1234
- entries from 2026-11-23 21:39:35 to 2026-11-24 16:14:44; the longest pause between two entries: 2026-11-23 21:40:38 to 2026-11-24 07:42:09
+55d225db-3825-46d5-a7e0-bcae377a4dce.jsonl: 1714 Bash calls; 10 send to LM Studio; 19 other calls name port 1234
+ entries from 2026-11-23 21:39:35 to 2026-11-24 17:02:35; the longest pause between two entries: 2026-11-23 21:40:38 to 2026-11-24 07:42:09
  calls that send to LM Studio:
   2026-11-24 07:54:21: curl -s -m 5 http://127.0.0.1:1234/api/v1/models | python3 -c 'import json,sys; d=json.load(sys.stdin); print(
   2026-11-24 08:26:30: S=/Volumes/Projects/.scratch-fa032fc0; curl -s -m 5 http://127.0.0.1:1234/api/v1/models -o $S/lmstudio-listing-start.json; echo "curl exit $?"; node 
@@ -42,6 +43,7 @@ every GET /v1/models:
   2026-11-24 14:51:37: bash criterion-9-readback.sh > /Volumes/Projects/.scratch-fa032fc0/criterion-9-final-readback-r5.txt 2>&1; pyt
   2026-11-24 15:52:55: /reviews/2026-11-23-local-model-control-evidence; bash $E/criterion-9-readback.sh > $E/criterion-9-final-readback.txt 2>&1; echo "exit $?"; diff /Volumes/Projec
   2026-11-24 16:14:38: scratch-fa032fc0/criterion-9-readback-1552.txt && bash criterion-9-readback.sh > criterion-9-final-readback.txt 2>&1; echo "exit $?"; diff /Volumes/Projects/.sc
+  2026-11-24 16:41:21: eviews/2026-11-23-local-model-control-evidence && bash criterion-9-readback.sh > criterion-9-final-readback.txt 2>&1; sed -n '1,40p' criterion-9-final-readback.
  other calls that name port 1234:
   2026-11-24 08:15:58: e"; for f in $FILES; do h=$(grep -nE "127\.0\.0\.1:1234|localhost:1234|PRAXIS_TEST_ALLOW_NEXUS|execFile|spawn\(|child_process|\"lms\"|'lms'|LMSTUDIO|LOCAL_LLM_U
   2026-11-24 08:16:11: le="tests/$f.test.ts" h=$(grep -nE "127\.0\.0\.1:1234|localhost:1234|PRAXIS_TEST_ALLOW_NEXUS|execFile|spawn\(|child_process|\"lms\"|'lms'|LMSTUDIO|LOCAL_LLM_U
@@ -59,6 +61,9 @@ every GET /v1/models:
   2026-11-24 15:58:00: tream(file), crlfDelay: Infinity }); const re = /(:1234\b|\blms\s+(load|unload|ps|ls|get)\b|lmstudio|LM_STUDIO)/i; let n = 0, hits = 0; for await (const line of
   2026-11-24 15:58:55: ms-contact-scan.mjs "$f" 2>&1 | grep -E 'curl[^|]*:1234|lms (load|unload|ps|ls|get)|matching'; done
   2026-11-24 16:06:56: spawn\(|execFile|execSync|fetch\(|https?://|:4000|:1234|:8100|:3000|:54322|127\.0\.0\.1|localhost|/Volumes/Projects|nexus\.db|NEXUS_DB_PATH|NEXUS_REVIEW_BLOB_DI
+  2026-11-24 16:28:00: homedir|nexus\.db|hitl\.db|praxis\.db|:4000|:8100|:1234|:3000|:54322|NEXUS_API_URL|CORTEX_|api\.openai|googleapis|anthropic\.com|openrouter|spawn\(|execFile|exe
+  2026-11-24 16:57:46: tp://|https://|127\.0\.0\.1|localhost|:8100|:4000|:1234|/Volumes" tests/test_graph_episode_hold.py | cut -c1-170 | head -40; echo ---; sed -n '55,80p' conftest.
+  2026-11-24 16:57:56: tp://|https://|127\.0\.0\.1|localhost|:8100|:4000|:1234|/Volumes" $MC/tests/test_graph_episode_hold.py | cut -c1-170 | head -40; echo ---; sed -n '55,80p' $MC/c
 agent-a08cf7af9dea76b28.jsonl: 72 Bash calls; 0 send to LM Studio; 1 other calls name port 1234
  entries from 2026-11-24 11:07:27 to 2026-11-24 11:26:40; the longest pause between two entries: 2026-11-24 11:07:46 to 2026-11-24 11:09:47
  other calls that name port 1234:

@@ -1,0 +1,57 @@
+# 2026-11-24 17:11:16 EST
+== TheCortex: main pinned at 17ee69cebb5c1403dbef27929d19963134e8bec8, branch e611edcac605109955c9b936e9a25233c075ef20, base 5fdb76a
+main now: 17ee69ce; merge-base of the pinned main and the branch: 5fdb76a2
+files main changed since b06ed4dc166c97263d38804a051b506f87e58b85: 3; of them changed by the branch too: 
+merge-tree exit 1 (0 = merges without conflict, 1 = conflicts); tree 0a575990be21801c91786a5012758d4f03f590d8
+CONFLICT (content): Merge conflict in TheCortex/conftest.py
+-- TheCortex/conftest.py: 1 conflict hunk(s), as git merge-file --diff3 shows them:
+   (line 18)
+   <<<<<<< main
+   import pytest
+   
+   ||||||| base
+   =======
+   import pytest
+   
+   
+   def _nexus_not_read_in_unit_tests(url, timeout):
+       raise ConnectionError("unit tests do not read the live Nexus local-model setting")
+   
+   
+   @pytest.fixture(autouse=True)
+   def local_model_setting_offline(monkeypatch):
+       """Keep every test off the live Nexus local-model setting.
+   
+       cortex.local_model asks Nexus which local model is in effect; a test that
+       reached the live API would depend on whatever Robert chose. With this, the
+       callers take their fallback; tests of the setting itself swap in their own
+       fake reader. cortex is imported only when a test runs, by which time the
+       package root below is on sys.path.
+       """
+       import cortex.local_model as local_model
+   
+       monkeypatch.setattr(local_model, "_fetch", _nexus_not_read_in_unit_tests)
+       monkeypatch.setattr(local_model, "_last_answer", None)
+       local_model._fallback_reported.clear()
+       yield
+       local_model._fallback_reported.clear()
+   
+   
+   >>>>>>> branch
+   resolved with git merge-file --union. Against the marked file the resolution removes 6 line(s), 2 of them not a marker line, and adds 0
+merged-cortex7 against the merge-tree's tree: 2987 files compared; differing: TheCortex/conftest.py ; extra files in the copy: 0
+resolved conftest.py: identical to the one the b06ed4dc check tested
+the whole copy against merged-cortex6 (the b06ed4dc check's copy), diff -rq:
+Files merged-cortex6/AGENTS.md and merged-cortex7/AGENTS.md differ
+Files merged-cortex6/CLAUDE.md and merged-cortex7/CLAUDE.md differ
+Only in merged-cortex7/TheCortex/scripts: archive_failed_research_ingest.py
+(end of diff)
+files of the merged tree that name archive_failed_research_ingest, besides the script itself: CLAUDE.md 
+  /Volumes/Projects/TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+325 passed, 1 warning in 4.24s
+exit=0
+TheCortex files with failures on the resolved merged tree:  
+files written in the merged copy since its test run started: 0
+entries in /Volumes/Projects/maintenance-mode-worktrees changed since this script started: 0
+# 2026-11-24 17:11:39 EST
+== done

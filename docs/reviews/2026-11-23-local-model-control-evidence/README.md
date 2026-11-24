@@ -3,31 +3,40 @@
 The review package in `../2026-11-23-local-model-control/` holds only the three
 review screenshots (registered revision `5a481277`). Everything else that backs
 the task is here. Test and log outputs are copied verbatim, so they can contain
-the products' own wording (including dashes in their log messages). Five files
+the products' own wording (including dashes in their log messages). Six files
 are extracts rather than whole logs, each cut verbatim by
 `merged-main/praxis-full-suite-extract.sh` (the command, the "Running N of M"
 line, then the runner's summary and every failure with its detail; the passing
 output is left out, and each extract says which lines):
 `merged-main/praxis-full-suite-summary-and-failures.txt` (from a 6.1 MB log),
 the three `merged-main/praxis-tests-*519530a9*-extract.txt` (from logs of 1.5
-to 1.6 MB) and `merged-main/praxis-tests-merged-59cacac6-extract.txt` (from a
-2.0 MB log).
+to 1.6 MB), `merged-main/praxis-tests-merged-59cacac6-extract.txt` (from a
+2.0 MB log) and `merged-main/praxis-tests-merged-1bac2ea7-extract.txt` (from a
+2.3 MB log).
 
 Three repositories changed, each on its own task branch:
 
 | Repository | Baseline | Branch head | Main at the merged checks |
 | --- | --- | --- | --- |
-| TheNexus | `bd02642` | `6e14bc87`, plus evidence-only commits after it (`f8761e33`, `f011c4ee` and the one that adds this update) | `3189bb99`, `a2870083`, then `2a7952fc` |
-| Praxis | `1fcf4b59` | `cad6afb2` | `24c1abaa`, `4d076f91`, `613f66b6`, `fbce5c26`, `519530a9`, then `59cacac6` |
-| TheCortex | `5fdb76a` | `e611edc` | `3617672` |
+| TheNexus | `bd02642` | `6e14bc87`, plus evidence-only commits after it (`f8761e33`, `f011c4ee`, `1d74cad1`, `6c3e913f` and the one that adds this update) | `3189bb99`, `a2870083`, then `2a7952fc` |
+| Praxis | `1fcf4b59` | `cad6afb2` | `24c1abaa`, `4d076f91`, `613f66b6`, `fbce5c26`, `519530a9`, `59cacac6`, then `1bac2ea7` (conflicts) |
+| TheCortex | `5fdb76a` | `e611edc` | `3617672`, `b06ed4dc` (conflicts), then `17ee69ce` (the same conflict) |
 
-Both mains kept moving while the task ran. The last merged checks are on
-TheNexus `2a7952fc` (main since 15:51:16 EST) and Praxis `59cacac6` (main since
-15:51:18; one task landed both), each pinned by its full hash and run from
-16:09:15 to 16:11:34 EST. TheCortex main has been `3617672` since 09:01:33. The
-times come from each shared checkout's reflog for `main`. At 16:20:01 EST
-none of the three mains had moved since. A main that moves later is not covered
-here.
+The mains kept moving while the task ran. The last mains the branches merge
+with cleanly are TheNexus `2a7952fc` (main since 15:51:16 EST), Praxis
+`59cacac6` (main since 15:51:18; one task landed both), each pinned by its full
+hash and checked from 16:09:15 to 16:11:34 EST, and TheCortex `3617672` (main
+from 09:01:33). At 16:22 EST task `98d0b1b9` landed Praxis `1bac2ea7` and
+TheCortex `b06ed4dc`, and both task branches conflict with them, in lines that
+both sides add. This run does not merge main (the brief forbids it). Copies with
+the conflicts resolved were built and tested outside every repository; see
+"Praxis `1bac2ea7` and TheCortex `b06ed4dc`" below. At 17:04:50 EST task
+`2717b41c` landed TheCortex `17ee69ce`, which adds a script and two document
+lines that the branch does not touch; the TheCortex branch conflicts with it in
+the same file, and the same resolution passes the same tests (same section).
+TheNexus main is still `2a7952fc`. The times come from each shared checkout's
+reflog for `main`. A main that moves after the time given at the end of this
+README is not covered here.
 
 The task's commits, oldest first:
 
@@ -39,7 +48,7 @@ The task's commits, oldest first:
 
 ## Precondition (criterion 1)
 
-`criterion-1-precondition.sh` (output `criterion-1-precondition.txt`, 16:03:58
+`criterion-1-precondition.sh` (output `criterion-1-precondition.txt`, 17:12:04
 EST, read-only) finds the readiness task's commits by their trailer
 (`git log main --grep=9227d9b6`). For each one it asks git whether the commit is
 on main and under the task branch's head (`git merge-base --is-ancestor`). Then
@@ -48,8 +57,8 @@ it runs the brief's own check as the brief writes it.
 | Repository | Readiness commits (task `9227d9b6`) | On main | Under the branch head |
 | --- | --- | --- | --- |
 | TheNexus | `9de7bed6` (its merge, 2026-11-23 22:47:28), `1104ec89`, `22d86d03` | all 3 (main `2a7952fc`) | no |
-| Praxis | `1fcf4b59` (its merge, 2026-11-23 22:48:04), `de1c5916`, `884135de`, `1a82f9e8`, `694c867a`, `0bc2c8fb` | all 6 (main `59cacac6`) | yes (`cad6afb2`) |
-| TheCortex | `5fdb76a`, `2d7c015` | both (main `36176727`) | yes (`e611edc`) |
+| Praxis | `1fcf4b59` (its merge, 2026-11-23 22:48:04), `de1c5916`, `884135de`, `1a82f9e8`, `694c867a`, `0bc2c8fb` | all 6 (main `1bac2ea7`) | yes (`cad6afb2`) |
+| TheCortex | `5fdb76a`, `2d7c015` | both (main `17ee69ce`) | yes (`e611edc`) |
 
 The brief's check, `git -C /Volumes/Projects/Praxis grep -c
 'thinkingmachines/inkling-2-mini' main -- src/llm/local-model-capabilities.ts`,
@@ -498,10 +507,54 @@ The guards log to the scratch folder named in each script, deleted at the end of
 the task; the logs cited below are copied here as `.txt`. Before the folder was
 deleted, `guards/guard-logs-scan.py` listed every guard log in it, with its line
 count and any line naming port 1234: 153 logs, no such line
-(`guards/guard-logs-scan.txt`). The files in `guards/` are byte-identical to the
-ones the scripts ran from that folder (checked with `cmp` before it was
-deleted). To rerun a script, first copy the contents of `guards/` into the
-scratch folder it names (`/Volumes/Projects/.scratch-fa032fc0`).
+(`guards/guard-logs-scan.txt`). The same scan of the second scratch folder, made
+for the `1bac2ea7` checks, found 11 logs and no such line
+(`guards/guard-logs-scan-1bac2ea7.txt`). Neither scan covers the fake `lms`'s
+own log (see below). The files in `guards/` are byte-identical to the ones the
+scripts ran from that folder (checked with `cmp` before it was deleted). To
+rerun a script, first copy the contents of `guards/` into the scratch folder it
+names (`/Volumes/Projects/.scratch-fa032fc0`). Git records the eight shims,
+`fake-lms` and `praxis-files-guarded.sh` as executable (mode 100755) from the
+commit that adds this update on. Before it they were recorded as 100644, because
+this checkout has `core.fileMode` off. In a fresh checkout the shims would then
+not be executable, and a `PATH` lookup would skip them and find the real
+command.
+
+The fake `lms` appends every call to one fixed file, `lms-calls.log` in the
+scratch folder. From 14:03 EST, during round 4, `praxis-files-guarded.sh`
+empties a per-run name instead, `lms-calls-<tag>.log`, which the fake never
+writes, and `guard-logs-scan.py` takes only names containing "guard", "shims"
+or "fake-lms". So `praxis-fake-lms-calls.txt`, copied from such a per-run file,
+is empty whatever the run did. An earlier version of this README read it as "no
+call to the fake `lms`". That was wrong. The run logs show the calls, because the
+autoloader logs the fake's refusal:
+- The 40-file run on the branch head made one call, `lms ls --json`, and the
+  fake refused it (`praxis-related-tests.txt:476-483`, in
+  `lmstudio_autoload.test.ts` "failed embedding recovery does not block a
+  healthy Gemma load"). That test stubs the catalog, the process count, the
+  memory reading and the loader. Only the inventory read is left to the real
+  code, which runs `PRAXIS_LMS_BIN`, the fake. The "loading
+  google/gemma-4-31b-qat via lms" and "loaded in 0s" lines after it come from
+  the test's stub loader. Round 3 recorded the same single call while its copy
+  still came from the fixed file (`praxis-fake-lms-calls.txt` at `09b75ae8`).
+  The merged runs whose whole logs are kept show the same call
+  (`merged-main/praxis-tests-merged-613f66b6.txt:2455`,
+  `merged-main/praxis-tests-merged-fbce5c26.txt:2484`).
+- In the first scratch folder the fixed file was read once more, at 16:14 EST,
+  before the folder was deleted. It held 8 lines, last written at 16:10. The
+  three lines printed were `ls --json`; the other five were not printed and
+  went with the folder.
+- In the second scratch folder (the `1bac2ea7` checks) it holds 2 lines, both
+  `ls --json` (`merged-main/praxis-fake-lms-calls-1bac2ea7.txt`). One is from
+  the rerun, logged at the same `lmstudio_autoload` test (line 6646 of its
+  whole log). The other is from the stopped first run, whose log ends before
+  that suite's output. The plain-main run made none.
+
+`ls --json` lists the models on disk and loads nothing. Praxis runs it in
+`readDownloadedModelInventory` (`src/llm/lmstudio-autoload.ts:293-301`). The fake
+answers every call with exit 1 and never runs the real `lms`, and the `lms` shim
+first on `PATH` does the same. LM Studio's own log shows no model loaded after
+the 11:51:59 unload (see "Live state").
 
 | File | What ran | Result |
 | --- | --- | --- |
@@ -517,7 +570,7 @@ scratch folder it names (`/Volumes/Projects/.scratch-fa032fc0`).
 | `praxis-more-related-tests.txt` | the 9 other Praxis test files that name a changed symbol (`cli-concurrency`, `LOCAL_LLM_MODEL` and the like) | 111/111 |
 | `praxis-wider-tests.txt` | the 40 other Praxis test files that import the LLM manager, the local model state or the output-room wrapper (`praxis-wider-test-list.txt`, less `maintenance_review_regressions`, which makes its data dir in a shared folder); runner `praxis-wider-run.sh` | 473/473 |
 | `praxis-tsc.txt` | `npx tsc --noEmit` in Praxis, at the end on the clean head `cad6afb2` (14:49 EST) | exit 0 |
-| `praxis-lmstudio-guard.txt`, `praxis-fake-lms-calls.txt`, `praxis-cli-shims-related.txt` | what the guards caught in the 40-file run | 1 POST to port 1 from `member_profile_updates.test.ts` (its own dead URL, pre-existing); no call to the fake `lms` (the file is empty); 3 `--version` calls (`claude`, `codex`, `agy`); the network and live-port guards refused nothing |
+| `praxis-lmstudio-guard.txt`, `praxis-fake-lms-calls.txt`, `praxis-cli-shims-related.txt` | what the guards caught in the 40-file run | 1 POST to port 1 from `member_profile_updates.test.ts` (its own dead URL, pre-existing); 1 `lms ls --json` refused by the fake `lms`, shown in the run log (`praxis-fake-lms-calls.txt` is empty for the reason given above the table); 3 `--version` calls (`claude`, `codex`, `agy`); the network and live-port guards refused nothing |
 | `praxis-encoding-scan.txt` | `npm run check:encoding` over the Praxis files changed | see `encoding-and-dash-scans.txt` |
 | `cortex-offline-tests.txt` | 11 TheCortex test files (listed in `merged-main/merged-main-check.sh`) | 293 passed |
 | `cortex-local-model-tests.txt` | TheCortex `tests/test_local_model_setting.py`, verbose | 23 passed |
@@ -525,7 +578,7 @@ scratch folder it names (`/Volumes/Projects/.scratch-fa032fc0`).
 
 In the runs behind `praxis-local-model-selection-tests.txt` (3 files, 52 tests)
 and `praxis-more-related-tests.txt` (9 files, 111 tests) every guard log is
-empty. In the wider run the guards caught only the pre-existing
+empty, and neither run's log shows a refused `lms` call. In the wider run the guards caught only the pre-existing
 `chat_turn_steps_legacy` calls described below (`praxis-cli-shims-wider.txt`,
 `praxis-net-guard-wider.txt`).
 
@@ -905,6 +958,159 @@ changes is `src/nexus/client.ts`, where both sides only add lines.
   `mixed.test` connection only
   (`praxis-failing-suites-plain-main-59cacac6-live-port-guard.txt`).
 
+### Praxis `1bac2ea7` and TheCortex `b06ed4dc` (the branches conflict)
+
+At 16:22 EST task `98d0b1b9` ("Hold daytime knowledge-graph extraction for the
+overnight window so Gemma stays unloaded during the day") landed TheCortex
+`b06ed4dc` (16:22:23) and Praxis `1bac2ea7` (16:22:26). TheNexus main did not
+move. Both task branches now conflict with their mains. This run does not merge
+main, because the brief forbids it. When the run lands, Praxis's run merge will
+find the conflict, merge nothing, and send the task back with a "MERGE
+CONFLICT" correction (`src/orchestrator/run-merge.ts:1039-1047` on `1bac2ea7`,
+its text at `:398-412`). The correction asks for `git merge main` resolved by
+hand, the task's verification rerun on the result, and a new QA review. This
+section shows the conflicts, a resolution that keeps both sides, and the checks
+of that resolution, all made in scratch copies outside every repository.
+
+The conflicts (`merged-main-1bac2ea7-b06ed4dc.sh`, output in
+`merged-main-1bac2ea7-b06ed4dc-output.txt`, 16:36:49 to 16:39:16 EST; each one
+again as a diff from the file with markers to the resolved file in
+`conflict-resolutions-1bac2ea7-b06ed4dc.sh`, output beside it):
+- Praxis: main changed 16 files since `59cacac6`. The branch also changes five
+  of them: `src/index.ts`, `src/llm/local-lane-policy.ts`, `src/llm/manager.ts`,
+  `src/nexus/client.ts` and `tests/webhook_routes_inventory.test.ts`. `git
+  merge-tree` reports two conflicting files with three hunks. No hunk has
+  anything on the base side: both sides only add lines.
+  - `src/llm/local-lane-policy.ts`, one hunk in the test-only reset. Main adds
+    four resets for its hold (`operatorGrantsOpen = 0`,
+    `operatorGrantListeners.clear()`, `admissions.clear()`,
+    `graphHoldReading = null`); the branch adds `runningJobs.clear()`.
+  - `src/llm/manager.ts`, two hunks in one import list. Main adds
+    `isLocalLaneHoldCaller` and `runHeldLocalLaneCall`; the branch adds
+    `insideCountedLocalCall` and `trackLocalCall`.
+- TheCortex: main changed 12 files since `3617672`. The branch also changes three
+  of them: `TheCortex/conftest.py`, `python/cortex/config.py` and
+  `python/cortex/memory/client.py`. One hunk conflicts, in `conftest.py`: both
+  sides add `import pytest` at the same place, and the branch adds its
+  `local_model_setting_offline` fixture after it. Main's own fixture,
+  `graph_episode_hold_per_test`, merges further down without conflict.
+
+The resolution is `git merge-file --union`, which keeps both sides' lines.
+Compared with the file with markers, it removes only the marker lines, plus the
+second `import pytest` and one blank line in `conftest.py`, and adds nothing.
+Keeping both sides is right here:
+- The reset lines and the imports are independent additions.
+- In `chatVia`, main sends its held callers through `runHeldLocalLaneCall`. When
+  the lane is closed, such a call is either refused before any model is called,
+  or, while Robert's grant is open, run again through `chatVia` under an
+  `episode` grant (merged copy: `src/llm/manager.ts:1330-1343`,
+  `src/llm/local-lane-policy.ts:463-471`). On that second pass the lane reads
+  open, so the call reaches the branch's `trackLocalCall`. It is counted as
+  local work, and a switch of local model waits for it. A refused call never
+  runs on LM Studio and is not counted.
+- In TheCortex the Graphiti client keeps the branch's model
+  (`_resolve_graphiti_llm()`, which asks Nexus through `local_model_or`) and
+  main's new transport, which stamps the lane admission on each request (merged
+  copy: `python/cortex/memory/client.py:278-305`). `config.py` gains main's
+  hold-file setting beside the branch's lines.
+
+The checks, under the same guards as before:
+- Each merged copy is `git archive` of the tree that `git merge-tree` writes
+  (with the markers), with the conflicted files replaced by their resolution.
+  Compared with that tree file by file: Praxis 6773 files, only the two
+  resolved files differ, no extra file; TheCortex 2986 files, only
+  `conftest.py` differs.
+- Praxis `tsc`: exit 0 (`praxis-tsc-merged-1bac2ea7.txt`).
+- Praxis suites, 179 (`praxis-suites179-1bac2ea7.txt`): the 152 of the
+  `59cacac6` check plus 27 that main changed or that import a module main
+  changed (named in the output). Every suite that makes its data folder under
+  `/Volumes` is left out: the six `maintenance_*` suites, which the whole-suite
+  run left out for the same reason. Of those six, only
+  `maintenance_review_regressions` was among the suites picked.
+- The merged run loaded TheNexus from a scratch copy of TheNexus `2a7952fc` plus
+  the TheNexus branch diff (`NEXUS_TEST_ROOT`), and the plain-main run from a
+  copy of `2a7952fc` alone. Neither copy had a `nexus.db`, and neither run wrote
+  a file in it.
+- Merged: 2574 tests, 2555 pass, 10 fail
+  (`praxis-tests-merged-1bac2ea7-extract.txt`). The ten are in six suites:
+  `alert_investigation`, `code_freshness_recovery`, `qa_state_persistence`,
+  `research_web_retrieval`, `run_model_dispatch_state` and
+  `webhook_routes_inventory`.
+- The same six suites on plain `1bac2ea7` (that copy matches the commit file for
+  file: 6769 files, 0 differ): 212 tests, 202 pass, and the same ten fail
+  (`praxis-failing-suites-plain-main-1bac2ea7.txt`). Nine of them are the nine
+  of the `59cacac6` check. The tenth is new; see "Failures that are not this
+  task's".
+- The guards on the merged copy (`praxis-tests-merged-1bac2ea7-*.txt`):
+  - the LM Studio guard refused 2 requests to the dead port 1:
+    `member_profile_updates`'s POST and a `GET /api/v0/models` from
+    `run_model_dispatch_state`;
+  - the network guard refused 6 openrouter chat requests;
+  - the CLI shims took 9 calls: 2 each for `agy`, `claude` and `codex`, and
+    their 3 `--version` calls;
+  - the live-port guard refused 1 connection, to `mixed.test` from
+    `research_web_retrieval`;
+  - the fake `lms` refused 1 `ls --json` (see "Final results on the branch
+    heads").
+
+  On plain main they caught the `run_model_dispatch_state` request and the
+  `mixed.test` connection only
+  (`praxis-failing-suites-plain-main-1bac2ea7-{lmstudio-guard,live-port-guard}.txt`).
+- TheCortex: the 11 files of the earlier checks plus `tests/test_graph_episode_hold.py`,
+  which main added: 325 passed (`cortex-tests-merged-b06ed4dc.txt`). The new
+  file was read before it ran:
+  - TheCortex's test guard is installed by the root `conftest.py`;
+  - Praxis's lane, Graphiti, the graph driver and the episodic store are fakes;
+  - each hold is a SQLite file in pytest's temp folder (main's
+    `graph_episode_hold_per_test` fixture and the suite's own `harness`);
+  - its one subprocess runs under the same guard, with the hold file in that
+    temp folder.
+- No entry in `/Volumes/Projects/maintenance-mode-worktrees` changed during the
+  run (checked at the end of each part).
+
+The first run of this check (16:31:37 EST) picked its suites by import and did
+not scan them first. Its selection included `maintenance_review_regressions`,
+which sets `PRAXIS_DATA_DIR` to a folder it makes under
+`/Volumes/Projects/maintenance-mode-worktrees`, a shared folder.
+- The run was stopped at about 16:32:30, before that suite could clean up
+  (`merged-main-1bac2ea7-b06ed4dc-stopped-run.txt`). The suite had made one
+  folder, `review-regressions-4K2BvL`, holding two empty folders.
+- The whole test was then read. Everything it writes goes inside that folder,
+  and its one model call is mocked.
+- `maintenance-folder-residue.sh` (output beside it) records the folder's times
+  and contents and removes it with `rmdir`, which refuses a folder that is not
+  empty. It also shows that nothing else in the shared folder changed after
+  16:31:00.
+- Then every suite of the selection was scanned (`suite-hazard-scan-1bac2ea7.sh`,
+  output beside it):
+  - for data folders made under `/Volumes`: the scan finds the six
+    `maintenance_*` suites, now left out;
+  - for lines naming `/Volumes/Projects`, a home folder or a live port. Three of
+    the 27 added suites have such lines, and none connects or writes there:
+    `fleet_preflight` has an address in an error message;
+    `operator_restart_chat_turn` has the Praxis bridge address inside its own
+    stubbed `fetch`, which forwards that request to the test's own server; and
+    `slot_numbering` has workspace paths in its fixtures. The other suites with
+    such lines ran in the earlier checks.
+- The rerun used fresh scratch names.
+
+TheCortex main moved once more, at 17:04:50 EST, to `17ee69ce` (task
+`2717b41c`, "Archive the failed bao research report's statements out of the
+knowledge graph"). Since `b06ed4dc` it changes `AGENTS.md` and `CLAUDE.md` and
+adds `TheCortex/scripts/archive_failed_research_ingest.py`. The branch changes
+none of them, and the only other file of the merged tree that names the new
+script is `CLAUDE.md`. `cortex-merged-17ee69ce.sh` (output
+`cortex-merged-17ee69ce-output.txt`, 17:11:16 to 17:11:39 EST) repeats the
+TheCortex check on the new main, under the same guards:
+- the conflict is the same single hunk in `conftest.py`, and the union
+  resolution is byte-identical to the one tested on `b06ed4dc`;
+- the copy matches the merge-tree's tree except in `conftest.py` (2987 files
+  compared, no extra file), and differs from the `b06ed4dc` copy only in main's
+  three files;
+- the same 12 test files: 325 passed (`cortex-tests-merged-17ee69ce.txt`); the
+  run wrote no file in the copy, and nothing in
+  `/Volumes/Projects/maintenance-mode-worktrees` changed.
+
 ## Mutations (`mutations/`)
 
 Each mutation was applied in a scratch copy, never in a worktree, one at a time,
@@ -1029,9 +1235,9 @@ match exactly once.
   before the browser check.
 - `criterion-9-live-readback.txt`: the round-1 read-back (10:59 EST).
 - `criterion-9-final-readback.txt`, made by `criterion-9-readback.sh`: the
-  read-only read-back at the end of the task, 16:14:39 EST, after the last test
+  read-only read-back at the end of the task, 16:41:22 EST, after the last test
   run. Apart from its clock times it is line for line the same as the 13:00,
-  14:39, 14:51 and 15:52 read-backs before it.
+  14:39, 14:51, 15:52 and 16:14 read-backs before it.
   - The live `local_default` alias is still Gemma 4 31B QAT
     (`google/gemma-4-31b-qat`); the alias row was last updated 2026-06-03.
   - The live database has no `local_model_switches` table and no
@@ -1060,23 +1266,24 @@ match exactly once.
     their first findings heading.
 
 This task loaded no model, unloaded none, called no local chat model and
-restarted no service. Its only contact with LM Studio was nine listing requests
+restarted no service. Its only contact with LM Studio was ten listing requests
 (`GET /api/v1/models`), and a listing loads nothing:
 - 07:54 and 08:26 EST, to read the real listing's shape before writing the fake;
-- one in each read-back, at 11:00, 12:46, 13:00, 14:39, 14:51, 15:52 and 16:14
-  EST.
+- one in each read-back, at 11:00, 12:46, 13:00, 14:39, 14:51, 15:52, 16:14 and
+  16:41 EST.
 
 `criterion-9-lmstudio-contact.sh` (output `criterion-9-lmstudio-contact.txt`,
-16:14:45 EST, read-only) checks this from both sides, from this run's first
+17:02:36 EST, read-only) checks this from both sides, from this run's first
 start (21:39:35 EST on 2026-11-23) on:
-- LM Studio's own server log has ten `GET /api/v1/models` requests in that time.
-  Nine are the ones above, each within a second of the tool call that sent it.
-  The tenth, at 21:47:18 EST on 2026-11-23, came while this run's session was
-  idle (its longest pause, 21:40:38 to 07:42:09), so another client sent it.
+- LM Studio's own server log has eleven `GET /api/v1/models` requests in that
+  time. Ten are the ones above, each within a second of the tool call that sent
+  it. The eleventh, at 21:47:18 EST on 2026-11-23, came while this run's session
+  was idle (its longest pause, 21:40:38 to 07:42:09), so another client sent it.
   The six `GET /v1/models` requests fall in the same pause.
-- In the session transcript and its six subagents' transcripts, 9 Bash calls
-  send to LM Studio: the nine above. The 17 other Bash calls whose text names
-  port 1234 are search patterns and scans; the file lists each one.
+- In the session transcript and its six subagents' transcripts, 10 Bash calls
+  send to LM Studio: the ten above. The 20 other Bash calls whose text names
+  port 1234 (19 in the session, 1 in one subagent) are search patterns and
+  scans; the file lists each one.
 - The `GET /api/v0/models` polls and every `POST` (chat completions and
   embeddings) come from other clients. No Bash call of this run sends one, and
   its test runs could not reach port 1234 (next paragraph).
@@ -1084,8 +1291,11 @@ start (21:39:35 EST on 2026-11-23) on:
 In every test run the guards refused LM Studio's port, 1234: the network guard
 and the LM Studio guard in the Praxis and TheNexus runs, the live-port guard as
 well in round 4, and TheCortex's offline guards with every service URL on port
-1. The 153 guard logs in the scratch folder, scanned before it was deleted, show
-no request to port 1234 (`guards/guard-logs-scan.txt`).
+1. The 153 guard logs in the first scratch folder, scanned before it was
+deleted, and the 11 in the second show no request to port 1234
+(`guards/guard-logs-scan.txt`, `guards/guard-logs-scan-1bac2ea7.txt`). The fake
+`lms`, which those scans do not cover, refused only `lms ls --json` listing calls
+wherever its calls were printed (see "Final results on the branch heads").
 
 ## Failures that are not this task's
 
@@ -1191,10 +1401,21 @@ also fails on a plain copy of `519530a9`
 `519530a9` only. They passed in every later run, alone on both trees as well
 (see the merged section).
 
-On main `59cacac6` the 152 suites of the last merged check fail nine of these
-ten tests on the merged tree (`email_intake_runtime` passed in that run). The
-five suites behind the nine fail the same nine on plain `59cacac6`
+On main `59cacac6` the 152 suites of that merged check fail nine of these ten
+tests on the merged tree (`email_intake_runtime` passed in that run). The five
+suites behind the nine fail the same nine on plain `59cacac6`
 (`praxis-failing-suites-plain-main-59cacac6.txt`).
+
+On main `1bac2ea7`, merged with the conflicts resolved (see the merged section),
+the 179 suites fail ten tests: the nine of `59cacac6` and one new one,
+`run_model_dispatch_state` "a fresh task run and QA review run on claude-code
+and codex report their model in dispatch state". All ten fail the same way on
+plain `1bac2ea7`, which has none of the branch's changes
+(`praxis-failing-suites-plain-main-1bac2ea7.txt`). The new failure is the
+assertion at `tests/run_model_dispatch_state.test.ts:236`. The suite's stand-in
+CLIs record three launches, not four, and the missing one is the `codex` QA
+review with `gpt-5.6-sol` at `medium`. The suite passed in the round-4 full run
+on `4d076f91`.
 
 ## Round-1 records kept
 
@@ -1207,7 +1428,7 @@ five suites behind the nine fail the same nine on plain `59cacac6`
 
 `final-scans.sh` writes `encoding-and-dash-scans.txt` and
 `praxis-encoding-scan.txt`. At the end of the task:
-- UTF-8 (fatal decoder, BOM, U+FFFD): no problems in 290 TheNexus files (298
+- UTF-8 (fatal decoder, BOM, U+FFFD): no problems in 316 TheNexus files (324
   changed or added against `bd02642`, 8 PNGs skipped), 12 TheCortex files and 17
   Praxis files. Praxis's own `npm run check:encoding` passes on the same 17.
 - Em dashes in added lines: 0 in Praxis, 0 in TheCortex, 0 in the TheNexus code,
@@ -1216,4 +1437,16 @@ five suites behind the nine fail the same nine on plain `59cacac6`
 - The dashboard has no change since `e1bfcc97`.
 - The registered package: the three PNGs hash to the registered values, the
   folder has no uncommitted change, and it holds the three PNGs and
-  `local-model-control.design.json`.
+  `local-model-control.design.json`. The same readiness request as
+  `document-readiness-final.json`, made again at 17:01:47 EST
+  (`document-readiness-recheck.json`), reports revision `5a481277` ready, with
+  all three required screens servable and each screen's content hash equal to
+  the file's.
+
+## Last check of the mains
+
+At 17:13:38 EST the mains were TheNexus `2a7952fc` (since 15:51:16), Praxis
+`1bac2ea7` (since 16:22:26) and TheCortex `17ee69ce` (since 17:04:50), read
+from each shared checkout's reflog for `main` with `git --no-optional-locks`.
+The Praxis and TheCortex task worktrees were clean at `cad6afb2` and
+`e611edc`.

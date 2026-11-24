@@ -1,0 +1,79 @@
+# 2026-11-24 16:40:09 EST, read-only
+
+== Praxis src/llm/local-lane-policy.ts (main 1bac2ea7, branch cad6afb2)
+--- src/llm/local-lane-policy.ts with conflict markers
++++ src/llm/local-lane-policy.ts resolved
+@@ -843,15 +843,11 @@
+   rerouteTotal = 0;
+   standingUses.clear();
+   inFlight = 0;
+-<<<<<<< main
+   operatorGrantsOpen = 0;
+   operatorGrantListeners.clear();
+   admissions.clear();
+   graphHoldReading = null;
+-||||||| base
+-=======
+   runningJobs.clear();
+->>>>>>> branch
+   warnedInvalidWindow = null;
+   warnedInvalidMode = null;
+   notedTestRunDefault = false;
+
+== Praxis src/llm/manager.ts (main 1bac2ea7, branch cad6afb2)
+--- src/llm/manager.ts with conflict markers
++++ src/llm/manager.ts resolved
+@@ -30,24 +30,16 @@
+   currentLocalLaneGrant,
+   evaluateLocalLane,
+   hasStandingLocalLaneGrant,
+-<<<<<<< main
+   isLocalLaneHoldCaller,
+-||||||| base
+-=======
+   insideCountedLocalCall,
+->>>>>>> branch
+   isSonnetOnlyCaller,
+   localLaneFallbackChain,
+   localLaneFallbackOrder,
+   localLaneSonnetChainSpec,
+   localLaneSonnetSeatSpec,
+   noteLocalLaneReroute,
+-<<<<<<< main
+   runHeldLocalLaneCall,
+-||||||| base
+-=======
+   trackLocalCall,
+->>>>>>> branch
+   trackedLocalProvider,
+   withLocalLaneGrant,
+   withStandingLocalLaneGrant,
+
+== TheCortex TheCortex/conftest.py (main b06ed4dc, branch e611edc)
+--- TheCortex/conftest.py with conflict markers
++++ TheCortex/conftest.py resolved
+@@ -15,14 +15,9 @@
+ import sys
+ from pathlib import Path
+ 
+-<<<<<<< main
+ import pytest
+ 
+-||||||| base
+-=======
+-import pytest
+ 
+-
+ def _nexus_not_read_in_unit_tests(url, timeout):
+     raise ConnectionError("unit tests do not read the live Nexus local-model setting")
+ 
+@@ -46,7 +41,6 @@
+     local_model._fallback_reported.clear()
+ 
+ 
+->>>>>>> branch
+ _PACKAGE_ROOT = Path(__file__).resolve().parent / "python"
+ if str(_PACKAGE_ROOT) not in sys.path:
+     sys.path.insert(0, str(_PACKAGE_ROOT))
+
+# done

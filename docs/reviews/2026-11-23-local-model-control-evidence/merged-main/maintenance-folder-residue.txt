@@ -1,0 +1,8 @@
+# 2026-11-24 16:34:33 EST
+/Volumes/Projects/maintenance-mode-worktrees/review-regressions-4K2BvL  born 2026-11-24 16:32:20  modified 2026-11-24 16:32:20  size 128
+/Volumes/Projects/maintenance-mode-worktrees/review-regressions-4K2BvL/leases  born 2026-11-24 16:32:20  modified 2026-11-24 16:32:20  size 64
+/Volumes/Projects/maintenance-mode-worktrees/review-regressions-4K2BvL/logs  born 2026-11-24 16:32:20  modified 2026-11-24 16:32:20  size 64
+entries inside other than these two folders: 0
+removed with rmdir
+ls: /Volumes/Projects/maintenance-mode-worktrees/review-regressions-4K2BvL: No such file or directory
+entries in /Volumes/Projects/maintenance-mode-worktrees changed since 16:31:00, other than the folder itself: 0

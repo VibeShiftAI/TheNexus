@@ -1,8 +1,8 @@
-# Final encoding and em-dash scans, 2026-11-24 16:23 EST, read-only (made by final-scans.sh)
+# Final encoding and em-dash scans, 2026-11-24 17:13 EST, read-only (made by final-scans.sh)
 
-## TheNexus 1d74cad1 plus working tree, every file changed against bd02642895fe6a914fe04e45af35bee773f3453e, and untracked files
-files: 298 (8 PNG skipped)
-scanned 290 files, problems 0
+## TheNexus 6c3e913f plus working tree, every file changed against bd02642895fe6a914fe04e45af35bee773f3453e, and untracked files
+files: 324 (8 PNG skipped)
+scanned 316 files, problems 0
 
 ## TheCortex e611edc, every file changed against 5fdb76a
 files: 12; working tree status: 0 changed files
@@ -87,8 +87,10 @@ TheCortex (5fdb76a..HEAD): 0
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/praxis-voice-deadline-rerun.txt 3
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/praxis-wider-tests-before-fixture-fix.txt 417
   verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/praxis-wider-tests.txt 419
+  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-plain-main-1bac2ea7.txt 294
+  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/suite-hazard-scan-1bac2ea7.txt 3
 TheNexus code, docs and scripts this task wrote: 0
-TheNexus verbatim outputs in the evidence folder (products' own wording): 6686
+TheNexus verbatim outputs in the evidence folder (products' own wording): 6983
 
 ## The dashboard since the round-1 evidence commit e1bfcc97 (working tree included)
 dashboard files changed: 0

@@ -1,0 +1,129 @@
+# 2026-11-24 16:36:49 EST
+== Praxis: main pinned at 1bac2ea7901c8203a1ba271b555fbc3c2a1d8d7d, branch cad6afb21630194fb87e7794eafe04b136b6fa1d, base 1fcf4b59
+main now: 1bac2ea7; merge-base of the pinned main and the branch: 1fcf4b59
+files main changed since 59cacac6: 16; of them changed by the branch too: src/index.ts src/llm/local-lane-policy.ts src/llm/manager.ts src/nexus/client.ts tests/webhook_routes_inventory.test.ts 
+merge-tree exit 1 (0 = merges without conflict, 1 = conflicts); tree 63d20e5e3d0832545b97898a4d5f4c9f3e4f0d5f
+CONFLICT (content): Merge conflict in src/llm/local-lane-policy.ts
+CONFLICT (content): Merge conflict in src/llm/manager.ts
+-- src/llm/local-lane-policy.ts: 1 conflict hunk(s), as git merge-file --diff3 shows them:
+   (line 846)
+   <<<<<<< main
+     operatorGrantsOpen = 0;
+     operatorGrantListeners.clear();
+     admissions.clear();
+     graphHoldReading = null;
+   ||||||| base
+   =======
+     runningJobs.clear();
+   >>>>>>> branch
+   resolved with git merge-file --union. Against the marked file the resolution removes 4 line(s), 0 of them not a marker line, and adds 0
+-- src/llm/manager.ts: 2 conflict hunk(s), as git merge-file --diff3 shows them:
+   (line 33)
+   <<<<<<< main
+     isLocalLaneHoldCaller,
+   ||||||| base
+   =======
+     insideCountedLocalCall,
+   >>>>>>> branch
+   (line 45)
+   <<<<<<< main
+     runHeldLocalLaneCall,
+   ||||||| base
+   =======
+     trackLocalCall,
+   >>>>>>> branch
+   resolved with git merge-file --union. Against the marked file the resolution removes 8 line(s), 0 of them not a marker line, and adds 0
+merged-praxis11 against the merge-tree's tree: 6773 files compared; differing: src/llm/local-lane-policy.ts src/llm/manager.ts ; extra files in the copy: 0
+tsc on the resolved merged tree: exit 0 (0 errors)
+suites that make their data folder under /Volumes, left out: maintenance_batches maintenance_intake maintenance_policy maintenance_policy_router maintenance_reports maintenance_review_regressions 
+source modules main changed since 59cacac6: cortex/cortex-tools index llm/graph-episode-hold llm/local-lane-policy llm/manager llm/roles maintenance/fleet-preflight nexus/client routes/chat routes/dispatch
+suites main changed since 59cacac6: graph_episode_hold llm_gateway_graph_hold local_lane_manager_reroute local_lane_policy webhook_routes_inventory 
+suites importing one of those modules: 140
+suites on the merged tree: 179 (not on the merged tree: none; selected but left out for their /Volumes data folder: maintenance_review_regressions); added to the 152: graph_episode_hold llm_gateway_graph_hold alert_ledger approval_dispatch_stages automatic_start_auth automatic_start_corruption chat_follow_up_bridge chat_route_reliability cli_gate_watchdog conversation_history council_auth_recovery display_chat_route document_delivery_chat_failure document_revision_chat eval_availability fleet_degraded_mode fleet_preflight graph_health_read_availability hosted_credit knowledge_council lane_credit long_task_activity operator_restart_chat_turn run_model_dispatch_state service_restore slot_numbering verified_background_recovery 
+nexus-for-merged-praxis11: TheNexus 2a7952fc plus the branch diff bd02642..6e14bc87, 3936 files, nexus.db files: 0
+ℹ tests 2574 ℹ pass 2555 ℹ fail 10 ℹ cancelled 0 exit 1 
+✖ 3: callback records execution-scoped usage already captured from the native CLI stream
+✖ 3c: a reviewer that died with the daemon is retried on a different executor with NO strike
+✖ 5: real registry recovery reads full completed findings instead of the truncated preview
+✖ B′: after a restart, the reviewer's callback with the RIGHT qaReviewId is 200 and finalizes
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ a fresh task run and QA review run on claude-code and codex report their model in dispatch state
+✖ accepted pass survives a failed finalization and periodic recovery retries completion only
+✖ real Antigravity completion reaches the shared audit and retains findings with explicit unsupported evidence
+✖ the page connection refuses mixed public/private DNS answers and literal private addresses
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+guards: lmstudio=2 net=6 live-port=1 cli-shims=9
+files written under nexus-for-merged-praxis11 during the run (node_modules left out): 0
+nexus.db files there: 0
+suites with failures on the resolved merged tree: alert_investigation code_freshness_recovery qa_state_persistence research_web_retrieval run_model_dispatch_state webhook_routes_inventory 
+plain-praxis-main11 against 1bac2ea7901c8203a1ba271b555fbc3c2a1d8d7d: 6769 files compared; differing: 0
+nexus-for-plain-praxis11: TheNexus 2a7952fc, 3824 files, nexus.db files: 0
+== the same suites on plain main 1bac2ea7901c8203a1ba271b555fbc3c2a1d8d7d
+ℹ tests 212 ℹ pass 202 ℹ fail 10 ℹ cancelled 0 exit 1 
+✖ 3: callback records execution-scoped usage already captured from the native CLI stream
+✖ 3c: a reviewer that died with the daemon is retried on a different executor with NO strike
+✖ 5: real registry recovery reads full completed findings instead of the truncated preview
+✖ B′: after a restart, the reviewer's callback with the RIGHT qaReviewId is 200 and finalizes
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ a fresh task run and QA review run on claude-code and codex report their model in dispatch state
+✖ accepted pass survives a failed finalization and periodic recovery retries completion only
+✖ real Antigravity completion reaches the shared audit and retains findings with explicit unsupported evidence
+✖ the page connection refuses mixed public/private DNS answers and literal private addresses
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+guards: lmstudio=1 net=0 live-port=1 cli-shims=0
+files written under nexus-for-plain-praxis11 during the run (node_modules left out): 0
+nexus.db files there: 0
+entries in /Volumes/Projects/maintenance-mode-worktrees changed since this script started: 0
+== TheCortex: main pinned at b06ed4dc166c97263d38804a051b506f87e58b85, branch e611edcac605109955c9b936e9a25233c075ef20, base 5fdb76a
+main now: b06ed4dc; merge-base of the pinned main and the branch: 5fdb76a2
+files main changed since 3617672: 12; of them changed by the branch too: TheCortex/conftest.py TheCortex/python/cortex/config.py TheCortex/python/cortex/memory/client.py 
+merge-tree exit 1 (0 = merges without conflict, 1 = conflicts); tree 3770cf859d22de12ef9c2fb51e62271491557d81
+CONFLICT (content): Merge conflict in TheCortex/conftest.py
+-- TheCortex/conftest.py: 1 conflict hunk(s), as git merge-file --diff3 shows them:
+   (line 18)
+   <<<<<<< main
+   import pytest
+   
+   ||||||| base
+   =======
+   import pytest
+   
+   
+   def _nexus_not_read_in_unit_tests(url, timeout):
+       raise ConnectionError("unit tests do not read the live Nexus local-model setting")
+   
+   
+   @pytest.fixture(autouse=True)
+   def local_model_setting_offline(monkeypatch):
+       """Keep every test off the live Nexus local-model setting.
+   
+       cortex.local_model asks Nexus which local model is in effect; a test that
+       reached the live API would depend on whatever Robert chose. With this, the
+       callers take their fallback; tests of the setting itself swap in their own
+       fake reader. cortex is imported only when a test runs, by which time the
+       package root below is on sys.path.
+       """
+       import cortex.local_model as local_model
+   
+       monkeypatch.setattr(local_model, "_fetch", _nexus_not_read_in_unit_tests)
+       monkeypatch.setattr(local_model, "_last_answer", None)
+       local_model._fallback_reported.clear()
+       yield
+       local_model._fallback_reported.clear()
+   
+   
+   >>>>>>> branch
+   resolved with git merge-file --union. Against the marked file the resolution removes 6 line(s), 2 of them not a marker line, and adds 0
+merged-cortex6 against the merge-tree's tree: 2986 files compared; differing: TheCortex/conftest.py ; extra files in the copy: 0
+conftest.py on the resolved tree (pytest import, the store guard and both autouse fixtures):
+18:import pytest
+26:def local_model_setting_offline(monkeypatch):
+50:cortex_test_guard.install()
+66:def graph_episode_hold_per_test(tmp_path_factory, monkeypatch):
+  /Volumes/Projects/TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+325 passed, 1 warning in 4.40s
+exit=0
+TheCortex files with failures on the resolved merged tree:  
+entries in /Volumes/Projects/maintenance-mode-worktrees changed since this script started: 0
+# 2026-11-24 16:39:16 EST
+== done
