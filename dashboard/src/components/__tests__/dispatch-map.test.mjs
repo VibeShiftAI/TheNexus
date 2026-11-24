@@ -230,8 +230,19 @@ test('a council seat keeps its meaning on the logo node: a corner mark, and the 
   await mounted({council: {phase: 'deliberation', topic: 'Seat check', voices: [{name: 'cli:codex', status: 'running'}]}}, container => {
     const button = container.querySelector('[data-provider="codex"] .dispatch-provider-button');
     assert.ok(button.querySelector('.dispatch-seat svg'));
+    assert.equal(button.querySelector('.dispatch-seat').dataset.council, 'deliberating');
     assert.match(button.getAttribute('title'), /; council deliberating\. /);
     assert.equal(container.querySelector('[data-provider="claude-code"] .dispatch-seat').children.length, 0);
+    assert.equal(container.querySelector('[data-provider="claude-code"] .dispatch-seat').dataset.council ?? null, null);
+  });
+  // Each caption state keeps its own mark: the verdict writer a gavel, a seat that has reported its own colour.
+  await mounted({council: {phase: 'deliberation', voices: [{name: 'cli:codex', status: 'success'}, {name: 'cli:claude-code (aggregator)', status: 'running'}]}}, container => {
+    const seat = id => container.querySelector(`[data-provider="${id}"] .dispatch-seat`);
+    assert.equal(seat('codex').dataset.council, 'reported');
+    assert.match(container.querySelector('[data-provider="codex"] .dispatch-provider-button').getAttribute('title'), /; council reported\. /);
+    assert.equal(seat('claude-code').dataset.council, 'writer');
+    assert.match(container.querySelector('[data-provider="claude-code"] .dispatch-provider-button').getAttribute('title'), /; council verdict writer\. /);
+    assert.notEqual(seat('claude-code').innerHTML, seat('codex').innerHTML, 'the writer draws a different glyph');
   });
 });
 

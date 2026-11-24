@@ -40,7 +40,8 @@
  *             requested one.
  *   overflow  23 runs (14 on one provider), a sitting council, three queued
  *             tasks: more than fits one row.
- *   trouble   two runs on Claude Code, Codex suspended by the fleet posture,
+ *   trouble   two runs on Claude Code, Codex suspended by the fleet posture
+ *             while it still holds one run (busy and in trouble at once),
  *             Antigravity's last run failed a moment ago.
  *   delayed   the stand-in answers dispatch state with 503: every executor's
  *             signal is delayed.
@@ -139,7 +140,8 @@ const SCENARIOS = {
     },
   },
   trouble: {
-    runs: [BUSY_RUNS[0], BUSY_RUNS[2]], queue: [], council: null, suspended: ["codex"],
+    // Codex is suspended while it still holds a run: busy and in trouble at once.
+    runs: [BUSY_RUNS[0], BUSY_RUNS[2], BUSY_RUNS[3]], queue: [], council: null, suspended: ["codex"],
     // Ended a moment before each request: the station counts a result as recent for 60 s (dispatch-station.tsx).
     ended: () => [run("fx-failed-run", "antigravity", "Audit the landing page on a phone", 9, { status: "failed", phase: "failed", model: "gemini-4-argon", updatedAt: new Date(Date.now() - 2_000).toISOString(), lastActivityAt: new Date(Date.now() - 2_000).toISOString() })],
   },
@@ -371,7 +373,7 @@ const READ_MAP = `(() => {
         // Visible text other than the logo itself (OpenRouter and unknown workers draw a glyph as their logo).
         buttonText: button ? button.innerText.replace(el.querySelector('.dispatch-logo-glyph')?.innerText ?? '', '').trim() : null, glyph: text(el, '.dispatch-logo-glyph'), aria: button?.getAttribute('aria-label') ?? null, title: button?.getAttribute('title') ?? null,
         button: button ? rect(button) : null, logo: logo ? rect(logo) : null,
-        ring: lcs ? { width: lcs.borderTopWidth, style: lcs.borderTopStyle, color: lcs.borderTopColor } : null,
+        ring: lcs ? { width: lcs.borderTopWidth, style: lcs.borderTopStyle, color: lcs.borderTopColor, glow: lcs.boxShadow } : null,
         badge: badge ? { trouble: badge.dataset.trouble, box: rect(badge), background: getComputedStyle(badge).backgroundColor, visible: getComputedStyle(badge).visibility === 'visible' && getComputedStyle(badge).display !== 'none' } : null,
         wireEnds: wires.map((p) => ({ wire: p.dataset.wire, ends: ends(p) })),
       };
@@ -404,7 +406,8 @@ for (const vp of VIEWPORTS) {
     // delayed scenario: the map is up and reports the signal as not live).
     const wires = `document.querySelectorAll('.dispatch-wires path[data-wire="spoke"]').length > 0`;
     const ready = await until(expected.unavailable
-      ? `document.querySelector('.dispatch-map')?.dataset.live === 'false' && /Signal delayed/.test(document.querySelector('.dispatch-map').innerText) && ${wires}`
+      // The old tree (before mode) has no trouble marks; there every pod read "Signal delayed".
+      ? `document.querySelector('.dispatch-map')?.dataset.live === 'false' && [...document.querySelectorAll('[data-provider]')].length > 0 && [...document.querySelectorAll('[data-provider]')].every((p) => ${AFTER ? `p.dataset.trouble === 'delayed'` : `/Signal delayed/i.test(p.innerText)`}) && ${wires}`
       : `document.querySelector('.dispatch-map')?.dataset.live === 'true' && document.querySelector('.dispatch-map').dataset.runs === '${want}' && ${wires}${expected.ended ? ` && /Run failed/.test(document.querySelector('[data-provider="antigravity"] .dispatch-provider-button')?.getAttribute('aria-label') + document.querySelector('[data-provider="antigravity"]')?.innerText)` : ""}`);
     await evalJs("document.fonts.ready.then(() => true)");
     await painted();
@@ -437,7 +440,9 @@ for (const vp of VIEWPORTS) {
     const wantTrouble = expected.unavailable ? Object.fromEntries(map.providers.map((p) => [p.id, "delayed"])) : { ...Object.fromEntries((expected.suspended ?? []).map((id) => [id, "suspended"])), ...(expected.ended ? { antigravity: "failed" } : {}) };
     // Ring colours from globals.css: failed #fb7185, suspended #fbbf24, delayed #94a3b8 (dashed).
     const RING = { failed: "rgb(251, 113, 133)", suspended: "rgb(251, 191, 36)", delayed: "rgb(148, 163, 184)" };
-    const troubleWrong = map.providers.filter((p) => (wantTrouble[p.id] ?? null) !== p.trouble || (p.trouble ? !p.badge?.visible || p.badge.trouble !== p.trouble || p.badge.box.width < 10 || p.ring?.width !== "2px" || p.ring.color !== RING[p.trouble] || (p.trouble === "delayed") !== (p.ring.style === "dashed") : p.badge !== null || p.ring?.width !== "1px"));
+    // The glow is the trouble's colour even while the executor is busy (failed and suspended; delayed has none).
+    const glowWrong = (p) => p.trouble === "delayed" ? p.ring.glow !== "none" : !p.ring.glow.includes(RING[p.trouble].slice(4, -1));
+    const troubleWrong = map.providers.filter((p) => (wantTrouble[p.id] ?? null) !== p.trouble || (p.trouble ? !p.badge?.visible || p.badge.trouble !== p.trouble || p.badge.box.width < 10 || p.ring?.width !== "2px" || p.ring.color !== RING[p.trouble] || (p.trouble === "delayed") !== (p.ring.style === "dashed") || glowWrong(p) : p.badge !== null || p.ring?.width !== "1px"));
     check(troubleWrong.length === 0, `${tag}: failed, suspended and delayed executors are marked on the logo (ring and badge), healthy ones are not`, troubleWrong.map((p) => `${p.id}=${p.trouble}`).join(", ") || map.providers.map((p) => `${p.id}:${p.trouble ?? "ok"}${p.ring ? ` ${p.ring.width} ${p.ring.style} ${p.ring.color}` : ""}`).join(" | "));
     if (expected.unavailable) continue;
 

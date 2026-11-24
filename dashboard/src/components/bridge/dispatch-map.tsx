@@ -49,6 +49,8 @@ const WIRE_BEND_PX = 6;
  */
 type ProviderTrouble = "failed" | "suspended" | "delayed";
 const TROUBLE_ICON: Record<ProviderTrouble, typeof X> = { failed: X, suspended: Pause, delayed: Clock };
+/** The council seat's state on the logo's corner mark (globals.css, .dispatch-seat[data-council]). */
+const COUNCIL_MARK: Record<string, string> = { "verdict writer": "writer", deliberating: "deliberating", reported: "reported", "council seat": "seat" };
 
 export interface DispatchMapProps {
   view: CliLaneView;
@@ -250,7 +252,7 @@ export function DispatchMap({ view, available, activeItems, recentItems, council
                 {providerLogo(n.id) ? <ProviderLogo provider={n.id} size={LOGO_PX} /> : <span className="dispatch-logo-glyph" aria-hidden="true">{n.mark}</span>}
                 {TroubleIcon && <span className="dispatch-logo-badge" data-trouble={n.trouble} aria-hidden="true"><TroubleIcon size={8} strokeWidth={3} /></span>}
                 {/* The council seat caption became this corner mark: it costs no height, and its words are in the button's label and title. */}
-                <span className="dispatch-seat" aria-hidden="true">{councilLabel && <Landmark size={8} />}</span>
+                <span className="dispatch-seat" data-council={councilLabel ? COUNCIL_MARK[councilLabel] : undefined} aria-hidden="true">{councilLabel && (councilLabel === "verdict writer" ? <Gavel size={8} /> : <Landmark size={8} />)}</span>
               </span>
             </button>
             {arbiter && onSetArbiter && (n.id === "codex" || n.id === "claude-code") && <button type="button" className="dispatch-arbiter" data-selected={pin || next} aria-pressed={pin} aria-label={pin ? `Release ${n.label} arbiter pin` : `Pin ${n.label} as council arbiter`} title={pin ? "Pinned verdict writer · click for auto rotation" : next ? "Next verdict writer · click to pin" : "Pin as verdict writer"} onClick={() => onSetArbiter(seatId)}><Gavel size={11} /></button>}

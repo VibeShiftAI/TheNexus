@@ -483,10 +483,11 @@ html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-be
 .dispatch-provider[data-active=true] .dispatch-logo { box-shadow: 0 0 12px color-mix(in srgb, var(--module-color) 50%, transparent); }
 /* Trouble without words: a heavier ring in the trouble's colour and a corner
    badge with its own glyph (failed X, suspended pause, signal delayed clock). */
-.dispatch-logo[data-trouble] { border-width: 2px; }
-.dispatch-logo[data-trouble=failed] { border-color: #fb7185; box-shadow: 0 0 10px #fb718560; }
-.dispatch-logo[data-trouble=suspended] { border-color: #fbbf24; box-shadow: 0 0 10px #fbbf2450; }
-.dispatch-logo[data-trouble=delayed] { border-style: dashed; border-color: #94a3b8; }
+/* Qualified by .dispatch-provider so a busy executor in trouble keeps the trouble glow over the active one. */
+.dispatch-provider .dispatch-logo[data-trouble] { border-width: 2px; }
+.dispatch-provider .dispatch-logo[data-trouble=failed] { border-color: #fb7185; box-shadow: 0 0 10px #fb718560; }
+.dispatch-provider .dispatch-logo[data-trouble=suspended] { border-color: #fbbf24; box-shadow: 0 0 10px #fbbf2450; }
+.dispatch-provider .dispatch-logo[data-trouble=delayed] { border-style: dashed; border-color: #94a3b8; box-shadow: none; }
 .dispatch-logo[data-trouble=delayed] > :not(.dispatch-logo-badge):not(.dispatch-seat) { opacity: .45; filter: grayscale(1); }
 .dispatch-logo-badge { position: absolute; top: -4px; right: -5px; display: grid; place-items: center; width: 13px; height: 13px; border-radius: 50%; border: 1px solid #020617; color: #020617; }
 .dispatch-logo-badge[data-trouble=failed] { background: #fb7185; }
@@ -494,7 +495,12 @@ html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-be
 .dispatch-logo-badge[data-trouble=delayed] { background: #94a3b8; }
 /* The council seat caption is now a mark on the logo's lower corner; its words are in the button's label and title. */
 .dispatch-seat { position: absolute; bottom: -4px; left: -5px; display: grid; place-items: center; color: #fbbf24; }
-.dispatch-seat:not(:empty) { width: 13px; height: 13px; border-radius: 50%; border: 1px solid #fbbf2470; background: #07101c; }
+.dispatch-seat:not(:empty) { width: 13px; height: 13px; border-radius: 50%; border: 1px solid currentColor; background: #07101c; }
+/* The seat's state, as the old caption said it: verdict writer (gavel), deliberating (breathing), reported (green), sitting. Colours follow .dispatch-voice. */
+.dispatch-seat[data-council=deliberating] { color: #fcd34d; animation: module-breathe 2s infinite; }
+.dispatch-seat[data-council=reported] { color: #6ee7b7; }
+.dispatch-seat[data-council=seat] { color: #94a3b8; }
+@media (prefers-reduced-motion: reduce) { .dispatch-seat { animation: none !important; } }
 .dispatch-logo-mark { display: block; }
 .dispatch-logo-mask { background: currentColor; }
 .dispatch-logo-glyph { font-size: 14px; line-height: 1; color: var(--module-color); }
