@@ -387,9 +387,6 @@ html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-be
 .dispatch-provider-button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; min-height: 96px; padding: 5px 1px; border-radius: 10px; transition: background .3s; }
 .dispatch-provider-button:hover { background: #1e293b65; }
 .dispatch-provider-button:focus-visible, .dispatch-hub:focus-visible, .dispatch-local:focus-visible, .dispatch-council:focus-visible, .dispatch-arbiter:focus-visible { outline: 2px solid #67e8f9; outline-offset: 3px; }
-.dispatch-provider-label { color: #cbd5e1; font-size: 11px; font-weight: 600; white-space: nowrap; }
-.dispatch-phase { color: var(--module-color); font-size: 10px; line-height: 1.4; text-transform: capitalize; }
-.dispatch-seat { display: flex; align-items: center; gap: 3px; color: #fbbf24; font-size: 9px; }
 .dispatch-arbiter { position: absolute; top: 6px; right: 14%; color: #475569; border: 1px solid #33415580; border-radius: 50%; padding: 4px; background: #07101c; }
 .dispatch-arbiter[data-selected=true] { color: #fbbf24; border-color: #fbbf2460; }
 .dispatch-hub { grid-area: hub; position: relative; align-self: center; width: 100%; max-width: 190px; justify-self: center; aspect-ratio: 160/180; border-radius: 50%; color: var(--module-color); }
@@ -425,8 +422,6 @@ html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-be
 .task-phase-signal[data-active=true] i { animation-name: module-breathe; animation-duration: 1.8s; animation-iteration-count: infinite; }
 @media (prefers-reduced-motion: reduce) { .task-phase-signal i { animation: none !important; } }
 .dispatch-council { align-self: center; }
-.dispatch-provider-label { font-size: 12px; }
-.dispatch-phase { font-size: 11px; }
 .dispatch-voice { font-size: 10px; }
 
 /* Station geometry belongs to the layout, never to the live status text. */
@@ -437,9 +432,6 @@ html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-be
 .dispatch-voices { height: 54px; min-height: 54px; margin: 6px 0 4px; align-content: start; overflow-y: auto; scrollbar-gutter: stable; }
 .dispatch-voice { max-width: 170px; min-width: 0; height: 21px; flex-shrink: 0; }
 .dispatch-voice > span:last-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.dispatch-provider-button { height: 108px; min-height: 0; gap: 1px; padding: 2px 1px; }
-.dispatch-provider-label, .dispatch-phase { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dispatch-seat { height: 12px; line-height: 12px; max-width: 100%; overflow: hidden; white-space: nowrap; }
 .dispatch-local { height: 31px; align-self: center; max-width: 100%; white-space: nowrap; }
 .dispatch-queue { height: 58px; min-height: 0; margin-top: 0; padding-top: 6px; align-content: start; overflow-y: auto; scrollbar-gutter: stable; }
 .dispatch-queue > span { padding: 3px 5px; }
@@ -480,9 +472,29 @@ html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-be
 /* The queue grows with the map now, so its rows are all on the page instead of inside a 58px scroller. */
 .dispatch-queue { height: auto; min-height: 58px; overflow: visible; }
 .dispatch-provider { align-self: auto; }
-.dispatch-provider-button { height: auto; min-height: 72px; }
-.dispatch-logo { display: grid; place-items: center; width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--module-color) 55%, #1e293b); background: #07101c; color: #e2e8f0; transition: box-shadow .3s, border-color .3s; }
+/* Compact executor node (task 52b5db3d, 2026-11-24): the logo alone, no name
+   or status line, so the hub wire and the run branches pass straight through
+   it. The row is the 30px logo plus 4px above and below for the hover plate
+   and focus ring; the verdict-writer pin sits on the same line. */
+.dispatch-provider { --dispatch-logo-row: 38px; }
+.dispatch-provider-button { justify-content: center; height: var(--dispatch-logo-row); min-height: 0; padding: 4px 1px; }
+.dispatch-arbiter { top: calc(var(--dispatch-logo-row) / 2); transform: translateY(-50%); }
+.dispatch-logo { position: relative; display: grid; place-items: center; width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--module-color) 55%, #1e293b); background: #07101c; color: #e2e8f0; transition: box-shadow .3s, border-color .3s; }
 .dispatch-provider[data-active=true] .dispatch-logo { box-shadow: 0 0 12px color-mix(in srgb, var(--module-color) 50%, transparent); }
+/* Trouble without words: a heavier ring in the trouble's colour and a corner
+   badge with its own glyph (failed X, suspended pause, signal delayed clock). */
+.dispatch-logo[data-trouble] { border-width: 2px; }
+.dispatch-logo[data-trouble=failed] { border-color: #fb7185; box-shadow: 0 0 10px #fb718560; }
+.dispatch-logo[data-trouble=suspended] { border-color: #fbbf24; box-shadow: 0 0 10px #fbbf2450; }
+.dispatch-logo[data-trouble=delayed] { border-style: dashed; border-color: #94a3b8; }
+.dispatch-logo[data-trouble=delayed] > :not(.dispatch-logo-badge):not(.dispatch-seat) { opacity: .45; filter: grayscale(1); }
+.dispatch-logo-badge { position: absolute; top: -4px; right: -5px; display: grid; place-items: center; width: 13px; height: 13px; border-radius: 50%; border: 1px solid #020617; color: #020617; }
+.dispatch-logo-badge[data-trouble=failed] { background: #fb7185; }
+.dispatch-logo-badge[data-trouble=suspended] { background: #fbbf24; }
+.dispatch-logo-badge[data-trouble=delayed] { background: #94a3b8; }
+/* The council seat caption is now a mark on the logo's lower corner; its words are in the button's label and title. */
+.dispatch-seat { position: absolute; bottom: -4px; left: -5px; display: grid; place-items: center; color: #fbbf24; }
+.dispatch-seat:not(:empty) { width: 13px; height: 13px; border-radius: 50%; border: 1px solid #fbbf2470; background: #07101c; }
 .dispatch-logo-mark { display: block; }
 .dispatch-logo-mask { background: currentColor; }
 .dispatch-logo-glyph { font-size: 14px; line-height: 1; color: var(--module-color); }
@@ -491,15 +503,16 @@ html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-be
 /* The gutter on the column's outer edge is where the trunk wire runs. */
 .dispatch-provider[data-side=left] .dispatch-runs { padding-left: 12px; }
 .dispatch-provider[data-side=right] .dispatch-runs { padding-right: 12px; }
-.dispatch-run { display: grid; gap: 2px; width: 100%; min-width: 0; padding: 4px 6px; text-align: left; border-radius: 7px; border: 1px solid color-mix(in srgb, var(--module-color) 38%, #1e293b); background: #07101ce6; transition: background .2s; }
+/* A run node is one wrapping row: slot tag (or role stand-in), model, effort,
+   role, phase, elapsed. No title line (task 52b5db3d); the title is on hover. */
+.dispatch-run { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; color: #94a3b8; font-size: 10px; line-height: 1.4; width: 100%; min-width: 0; padding: 4px 6px; text-align: left; border-radius: 7px; border: 1px solid color-mix(in srgb, var(--module-color) 38%, #1e293b); background: #07101ce6; transition: background .2s; }
 .dispatch-provider[data-side=left] .dispatch-run { border-left: 2px solid var(--module-color); }
 .dispatch-provider[data-side=right] .dispatch-run { border-right: 2px solid var(--module-color); }
 .dispatch-run:hover { background: #1e293b; }
 .dispatch-run:focus-visible { outline: 2px solid #67e8f9; outline-offset: 2px; }
-.dispatch-run-head { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
 .dispatch-run-slot { flex-shrink: 0; padding: 0 4px; border-radius: 3px; font-size: 10px; font-weight: 700; line-height: 1.5; font-variant-numeric: tabular-nums; color: var(--module-color, #67e8f9); background: color-mix(in srgb, var(--module-color, #67e8f9) 18%, transparent); }
-.dispatch-run-title { min-width: 0; overflow-wrap: anywhere; color: #e2e8f0; font-size: 11px; line-height: 1.3; }
-.dispatch-run-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; color: #94a3b8; font-size: 10px; line-height: 1.4; }
+/* Stand-in for a run with no slot: its role word, outlined so it never reads as a slot number. */
+.dispatch-run-standin { flex-shrink: 0; padding: 0 4px; border-radius: 3px; border: 1px solid color-mix(in srgb, var(--module-color) 50%, transparent); font-size: 10px; font-weight: 600; line-height: 1.4; }
 .dispatch-run-model { color: #cbd5e1; font-weight: 600; }
 .dispatch-run-model[data-known=false] { color: #fbbf24; font-weight: 400; font-style: italic; }
 .dispatch-run-role { color: var(--module-color); }
@@ -508,13 +521,12 @@ html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-be
 /* Narrow station (a phone, or the 2-up row on a small desktop): the columns
    stack under the hub so a run node keeps the full width. 400px is where the
    side columns of the three-column grid fall under 125px (400 * 1.1 / 3.2 less
-   the trunk gutter), too narrow for a title beside a model name. */
+   the trunk gutter), too narrow for a run's model, role and phase to share a line. */
 @container dispatch-map (max-width: 399px) {
   .dispatch-map { grid-template-columns: minmax(0,1fr); grid-template-areas: 'council' 'hub' 'left' 'right' 'local' 'queue'; grid-template-rows: 100px auto auto auto 36px minmax(58px, auto); }
   .dispatch-hub { max-width: 170px; }
   .dispatch-column { padding-bottom: 0; margin-top: 10px; }
-  /* Stacked, the hub wire runs straight down through every provider: the name and tally sit on a plate so the wire passes behind them. */
-  .dispatch-provider-label, .dispatch-phase, .dispatch-seat:not(:empty) { padding: 0 8px; border-radius: 6px; background: #060c18; }
+  /* Stacked, the hub wire runs straight down through every provider's logo; the node has no text for it to cross. */
 }
 
 /* Mermaid diagrams drawn from ```mermaid fences in the document reader
