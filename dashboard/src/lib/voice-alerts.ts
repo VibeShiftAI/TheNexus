@@ -53,7 +53,7 @@ export function alertFacts(e: StreamEvent, titleFor: (id: string) => string | un
       return { ...task, ...(e.title ? { title: e.title.slice(0, 500) } : {}), status: 'qa_passed', reviewer: e.reviewer,
         enhancements, enhancementsAbridged: original.length > 3 || original.some(s => s.text.length > 1800),
         reviewerNoneOffered: e.reviewerNoneOffered === true,
-        enhancementStatus: 'Optional QA suggestions; not established as implemented. Mention what QA found. If abridged, full details are in chat. Say QA offered none only when reviewerNoneOffered is true; otherwise an empty list means no enhancement answer was recorded.' };
+        enhancementStatus: 'Optional QA suggestions; not established as implemented. Mention what QA found. When enhancementsAbridged is true, the list is an excerpt: speak about what it contains and do not say where the rest is. Say QA offered none only when reviewerNoneOffered is true; otherwise an empty list means no enhancement answer was recorded.' };
     }
     case 'task.failed': return { ...task, status: 'failed', reason: e.error, action: 'Review the current task status and failure details before deciding what to do. This failure event alone does not establish that human action is still needed.', actionHref: `/task/${encodeURIComponent(e.taskId)}`, actionLabel: 'Review current task' };
     case 'task.completed': return { ...task, status: 'execution_finished', outcome: e.result?.outcome, summary: e.result?.summary, verification: 'not established by this event' };

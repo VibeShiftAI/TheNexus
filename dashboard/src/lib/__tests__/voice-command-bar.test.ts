@@ -645,8 +645,8 @@ test('recomposed question uses a fresh archive identity instead of replaying que
 test('a watched QA report and a report recovered on reconnect each play once with their chat pointers', async t => {
   t.mock.timers.enable({ apis: ['Date', 'setTimeout', 'setInterval'], now: new Date(2026, 9, 28, 12).getTime() });
   t.mock.method(document, 'hasFocus', () => true);
-  const report = { id: 'follow-up:watch:trigger', speech: 'Keep the archive offline until verified. The details are in chat.' };
-  const recovered = { id: 'follow-up:offline:trigger', speech: 'The restore passed. The details are in chat.' };
+  const report = { id: 'follow-up:watch:trigger', speech: 'Keep the archive offline until verified.' };
+  const recovered = { id: 'follow-up:offline:trigger', speech: 'Restore drill passed QA.' };
   const rows = [{ id: 'archived', speech: 'An earlier report.', deliveredAt: new Date().toISOString() }];
   const claims: string[] = [];
   const f = await mount(t, false, async url => {
@@ -690,7 +690,7 @@ test('reloading during the cue returns the unheard report to the durable queue',
   }, true);
   await act(async () => {
     t.mock.timers.tick(1);
-    rows.push({ id: 'follow-up:reload:trigger', speech: 'Wait for review. The details are in chat.', deliveredAt: new Date().toISOString() });
+    rows.push({ id: 'follow-up:reload:trigger', speech: 'Wait for review before you merge the branch.', deliveredAt: new Date().toISOString() });
     __sockets.at(-1).__emit('chat-message', { message: { metadata: { outcomeSpeech: rows[0].speech } } });
     await tick();
   });
