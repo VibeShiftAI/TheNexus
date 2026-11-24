@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { untilLabel } from "@/lib/model-status";
 import { useLiveRefetch } from "@/components/live-board-state";
 import { Activity, Gauge, Loader2, RefreshCw, Route } from "lucide-react";
 import {
@@ -22,14 +23,6 @@ function formatTokens(n: number): string {
     if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
     if (n >= 1e3) return `${(n / 1e3).toFixed(1)}k`;
     return `${n}`;
-}
-
-function formatCountdown(untilMs: number, now: number): string {
-    const remaining = untilMs - now;
-    if (remaining <= 0) return "now";
-    const h = Math.floor(remaining / 3_600_000);
-    const m = Math.round((remaining % 3_600_000) / 60_000);
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
 function windowLabel(minutes: number): string {
@@ -74,7 +67,7 @@ function FamilyCard({
                 <span className={`text-sm font-semibold ${accent}`}>{name}</span>
                 {limit.coolingDown ? (
                     <span className="rounded bg-red-500/15 px-2 py-0.5 text-xs text-red-400">
-                        limit hit{limit.resetAt ? ` — resets in ${formatCountdown(limit.resetAt, now)}` : ""}
+                        limit hit{limit.resetAt ? ` — resets ${untilLabel(limit.resetAt, now)}` : ""}
                     </span>
                 ) : (
                     <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-400">available</span>
@@ -121,7 +114,7 @@ function FamilyCard({
             {win ? (
                 <div className="mt-3 rounded border border-slate-800 bg-slate-950/60 p-2 text-xs text-slate-400">
                     <span className="text-slate-300">5h window:</span> {formatTokens(win.inputTokens + win.outputTokens)} tokens
-                    {" · "}resets in <span className="text-slate-200">{formatCountdown(win.endsAt, now)}</span>
+                    {" · "}resets <span className="text-slate-200">{untilLabel(win.endsAt, now)}</span>
                 </div>
             ) : (
                 <div className="mt-3 rounded border border-slate-800 bg-slate-950/60 p-2 text-xs text-slate-500">
@@ -135,7 +128,7 @@ function FamilyCard({
                         <span>{windowLabel(rl.windowMinutes)} quota ({rl.planType ?? "plan"})</span>
                         <span>
                             {rl.usedPercent.toFixed(0)}%
-                            {rl.resetsAt ? ` · resets in ${formatCountdown(rl.resetsAt, now)}` : ""}
+                            {rl.resetsAt ? ` · resets ${untilLabel(rl.resetsAt, now)}` : ""}
                         </span>
                     </div>
                     <div className="h-1.5 overflow-hidden rounded bg-slate-800">
