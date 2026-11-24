@@ -1,9 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RoutingEconomicsPanel } from '../routing-economics-panel.tsx';
 import economics from '../../../../server/services/routing-economics.js';
+// Priced from the fixture catalog the server suite uses, never this machine's live
+// catalog file. gpt-5.6-sol there: cache read 0.40, input 4, cache write 5, output 20,
+// so the run mix costs 0.85*0.40 + 0.02*4 + 0.08*5 + 0.05*20 = $1.82 per million tokens.
+process.env.PRAXIS_OPENROUTER_CATALOG_PATH = fileURLToPath(new URL('../../../../server/__tests__/fixtures/openrouter-catalog.json', import.meta.url));
 const run = { id: 'run-a', task_id: 'task-a', executor: 'codex', model: 'gpt-5.6-sol', tokens: 1e6, tokens_estimated: 1,
     outcome: 'failure', started_at: '2026-09-01T00:00:00Z', completed_at: '2026-09-01T00:00:10Z' };
 async function renderWith(response, check) {
@@ -18,7 +23,7 @@ test('fetched comparison renders lane/model estimates, metric sample sizes and e
     await renderWith({ ok: true, json: async () => data }, async node => {
         assert.match(node.textContent, /Measured routing economics/);
         assert.match(node.textContent, /Local/); assert.match(node.textContent, /Cloud/);
-        assert.match(node.textContent, /\$2\.525 estimate/);
+        assert.match(node.textContent, /\$1\.820 estimate/);
         assert.match(node.textContent, /from 1 of 1 runs/);
         assert.match(node.textContent, /1 estimated/);
         assert.match(node.textContent, /0% completed/);

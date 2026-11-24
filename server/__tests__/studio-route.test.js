@@ -4,6 +4,12 @@ const http = require('http');
 const os = require('os');
 const path = require('path');
 
+// The enrich route reads its YouTube key from the environment (services/youtube-api.js).
+// A shell started by the Praxis daemon holds a real one, which would send this suite's
+// fixture objects to the live API. Jest gives each test file its own process.env.
+delete process.env.YOUTUBE_API_KEY;
+delete process.env.GOOGLE_API_KEY;
+
 function listen(app) {
   const server = http.createServer(app);
   const sockets = new Set();

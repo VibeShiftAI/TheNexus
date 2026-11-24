@@ -476,6 +476,9 @@ describe('praxis-stream route', () => {
       return { post, emitted, notify };
     }
 
+    // A shell started by the Praxis daemon already holds the live service key, and
+    // this route then answers a keyless loopback post with 401.
+    beforeEach(() => { delete process.env.NEXUS_SERVICE_KEY; });
     afterEach(() => { delete process.env.NEXUS_SERVICE_KEY; });
 
     // Phase-2 review follow-up: the ingest boundary is the socket peer, not req.ip.
