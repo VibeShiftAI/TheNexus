@@ -523,12 +523,19 @@ function runModelControlMigrations(sqlite) {
         // callAI ignores resolved parameters and sends no max_tokens by default.
         //
         // INSERT OR IGNORE, so re-seeding never clobbers operator tuning.
+        //
+        // Inkling 2 Mini is listed beside Gemma and selected by nothing:
+        // local_default still names Gemma, and its lower version_sort keeps
+        // Gemma first wherever local rows are ordered by version.
         sqlite.exec(`
             INSERT OR IGNORE INTO models
               (id, name, provider, api_model_id, display_name, family, version_sort,
                is_active, availability_status, sort_order, capabilities, default_parameters) VALUES
               ('local-gemma-4-31b', 'Gemma 4 31B QAT', 'local', 'google/gemma-4-31b-qat',
                'Gemma 4 31B QAT (local)', 'Gemma', '4', 1, 'available', 0,
+               '{"chat":true,"reasoning":true,"local":true}', '{}'),
+              ('local-inkling-2-mini', 'Inkling 2 Mini', 'local', 'thinkingmachines/inkling-2-mini',
+               'Inkling 2 Mini (local)', 'Inkling', '2', 1, 'available', 1,
                '{"chat":true,"reasoning":true,"local":true}', '{}'),
               ('openrouter-nemotron-ultra', 'Nemotron 3 Ultra', 'openrouter',
                'nvidia/nemotron-3-ultra-550b-a55b:free', 'Nemotron 3 Ultra 550B (free)',

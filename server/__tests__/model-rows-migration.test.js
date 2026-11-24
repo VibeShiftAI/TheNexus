@@ -32,7 +32,7 @@ describe('model rows on a database', () => {
         const db = loadDb(tmp.file);
         const models = await db.getModels(false);
         expect(models.map(m => m.id).sort()).toEqual([
-            'local-gemma-4-31b', 'openrouter-auto-free', 'openrouter-laguna-s',
+            'local-gemma-4-31b', 'local-inkling-2-mini', 'openrouter-auto-free', 'openrouter-laguna-s',
             'openrouter-nemotron-ultra', 'openrouter-north-mini-code',
         ]);
         const aliases = await db.getModelAliases(false);
@@ -43,6 +43,34 @@ describe('model rows on a database', () => {
         expect(byRole['agent.interactive']).toBe('cli:claude-code/claude-sonnet-5-5@low');
         expect(byRole['research.deep']).toBe('cli:claude-code/claude-opus-5-5@high');
         expect(Object.values(byRole).some(a => /gemini_default|gemini_fast|model:/.test(a))).toBe(false);
+    });
+
+    test('Inkling 2 Mini is a local row that nothing selects: Gemma still resolves everywhere', async () => {
+        const db = loadDb(tmp.file);
+        const inkling = await db.getModel('local-inkling-2-mini');
+        expect(inkling).toMatchObject({
+            provider: 'local',
+            api_model_id: 'thinkingmachines/inkling-2-mini',
+            family: 'Inkling',
+            availability_status: 'available',
+        });
+        expect(inkling.capabilities).toEqual({ chat: true, reasoning: true, local: true });
+
+        const aliases = await db.getModelAliases(false);
+        expect(aliases.find(a => a.alias === 'local_default').target).toBe('model:local-gemma-4-31b');
+        const roles = await db.getModelRoles(false);
+        expect(roles.filter(r => /inkling/i.test(r.assignment))).toEqual([]);
+
+        const { resolveModelAssignment } = require('../services/model-control');
+        for (const { role, assignment } of roles.filter(r => r.assignment === 'alias:local_default')) {
+            const resolved = await resolveModelAssignment(db, { role });
+            expect([role, assignment, resolved.apiModelId]).toEqual([role, assignment, 'google/gemma-4-31b-qat']);
+        }
+        // Every selector that orders models by version still puts Gemma first.
+        for (const capability of ['chat', 'reasoning', 'local']) {
+            const resolved = await resolveModelAssignment(db, { assignment: `capability_best:${capability}` });
+            expect(resolved.apiModelId).toBe('google/gemma-4-31b-qat');
+        }
     });
 
     test('stale API rows go inactive once; named rows and their aliases are kept', async () => {
