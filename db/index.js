@@ -318,49 +318,12 @@ function ser(val) {
     return val;
 }
 
-/** Deserialise a JSON TEXT column back to JS */
-function deser(val) {
-    if (val === null || val === undefined) return val;
-    if (typeof val !== 'string') return val;
-    const t = val.trim();
-    if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
-        try { return JSON.parse(val); } catch { return val; }
-    }
-    return val;
-}
-
-/** Deserialise known JSON columns on a row */
-const JSON_COLS = new Set([
-    'stack', 'urls', 'tasks_list', 'task_ledger', 'supervisor_details',
-    'graph_config', 'context', 'checkpoint', 'metadata',
-    'agent_configuration', 'parameters', 'capabilities', 'default_parameters', 'parameters_summary', 'config',
-    'trigger_config', 'configuration', 'target_projects', 'progress',
-    'allowed_tools', 'denied_tools', 'details', 'data',
-    'value',
-    'stages', 'outputs',
-    'antigravity_payload', 'dependencies',
-    'suspended_context', 'resume_action',
-    'tags',
-    'intake', 'needs', 'end_state_history', 'end_state_criteria', 'endpoint', 'end_state_assessment', 'checkpoints',
-    'preferences', 'expertise', 'interests', 'claims', 'interaction_log',
-    // Stakeholder governance (2026-08-22): per-project comms controls, the
-    // branded report template, and calendar attendee lists.
-    'comms_settings', 'report_template', 'attendees'
-]);
-
+// Shared with the read-only board worker: no database initialization here.
+const { deser, deserializeRow, JSON_COLS } = require('./row-serialization');
 function deserRow(row) {
+    row = deserializeRow(row);
     if (!row) return row;
-    for (const key of Object.keys(row)) {
-        if (JSON_COLS.has(key)) {
-            row[key] = deser(row[key]);
-        }
-        // SQLite booleans back to JS booleans
-        if (key === 'is_template' || key === 'is_active' || key === 'is_enabled' || key === 'resolved' || key === 'pinned' || key === 'local_only_active' || key === 'fallback_used' || key === 'decision_maker') {
-            row[key] = row[key] === 1 || row[key] === true;
-        }
-    }
-    // Admission is authoritative in its receipt table. Read refreshes do not
-    // manufacture task edits; every facade task projection sees the receipt.
+    // Admission remains authoritative in its receipt table.
     if (workAdmission && 'project_id' in row && 'name' in row && 'version' in row) {
         const receipt = workAdmission.readReceipt(row.id);
         row.metadata = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
@@ -369,7 +332,6 @@ function deserRow(row) {
     }
     return row;
 }
-
 function deserRows(rows) { return (rows || []).map(deserRow); }
 
 function tableExists(sqlite, tableName) {
@@ -1521,82 +1483,13 @@ function batchCreateTasks(tasks, admissionOptions = []) {
  * @param {string} [projectId] - Optional filter by project ID
  * @returns {Array} Projects with tasks annotated with `is_unblocked` flag
  */
+let boardReader;
 async function getBoardState(projectId) {
-    if (!db) return [];
-    try {
-        // Get projects
-        let projects;
-        if (projectId) {
-            const p = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
-            projects = p ? [deserRow(p)] : [];
-        } else {
-            projects = deserRows(
-                db.prepare("SELECT * FROM projects WHERE status IS NULL OR status != 'archived' ORDER BY updated_at DESC").all()
-            );
-        }
-
-        // Get all tasks for these projects in one query
-        const projectIds = projects.map(p => p.id);
-        if (projectIds.length === 0) return [];
-
-        const placeholders = projectIds.map(() => '?').join(',');
-        const allTasks = deserRows(
-            db.prepare(`SELECT * FROM tasks WHERE project_id IN (${placeholders}) ORDER BY priority DESC, created_at ASC`).all(...projectIds)
-        );
-
-        // Build a status lookup map for dependency resolution
-        const taskStatusMap = new Map();
-        for (const task of allTasks) {
-            taskStatusMap.set(task.id, task.status);
-        }
-
-        // Display filtering must not change dependency truth. Resolve only the
-        // missing referenced IDs, in bounded batches (including archived projects).
-        const missingIds = [...new Set(allTasks.flatMap(task => task.dependencies || []))]
-            .filter(id => !taskStatusMap.has(id));
-        for (let offset = 0; offset < missingIds.length; offset += 500) {
-            const ids = missingIds.slice(offset, offset + 500);
-            const rows = db.prepare(`SELECT id, status FROM tasks WHERE id IN (${ids.map(() => '?').join(',')})`).all(...ids);
-            for (const row of rows) taskStatusMap.set(row.id, row.status);
-        }
-
-        // Annotate each task with is_unblocked
-        for (const task of allTasks) {
-            const deps = task.dependencies || [];
-            if (deps.length === 0) {
-                task.is_unblocked = true;
-            } else {
-                task.is_unblocked = deps.every(depId => isTaskDone(taskStatusMap.get(depId)));
-            }
-        }
-
-        // Group tasks by project
-        const tasksByProject = new Map();
-        for (const task of allTasks) {
-            if (!tasksByProject.has(task.project_id)) {
-                tasksByProject.set(task.project_id, []);
-            }
-            tasksByProject.get(task.project_id).push(task);
-        }
-
-        // Assemble result
-        return projects.map(project => ({
-            ...project,
-            tasks: tasksByProject.get(project.id) || [],
-            task_summary: {
-                total: (tasksByProject.get(project.id) || []).length,
-                unblocked: (tasksByProject.get(project.id) || []).filter(t =>
-                    t.is_unblocked && !t.archived_at &&
-                    ['idea', 'planning', 'todo'].includes(normalizeTaskBoardStatus(t.status))
-                ).length,
-                complete: (tasksByProject.get(project.id) || []).filter(t => t.status === 'complete' || t.status === 'completed' || t.status === 'done').length,
-                suspended: (tasksByProject.get(project.id) || []).filter(t => t.status === 'suspended').length,
-            }
-        }));
-    } catch (err) {
-        console.error('[Database] Error getting board state:', err.message);
-        return [];
-    }
+    if (!db) throw new Error('Database unavailable');
+    // In-memory databases are private to this connection (test/embedded usage).
+    if (db.memory) return require('./board-state').readBoardState(db, projectId);
+    boardReader ||= require('./board-reader').createBoardReader(DB_PATH);
+    return boardReader.read(projectId);
 }
 
 /**
@@ -1738,11 +1631,19 @@ async function getDashboardStats() {
     };
 
     try {
-        // 1. Tasks
+        // Count through the status index; do not materialize historical artifacts.
+        const tasksByStatus = Object.fromEntries(db.prepare(
+            'SELECT status, COUNT(*) AS total FROM tasks GROUP BY status'
+        ).all().map(row => [row.status, row.total]));
+        // Apply the existing terminal/project exclusions before reading TEXT
+        // payloads. This preserves unassigned tasks and legacy status aliases.
         const tasks = db.prepare(`
-            SELECT id, project_id, name, status, research_output, plan_output,
-                   walkthrough, research_metadata, plan_metadata, supervisor_status
-            FROM tasks
+            SELECT t.id, t.project_id, t.name, t.status, t.research_output, t.plan_output,
+                   t.walkthrough, t.research_metadata, t.plan_metadata, t.supervisor_status
+            FROM tasks t
+            WHERE lower(replace(COALESCE(t.status, ''), '-', '_'))
+                NOT IN ('cancelled', 'canceled', 'complete', 'completed', 'done', 'archived')
+              AND NOT EXISTS (SELECT 1 FROM projects p WHERE p.id = t.project_id AND p.status = 'archived')
         `).all();
 
         // Archived projects are retired — their artifacts should never appear in the review queue.
@@ -1750,23 +1651,8 @@ async function getDashboardStats() {
             db.prepare("SELECT id FROM projects WHERE status = 'archived'").all().map(r => r.id)
         );
 
-        // Finished tasks never need review. Was only 'cancelled'/'complete',
-        // which let archived/done/completed tasks keep their artifacts in the
-        // queue forever (archiving a project cascades status='archived' to its
-        // tasks — see archiveProject — but those still slipped through here).
-        // Statuses are free snake_case/dash text, so normalize before matching.
-        const TERMINAL_TASK_STATUSES = new Set(['cancelled', 'canceled', 'complete', 'completed', 'done', 'archived']);
-        const isTerminalTaskStatus = (status) =>
-            TERMINAL_TASK_STATUSES.has(String(status || '').toLowerCase().replace(/-/g, '_'));
-
-        const tasksByStatus = {};
         const reviewItems = [];
-
         tasks.forEach(task => {
-            tasksByStatus[task.status] = (tasksByStatus[task.status] || 0) + 1;
-            if (isTerminalTaskStatus(task.status)) return;
-            if (archivedProjectIds.has(task.project_id)) return;
-
             const parsed = parseTaskFields({ ...task });
             if (parsed.researchReport?.content && !parsed.researchReport.approvedAt && !parsed.researchReport.rejectedAt) {
                 reviewItems.push({ type: 'task-research', id: task.id, projectId: task.project_id, name: `Research: ${task.name}`, level: 'Task' });
