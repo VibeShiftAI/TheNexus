@@ -8,10 +8,10 @@ export type AlertMode = 'off' | 'attention' | 'conversational';
 export const ALERT_MODE_KEY = 'nexus.voice.alertMode';
 export const ALERT_STORE_KEY = 'nexus.voice.announcedEvents';
 const OUTCOME_SINCE_KEY = 'nexus.voice.outcomesSince';
+const ALERTS_ENABLED_SINCE_KEY = 'nexus.voice.alertsEnabledSince';
 export type OutcomeAlert = { type: 'chat.outcome'; eventId: string; speech: string; deliveredAt: number };
 type AlertEvent = StreamEvent | OutcomeAlert;
 const RATE_MS = 120_000;
-const MAX_AGE_MS = 10 * 60_000;
 const STORE_MAX = 300;
 const ROUTINE = new Set(['day-schedule', 'skill-candidates', 'board-maintenance']);
 /** The runtime callback owns retry/escalation; only its final request interrupts. */
@@ -53,7 +53,7 @@ export function alertFacts(e: StreamEvent, titleFor: (id: string) => string | un
       return { ...task, ...(e.title ? { title: e.title.slice(0, 500) } : {}), status: 'qa_passed', reviewer: e.reviewer,
         enhancements, enhancementsAbridged: original.length > 3 || original.some(s => s.text.length > 1800),
         reviewerNoneOffered: e.reviewerNoneOffered === true,
-        enhancementStatus: 'Optional QA suggestions; not established as implemented. Mention what QA found. If abridged, full details are in chat. Say QA offered none only when reviewerNoneOffered is true; otherwise an empty list means no enhancement answer was recorded.' };
+        enhancementStatus: 'Optional QA suggestions; not established as implemented. Mention what QA found. When enhancementsAbridged is true, the list is an excerpt: speak about what it contains and do not say where the rest is. Say QA offered none only when reviewerNoneOffered is true; otherwise an empty list means no enhancement answer was recorded.' };
     }
     case 'task.failed': return { ...task, status: 'failed', reason: e.error, action: 'Review the current task status and failure details before deciding what to do. This failure event alone does not establish that human action is still needed.', actionHref: `/task/${encodeURIComponent(e.taskId)}`, actionLabel: 'Review current task' };
     case 'task.completed': return { ...task, status: 'execution_finished', outcome: e.result?.outcome, summary: e.result?.summary, verification: 'not established by this event' };
@@ -145,17 +145,19 @@ function readRegistry(): Registry {
     return { ids: Array.isArray(value.ids) ? value.ids.filter((v: unknown) => typeof v === 'string').slice(-STORE_MAX) : [], lastAt: Number.isFinite(value.lastAt) ? value.lastAt : 0 };
   } catch { return { ids: [], lastAt: 0 }; }
 }
-function readOutcomeSince(): number {
-  try { return Number(localStorage.getItem(OUTCOME_SINCE_KEY)) || 0; }
+function readSince(key: string): number {
+  try { return Number(localStorage.getItem(key)) || 0; }
   catch { return 0; }
 }
 /** A cancellable wakeup, including checks that await active-device and tab locks. */
 export class VoiceAlerts {
   private outcomes: OutcomeAlert[] = [];
-  private outcomeSince = readOutcomeSince();
+  private enabledSince = 0;
+  private conversationalSince = 0;
   private events: StreamEvent[] = []; private mode: AlertMode = readAlertMode(); private disposed = false;
   private running = false; private updatedDuringCheck = false; private timer: ReturnType<typeof setTimeout> | number | null = null;
-  private local: Registry = { ids: [], lastAt: 0 };
+  private heard = new Set<string>();
+  private lastAt = 0;
   private reservation?: { ids: string[]; at: number; previousAt: number };
   private unsubscribe: () => void;
   constructor(private options: {
@@ -167,9 +169,8 @@ export class VoiceAlerts {
   update(events: StreamEvent[], mode: AlertMode) {
     // The SSE hook only keeps 50 events; unrelated telemetry must not erase a
     // blocked alert while it waits for its question or the speech cooldown.
-    const now = (this.options.now ?? Date.now)();
     this.events = [...new Map([...this.events, ...events].map(e => [e.eventId, e])).values()]
-      .filter(e => e.eventId && eligibleAlert(e, 'conversational') && now - Date.parse(e.at) <= MAX_AGE_MS)
+      .filter(e => e.eventId && eligibleAlert(e, 'conversational') && Date.parse(e.at) > this.options.mountedAt)
       .sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, STORE_MAX);
     this.setMode(mode);
     this.clear();
@@ -178,21 +179,27 @@ export class VoiceAlerts {
   }
   setMode(mode: AlertMode) {
     if (mode === this.mode) return;
+    // Settings changes apply across tabs. A tab observing the change uses the
+    // instant the operator enabled speech, even if it woke up later.
+    const alreadySaved = readAlertMode() === mode;
+    const resume = (key: string) => {
+      const since = (alreadySaved && readSince(key)) || (this.options.now ?? Date.now)();
+      try { localStorage.setItem(key, String(since)); } catch { /* session fallback */ }
+      return since;
+    };
+    if (this.mode === 'off') this.enabledSince = resume(ALERTS_ENABLED_SINCE_KEY);
+    if (mode === 'conversational') this.conversationalSince = resume(OUTCOME_SINCE_KEY);
     this.mode = mode;
-    if (mode === 'conversational') {
-      // Age the muted backlog once, when speech resumes. Reloads, quiet hours
-      // and spacing within that conversational period retain the same cutoff.
-      const saved = readAlertMode() === mode ? readOutcomeSince() : 0;
-      this.outcomeSince = saved || (this.options.now ?? Date.now)() - MAX_AGE_MS;
-    }
-    try {
-      if (mode === 'conversational') localStorage.setItem(OUTCOME_SINCE_KEY, String(this.outcomeSince));
-      localStorage.setItem(ALERT_MODE_KEY, mode);
-    } catch { /* The preference and cutoff still apply for this session. */ }
+    try { localStorage.setItem(ALERT_MODE_KEY, mode); } catch { /* session fallback */ }
   }
-  private outcomeCutoff(): number {
-    // A suspended tab may miss both settings changes before it next checks.
-    return Math.max(this.outcomeSince, readOutcomeSince());
+  private canAnnounce(event: AlertEvent): boolean {
+    const at = event.type === 'chat.outcome' ? event.deliveredAt : Date.parse(event.at);
+    // The page mount is local to this listener. Opening a second tab must
+    // neither inherit an earlier session nor move the first tab's boundary.
+    if (!(at > this.options.mountedAt) || !eligibleAlert(event, this.mode)) return false;
+    return eligibleAlert(event, 'attention')
+      ? at >= Math.max(this.enabledSince, readSince(ALERTS_ENABLED_SINCE_KEY))
+      : at >= Math.max(this.conversationalSince, readSince(OUTCOME_SINCE_KEY));
   }
   updateOutcomes(rows: { id: string; speech: string; deliveredAt: string }[]) {
     this.outcomes = rows.map(row => ({ type: 'chat.outcome', eventId: row.id, speech: row.speech,
@@ -205,8 +212,7 @@ export class VoiceAlerts {
   async canPlay(event: AlertEvent, signal: AbortSignal, owns: () => boolean, preparedBlock?: BlockedEvent): Promise<boolean> {
     const eligible = () => {
       const now = (this.options.now ?? Date.now)();
-      if (this.disposed || signal.aborted || !owns() || !eligibleAlert(event, this.mode)
-        || (event.type === 'chat.outcome' ? event.deliveredAt < this.outcomeCutoff() : now - Date.parse(event.at) > MAX_AGE_MS)
+      if (this.disposed || signal.aborted || !owns() || !this.canAnnounce(event)
         || alertDelay(now, 0) !== 0) return false;
       const current = pairVoiceAlerts(this.events).find(a => a.ids.includes(event.eventId));
       if (current?.blocked && (event.type === 'task.blocked' || current.blocked.eventId !== preparedBlock?.eventId)) {
@@ -237,7 +243,8 @@ export class VoiceAlerts {
       ids: registry.ids.filter(id => !reservation.ids.includes(id)),
       lastAt: registry.lastAt === reservation.at ? reservation.previousAt : registry.lastAt,
     });
-    this.local = release(this.local);
+    reservation.ids.forEach(id => this.heard.delete(id));
+    if (this.lastAt === reservation.at) this.lastAt = reservation.previousAt;
     try { localStorage.setItem(ALERT_STORE_KEY, JSON.stringify(release(readRegistry()))); } catch { /* session fallback */ }
     this.reservation = undefined;
     this.updatedDuringCheck = true;
@@ -255,20 +262,21 @@ export class VoiceAlerts {
       if (this.updatedDuringCheck) { this.updatedDuringCheck = false; this.wake(); }
     });
   }
-  private nextAlert(ids: Set<string>, now: number): (Omit<VoiceAlert, 'event'> & { event: AlertEvent }) | undefined {
+  private nextAlert(registry: Registry, now: number): (Omit<VoiceAlert, 'event'> & { event: AlertEvent }) | undefined {
+    const shared = new Set(registry.ids);
+    const heard = (id: string) => this.heard.has(id) || shared.has(id);
     let wait = Infinity;
     for (const alert of pairVoiceAlerts(this.events)) {
       const e = alert.event;
       // A spoken question covers its block. A spoken fallback block does NOT
       // cover a later question: that question contains new actionable detail.
-      if (ids.has(e.eventId) || !eligibleAlert(e, this.mode) || Date.parse(e.at) <= this.options.mountedAt || now - Date.parse(e.at) > MAX_AGE_MS) continue;
+      if (heard(e.eventId) || !this.canAnnounce(e)) continue;
       if (alert.readyAt <= now) return alert;
       wait = Math.min(wait, alert.readyAt - now);
     }
     if (Number.isFinite(wait)) this.schedule(wait);
     else if (this.mode === 'conversational') {
-      const cutoff = this.outcomeCutoff();
-      const outcome = this.outcomes.find(e => e.deliveredAt >= cutoff && !ids.has(e.eventId));
+      const outcome = this.outcomes.find(e => !heard(e.eventId) && this.canAnnounce(e));
       if (outcome) return { event: outcome, ids: [outcome.eventId], readyAt: now };
     }
     return undefined;
@@ -276,9 +284,9 @@ export class VoiceAlerts {
   private async check() {
     const attempt = async () => {
       const now = (this.options.now ?? Date.now)();
-      const stored = readRegistry(); const ids = new Set([...stored.ids, ...this.local.ids]);
-      if (this.disposed || !this.nextAlert(ids, now)) return;
-      const delay = alertDelay(now, Math.max(stored.lastAt, this.local.lastAt));
+      const stored = readRegistry();
+      if (this.disposed || !this.nextAlert(stored, now)) return;
+      const delay = alertDelay(now, Math.max(stored.lastAt, this.lastAt));
       if (delay) { this.schedule(delay); return; }
       if (speechOwner.busy()) { this.schedule(5000); return; }
       const active = await (this.options.active ?? isThisClientActive)();
@@ -287,29 +295,30 @@ export class VoiceAlerts {
       // The device lookup may straddle quiet hours or another tab's start.
       const checkedAt = (this.options.now ?? Date.now)();
       const latest = readRegistry();
-      latest.ids.forEach(id => ids.add(id));
       // A question can arrive while the active-device request is in flight.
       // Select again so the prose writer receives the complete incident.
-      const alert = this.nextAlert(ids, checkedAt);
+      const alert = this.nextAlert(latest, checkedAt);
       if (!alert) return;
-      const remaining = alertDelay(checkedAt, Math.max(latest.lastAt, this.local.lastAt));
+      const remaining = alertDelay(checkedAt, Math.max(latest.lastAt, this.lastAt));
       if (remaining) { this.schedule(remaining); return; }
       const playback = this.options.announce(alert.event, alert.blocked);
       if (!playback) { this.schedule(1000); return; }
       const reservedAt = (this.options.now ?? Date.now)();
       if (alert.event.type === 'chat.outcome') {
-        // Nexus owns this ID across devices. Leave it recoverable through a reload
-        // during preparation. Only started audio consumes the local spacing slot.
+        // Nexus owns this ID across devices. Only started audio consumes
+        // the local spacing slot.
         const started = await playback;
         this.outcomes = this.outcomes.filter(e => e.eventId !== alert.event.eventId);
         if (started === false) { this.updatedDuringCheck = true; return; }
       }
-      this.reservation = { ids: alert.ids, at: reservedAt, previousAt: Math.max(latest.lastAt, this.local.lastAt) };
-      alert.ids.forEach(id => ids.add(id)); this.local = { ids: [...ids].slice(-STORE_MAX), lastAt: reservedAt };
-      try { localStorage.setItem(ALERT_STORE_KEY, JSON.stringify(this.local)); } catch { /* bounded session fallback */ }
+      this.reservation = { ids: alert.ids, at: reservedAt, previousAt: Math.max(latest.lastAt, this.lastAt) };
+      alert.ids.forEach(id => this.heard.add(id));
+      this.lastAt = reservedAt;
+      const recent = [...new Set([...latest.ids, ...alert.ids])].slice(-STORE_MAX);
+      try { localStorage.setItem(ALERT_STORE_KEY, JSON.stringify({ ids: recent, lastAt: reservedAt })); } catch { /* session fallback */ }
       if (alert.event.type !== 'chat.outcome') await playback;
       this.reservation = undefined;
-      if (!this.disposed) this.schedule(Math.max(1, alertDelay((this.options.now ?? Date.now)(), this.local.lastAt)));
+      if (!this.disposed) this.schedule(Math.max(1, alertDelay((this.options.now ?? Date.now)(), this.lastAt)));
     };
     if (typeof navigator !== 'undefined' && navigator.locks?.request) {
       await navigator.locks.request('nexus.voice.alert-announcement', { ifAvailable: true }, async lock => {

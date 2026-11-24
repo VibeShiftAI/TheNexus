@@ -90,9 +90,12 @@ const fmt = require('../services/document-review-format');
 const { createDocumentDecisionAuthority } = require('../services/document-decision-authority');
 const { parseExecutorProvenance, resolveSourceReview, buildProvenance, DELEGATING_AUTHORITIES } = require('../services/document-decision-provenance');
 const decisionItems = require('../services/document-decision-items');
+const { validateChatRetirement } = require('../services/document-chat-retirement');
+const { hasOutstandingRequest, mentionsWithdrawal, purposeWithdrawsReview } = require('../services/document-retirement-purpose');
+const { requireStakeholderAuthority } = require('../services/stakeholder-authority');
 const confirmation = require('../services/operator-confirmation');
 const { LIST_STATUSES, REPLACEMENT_STATES, REPLACEMENT_OPEN_STATES } = require('../../db/document-reviews');
-const { NAME_FIELDS } = require('../../db/document-retirements');
+const { NAME_FIELDS, retirementGroundReason } = require('../../db/document-retirements');
 
 const KINDS = new Set(['document', 'report', 'spec', 'plan', 'research', 'walkthrough', 'other', 'design', 'image', 'video', 'audio', 'prototype', 'pdf', 'data']);
 const LIMITS = { title: 300, body: 20000, summary: 20000, selection: 2000, metadataJson: 8000, clientId: 120, purpose: 500, key: 300, sourceId: 200, query: 200, selectionJson: 2048, editSummary: 2000 };
@@ -680,11 +683,11 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
 
     /** A retirement as a registration or review request reports it on the document it was about. */
     function retirementEffect(action, rt) {
-        const message = action === 'kept'
-            ? 'This document was retired when a later document replaced it, and this registration carries the bytes it already had, so it stays in Reference. Robert can put it back with Move to review queue (request-review)'
+        const message = action === 'retired' ? retirementView(rt).reason : action === 'kept'
+            ? 'This revision stays in Reference. Move to review queue (request-review) reopens it.'
             : action === 'reopened_by_registration'
-                ? 'This document had been retired when a later document replaced it; this registration delivered new bytes for review, so it is back in the queue and the retirement is recorded as reopened'
-                : 'This document had been retired when a later document replaced it; it is back in the queue and the retirement is recorded as reopened';
+                ? 'This registration delivered new bytes for review. The document is back in the queue and the retirement is recorded as reopened.'
+                : 'The document is back in the queue and the retirement is recorded as reopened.';
         return { action, message, ...retirementView(rt) };
     }
 
@@ -717,13 +720,15 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
 
     /** A retirement record in the shape the review page shows, for a registration's retirement and a manual close alike. */
     function retirementView(rt) {
+        const ground = rt.ground;
+        const reason = ground ? retirementGroundReason(ground) : RETIRED_REASON;
         return {
-            id: rt.id, source: 'replacement', state: rt.reopened_at ? 'reopened' : 'retired',
-            retired_at: rt.retired_at, retired_by: rt.retired_by, reason: RETIRED_REASON,
+            id: rt.id, source: ground?.type || 'replacement', state: rt.reopened_at ? 'reopened' : 'retired',
+            retired_at: rt.retired_at, retired_by: rt.retired_by, reason, ...(ground ? { ground } : {}),
             replaced_by: documentRef(rt.replaced_by_document_id), replaced_by_revision_id: rt.replaced_by_revision_id || null,
             registration_id: rt.registration_id || null, task_id: rt.task_id || null,
             task_path: rt.task_id ? `/task/${encodeURIComponent(rt.task_id)}` : null,
-            trigger: rt.trigger, named_as: { [rt.named_by]: rt.named_value },
+            trigger: rt.trigger, named_as: rt.named_by ? { [rt.named_by]: rt.named_value } : null,
             previous: rt.previous || null, reopened_at: rt.reopened_at || null, reopened_by: rt.reopened_by || null, reopened_via: rt.reopened_via || null,
         };
     }
@@ -1176,9 +1181,18 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             };
             let documentCreated = false;
             let retirement = null;
+            const withdrawal = doc?.requires_review && mentionsWithdrawal(v.purpose);
+            const previousPurpose = doc?.purpose;
+            // Check before a registration can replace the waiting-task list or invalidate an outgoing draft.
+            const previousCheck = withdrawal ? store().retirementCheck(doc) : null;
+            const outgoing = previousCheck?.reasons?.some(reason => reason.code === 'outgoing_unsent') ? store().getOutgoing(doc.id) : null;
             if (doc) {
                 // A declared deliverable is identified by its exact bytes, which is the identity recordRevision uses below.
                 const hash = revisionHash({ ...doc, deliverable_key: key }, read);
+                if (outgoing && (doc.intended_action !== declared.intended_action || doc.path !== declared.path
+                    || store().findRevisionByHash(doc.id, hash)?.id !== doc.current_revision_id)) {
+                    throw conflict('outgoing_unsent', 'The withdrawal would change the document bound to an unsent outgoing message');
+                }
                 const refusal = decisionItemsChangeRefusal(doc, v.metadata, hash);
                 if (refusal) throw refusal;
                 const taskId = doc.task_id || v.taskId;
@@ -1189,18 +1203,19 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 // A retired document (contract §13) stays in Reference when a registration carries the bytes it had when it
                 // was retired (a retry or replay must not undo the retirement); other bytes declared for review bring it
                 // back. Compared with the retired revision, not the current one: a read may have captured newer bytes since.
-                const openRetirement = v.requiresReview ? store().findOpenRetirement(doc.id) : null;
+                const openRetirement = store().findOpenRetirement(doc.id);
                 const retiredRevisionId = openRetirement?.previous?.current_revision_id || null;
                 const keepRetired = Boolean(openRetirement && retiredRevisionId && store().findRevisionByHash(doc.id, hash)?.id === retiredRevisionId);
                 doc = store().updateDocument(doc.id, {
                     ...declared,
+                    ...(withdrawal ? { requires_review: true, blocking_task_ids: [...new Set([...(doc.blocking_task_ids || []), ...(v.blockingTaskIds || [])])] } : {}),
                     ...(keepRetired ? { requires_review: false } : {}),
                     task_id: taskId,
                     project_id: taskId === v.taskId ? v.projectId : doc.project_id,
                     ...(v.kind ? { kind: v.kind } : {}),
                     ...(v.metadata ? { metadata: { ...(doc.metadata || {}), ...v.metadata } } : {}),
                 });
-                if (openRetirement) {
+                if (openRetirement && (keepRetired || v.requiresReview)) {
                     retirement = keepRetired
                         ? retirementEffect('kept', openRetirement)
                         : retirementEffect('reopened_by_registration', store().reopenRetirement(doc.id, actorId, 'registration'));
@@ -1214,6 +1229,9 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             const { revision, created: revisionCreated } = recordRevision(doc, read, resolved.mtime);
             if (doc.current_revision_id !== revision.id) store().setCurrentRevision(doc.id, revision.id);
             bindDecisionItems(doc, v.metadata, revision.id);
+            if (outgoing && store().getOutgoing(doc.id)?.invalidated_at !== outgoing.invalidated_at) {
+                throw conflict('outgoing_unsent', 'The withdrawal would invalidate an unsent outgoing message');
+            }
             // A registration under the open replacement's task is that work's result (implemented, not yet ready).
             linkReplacementResult(doc, revision, v.taskId);
             const declaration = {
@@ -1234,6 +1252,17 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                     project_id: v.projectId, task_id: v.taskId, declaration,
                     document_created: documentCreated, revision_created: revisionCreated, registered_by: actorId,
                 });
+            }
+            if (previousCheck?.outcome === 'retirable' && previousCheck.bucket === 'needs_review'
+                && previousPurpose !== v.purpose && purposeWithdrawsReview(v.purpose)) {
+                const current = store().getDocument(doc.id);
+                const definitions = store().getDecisionDefinitions(revision.id);
+                if (definitions !== null && !definitions?.length && !hasOutstandingRequest(current, revision)) {
+                    const rt = store().retireOnGround({ target: current, ground: {
+                        type: 'purpose_changed', registration_id: registration.id, previous_purpose: previousPurpose, purpose: current.purpose,
+                    } });
+                    if (rt) retirement = retirementEffect('retired', rt);
+                }
             }
             // The documents this registration names as replaced (contract §13), retired in this same transaction when it
             // is waiting for review and ready to view, else kept pending until it is.
@@ -1525,11 +1554,71 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 version: { current_revision_id: fresh.current_revision_id, current_version: captured.revision ? store().revisionVersion(captured.revision.id) : null, revision_count: store().listRevisionMeta(doc.id).length, capture_count: store().listRevisionMeta(doc.id).length, draft_count: store().draftHistory(doc.id).drafts.length },
                 // Who this read is for: the browser binds its unsaved review text to this reviewer (task 1390fc34).
                 viewer: { id: req.user.id },
-                links: { review_url: fmt.reviewUrlFor(fresh.id), review_path: fmt.reviewPathFor(fresh.id), raw_url: `/api/documents/${fresh.id}/raw` },
+                links: { review_url: fmt.reviewUrlFor(fresh.id), review_path: fmt.reviewPathFor(fresh.id), raw_url: `/api/documents/${fresh.id}/raw`, retire_path: `/api/documents/${fresh.id}/retire` },
             });
         } catch (err) {
             console.error('[Documents] read failed:', err);
             return res.status(500).json({ error: 'Failed to read document' });
+        }
+    });
+
+    // Praxis attests that each cited answer was recorded in a signed operator
+    // turn. Read the messages from Nexus so caller-supplied prose cannot
+    // replace the reply or the proposal immediately preceding it.
+    async function readRulingMessages(ground) {
+        const refs = new Set([ground.message_ref, ...ground.answers.map(answer => answer?.message_ref)]);
+        const messages = new Map();
+        for (const ref of refs) {
+            if (typeof ref !== 'string') break;
+            const parts = /^nexus:\/\/conversation\/([^/]+)\/message\/([^/]+)$/.exec(ref);
+            if (!parts) break;
+            let conversation, id;
+            try { conversation = decodeURIComponent(parts[1]); id = decodeURIComponent(parts[2]); } catch { break; }
+            const row = await db.getChatMessageById(id);
+            if (row?.role !== 'user' || row.conversation_id !== conversation) break;
+            const [previous] = await db.getChatMessages(conversation, {
+                limit: 1, before: row.created_at, beforeRowid: row.rowid, conversationalOnly: true,
+            });
+            messages.set(ref, { ...row, previous });
+        }
+        return messages.size === refs.size ? messages : null;
+    }
+
+    router.post('/:id/retire', async (req, res) => {
+        try {
+            requireStakeholderAuthority(req, 'runtime');
+            const doc = loadDocument(req, res);
+            if (!doc) return;
+            const { revision_id, content_hash, ground } = req.body || {};
+            if (typeof revision_id !== 'string' || typeof content_hash !== 'string' || ground?.type !== 'chat_ruling'
+                || typeof ground.message_ref !== 'string' || !Array.isArray(ground.answers)) {
+                return res.status(400).json({ code: 'invalid_retirement_ground', error: 'Supply the revision, content hash and cited chat answers' });
+            }
+            const messages = await readRulingMessages(ground);
+            if (!messages) throw conflict('inconclusive_chat_ruling', 'The cited user messages could not be verified');
+            const captured = await captureRevision(doc);
+            const rt = store().transaction(() => {
+                const target = store().getDocument(doc.id);
+                const revision = captured.revision;
+                if (captured.fileState !== 'ok' || target.current_revision_id !== revision_id || revision?.id !== revision_id || revision.content_hash !== content_hash) {
+                    throw conflict('stale_revision', 'The cited revision is no longer current and available');
+                }
+                const active = store().findOpenRetirement(doc.id);
+                const replay = active?.previous.current_revision_id === revision_id && active.ground?.message_ref === ground.message_ref;
+                const reviewed = replay ? { ...target, updated_at: active.previous.updated_at } : target;
+                const checked = validateChatRetirement({ doc: reviewed, revision, definitions: store().getDecisionDefinitions(revision_id), ground, messages });
+                if (!checked.ok) throw conflict(checked.code, checked.error);
+                if (replay) return active;
+                if (store().getReviewStatus(target.id) !== 'needs_review') throw conflict('review_not_waiting', 'This revision is not awaiting review');
+                const retired = store().retireOnGround({ target, ground: checked.evidence });
+                if (!retired) throw conflict('review_left_open', 'The review has pending work or this ruling was already applied');
+                return retired;
+            });
+            return res.json({ retirement: retirementView(rt), review_status: 'reference' });
+        } catch (err) {
+            if (err.status) return res.status(err.status).json({ error: err.message, code: err.code || 'runtime_required' });
+            console.error('[Documents] retirement failed:', err);
+            return res.status(500).json({ error: 'Could not record the retirement' });
         }
     });
 
@@ -2283,6 +2372,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             return res.json({
                 replacement: replacementView(rp),
                 is_latest: store().latestReplacement(doc.id)?.id === rp.id,
+                retirement_id: rp.state === 'cancelled' ? store().listRetirements(doc.id)
+                    .find(rt => rt.ground?.type === 'revision_task_cancelled' && rt.ground.replacement_id === rp.id)?.id || null : null,
                 result_is_current: Boolean(result && fresh.current_revision_id === result.id),
                 result_is_ready: readiness.ready,
                 result_revision: result,

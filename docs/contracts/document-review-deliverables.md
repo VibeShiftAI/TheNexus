@@ -1274,8 +1274,36 @@ how a reopened name came back) and the named-but-waiting notice.
 
 Activation: the two tables are created additively at API startup; the live
 :4000 serves this section only after the Nexus API restarts on the new code.
-Nothing is retired until a registration names something, and the existing
-manual closes are read as they are.
+The existing manual closes are read as they are.
+
+### 13.9 A review settled in chat or withdrawn from its record
+
+The same retirement rule accepts three additional grounds. Each changes the
+review requirement in the transaction that stores the immutable ground and
+one informational `document_retired` Activity event. The read response
+exposes `retirement.ground`, its `source` type, and the previous review state.
+These grounds have no replacing document.
+
+- For `chat_ruling`, the Praxis runtime posts `{revision_id, content_hash,
+  ground: {type, message_ref, answers}}` to the advertised
+  `POST /api/documents/:id/retire` using its runtime credential. It attests
+  that the answers came from verified operator turns. Nexus reads the actual
+  messages, checks the revision and the whole question set, and retains the
+  citations. For a prose proposal, an empty answer list asks Nexus to verify
+  a whole-scope reply against the preceding proposal and the revision's
+  recommendations. Insufficient evidence leaves the document waiting.
+- For `purpose_changed`, registration must change the purpose of a waiting
+  review to explicitly withdraw its request. Nexus checks the questions and
+  guards before clearing the queue entry. The ground cites the registration
+  and both purpose strings.
+- For `revision_task_cancelled`, an actual task cancellation must close its
+  linked replacement without producing the next version. The current revision,
+  other review work and intended action must leave nothing else pending. The
+  ground cites both the task and the replacement.
+
+The guards in §13 apply to every ground. The activity entry is informational.
+No decision, execution, chat announcement or inbox card follows from retirement.
+An explicit reopening survives replay of the same evidence.
 
 ## 14. Moving a registration when the run that wrote it lands (2026-11-24, task ec3e1d0c)
 

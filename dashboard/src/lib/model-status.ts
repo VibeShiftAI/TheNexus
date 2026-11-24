@@ -136,13 +136,20 @@ export const STATE_STYLE: Record<ModelAvailability, { chip: string; dot: string;
     },
 };
 
-/** "in 1h 30m" for a future ISO time; null when there is no clock. */
-export function untilLabel(iso: string | null, now = Date.now()): string | null {
-    if (!iso) return null;
-    const at = Date.parse(iso);
+const resetTime = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric", year: "numeric",
+    hourCycle: "h23", hour: "2-digit", minute: "2-digit", timeZoneName: "short",
+});
+
+export function untilLabel(value: string | number | null, now = Date.now()): string | null {
+    if (value === null) return null;
+    const at = typeof value === "number" ? value : Date.parse(value);
     if (!Number.isFinite(at)) return null;
-    const delta = at - now;
-    if (delta <= 0) return "any moment";
+    return `${resetTime.format(at)} (${countdown(at - now)})`;
+}
+
+function countdown(delta: number): string {
+    if (delta <= 0) return "due";
     const mins = Math.round(delta / 60_000);
     if (mins < 60) return `in ${mins}m`;
     const hours = Math.floor(mins / 60);

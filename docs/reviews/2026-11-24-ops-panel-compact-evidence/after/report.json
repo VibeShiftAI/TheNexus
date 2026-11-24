@@ -1,0 +1,6433 @@
+{
+  "label": "after",
+  "at": "2026-11-24T14:40:09.352Z",
+  "base": "http://localhost:62398",
+  "dashboard": "/Volumes/Projects/.praxis-worktrees/52b5db3d-f88c-4e59-b733-8e05758b30ca/TheNexus/dashboard",
+  "scenarios": {
+    "desktop idle": {
+      "expectedRuns": 0,
+      "expectedSeats": 0,
+      "map": {
+        "live": "true",
+        "runCount": "0",
+        "map": {
+          "left": 41,
+          "top": 709,
+          "right": 458,
+          "bottom": 1119,
+          "width": 417,
+          "height": 410
+        },
+        "runs": [],
+        "flows": [],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 818,
+              "right": 122,
+              "bottom": 838,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 866,
+              "right": 122,
+              "bottom": 886,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 377,
+              "top": 818,
+              "right": 397,
+              "bottom": 838,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 188,
+              "top": 961,
+              "right": 202,
+              "bottom": 975,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "heights": {
+          "station": 590,
+          "map": 410
+        },
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "false",
+            "active": "false",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Antigravity: Standing by",
+            "title": "Antigravity: Standing by. Open Antigravity runs and reports",
+            "button": {
+              "left": 43,
+              "top": 809,
+              "right": 181,
+              "bottom": 847,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 97,
+              "top": 813,
+              "right": 127,
+              "bottom": 843,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 112,
+                    "y": 828
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "claude-code",
+            "expanded": "false",
+            "active": "false",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Claude Code: Standing by",
+            "title": "Claude Code: Standing by. Open Claude Code runs and reports",
+            "button": {
+              "left": 43,
+              "top": 857,
+              "right": 181,
+              "bottom": 895,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 97,
+              "top": 861,
+              "right": 127,
+              "bottom": 891,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 112,
+                    "y": 876
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "codex",
+            "expanded": "false",
+            "active": "false",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Codex: Standing by",
+            "title": "Codex: Standing by. Open Codex runs and reports",
+            "button": {
+              "left": 318,
+              "top": 809,
+              "right": 456,
+              "bottom": 847,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 372,
+              "top": 813,
+              "right": 402,
+              "bottom": 843,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 387,
+                    "y": 828
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "openrouter",
+            "expanded": "false",
+            "active": "false",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": "↗",
+            "aria": "Inspect OpenRouter: Standing by",
+            "title": "OpenRouter: Standing by. Open OpenRouter runs and reports",
+            "button": {
+              "left": 318,
+              "top": 857,
+              "right": 456,
+              "bottom": 895,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 372,
+              "top": 861,
+              "right": 402,
+              "bottom": 891,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 387,
+                    "y": 876
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "oldChips": 0,
+        "queue": "Dispatch queue clear",
+        "pageOverflowX": 0,
+        "viewport": 1440
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Idle Signal lost — reconnecting — — Default RECONNECTING Offline Signal lost — attempting to re-establish link Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "idle-desktop-ops-panel.png"
+    },
+    "desktop busy": {
+      "expectedRuns": 6,
+      "expectedSeats": 0,
+      "map": {
+        "live": "true",
+        "runCount": "6",
+        "map": {
+          "left": 41,
+          "top": 709,
+          "right": 458,
+          "bottom": 1181,
+          "width": 417,
+          "height": 472
+        },
+        "runs": [
+          {
+            "key": "fx-site-audit",
+            "provider": "antigravity",
+            "role": "building",
+            "title": "Audit the landing page on a phone",
+            "aria": "Audit the landing page on a phone; building on Antigravity; model gemini-4-argon; running 8m. Open Antigravity runs",
+            "model": "gemini-4-argon",
+            "effort": null,
+            "phase": "browsing",
+            "elapsed": "8m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 849,
+              "right": 181,
+              "bottom": 903,
+              "width": 126,
+              "height": 54
+            }
+          },
+          {
+            "key": "fx-ops-graphic",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Expand the Ops graphic to show every running agent",
+            "aria": "Slot 2; Expand the Ops graphic to show every running agent; building on Claude Code; model Fable 5.2, effort high; running 47m. Open Claude Code runs",
+            "model": "Fable 5.2",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "47m",
+            "slot": "S2",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S2"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 953,
+              "right": 181,
+              "bottom": 992,
+              "width": 126,
+              "height": 39
+            }
+          },
+          {
+            "key": "fx-intake-form",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Repair the intake form validation",
+            "aria": "Slot 5; Repair the intake form validation; building on Claude Code; model Opus 5.5, effort xhigh; running 12m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "thinking",
+            "elapsed": "12m",
+            "slot": "S5",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S5"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 996,
+              "right": 181,
+              "bottom": 1035,
+              "width": 126,
+              "height": 39
+            }
+          },
+          {
+            "key": "qa--fx-token-scan",
+            "provider": "claude-code",
+            "role": "reviewing",
+            "title": "Review: token usage scan repair",
+            "aria": "Review: token usage scan repair; reviewing on Claude Code; model Opus 5.5, effort high; running 3m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": null,
+            "elapsed": "3m",
+            "slot": null,
+            "standin": "reviewing",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "reviewing"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1039,
+              "right": 181,
+              "bottom": 1079,
+              "width": 126,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-slot-numbers",
+            "provider": "codex",
+            "role": "building",
+            "title": "Number the day's schedule slots",
+            "aria": "Slot 3; Number the day's schedule slots; building on Codex; model GPT-6.2 Astra, effort xhigh; running 26m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "26m",
+            "slot": "S3",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S3"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 318,
+              "top": 849,
+              "right": 444,
+              "bottom": 902,
+              "width": 126,
+              "height": 53
+            }
+          },
+          {
+            "key": "fx-no-model",
+            "provider": "codex",
+            "role": "building",
+            "title": "Thought stream box follows the live run",
+            "aria": "Thought stream box follows the live run; building on Codex; model unknown; running 1m. Open Codex runs",
+            "model": "unknown",
+            "effort": null,
+            "phase": "thinking",
+            "elapsed": "1m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 318,
+              "top": 906,
+              "right": 444,
+              "bottom": 946,
+              "width": 126,
+              "height": 40
+            }
+          }
+        ],
+        "flows": [
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 161
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 112
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 162
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 112
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 162
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 167
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 105
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 148
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 191
+          }
+        ],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 818,
+              "right": 122,
+              "bottom": 838,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 922,
+              "right": 122,
+              "bottom": 942,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 377,
+              "top": 818,
+              "right": 397,
+              "bottom": 838,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 188,
+              "top": 1098,
+              "right": 202,
+              "bottom": 1112,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "heights": {
+          "station": 652,
+          "map": 472
+        },
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "true",
+            "active": "true",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Antigravity: 1 building",
+            "title": "Antigravity: 1 building. Open Antigravity runs and reports",
+            "button": {
+              "left": 43,
+              "top": 809,
+              "right": 181,
+              "bottom": 847,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 97,
+              "top": 813,
+              "right": 127,
+              "bottom": 843,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 112,
+                    "y": 828
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 828
+                  },
+                  {
+                    "x": 55,
+                    "y": 876
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "claude-code",
+            "expanded": "true",
+            "active": "true",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Claude Code: 2 building · 1 reviewing",
+            "title": "Claude Code: 2 building · 1 reviewing. Open Claude Code runs and reports",
+            "button": {
+              "left": 43,
+              "top": 913,
+              "right": 181,
+              "bottom": 951,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 97,
+              "top": 917,
+              "right": 127,
+              "bottom": 947,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 112,
+                    "y": 932
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 932
+                  },
+                  {
+                    "x": 55,
+                    "y": 973
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 932
+                  },
+                  {
+                    "x": 55,
+                    "y": 1016
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 932
+                  },
+                  {
+                    "x": 55,
+                    "y": 1059
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "codex",
+            "expanded": "true",
+            "active": "true",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Codex: 2 building",
+            "title": "Codex: 2 building. Open Codex runs and reports",
+            "button": {
+              "left": 318,
+              "top": 809,
+              "right": 456,
+              "bottom": 847,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 372,
+              "top": 813,
+              "right": 402,
+              "bottom": 843,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 387,
+                    "y": 828
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 387,
+                    "y": 828
+                  },
+                  {
+                    "x": 444,
+                    "y": 876
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 387,
+                    "y": 828
+                  },
+                  {
+                    "x": 444,
+                    "y": 926
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "openrouter",
+            "expanded": "false",
+            "active": "false",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": "↗",
+            "aria": "Inspect OpenRouter: Standing by",
+            "title": "OpenRouter: Standing by. Open OpenRouter runs and reports",
+            "button": {
+              "left": 318,
+              "top": 956,
+              "right": 456,
+              "bottom": 994,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 372,
+              "top": 960,
+              "right": 402,
+              "bottom": 990,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 387,
+                    "y": 975
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "oldChips": 0,
+        "queue": "Dispatch queue clear",
+        "pageOverflowX": 0,
+        "viewport": 1440
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Fable 5.2 · testing — unavailable Default LIVE Offline Fable 5.2 · testing Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "busy-desktop-ops-panel.png",
+      "drillDownShot": "busy-desktop-drill-down-from-run-node.png"
+    },
+    "desktop overflow": {
+      "expectedRuns": 23,
+      "expectedSeats": 2,
+      "map": {
+        "live": "true",
+        "runCount": "25",
+        "map": {
+          "left": 41,
+          "top": 709,
+          "right": 458,
+          "bottom": 1803,
+          "width": 417,
+          "height": 1094
+        },
+        "runs": [
+          {
+            "key": "fx-many-22",
+            "provider": "antigravity",
+            "role": "building",
+            "title": "Concurrent fixture task number 22",
+            "aria": "Concurrent fixture task number 22; building on Antigravity; model gemini-4-argon, effort high; running 18m. Open Antigravity runs",
+            "model": "gemini-4-argon",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "18m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 849,
+              "right": 181,
+              "bottom": 903,
+              "width": 126,
+              "height": 54
+            }
+          },
+          {
+            "key": "fx-many-23",
+            "provider": "antigravity",
+            "role": "building",
+            "title": "Concurrent fixture task number 23",
+            "aria": "Concurrent fixture task number 23; building on Antigravity; model gemini-4-argon, effort xhigh; running 16m. Open Antigravity runs",
+            "model": "gemini-4-argon",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "16m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 907,
+              "right": 181,
+              "bottom": 961,
+              "width": 126,
+              "height": 54
+            }
+          },
+          {
+            "key": "fx-many-01",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 1",
+            "aria": "Slot 1; Concurrent fixture task number 1; building on Claude Code; model Opus 5.5, effort xhigh; running 1h 0m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "1h 0m",
+            "slot": "S1",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S1"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1011,
+              "right": 181,
+              "bottom": 1064,
+              "width": 126,
+              "height": 53
+            }
+          },
+          {
+            "key": "fx-many-02",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 2",
+            "aria": "Concurrent fixture task number 2; building on Claude Code; model Opus 5.5, effort high; running 58m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "58m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1068,
+              "right": 181,
+              "bottom": 1108,
+              "width": 126,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-03",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 3",
+            "aria": "Concurrent fixture task number 3; building on Claude Code; model Opus 5.5, effort xhigh; running 56m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "56m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1112,
+              "right": 181,
+              "bottom": 1152,
+              "width": 126,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-04",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 4",
+            "aria": "Concurrent fixture task number 4; building on Claude Code; model Opus 5.5, effort high; running 54m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "54m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1156,
+              "right": 181,
+              "bottom": 1196,
+              "width": 126,
+              "height": 40
+            }
+          },
+          {
+            "key": "qa--fx-many-05",
+            "provider": "claude-code",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 5",
+            "aria": "Slot 2; Review: Concurrent fixture task number 5; reviewing on Claude Code; model Opus 5.5, effort xhigh; running 52m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": null,
+            "elapsed": "52m",
+            "slot": "S2",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S2"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1200,
+              "right": 181,
+              "bottom": 1239,
+              "width": 126,
+              "height": 39
+            }
+          },
+          {
+            "key": "fx-many-06",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 6",
+            "aria": "Concurrent fixture task number 6; building on Claude Code; model Opus 5.5, effort high; running 50m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "50m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1243,
+              "right": 181,
+              "bottom": 1283,
+              "width": 126,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-07",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 7",
+            "aria": "Concurrent fixture task number 7; building on Claude Code; model unknown; running 48m. Open Claude Code runs",
+            "model": "unknown",
+            "effort": null,
+            "phase": "testing",
+            "elapsed": "48m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1287,
+              "right": 181,
+              "bottom": 1327,
+              "width": 126,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-08",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 8",
+            "aria": "Concurrent fixture task number 8; building on Claude Code; model Opus 5.5, effort high; running 46m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "46m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1331,
+              "right": 181,
+              "bottom": 1371,
+              "width": 126,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-09",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 9",
+            "aria": "Slot 3; Concurrent fixture task number 9; building on Claude Code; model Opus 5.5, effort xhigh; running 44m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "44m",
+            "slot": "S3",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S3"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1375,
+              "right": 181,
+              "bottom": 1414,
+              "width": 126,
+              "height": 39
+            }
+          },
+          {
+            "key": "qa--fx-many-10",
+            "provider": "claude-code",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 10",
+            "aria": "Review: Concurrent fixture task number 10; reviewing on Claude Code; model Opus 5.5, effort high; running 42m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": null,
+            "elapsed": "42m",
+            "slot": null,
+            "standin": "reviewing",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "reviewing"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1418,
+              "right": 181,
+              "bottom": 1458,
+              "width": 126,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-11",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 11",
+            "aria": "Concurrent fixture task number 11; building on Claude Code; model Opus 5.5, effort xhigh; running 40m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "40m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1462,
+              "right": 181,
+              "bottom": 1502,
+              "width": 126,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-12",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 12",
+            "aria": "Concurrent fixture task number 12; building on Claude Code; model Opus 5.5, effort high; running 38m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "38m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1506,
+              "right": 181,
+              "bottom": 1546,
+              "width": 126,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-many-13",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 13",
+            "aria": "Slot 4; Concurrent fixture task number 13; building on Claude Code; model Opus 5.5, effort xhigh; running 36m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "36m",
+            "slot": "S4",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S4"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1550,
+              "right": 181,
+              "bottom": 1589,
+              "width": 126,
+              "height": 39
+            }
+          },
+          {
+            "key": "fx-many-14",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 14",
+            "aria": "Concurrent fixture task number 14; building on Claude Code; model unknown; running 34m. Open Claude Code runs",
+            "model": "unknown",
+            "effort": null,
+            "phase": "writing",
+            "elapsed": "34m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1593,
+              "right": 181,
+              "bottom": 1633,
+              "width": 126,
+              "height": 40
+            }
+          },
+          {
+            "key": "seat:cli:claude-code/claude-opus-5-5",
+            "provider": "claude-code",
+            "role": "council",
+            "title": "Fixture council: next improvements",
+            "aria": "Fixture council: next improvements; council on Claude Code; model Opus 5.5; running 1m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": null,
+            "phase": null,
+            "elapsed": "1m",
+            "slot": null,
+            "standin": "council",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "council"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 1637,
+              "right": 181,
+              "bottom": 1677,
+              "width": 126,
+              "height": 40
+            }
+          },
+          {
+            "key": "qa--fx-many-15",
+            "provider": "codex",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 15",
+            "aria": "Review: Concurrent fixture task number 15; reviewing on Codex; model GPT-6.2 Astra, effort xhigh; running 32m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": null,
+            "elapsed": "32m",
+            "slot": null,
+            "standin": "reviewing",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "reviewing"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 318,
+              "top": 849,
+              "right": 444,
+              "bottom": 903,
+              "width": 126,
+              "height": 54
+            }
+          },
+          {
+            "key": "fx-many-16",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 16",
+            "aria": "Concurrent fixture task number 16; building on Codex; model GPT-6.2 Astra, effort high; running 30m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "30m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 318,
+              "top": 907,
+              "right": 444,
+              "bottom": 961,
+              "width": 126,
+              "height": 54
+            }
+          },
+          {
+            "key": "fx-many-17",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 17",
+            "aria": "Slot 5; Concurrent fixture task number 17; building on Codex; model GPT-6.2 Astra, effort xhigh; running 28m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "28m",
+            "slot": "S5",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S5"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 318,
+              "top": 965,
+              "right": 444,
+              "bottom": 1018,
+              "width": 126,
+              "height": 53
+            }
+          },
+          {
+            "key": "fx-many-18",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 18",
+            "aria": "Concurrent fixture task number 18; building on Codex; model GPT-6.2 Astra, effort high; running 26m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "26m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 318,
+              "top": 1022,
+              "right": 444,
+              "bottom": 1076,
+              "width": 126,
+              "height": 54
+            }
+          },
+          {
+            "key": "fx-many-19",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 19",
+            "aria": "Concurrent fixture task number 19; building on Codex; model GPT-6.2 Astra, effort xhigh; running 24m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "24m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 318,
+              "top": 1080,
+              "right": 444,
+              "bottom": 1134,
+              "width": 126,
+              "height": 54
+            }
+          },
+          {
+            "key": "qa--fx-many-20",
+            "provider": "codex",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 20",
+            "aria": "Review: Concurrent fixture task number 20; reviewing on Codex; model GPT-6.2 Astra, effort high; running 22m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "high",
+            "phase": null,
+            "elapsed": "22m",
+            "slot": null,
+            "standin": "reviewing",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "reviewing"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 318,
+              "top": 1138,
+              "right": 444,
+              "bottom": 1192,
+              "width": 126,
+              "height": 54
+            }
+          },
+          {
+            "key": "fx-many-21",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 21",
+            "aria": "Slot 6; Concurrent fixture task number 21; building on Codex; model unknown; running 20m. Open Codex runs",
+            "model": "unknown",
+            "effort": null,
+            "phase": "writing",
+            "elapsed": "20m",
+            "slot": "S6",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S6"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 318,
+              "top": 1196,
+              "right": 444,
+              "bottom": 1235,
+              "width": 126,
+              "height": 39
+            }
+          },
+          {
+            "key": "seat:cli:codex/gpt-6.2-astra",
+            "provider": "codex",
+            "role": "council",
+            "title": "Fixture council: next improvements",
+            "aria": "Fixture council: next improvements; council on Codex; model GPT-6.2 Astra; running 1m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": null,
+            "phase": null,
+            "elapsed": "1m",
+            "slot": null,
+            "standin": "council",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "council"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 318,
+              "top": 1239,
+              "right": 444,
+              "bottom": 1279,
+              "width": 126,
+              "height": 40
+            }
+          }
+        ],
+        "flows": [
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 161
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 112
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 170
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 162
+          },
+          {
+            "wire": "council",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 138
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 112
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 170
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 228
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 285
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 343
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 401
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 452
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 495
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 211
+          },
+          {
+            "wire": "council",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 242
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 112
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 162
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 206
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 250
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 294
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 337
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 381
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 425
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 469
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 512
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 556
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 600
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 644
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 687
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 731
+          }
+        ],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 818,
+              "right": 122,
+              "bottom": 838,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 980,
+              "right": 122,
+              "bottom": 1000,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 377,
+              "top": 818,
+              "right": 397,
+              "bottom": 838,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 188,
+              "top": 1696,
+              "right": 202,
+              "bottom": 1710,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "heights": {
+          "station": 1274,
+          "map": 1094
+        },
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "true",
+            "active": "true",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Antigravity: 2 building; council reported",
+            "title": "Antigravity: 2 building; council reported. Open Antigravity runs and reports",
+            "button": {
+              "left": 43,
+              "top": 809,
+              "right": 181,
+              "bottom": 847,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 97,
+              "top": 813,
+              "right": 127,
+              "bottom": 843,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 112,
+                    "y": 828
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 828
+                  },
+                  {
+                    "x": 55,
+                    "y": 876
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 828
+                  },
+                  {
+                    "x": 55,
+                    "y": 934
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "claude-code",
+            "expanded": "true",
+            "active": "true",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Claude Code: 12 building · 2 reviewing; council deliberating",
+            "title": "Claude Code: 12 building · 2 reviewing; council deliberating. Open Claude Code runs and reports",
+            "button": {
+              "left": 43,
+              "top": 971,
+              "right": 181,
+              "bottom": 1009,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 97,
+              "top": 975,
+              "right": 127,
+              "bottom": 1005,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 112,
+                    "y": 990
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 990
+                  },
+                  {
+                    "x": 55,
+                    "y": 1038
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 990
+                  },
+                  {
+                    "x": 55,
+                    "y": 1088
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 990
+                  },
+                  {
+                    "x": 55,
+                    "y": 1132
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 990
+                  },
+                  {
+                    "x": 55,
+                    "y": 1176
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 990
+                  },
+                  {
+                    "x": 55,
+                    "y": 1220
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 990
+                  },
+                  {
+                    "x": 55,
+                    "y": 1263
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 990
+                  },
+                  {
+                    "x": 55,
+                    "y": 1307
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 990
+                  },
+                  {
+                    "x": 55,
+                    "y": 1351
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 990
+                  },
+                  {
+                    "x": 55,
+                    "y": 1395
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 990
+                  },
+                  {
+                    "x": 55,
+                    "y": 1438
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 990
+                  },
+                  {
+                    "x": 55,
+                    "y": 1482
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 990
+                  },
+                  {
+                    "x": 55,
+                    "y": 1526
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 990
+                  },
+                  {
+                    "x": 55,
+                    "y": 1570
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 990
+                  },
+                  {
+                    "x": 55,
+                    "y": 1613
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 990
+                  },
+                  {
+                    "x": 55,
+                    "y": 1657
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "codex",
+            "expanded": "true",
+            "active": "true",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Codex: 5 building · 2 reviewing; council deliberating",
+            "title": "Codex: 5 building · 2 reviewing; council deliberating. Open Codex runs and reports",
+            "button": {
+              "left": 318,
+              "top": 809,
+              "right": 456,
+              "bottom": 847,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 372,
+              "top": 813,
+              "right": 402,
+              "bottom": 843,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 387,
+                    "y": 828
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 387,
+                    "y": 828
+                  },
+                  {
+                    "x": 444,
+                    "y": 876
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 387,
+                    "y": 828
+                  },
+                  {
+                    "x": 444,
+                    "y": 934
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 387,
+                    "y": 828
+                  },
+                  {
+                    "x": 444,
+                    "y": 992
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 387,
+                    "y": 828
+                  },
+                  {
+                    "x": 444,
+                    "y": 1049
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 387,
+                    "y": 828
+                  },
+                  {
+                    "x": 444,
+                    "y": 1107
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 387,
+                    "y": 828
+                  },
+                  {
+                    "x": 444,
+                    "y": 1165
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 387,
+                    "y": 828
+                  },
+                  {
+                    "x": 444,
+                    "y": 1216
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 387,
+                    "y": 828
+                  },
+                  {
+                    "x": 444,
+                    "y": 1259
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "openrouter",
+            "expanded": "false",
+            "active": "false",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": "↗",
+            "aria": "Inspect OpenRouter: Standing by",
+            "title": "OpenRouter: Standing by. Open OpenRouter runs and reports",
+            "button": {
+              "left": 318,
+              "top": 1289,
+              "right": 456,
+              "bottom": 1327,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 372,
+              "top": 1293,
+              "right": 402,
+              "bottom": 1323,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 387,
+                    "y": 1308
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "oldChips": 0,
+        "queue": "01 S9 Queued: rebuild the system map 4m 02 Queued: refresh the model registry 2m +1 queued · open queue",
+        "pageOverflowX": 0,
+        "viewport": 1440
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Opus 5.5 · testing — unavailable Default LIVE Offline Opus 5.5 · testing Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "overflow-desktop-ops-panel.png"
+    },
+    "desktop trouble": {
+      "expectedRuns": 3,
+      "expectedSeats": 0,
+      "map": {
+        "live": "true",
+        "runCount": "3",
+        "map": {
+          "left": 41,
+          "top": 709,
+          "right": 458,
+          "bottom": 1119,
+          "width": 417,
+          "height": 410
+        },
+        "runs": [
+          {
+            "key": "fx-ops-graphic",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Expand the Ops graphic to show every running agent",
+            "aria": "Slot 2; Expand the Ops graphic to show every running agent; building on Claude Code; model Fable 5.2, effort high; running 47m. Open Claude Code runs",
+            "model": "Fable 5.2",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "47m",
+            "slot": "S2",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S2"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 897,
+              "right": 181,
+              "bottom": 936,
+              "width": 126,
+              "height": 39
+            }
+          },
+          {
+            "key": "qa--fx-token-scan",
+            "provider": "claude-code",
+            "role": "reviewing",
+            "title": "Review: token usage scan repair",
+            "aria": "Review: token usage scan repair; reviewing on Claude Code; model Opus 5.5, effort high; running 3m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": null,
+            "elapsed": "3m",
+            "slot": null,
+            "standin": "reviewing",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "reviewing"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 55,
+              "top": 940,
+              "right": 181,
+              "bottom": 980,
+              "width": 126,
+              "height": 40
+            }
+          },
+          {
+            "key": "fx-slot-numbers",
+            "provider": "codex",
+            "role": "building",
+            "title": "Number the day's schedule slots",
+            "aria": "Slot 3; Number the day's schedule slots; building on Codex; model GPT-6.2 Astra, effort xhigh; running 26m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "26m",
+            "slot": "S3",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S3"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 3,
+            "fontPx": 10,
+            "box": {
+              "left": 318,
+              "top": 849,
+              "right": 444,
+              "bottom": 902,
+              "width": 126,
+              "height": 53
+            }
+          }
+        ],
+        "flows": [
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 162
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 112
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 137
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 105
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 148
+          }
+        ],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 818,
+              "right": 122,
+              "bottom": 838,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 866,
+              "right": 122,
+              "bottom": 886,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 377,
+              "top": 818,
+              "right": 397,
+              "bottom": 838,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 188,
+              "top": 999,
+              "right": 202,
+              "bottom": 1013,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "heights": {
+          "station": 590,
+          "map": 410
+        },
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "false",
+            "active": "false",
+            "trouble": "failed",
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Antigravity: Run failed",
+            "title": "Antigravity: Run failed. Open Antigravity runs and reports",
+            "button": {
+              "left": 43,
+              "top": 809,
+              "right": 181,
+              "bottom": 847,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 97,
+              "top": 813,
+              "right": 127,
+              "bottom": 843,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "2px",
+              "style": "solid",
+              "color": "rgb(251, 113, 133)",
+              "glow": "rgba(251, 113, 133, 0.376) 0px 0px 10px 0px"
+            },
+            "badge": {
+              "trouble": "failed",
+              "box": {
+                "left": 117,
+                "top": 811,
+                "right": 130,
+                "bottom": 824,
+                "width": 13,
+                "height": 13
+              },
+              "background": "rgb(251, 113, 133)",
+              "visible": true
+            },
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 112,
+                    "y": 828
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "claude-code",
+            "expanded": "true",
+            "active": "true",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Claude Code: 1 building · 1 reviewing",
+            "title": "Claude Code: 1 building · 1 reviewing. Open Claude Code runs and reports",
+            "button": {
+              "left": 43,
+              "top": 857,
+              "right": 181,
+              "bottom": 895,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 97,
+              "top": 861,
+              "right": 127,
+              "bottom": 891,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 112,
+                    "y": 876
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 876
+                  },
+                  {
+                    "x": 55,
+                    "y": 917
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 112,
+                    "y": 876
+                  },
+                  {
+                    "x": 55,
+                    "y": 960
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "codex",
+            "expanded": "true",
+            "active": "true",
+            "trouble": "suspended",
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Codex: Suspended",
+            "title": "Codex: Suspended. Open Codex runs and reports",
+            "button": {
+              "left": 318,
+              "top": 809,
+              "right": 456,
+              "bottom": 847,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 372,
+              "top": 813,
+              "right": 402,
+              "bottom": 843,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "2px",
+              "style": "solid",
+              "color": "rgb(251, 191, 36)",
+              "glow": "rgba(251, 191, 36, 0.314) 0px 0px 10px 0px"
+            },
+            "badge": {
+              "trouble": "suspended",
+              "box": {
+                "left": 392,
+                "top": 811,
+                "right": 405,
+                "bottom": 824,
+                "width": 13,
+                "height": 13
+              },
+              "background": "rgb(251, 191, 36)",
+              "visible": true
+            },
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 387,
+                    "y": 828
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 387,
+                    "y": 828
+                  },
+                  {
+                    "x": 444,
+                    "y": 876
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "openrouter",
+            "expanded": "false",
+            "active": "false",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": "↗",
+            "aria": "Inspect OpenRouter: Standing by",
+            "title": "OpenRouter: Standing by. Open OpenRouter runs and reports",
+            "button": {
+              "left": 318,
+              "top": 912,
+              "right": 456,
+              "bottom": 950,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 372,
+              "top": 916,
+              "right": 402,
+              "bottom": 946,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 387,
+                    "y": 931
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "oldChips": 0,
+        "queue": "Dispatch queue clear",
+        "pageOverflowX": 0,
+        "viewport": 1440
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Fable 5.2 · testing — unavailable Default LIVE Offline Fable 5.2 · testing Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "trouble-desktop-ops-panel.png"
+    },
+    "desktop delayed": {
+      "expectedRuns": 0,
+      "expectedSeats": 0,
+      "map": {
+        "live": "false",
+        "runCount": "0",
+        "map": {
+          "left": 41,
+          "top": 709,
+          "right": 458,
+          "bottom": 1119,
+          "width": 417,
+          "height": 410
+        },
+        "runs": [],
+        "flows": [],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 818,
+              "right": 122,
+              "bottom": 838,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 102,
+              "top": 866,
+              "right": 122,
+              "bottom": 886,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 377,
+              "top": 818,
+              "right": 397,
+              "bottom": 838,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 177,
+              "top": 961,
+              "right": 191,
+              "bottom": 975,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "heights": {
+          "station": 590,
+          "map": 410
+        },
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "false",
+            "active": "false",
+            "trouble": "delayed",
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Antigravity: Signal delayed",
+            "title": "Antigravity: Signal delayed. Open Antigravity runs and reports",
+            "button": {
+              "left": 43,
+              "top": 809,
+              "right": 181,
+              "bottom": 847,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 97,
+              "top": 813,
+              "right": 127,
+              "bottom": 843,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "2px",
+              "style": "dashed",
+              "color": "rgb(148, 163, 184)",
+              "glow": "none"
+            },
+            "badge": {
+              "trouble": "delayed",
+              "box": {
+                "left": 117,
+                "top": 811,
+                "right": 130,
+                "bottom": 824,
+                "width": 13,
+                "height": 13
+              },
+              "background": "rgb(148, 163, 184)",
+              "visible": true
+            },
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 112,
+                    "y": 828
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "claude-code",
+            "expanded": "false",
+            "active": "false",
+            "trouble": "delayed",
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Claude Code: Signal delayed",
+            "title": "Claude Code: Signal delayed. Open Claude Code runs and reports",
+            "button": {
+              "left": 43,
+              "top": 857,
+              "right": 181,
+              "bottom": 895,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 97,
+              "top": 861,
+              "right": 127,
+              "bottom": 891,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "2px",
+              "style": "dashed",
+              "color": "rgb(148, 163, 184)",
+              "glow": "none"
+            },
+            "badge": {
+              "trouble": "delayed",
+              "box": {
+                "left": 117,
+                "top": 859,
+                "right": 130,
+                "bottom": 872,
+                "width": 13,
+                "height": 13
+              },
+              "background": "rgb(148, 163, 184)",
+              "visible": true
+            },
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 112,
+                    "y": 876
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "codex",
+            "expanded": "false",
+            "active": "false",
+            "trouble": "delayed",
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Codex: Signal delayed",
+            "title": "Codex: Signal delayed. Open Codex runs and reports",
+            "button": {
+              "left": 318,
+              "top": 809,
+              "right": 456,
+              "bottom": 847,
+              "width": 138,
+              "height": 38
+            },
+            "logo": {
+              "left": 372,
+              "top": 813,
+              "right": 402,
+              "bottom": 843,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "2px",
+              "style": "dashed",
+              "color": "rgb(148, 163, 184)",
+              "glow": "none"
+            },
+            "badge": {
+              "trouble": "delayed",
+              "box": {
+                "left": 392,
+                "top": 811,
+                "right": 405,
+                "bottom": 824,
+                "width": 13,
+                "height": 13
+              },
+              "background": "rgb(148, 163, 184)",
+              "visible": true
+            },
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 249,
+                    "y": 876
+                  },
+                  {
+                    "x": 387,
+                    "y": 828
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "oldChips": 0,
+        "queue": "Dispatch signal delayed — showing last known capacity in details.",
+        "pageOverflowX": 0,
+        "viewport": 1440
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Idle Nothing executing — standing by — — Default LIVE Offline Connecting… Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "delayed-desktop-ops-panel.png"
+    },
+    "phone idle": {
+      "expectedRuns": 0,
+      "expectedSeats": 0,
+      "map": {
+        "live": "true",
+        "runCount": "0",
+        "map": {
+          "left": 29,
+          "top": 1155,
+          "right": 361,
+          "bottom": 1732,
+          "width": 332,
+          "height": 577
+        },
+        "runs": [],
+        "flows": [],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1465,
+              "right": 205,
+              "bottom": 1485,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1513,
+              "right": 205,
+              "bottom": 1533,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 185,
+              "top": 1561,
+              "right": 205,
+              "bottom": 1581,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 134,
+              "top": 1649,
+              "right": 148,
+              "bottom": 1663,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "heights": {
+          "station": 757,
+          "map": 577
+        },
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "false",
+            "active": "false",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Antigravity: Standing by",
+            "title": "Antigravity: Standing by. Open Antigravity runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1456,
+              "right": 359,
+              "bottom": 1494,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1460,
+              "right": 210,
+              "bottom": 1490,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1345
+                  },
+                  {
+                    "x": 195,
+                    "y": 1475
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "claude-code",
+            "expanded": "false",
+            "active": "false",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Claude Code: Standing by",
+            "title": "Claude Code: Standing by. Open Claude Code runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1504,
+              "right": 359,
+              "bottom": 1542,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1508,
+              "right": 210,
+              "bottom": 1538,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1345
+                  },
+                  {
+                    "x": 195,
+                    "y": 1523
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "codex",
+            "expanded": "false",
+            "active": "false",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Codex: Standing by",
+            "title": "Codex: Standing by. Open Codex runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1552,
+              "right": 359,
+              "bottom": 1590,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1556,
+              "right": 210,
+              "bottom": 1586,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1345
+                  },
+                  {
+                    "x": 195,
+                    "y": 1571
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "openrouter",
+            "expanded": "false",
+            "active": "false",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": "↗",
+            "aria": "Inspect OpenRouter: Standing by",
+            "title": "OpenRouter: Standing by. Open OpenRouter runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1600,
+              "right": 359,
+              "bottom": 1638,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1604,
+              "right": 210,
+              "bottom": 1634,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1345
+                  },
+                  {
+                    "x": 195,
+                    "y": 1619
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "oldChips": 0,
+        "queue": "Dispatch queue clear",
+        "pageOverflowX": 0,
+        "viewport": 390
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Idle Nothing executing — standing by — — Default LIVE Offline Connecting… Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "idle-phone-ops-panel.png"
+    },
+    "phone busy": {
+      "expectedRuns": 6,
+      "expectedSeats": 0,
+      "map": {
+        "live": "true",
+        "runCount": "6",
+        "map": {
+          "left": 29,
+          "top": 1155,
+          "right": 361,
+          "bottom": 1903,
+          "width": 332,
+          "height": 748
+        },
+        "runs": [
+          {
+            "key": "fx-site-audit",
+            "provider": "antigravity",
+            "role": "building",
+            "title": "Audit the landing page on a phone",
+            "aria": "Audit the landing page on a phone; building on Antigravity; model gemini-4-argon; running 8m. Open Antigravity runs",
+            "model": "gemini-4-argon",
+            "effort": null,
+            "phase": "browsing",
+            "elapsed": "8m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 1496,
+              "right": 359,
+              "bottom": 1522,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-ops-graphic",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Expand the Ops graphic to show every running agent",
+            "aria": "Slot 2; Expand the Ops graphic to show every running agent; building on Claude Code; model Fable 5.2, effort high; running 47m. Open Claude Code runs",
+            "model": "Fable 5.2",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "47m",
+            "slot": "S2",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S2"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 1,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 1572,
+              "right": 359,
+              "bottom": 1597,
+              "width": 316,
+              "height": 25
+            }
+          },
+          {
+            "key": "fx-intake-form",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Repair the intake form validation",
+            "aria": "Slot 5; Repair the intake form validation; building on Claude Code; model Opus 5.5, effort xhigh; running 12m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "thinking",
+            "elapsed": "12m",
+            "slot": "S5",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S5"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 1,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 1601,
+              "right": 359,
+              "bottom": 1626,
+              "width": 316,
+              "height": 25
+            }
+          },
+          {
+            "key": "qa--fx-token-scan",
+            "provider": "claude-code",
+            "role": "reviewing",
+            "title": "Review: token usage scan repair",
+            "aria": "Review: token usage scan repair; reviewing on Claude Code; model Opus 5.5, effort high; running 3m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": null,
+            "elapsed": "3m",
+            "slot": null,
+            "standin": "reviewing",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "reviewing"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 1630,
+              "right": 359,
+              "bottom": 1656,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-slot-numbers",
+            "provider": "codex",
+            "role": "building",
+            "title": "Number the day's schedule slots",
+            "aria": "Slot 3; Number the day's schedule slots; building on Codex; model GPT-6.2 Astra, effort xhigh; running 26m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "26m",
+            "slot": "S3",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S3"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 1,
+            "fontPx": 10,
+            "box": {
+              "left": 31,
+              "top": 1706,
+              "right": 347,
+              "bottom": 1731,
+              "width": 316,
+              "height": 25
+            }
+          },
+          {
+            "key": "fx-no-model",
+            "provider": "codex",
+            "role": "building",
+            "title": "Thought stream box follows the live run",
+            "aria": "Thought stream box follows the live run; building on Codex; model unknown; running 1m. Open Codex runs",
+            "model": "unknown",
+            "effort": null,
+            "phase": "thinking",
+            "elapsed": "1m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 31,
+              "top": 1735,
+              "right": 347,
+              "bottom": 1761,
+              "width": 316,
+              "height": 26
+            }
+          }
+        ],
+        "flows": [
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 130
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 340
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 222
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 206
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 222
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 251
+          }
+        ],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1465,
+              "right": 205,
+              "bottom": 1485,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1541,
+              "right": 205,
+              "bottom": 1561,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 185,
+              "top": 1675,
+              "right": 205,
+              "bottom": 1695,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 134,
+              "top": 1820,
+              "right": 148,
+              "bottom": 1834,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "heights": {
+          "station": 928,
+          "map": 748
+        },
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "true",
+            "active": "true",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Antigravity: 1 building",
+            "title": "Antigravity: 1 building. Open Antigravity runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1456,
+              "right": 359,
+              "bottom": 1494,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1460,
+              "right": 210,
+              "bottom": 1490,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1345
+                  },
+                  {
+                    "x": 195,
+                    "y": 1475
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1475
+                  },
+                  {
+                    "x": 43,
+                    "y": 1509
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "claude-code",
+            "expanded": "true",
+            "active": "true",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Claude Code: 2 building · 1 reviewing",
+            "title": "Claude Code: 2 building · 1 reviewing. Open Claude Code runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1532,
+              "right": 359,
+              "bottom": 1570,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1536,
+              "right": 210,
+              "bottom": 1566,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1345
+                  },
+                  {
+                    "x": 195,
+                    "y": 1551
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1551
+                  },
+                  {
+                    "x": 43,
+                    "y": 1585
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1551
+                  },
+                  {
+                    "x": 43,
+                    "y": 1614
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1551
+                  },
+                  {
+                    "x": 43,
+                    "y": 1643
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "codex",
+            "expanded": "true",
+            "active": "true",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Codex: 2 building",
+            "title": "Codex: 2 building. Open Codex runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1666,
+              "right": 359,
+              "bottom": 1704,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1670,
+              "right": 210,
+              "bottom": 1700,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1345
+                  },
+                  {
+                    "x": 195,
+                    "y": 1685
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1685
+                  },
+                  {
+                    "x": 347,
+                    "y": 1719
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1685
+                  },
+                  {
+                    "x": 347,
+                    "y": 1748
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "openrouter",
+            "expanded": "false",
+            "active": "false",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": "↗",
+            "aria": "Inspect OpenRouter: Standing by",
+            "title": "OpenRouter: Standing by. Open OpenRouter runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1771,
+              "right": 359,
+              "bottom": 1809,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1775,
+              "right": 210,
+              "bottom": 1805,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1345
+                  },
+                  {
+                    "x": 195,
+                    "y": 1790
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "oldChips": 0,
+        "queue": "Dispatch queue clear",
+        "pageOverflowX": 0,
+        "viewport": 390
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Fable 5.2 · testing — unavailable Default LIVE Offline Fable 5.2 · testing Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "busy-phone-ops-panel.png",
+      "drillDownShot": "busy-phone-drill-down-from-run-node.png"
+    },
+    "phone overflow": {
+      "expectedRuns": 23,
+      "expectedSeats": 2,
+      "map": {
+        "live": "true",
+        "runCount": "25",
+        "map": {
+          "left": 29,
+          "top": 1490,
+          "right": 361,
+          "bottom": 2829,
+          "width": 332,
+          "height": 1339
+        },
+        "runs": [
+          {
+            "key": "fx-many-22",
+            "provider": "antigravity",
+            "role": "building",
+            "title": "Concurrent fixture task number 22",
+            "aria": "Concurrent fixture task number 22; building on Antigravity; model gemini-4-argon, effort high; running 18m. Open Antigravity runs",
+            "model": "gemini-4-argon",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "18m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 1831,
+              "right": 359,
+              "bottom": 1857,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-many-23",
+            "provider": "antigravity",
+            "role": "building",
+            "title": "Concurrent fixture task number 23",
+            "aria": "Concurrent fixture task number 23; building on Antigravity; model gemini-4-argon, effort xhigh; running 16m. Open Antigravity runs",
+            "model": "gemini-4-argon",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "16m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 1861,
+              "right": 359,
+              "bottom": 1887,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-many-01",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 1",
+            "aria": "Slot 1; Concurrent fixture task number 1; building on Claude Code; model Opus 5.5, effort xhigh; running 1h 0m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "1h 0m",
+            "slot": "S1",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S1"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 1,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 1937,
+              "right": 359,
+              "bottom": 1962,
+              "width": 316,
+              "height": 25
+            }
+          },
+          {
+            "key": "fx-many-02",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 2",
+            "aria": "Concurrent fixture task number 2; building on Claude Code; model Opus 5.5, effort high; running 58m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "58m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 1966,
+              "right": 359,
+              "bottom": 1992,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-many-03",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 3",
+            "aria": "Concurrent fixture task number 3; building on Claude Code; model Opus 5.5, effort xhigh; running 56m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "56m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 1996,
+              "right": 359,
+              "bottom": 2022,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-many-04",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 4",
+            "aria": "Concurrent fixture task number 4; building on Claude Code; model Opus 5.5, effort high; running 54m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "54m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 2026,
+              "right": 359,
+              "bottom": 2052,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "qa--fx-many-05",
+            "provider": "claude-code",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 5",
+            "aria": "Slot 2; Review: Concurrent fixture task number 5; reviewing on Claude Code; model Opus 5.5, effort xhigh; running 52m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": null,
+            "elapsed": "52m",
+            "slot": "S2",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S2"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 1,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 2056,
+              "right": 359,
+              "bottom": 2081,
+              "width": 316,
+              "height": 25
+            }
+          },
+          {
+            "key": "fx-many-06",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 6",
+            "aria": "Concurrent fixture task number 6; building on Claude Code; model Opus 5.5, effort high; running 50m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "50m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 2085,
+              "right": 359,
+              "bottom": 2111,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-many-07",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 7",
+            "aria": "Concurrent fixture task number 7; building on Claude Code; model unknown; running 48m. Open Claude Code runs",
+            "model": "unknown",
+            "effort": null,
+            "phase": "testing",
+            "elapsed": "48m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 2115,
+              "right": 359,
+              "bottom": 2141,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-many-08",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 8",
+            "aria": "Concurrent fixture task number 8; building on Claude Code; model Opus 5.5, effort high; running 46m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "46m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 2145,
+              "right": 359,
+              "bottom": 2171,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-many-09",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 9",
+            "aria": "Slot 3; Concurrent fixture task number 9; building on Claude Code; model Opus 5.5, effort xhigh; running 44m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "44m",
+            "slot": "S3",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S3"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 1,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 2175,
+              "right": 359,
+              "bottom": 2200,
+              "width": 316,
+              "height": 25
+            }
+          },
+          {
+            "key": "qa--fx-many-10",
+            "provider": "claude-code",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 10",
+            "aria": "Review: Concurrent fixture task number 10; reviewing on Claude Code; model Opus 5.5, effort high; running 42m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": null,
+            "elapsed": "42m",
+            "slot": null,
+            "standin": "reviewing",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "reviewing"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 2204,
+              "right": 359,
+              "bottom": 2230,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-many-11",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 11",
+            "aria": "Concurrent fixture task number 11; building on Claude Code; model Opus 5.5, effort xhigh; running 40m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "40m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 2234,
+              "right": 359,
+              "bottom": 2260,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-many-12",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 12",
+            "aria": "Concurrent fixture task number 12; building on Claude Code; model Opus 5.5, effort high; running 38m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "38m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 2264,
+              "right": 359,
+              "bottom": 2290,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-many-13",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 13",
+            "aria": "Slot 4; Concurrent fixture task number 13; building on Claude Code; model Opus 5.5, effort xhigh; running 36m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "36m",
+            "slot": "S4",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S4"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 1,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 2294,
+              "right": 359,
+              "bottom": 2319,
+              "width": 316,
+              "height": 25
+            }
+          },
+          {
+            "key": "fx-many-14",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Concurrent fixture task number 14",
+            "aria": "Concurrent fixture task number 14; building on Claude Code; model unknown; running 34m. Open Claude Code runs",
+            "model": "unknown",
+            "effort": null,
+            "phase": "writing",
+            "elapsed": "34m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 2323,
+              "right": 359,
+              "bottom": 2349,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "seat:cli:claude-code/claude-opus-5-5",
+            "provider": "claude-code",
+            "role": "council",
+            "title": "Fixture council: next improvements",
+            "aria": "Fixture council: next improvements; council on Claude Code; model Opus 5.5; running 2m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": null,
+            "phase": null,
+            "elapsed": "2m",
+            "slot": null,
+            "standin": "council",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "council"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 2353,
+              "right": 359,
+              "bottom": 2379,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "qa--fx-many-15",
+            "provider": "codex",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 15",
+            "aria": "Review: Concurrent fixture task number 15; reviewing on Codex; model GPT-6.2 Astra, effort xhigh; running 32m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": null,
+            "elapsed": "32m",
+            "slot": null,
+            "standin": "reviewing",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "reviewing"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 31,
+              "top": 2429,
+              "right": 347,
+              "bottom": 2455,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-many-16",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 16",
+            "aria": "Concurrent fixture task number 16; building on Codex; model GPT-6.2 Astra, effort high; running 30m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "30m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 31,
+              "top": 2459,
+              "right": 347,
+              "bottom": 2485,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-many-17",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 17",
+            "aria": "Slot 5; Concurrent fixture task number 17; building on Codex; model GPT-6.2 Astra, effort xhigh; running 28m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "writing",
+            "elapsed": "28m",
+            "slot": "S5",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S5"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 1,
+            "fontPx": 10,
+            "box": {
+              "left": 31,
+              "top": 2489,
+              "right": 347,
+              "bottom": 2514,
+              "width": 316,
+              "height": 25
+            }
+          },
+          {
+            "key": "fx-many-18",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 18",
+            "aria": "Concurrent fixture task number 18; building on Codex; model GPT-6.2 Astra, effort high; running 26m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "high",
+            "phase": "writing",
+            "elapsed": "26m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 31,
+              "top": 2518,
+              "right": 347,
+              "bottom": 2544,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-many-19",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 19",
+            "aria": "Concurrent fixture task number 19; building on Codex; model GPT-6.2 Astra, effort xhigh; running 24m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "24m",
+            "slot": null,
+            "standin": "building",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "building"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 31,
+              "top": 2548,
+              "right": 347,
+              "bottom": 2574,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "qa--fx-many-20",
+            "provider": "codex",
+            "role": "reviewing",
+            "title": "Review: Concurrent fixture task number 20",
+            "aria": "Review: Concurrent fixture task number 20; reviewing on Codex; model GPT-6.2 Astra, effort high; running 22m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "high",
+            "phase": null,
+            "elapsed": "22m",
+            "slot": null,
+            "standin": "reviewing",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "reviewing"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 31,
+              "top": 2578,
+              "right": 347,
+              "bottom": 2604,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-many-21",
+            "provider": "codex",
+            "role": "building",
+            "title": "Concurrent fixture task number 21",
+            "aria": "Slot 6; Concurrent fixture task number 21; building on Codex; model unknown; running 20m. Open Codex runs",
+            "model": "unknown",
+            "effort": null,
+            "phase": "writing",
+            "elapsed": "20m",
+            "slot": "S6",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S6"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 1,
+            "fontPx": 10,
+            "box": {
+              "left": 31,
+              "top": 2608,
+              "right": 347,
+              "bottom": 2633,
+              "width": 316,
+              "height": 25
+            }
+          },
+          {
+            "key": "seat:cli:codex/gpt-6.2-astra",
+            "provider": "codex",
+            "role": "council",
+            "title": "Fixture council: next improvements",
+            "aria": "Fixture council: next improvements; council on Codex; model GPT-6.2 Astra; running 2m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": null,
+            "phase": null,
+            "elapsed": "2m",
+            "slot": null,
+            "standin": "council",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "council"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 31,
+              "top": 2637,
+              "right": 347,
+              "bottom": 2663,
+              "width": 316,
+              "height": 26
+            }
+          }
+        ],
+        "flows": [
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 130
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 223
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 728
+          },
+          {
+            "wire": "council",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 798
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 223
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 253
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 282
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 312
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 342
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 372
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 401
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 236
+          },
+          {
+            "wire": "council",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 306
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 222
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 252
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 282
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 312
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 341
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 371
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 401
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 431
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 460
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 490
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 520
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 550
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 579
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 609
+          }
+        ],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1800,
+              "right": 205,
+              "bottom": 1820,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1906,
+              "right": 205,
+              "bottom": 1926,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 185,
+              "top": 2398,
+              "right": 205,
+              "bottom": 2418,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 134,
+              "top": 2722,
+              "right": 148,
+              "bottom": 2736,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "heights": {
+          "station": 1519,
+          "map": 1339
+        },
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "true",
+            "active": "true",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Antigravity: 2 building; council reported",
+            "title": "Antigravity: 2 building; council reported. Open Antigravity runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1791,
+              "right": 359,
+              "bottom": 1829,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1795,
+              "right": 210,
+              "bottom": 1825,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.126275 0.527451 0.617451)",
+              "glow": "color(srgb 0.133333 0.827451 0.933333 / 0.5) 0px 0px 12px 0px"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1680
+                  },
+                  {
+                    "x": 195,
+                    "y": 1810
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1810
+                  },
+                  {
+                    "x": 43,
+                    "y": 1844
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1810
+                  },
+                  {
+                    "x": 43,
+                    "y": 1874
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "claude-code",
+            "expanded": "true",
+            "active": "true",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Claude Code: 12 building · 2 reviewing; council deliberating",
+            "title": "Claude Code: 12 building · 2 reviewing; council deliberating. Open Claude Code runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1897,
+              "right": 359,
+              "bottom": 1935,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1901,
+              "right": 210,
+              "bottom": 1931,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1680
+                  },
+                  {
+                    "x": 195,
+                    "y": 1916
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1916
+                  },
+                  {
+                    "x": 43,
+                    "y": 1950
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1916
+                  },
+                  {
+                    "x": 43,
+                    "y": 1979
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1916
+                  },
+                  {
+                    "x": 43,
+                    "y": 2009
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1916
+                  },
+                  {
+                    "x": 43,
+                    "y": 2039
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1916
+                  },
+                  {
+                    "x": 43,
+                    "y": 2069
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1916
+                  },
+                  {
+                    "x": 43,
+                    "y": 2098
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1916
+                  },
+                  {
+                    "x": 43,
+                    "y": 2128
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1916
+                  },
+                  {
+                    "x": 43,
+                    "y": 2158
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1916
+                  },
+                  {
+                    "x": 43,
+                    "y": 2188
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1916
+                  },
+                  {
+                    "x": 43,
+                    "y": 2217
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1916
+                  },
+                  {
+                    "x": 43,
+                    "y": 2247
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1916
+                  },
+                  {
+                    "x": 43,
+                    "y": 2277
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1916
+                  },
+                  {
+                    "x": 43,
+                    "y": 2307
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1916
+                  },
+                  {
+                    "x": 43,
+                    "y": 2336
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1916
+                  },
+                  {
+                    "x": 43,
+                    "y": 2366
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "codex",
+            "expanded": "true",
+            "active": "true",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Codex: 5 building · 2 reviewing; council deliberating",
+            "title": "Codex: 5 building · 2 reviewing; council deliberating. Open Codex runs and reports",
+            "button": {
+              "left": 31,
+              "top": 2389,
+              "right": 359,
+              "bottom": 2427,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 2393,
+              "right": 210,
+              "bottom": 2423,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1680
+                  },
+                  {
+                    "x": 195,
+                    "y": 2408
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 2408
+                  },
+                  {
+                    "x": 347,
+                    "y": 2442
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 2408
+                  },
+                  {
+                    "x": 347,
+                    "y": 2472
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 2408
+                  },
+                  {
+                    "x": 347,
+                    "y": 2502
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 2408
+                  },
+                  {
+                    "x": 347,
+                    "y": 2531
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 2408
+                  },
+                  {
+                    "x": 347,
+                    "y": 2561
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 2408
+                  },
+                  {
+                    "x": 347,
+                    "y": 2591
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 2408
+                  },
+                  {
+                    "x": 347,
+                    "y": 2621
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 2408
+                  },
+                  {
+                    "x": 347,
+                    "y": 2650
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "openrouter",
+            "expanded": "false",
+            "active": "false",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": "↗",
+            "aria": "Inspect OpenRouter: Standing by",
+            "title": "OpenRouter: Standing by. Open OpenRouter runs and reports",
+            "button": {
+              "left": 31,
+              "top": 2673,
+              "right": 359,
+              "bottom": 2711,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 2677,
+              "right": 210,
+              "bottom": 2707,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1680
+                  },
+                  {
+                    "x": 195,
+                    "y": 2692
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "oldChips": 0,
+        "queue": "01 S9 Queued: rebuild the system map 4m 02 Queued: refresh the model registry 2m +1 queued · open queue",
+        "pageOverflowX": 0,
+        "viewport": 390
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Opus 5.5 · testing — unavailable Default LIVE Offline Opus 5.5 · testing Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "overflow-phone-ops-panel.png"
+    },
+    "phone trouble": {
+      "expectedRuns": 3,
+      "expectedSeats": 0,
+      "map": {
+        "live": "true",
+        "runCount": "3",
+        "map": {
+          "left": 29,
+          "top": 1490,
+          "right": 361,
+          "bottom": 2151,
+          "width": 332,
+          "height": 661
+        },
+        "runs": [
+          {
+            "key": "fx-ops-graphic",
+            "provider": "claude-code",
+            "role": "building",
+            "title": "Expand the Ops graphic to show every running agent",
+            "aria": "Slot 2; Expand the Ops graphic to show every running agent; building on Claude Code; model Fable 5.2, effort high; running 47m. Open Claude Code runs",
+            "model": "Fable 5.2",
+            "effort": "high",
+            "phase": "testing",
+            "elapsed": "47m",
+            "slot": "S2",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S2"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 1,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 1879,
+              "right": 359,
+              "bottom": 1904,
+              "width": 316,
+              "height": 25
+            }
+          },
+          {
+            "key": "qa--fx-token-scan",
+            "provider": "claude-code",
+            "role": "reviewing",
+            "title": "Review: token usage scan repair",
+            "aria": "Review: token usage scan repair; reviewing on Claude Code; model Opus 5.5, effort high; running 3m. Open Claude Code runs",
+            "model": "Opus 5.5",
+            "effort": "high",
+            "phase": null,
+            "elapsed": "3m",
+            "slot": null,
+            "standin": "reviewing",
+            "head": {
+              "cls": "dispatch-run-standin dispatch-run-role",
+              "text": "reviewing"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 2,
+            "fontPx": 10,
+            "box": {
+              "left": 43,
+              "top": 1908,
+              "right": 359,
+              "bottom": 1934,
+              "width": 316,
+              "height": 26
+            }
+          },
+          {
+            "key": "fx-slot-numbers",
+            "provider": "codex",
+            "role": "building",
+            "title": "Number the day's schedule slots",
+            "aria": "Slot 3; Number the day's schedule slots; building on Codex; model GPT-6.2 Astra, effort xhigh; running 26m. Open Codex runs",
+            "model": "GPT-6.2 Astra",
+            "effort": "xhigh",
+            "phase": "testing",
+            "elapsed": "26m",
+            "slot": "S3",
+            "standin": null,
+            "head": {
+              "cls": "dispatch-run-slot",
+              "text": "S3"
+            },
+            "visibleTitle": null,
+            "titleShown": false,
+            "rows": 1,
+            "fontPx": 10,
+            "box": {
+              "left": 31,
+              "top": 1984,
+              "right": 347,
+              "bottom": 2009,
+              "width": 316,
+              "height": 25
+            }
+          }
+        ],
+        "flows": [
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 283
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": "spoke-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 178
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 193
+          },
+          {
+            "wire": "run-flow",
+            "animation": "module-flow",
+            "state": "running",
+            "duration": "2.4s",
+            "length": 222
+          }
+        ],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1800,
+              "right": 205,
+              "bottom": 1820,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1848,
+              "right": 205,
+              "bottom": 1868,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 185,
+              "top": 1953,
+              "right": 205,
+              "bottom": 1973,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 134,
+              "top": 2068,
+              "right": 148,
+              "bottom": 2082,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "heights": {
+          "station": 841,
+          "map": 661
+        },
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "false",
+            "active": "false",
+            "trouble": "failed",
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Antigravity: Run failed",
+            "title": "Antigravity: Run failed. Open Antigravity runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1791,
+              "right": 359,
+              "bottom": 1829,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1795,
+              "right": 210,
+              "bottom": 1825,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "2px",
+              "style": "solid",
+              "color": "rgb(251, 113, 133)",
+              "glow": "rgba(251, 113, 133, 0.376) 0px 0px 10px 0px"
+            },
+            "badge": {
+              "trouble": "failed",
+              "box": {
+                "left": 200,
+                "top": 1793,
+                "right": 213,
+                "bottom": 1806,
+                "width": 13,
+                "height": 13
+              },
+              "background": "rgb(251, 113, 133)",
+              "visible": true
+            },
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1680
+                  },
+                  {
+                    "x": 195,
+                    "y": 1810
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "claude-code",
+            "expanded": "true",
+            "active": "true",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Claude Code: 1 building · 1 reviewing",
+            "title": "Claude Code: 1 building · 1 reviewing. Open Claude Code runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1839,
+              "right": 359,
+              "bottom": 1877,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1843,
+              "right": 210,
+              "bottom": 1873,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.413137 0.372157 0.643333)",
+              "glow": "color(srgb 0.654902 0.545098 0.980392 / 0.5) 0px 0px 12px 0px"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1680
+                  },
+                  {
+                    "x": 195,
+                    "y": 1858
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1858
+                  },
+                  {
+                    "x": 43,
+                    "y": 1892
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1858
+                  },
+                  {
+                    "x": 43,
+                    "y": 1921
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "codex",
+            "expanded": "true",
+            "active": "true",
+            "trouble": "suspended",
+            "label": null,
+            "phase": null,
+            "runList": true,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Codex: Suspended",
+            "title": "Codex: Suspended. Open Codex runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1944,
+              "right": 359,
+              "bottom": 1982,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1948,
+              "right": 210,
+              "bottom": 1978,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "2px",
+              "style": "solid",
+              "color": "rgb(251, 191, 36)",
+              "glow": "rgba(251, 191, 36, 0.314) 0px 0px 10px 0px"
+            },
+            "badge": {
+              "trouble": "suspended",
+              "box": {
+                "left": 200,
+                "top": 1946,
+                "right": 213,
+                "bottom": 1959,
+                "width": 13,
+                "height": 13
+              },
+              "background": "rgb(251, 191, 36)",
+              "visible": true
+            },
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1680
+                  },
+                  {
+                    "x": 195,
+                    "y": 1963
+                  }
+                ]
+              },
+              {
+                "wire": "run",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1963
+                  },
+                  {
+                    "x": 347,
+                    "y": 1997
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "openrouter",
+            "expanded": "false",
+            "active": "false",
+            "trouble": null,
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": "↗",
+            "aria": "Inspect OpenRouter: Standing by",
+            "title": "OpenRouter: Standing by. Open OpenRouter runs and reports",
+            "button": {
+              "left": 31,
+              "top": 2019,
+              "right": 359,
+              "bottom": 2057,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 2023,
+              "right": 210,
+              "bottom": 2053,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "1px",
+              "style": "solid",
+              "color": "color(srgb 0.268627 0.322549 0.403922)",
+              "glow": "none"
+            },
+            "badge": null,
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1680
+                  },
+                  {
+                    "x": 195,
+                    "y": 2038
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "oldChips": 0,
+        "queue": "Dispatch queue clear",
+        "pageOverflowX": 0,
+        "viewport": 390
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Offline Fable 5.2 · testing — unavailable Default LIVE Offline Fable 5.2 · testing Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "trouble-phone-ops-panel.png"
+    },
+    "phone delayed": {
+      "expectedRuns": 0,
+      "expectedSeats": 0,
+      "map": {
+        "live": "false",
+        "runCount": "0",
+        "map": {
+          "left": 29,
+          "top": 1198,
+          "right": 361,
+          "bottom": 1727,
+          "width": 332,
+          "height": 529
+        },
+        "runs": [],
+        "flows": [],
+        "logos": [
+          {
+            "provider": "antigravity",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1508,
+              "right": 205,
+              "bottom": 1528,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "claude-code",
+            "tag": "IMG",
+            "box": {
+              "left": 185,
+              "top": 1556,
+              "right": 205,
+              "bottom": 1576,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "codex",
+            "tag": "SPAN",
+            "box": {
+              "left": 185,
+              "top": 1604,
+              "right": 205,
+              "bottom": 1624,
+              "width": 20,
+              "height": 20
+            },
+            "loaded": true
+          },
+          {
+            "provider": "local-llm",
+            "tag": "SPAN",
+            "box": {
+              "left": 122,
+              "top": 1644,
+              "right": 136,
+              "bottom": 1658,
+              "width": 14,
+              "height": 14
+            },
+            "loaded": true
+          }
+        ],
+        "heights": {
+          "station": 709,
+          "map": 529
+        },
+        "providers": [
+          {
+            "id": "antigravity",
+            "expanded": "false",
+            "active": "false",
+            "trouble": "delayed",
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Antigravity: Signal delayed",
+            "title": "Antigravity: Signal delayed. Open Antigravity runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1499,
+              "right": 359,
+              "bottom": 1537,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1503,
+              "right": 210,
+              "bottom": 1533,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "2px",
+              "style": "dashed",
+              "color": "rgb(148, 163, 184)",
+              "glow": "none"
+            },
+            "badge": {
+              "trouble": "delayed",
+              "box": {
+                "left": 200,
+                "top": 1501,
+                "right": 213,
+                "bottom": 1514,
+                "width": 13,
+                "height": 13
+              },
+              "background": "rgb(148, 163, 184)",
+              "visible": true
+            },
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1388
+                  },
+                  {
+                    "x": 195,
+                    "y": 1518
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "claude-code",
+            "expanded": "false",
+            "active": "false",
+            "trouble": "delayed",
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Claude Code: Signal delayed",
+            "title": "Claude Code: Signal delayed. Open Claude Code runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1547,
+              "right": 359,
+              "bottom": 1585,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1551,
+              "right": 210,
+              "bottom": 1581,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "2px",
+              "style": "dashed",
+              "color": "rgb(148, 163, 184)",
+              "glow": "none"
+            },
+            "badge": {
+              "trouble": "delayed",
+              "box": {
+                "left": 200,
+                "top": 1549,
+                "right": 213,
+                "bottom": 1562,
+                "width": 13,
+                "height": 13
+              },
+              "background": "rgb(148, 163, 184)",
+              "visible": true
+            },
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1388
+                  },
+                  {
+                    "x": 195,
+                    "y": 1566
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "codex",
+            "expanded": "false",
+            "active": "false",
+            "trouble": "delayed",
+            "label": null,
+            "phase": null,
+            "runList": false,
+            "buttonText": "",
+            "glyph": null,
+            "aria": "Inspect Codex: Signal delayed",
+            "title": "Codex: Signal delayed. Open Codex runs and reports",
+            "button": {
+              "left": 31,
+              "top": 1595,
+              "right": 359,
+              "bottom": 1633,
+              "width": 328,
+              "height": 38
+            },
+            "logo": {
+              "left": 180,
+              "top": 1599,
+              "right": 210,
+              "bottom": 1629,
+              "width": 30,
+              "height": 30
+            },
+            "ring": {
+              "width": "2px",
+              "style": "dashed",
+              "color": "rgb(148, 163, 184)",
+              "glow": "none"
+            },
+            "badge": {
+              "trouble": "delayed",
+              "box": {
+                "left": 200,
+                "top": 1597,
+                "right": 213,
+                "bottom": 1610,
+                "width": 13,
+                "height": 13
+              },
+              "background": "rgb(148, 163, 184)",
+              "visible": true
+            },
+            "wireEnds": [
+              {
+                "wire": "spoke",
+                "ends": [
+                  {
+                    "x": 195,
+                    "y": 1388
+                  },
+                  {
+                    "x": 195,
+                    "y": 1614
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "oldChips": 0,
+        "queue": "Dispatch signal delayed — showing last known capacity in details.",
+        "pageOverflowX": 0,
+        "viewport": 390
+      },
+      "viewer": {
+        "crewSection": false,
+        "crewChips": 0,
+        "text": "MAIN VIEWER — PRAXIS CORE NOW Idle Nothing executing — standing by — — Default LIVE Offline Connecting… Viewscreen standing by Your direct line to Praxis Try: \"Build me a landing page for my SaaS\" or \"Create a new web-app called MyProject\" /ingest <url> — save articles directly"
+      },
+      "opsShot": "delayed-phone-ops-panel.png"
+    }
+  },
+  "failures": []
+}

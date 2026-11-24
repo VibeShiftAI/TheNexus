@@ -24,23 +24,39 @@
  * run count (a DOM observer in the page resolves on it; its 60 s limit is a
  * failure bound, not a wait); a screenshot follows a painted frame.
  *
+ * Task 52b5db3d (2026-11-24) made the panel shorter: an executor node is its
+ * logo alone (name and status only in its aria-label and title, trouble as a
+ * ring and badge on the logo), and a run node draws no task title (slot tag,
+ * or the role word when there is no slot, then model, effort, role, phase,
+ * elapsed). The assertions below check that; each scenario also records the
+ * Ops panel's measured height (#station-dispatch and .dispatch-map) in both
+ * modes, so before and after are compared in the same state.
+ *
  * Scenarios (each at desktop 1440x900 and phone 390x844):
  *   idle      nothing running: no run node, every provider collapsed.
  *   busy      six runs across three executors: task runs and one QA review
- *             run, slot tags on some, one run with no model reported, one
- *             whose served model differs from the requested one.
+ *             run, slot tags on some, three without a slot, one run with no
+ *             model reported, one whose served model differs from the
+ *             requested one.
  *   overflow  23 runs (14 on one provider), a sitting council, three queued
  *             tasks: more than fits one row.
+ *   trouble   two runs on Claude Code, Codex suspended by the fleet posture
+ *             while it still holds one run (busy and in trouble at once),
+ *             Antigravity's last run failed a moment ago.
+ *   delayed   the stand-in answers dispatch state with 503: every executor's
+ *             signal is delayed.
  * CHECK_LABEL=after (default) asserts the new behaviour; CHECK_LABEL=before
- * with CHECK_DASHBOARD=<baseline>/dashboard only records and photographs the
- * same scenarios on the old tree.
+ * with CHECK_DASHBOARD=<baseline>/dashboard only records, measures and
+ * photographs the same scenarios on the old tree.
  *
  *   node scripts/ops-graphic-browser-check.mjs
  *   CHECK_LABEL=before CHECK_DASHBOARD=<baseline>/dashboard node scripts/ops-graphic-browser-check.mjs
  *
- * Env: CHECK_LABEL, CHECK_DASHBOARD, CHECK_OUT (docs/reviews/2026-11-23-ops-graphic/evidence),
- * CHECK_CHROME. Writes <out>/<label>/*.png and report.json; exits 1 on any
- * failed assertion.
+ * Env: CHECK_LABEL, CHECK_DASHBOARD, CHECK_OUT
+ * (docs/reviews/2026-11-24-ops-panel-compact-evidence), CHECK_PACKAGE
+ * (docs/reviews/2026-11-24-ops-panel-compact; the busy Ops panel shots are
+ * also written there as <label>/busy-<viewport>-ops-panel.png), CHECK_CHROME.
+ * Writes <out>/<label>/*.png and report.json; exits 1 on any failed assertion.
  */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -55,11 +71,13 @@ const NEXUS = path.resolve(here, "..", "..");
 const DASHBOARD = path.resolve(process.env.CHECK_DASHBOARD || path.join(NEXUS, "dashboard"));
 const LABEL = process.env.CHECK_LABEL || "after";
 const AFTER = LABEL !== "before";
-const OUT = path.join(path.resolve(process.env.CHECK_OUT || path.join(NEXUS, "docs/reviews/2026-11-23-ops-graphic/evidence")), LABEL);
+const OUT = path.join(path.resolve(process.env.CHECK_OUT || path.join(NEXUS, "docs/reviews/2026-11-24-ops-panel-compact-evidence")), LABEL);
+const PACKAGE = path.join(path.resolve(process.env.CHECK_PACKAGE || path.join(NEXUS, "docs/reviews/2026-11-24-ops-panel-compact")), LABEL);
 const CHROME = [process.env.CHECK_CHROME, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/Applications/Chromium.app/Contents/MacOS/Chromium", "/usr/bin/google-chrome"]
   .filter(Boolean).find((p) => fs.existsSync(p));
 if (!CHROME) { console.error("No Chrome binary found; set CHECK_CHROME."); process.exit(2); }
 fs.mkdirSync(OUT, { recursive: true });
+fs.mkdirSync(PACKAGE, { recursive: true });
 
 // Widths are the two the repo's layout audit covers (scripts/responsive-audit.mjs,
 // "390,1440"); 390x844 at 2x is the iPhone 12-15 CSS viewport the other phone
@@ -121,6 +139,13 @@ const SCENARIOS = {
       stats: { voiceCount: 3, thesisCount: 1, successCount: 1, failureCount: 0, hasSynthesis: false, elapsedMs: 95_000 }, durationMs: 95_000, hasSynthesis: false,
     },
   },
+  trouble: {
+    // Codex is suspended while it still holds a run: busy and in trouble at once.
+    runs: [BUSY_RUNS[0], BUSY_RUNS[2], BUSY_RUNS[3]], queue: [], council: null, suspended: ["codex"],
+    // Ended a moment before each request: the station counts a result as recent for 60 s (dispatch-station.tsx).
+    ended: () => [run("fx-failed-run", "antigravity", "Audit the landing page on a phone", 9, { status: "failed", phase: "failed", model: "gemini-4-argon", updatedAt: new Date(Date.now() - 2_000).toISOString(), lastActivityAt: new Date(Date.now() - 2_000).toISOString() })],
+  },
+  delayed: { runs: [], queue: [], council: null, unavailable: true },
 };
 const EXECUTORS = ["claude-code", "codex", "antigravity", "openrouter"];
 let scenario = "idle";
@@ -131,10 +156,10 @@ function dispatchState() {
   return {
     antigravity: { bridge: null, active: 0, pending: 0, queue: [] }, dispatchLog: [], cron: [],
     executors: {
-      runs: s.runs, sessions: [], history: [], cliQueue: s.queue, workers: { available: true, workers: [] },
+      runs: [...s.runs, ...(s.ended?.() ?? [])], sessions: [], history: [], cliQueue: s.queue, workers: { available: true, workers: [] },
       cliConcurrency: { limit, burst: true, reason: "burst: fixture state for the Ops graphic check", slots: {}, active: s.runs.length, free: limit - s.runs.length, occupancy, queued: s.queue.length },
       dispatchedToday: { total: s.runs.length, failed: 0 },
-      posture: { mode: "nominal", available: ["claude-code", "codex", "antigravity"], suspended: [], crossExecutorQaPossible: true, summary: "fixture", since: ago(600) },
+      posture: { mode: "nominal", available: ["claude-code", "codex", "antigravity"].filter((e) => !s.suspended?.includes(e)), suspended: s.suspended ?? [], crossExecutorQaPossible: true, summary: "fixture", since: ago(600) },
     },
     localLlm: { worker: { paused: false }, counts: {}, jobs: [] },
     lmStudio: { reachable: true, models: [], loadedCount: 1, lastActivityAt: null },
@@ -154,7 +179,7 @@ const praxis = http.createServer((req, res) => {
   const url = new URL(req.url, "http://fixture");
   const json = (status, body) => { res.writeHead(status, { "content-type": "application/json" }); res.end(JSON.stringify(body)); };
   if (req.method !== "GET") return json(405, { error: "the Ops graphic fixture is read-only" });
-  if (url.pathname === "/api/dispatch/state") return json(200, dispatchState());
+  if (url.pathname === "/api/dispatch/state") return SCENARIOS[scenario].unavailable ? json(503, { error: "fixture: dispatch signal delayed" }) : json(200, dispatchState());
   if (url.pathname === "/api/council/sessions") return json(200, { sessions: SCENARIOS[scenario].council ? [SCENARIOS[scenario].council] : [] });
   if (url.pathname === "/api/council/benches") return json(200, { benches: [BENCH] });
   if (url.pathname === "/api/council/arbiter") return json(200, { preference: "auto", next: "cli:codex", seats: ["cli:claude-code", "cli:codex"] });
@@ -288,7 +313,7 @@ async function navigate(url) {
  * for the capture, so nothing has to scroll and the sticky header and the
  * fixed voice bar stay at the page edges instead of lying over the element.
  */
-async function shotOf(vp, selector, name, pad = 8) {
+async function shotOf(vp, selector, name, pad = 8, alsoTo = null) {
   const pageHeight = await evalJs("document.documentElement.scrollHeight");
   await send("Emulation.setDeviceMetricsOverride", { width: vp.width, height: Math.max(vp.height, pageHeight), deviceScaleFactor: vp.scale, mobile: vp.mobile });
   await evalJs("(scrollTo(0, 0), true)");
@@ -300,6 +325,7 @@ async function shotOf(vp, selector, name, pad = 8) {
     const clip = { x, y: Math.max(0, box.y - pad), width: Math.min(box.width + pad * 2, box.page - x), height: box.height + pad * 2, scale: 1 };
     const { result } = await send("Page.captureScreenshot", { format: "png", clip, captureBeyondViewport: true });
     fs.writeFileSync(path.join(OUT, name), Buffer.from(result.data, "base64"));
+    if (alsoTo) fs.writeFileSync(alsoTo, Buffer.from(result.data, "base64"));
     saved = name;
   } else check(false, `screenshot target ${selector} exists`, name);
   await send("Emulation.setDeviceMetricsOverride", { width: vp.width, height: vp.height, deviceScaleFactor: vp.scale, mobile: vp.mobile });
@@ -313,17 +339,45 @@ const READ_MAP = `(() => {
   if (!map) return null;
   const rect = (el) => { const r = el.getBoundingClientRect(); return { left: Math.round(r.left), top: Math.round(r.top), right: Math.round(r.right), bottom: Math.round(r.bottom), width: Math.round(r.width), height: Math.round(r.height) }; };
   const text = (el, sel) => el.querySelector(sel)?.textContent.trim() ?? null;
-  const runs = [...map.querySelectorAll('.dispatch-run')].map((el) => ({
-    key: el.dataset.run, provider: el.closest('[data-provider]')?.dataset.provider, role: text(el, '.dispatch-run-role'), title: text(el, '.dispatch-run-title'),
-    model: text(el, '.dispatch-run-model'), effort: text(el, '.dispatch-run-effort'), phase: text(el, '.dispatch-run-phase'), elapsed: text(el, '.dispatch-run-elapsed'),
-    slot: text(el, '.dispatch-run-slot'), headChildren: el.querySelector('.dispatch-run-head')?.children.length ?? null,
-    titleFontPx: parseFloat(getComputedStyle(el.querySelector('.dispatch-run-title')).fontSize), titleBox: rect(el.querySelector('.dispatch-run-title')), box: rect(el),
-  }));
+  const runs = [...map.querySelectorAll('.dispatch-run')].map((el) => {
+    const title = el.getAttribute('title')?.split('\\n')[0] ?? null;
+    const first = el.firstElementChild;
+    // Rows the node's text wraps onto: distinct top edges of its children.
+    const rows = new Set([...el.children].map((c) => Math.round(c.getBoundingClientRect().top))).size;
+    return {
+      key: el.dataset.run, provider: el.closest('[data-provider]')?.dataset.provider, role: text(el, '.dispatch-run-role'), title, aria: el.getAttribute('aria-label'),
+      model: text(el, '.dispatch-run-model'), effort: text(el, '.dispatch-run-effort'), phase: text(el, '.dispatch-run-phase'), elapsed: text(el, '.dispatch-run-elapsed'),
+      slot: text(el, '.dispatch-run-slot'), standin: text(el, '.dispatch-run-standin'), head: first ? { cls: first.className, text: first.textContent.trim() } : null,
+      visibleTitle: text(el, '.dispatch-run-title'), titleShown: title ? el.innerText.includes(title) : false, rows,
+      fontPx: Math.min(...[...el.children].map((c) => parseFloat(getComputedStyle(c).fontSize))), box: rect(el),
+    };
+  });
   const flows = [...map.querySelectorAll('path.module-flow')].map((p) => { const cs = getComputedStyle(p); return { wire: p.dataset.wire ?? null, animation: cs.animationName, state: cs.animationPlayState, duration: cs.animationDuration, length: Math.round(p.getTotalLength()) }; });
   const logos = [...map.querySelectorAll('[data-logo]')].map((el) => ({ provider: el.dataset.logo, tag: el.tagName, box: rect(el), loaded: el.tagName === 'IMG' ? el.complete && el.naturalWidth > 0 : getComputedStyle(el).maskImage !== 'none' || getComputedStyle(el).webkitMaskImage !== 'none' }));
+  const base = map.getBoundingClientRect();
+  // Path end points in page px: the wires are drawn in the map's own coordinates.
+  const ends = (p) => { const n = p.getTotalLength(); const a = p.getPointAtLength(0), b = p.getPointAtLength(n); return [a, b].map((q) => ({ x: Math.round(q.x + base.left + map.clientLeft), y: Math.round(q.y + base.top + map.clientTop) })); };
+  const station = document.querySelector('#station-dispatch');
   return {
     live: map.dataset.live, runCount: map.dataset.runs ?? null, map: rect(map), runs, flows, logos,
-    providers: [...map.querySelectorAll('[data-provider]')].map((el) => ({ id: el.dataset.provider, expanded: el.dataset.expanded ?? null, active: el.dataset.active, label: text(el, '.dispatch-provider-label'), phase: text(el, '.dispatch-phase'), runList: !!el.querySelector('.dispatch-runs') })),
+    heights: { station: station ? Math.round(station.getBoundingClientRect().height) : null, map: Math.round(base.height) },
+    providers: [...map.querySelectorAll('[data-provider]')].map((el) => {
+      const button = el.querySelector('.dispatch-provider-button');
+      const logo = el.querySelector('.dispatch-logo');
+      const badge = el.querySelector('.dispatch-logo-badge');
+      const wires = [...map.querySelectorAll('[data-wires="' + el.dataset.provider + '"] path[data-wire="spoke"], [data-wires="' + el.dataset.provider + '"] path[data-wire="run"]')];
+      const lcs = logo ? getComputedStyle(logo) : null;
+      return {
+        id: el.dataset.provider, expanded: el.dataset.expanded ?? null, active: el.dataset.active, trouble: el.dataset.trouble ?? null,
+        label: text(el, '.dispatch-provider-label'), phase: text(el, '.dispatch-phase'), runList: !!el.querySelector('.dispatch-runs'),
+        // Visible text other than the logo itself (OpenRouter and unknown workers draw a glyph as their logo).
+        buttonText: button ? button.innerText.replace(el.querySelector('.dispatch-logo-glyph')?.innerText ?? '', '').trim() : null, glyph: text(el, '.dispatch-logo-glyph'), aria: button?.getAttribute('aria-label') ?? null, title: button?.getAttribute('title') ?? null,
+        button: button ? rect(button) : null, logo: logo ? rect(logo) : null,
+        ring: lcs ? { width: lcs.borderTopWidth, style: lcs.borderTopStyle, color: lcs.borderTopColor, glow: lcs.boxShadow } : null,
+        badge: badge ? { trouble: badge.dataset.trouble, box: rect(badge), background: getComputedStyle(badge).backgroundColor, visible: getComputedStyle(badge).visibility === 'visible' && getComputedStyle(badge).display !== 'none' } : null,
+        wireEnds: wires.map((p) => ({ wire: p.dataset.wire, ends: ends(p) })),
+      };
+    }),
     oldChips: map.querySelectorAll('.dispatch-chip').length, queue: document.querySelector('.dispatch-queue')?.innerText.replace(/\\s+/g, ' ').trim() ?? null,
     pageOverflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth, viewport: innerWidth,
   };
@@ -348,35 +402,67 @@ for (const vp of VIEWPORTS) {
     const want = expected.runs.length + seats;
     const tag = `${vp.name} ${name}`;
     await navigate(`${BASE}/`);
-    // On screen: the map is live and, on the new tree, reports this scenario's run count.
-    const ready = await until(AFTER
-      ? `document.querySelector('.dispatch-map')?.dataset.live === 'true' && document.querySelector('.dispatch-map').dataset.runs === '${want}' && document.querySelectorAll('.dispatch-wires path[data-wire="spoke"]').length > 0`
-      : `document.querySelector('.dispatch-map')?.dataset.live === 'true' && ${expected.runs.length ? `/working|writing|testing|thinking|reviewing|browsing/i.test(document.querySelector('.dispatch-map').innerText)` : "true"}`);
+    // On screen: the map is live and reports this scenario's run count (the
+    // delayed scenario: the map is up and reports the signal as not live).
+    const wires = `document.querySelectorAll('.dispatch-wires path[data-wire="spoke"]').length > 0`;
+    const ready = await until(expected.unavailable
+      // The old tree (before mode) has no trouble marks; there every pod read "Signal delayed".
+      ? `document.querySelector('.dispatch-map')?.dataset.live === 'false' && [...document.querySelectorAll('[data-provider]')].length > 0 && [...document.querySelectorAll('[data-provider]')].every((p) => ${AFTER ? `p.dataset.trouble === 'delayed'` : `/Signal delayed/i.test(p.innerText)`}) && ${wires}`
+      : `document.querySelector('.dispatch-map')?.dataset.live === 'true' && document.querySelector('.dispatch-map').dataset.runs === '${want}' && ${wires}${expected.ended ? ` && /Run failed/.test(document.querySelector('[data-provider="antigravity"] .dispatch-provider-button')?.getAttribute('aria-label') + document.querySelector('[data-provider="antigravity"]')?.innerText)` : ""}`);
     await evalJs("document.fonts.ready.then(() => true)");
+    await painted();
+    // Colours change through CSS transitions (the logo ring, .dispatch-logo); read them once those have finished.
+    await evalJs("Promise.all(document.getAnimations().filter((a) => a instanceof CSSTransition).map((a) => a.finished.catch(() => null))).then(() => true)");
     await painted();
     const map = await evalJs(READ_MAP);
     const viewer = await evalJs(READ_VIEWER);
     const out = (report.scenarios[tag] = { expectedRuns: expected.runs.length, expectedSeats: seats, map, viewer });
-    check(ready && !!map, `${tag}: the Ops graphic is live with the scenario on screen`, map ? `data-runs=${map.runCount}` : "no map");
+    check(ready && !!map, `${tag}: the Ops graphic shows the scenario`, map ? `data-live=${map.live} data-runs=${map.runCount}` : "no map");
     if (!map) continue;
-    out.opsShot = await shotOf(vp, "#station-dispatch", `${name}-${vp.name}-ops-graphic.png`);
-    if (name !== "overflow") out.viewerShot = await shotOf(vp, "#station-core", `${name}-${vp.name}-main-viewer.png`);
+    console.log(`CHECK_HEIGHT ${LABEL} ${tag}: Ops panel (#station-dispatch) ${map.heights.station}px, map ${map.heights.map}px at ${map.viewport}px wide`);
+    out.opsShot = await shotOf(vp, "#station-dispatch", `${name}-${vp.name}-ops-panel.png`, 8, name === "busy" ? path.join(PACKAGE, `busy-${vp.name}-ops-panel.png`) : null);
 
     if (!AFTER) {
-      console.log(`CHECK_NOTE  ${tag}: baseline tree shows ${map.providers.length} provider pods, ${map.oldChips} icon chips, Crew section ${viewer?.crewSection ? `present (${viewer.crewChips} chips)` : "absent"}`);
+      console.log(`CHECK_NOTE  ${tag}: baseline tree shows ${map.providers.length} provider pods and ${map.runs.length} run nodes`);
       continue;
     }
+
+    // Executor nodes: the logo alone; name and status only in the label and title.
+    const texty = map.providers.filter((p) => p.label !== null || p.phase !== null || p.buttonText !== "");
+    check(texty.length === 0, `${tag}: executor nodes show the logo with no visible name or status text`, texty.map((p) => `${p.id}: "${p.buttonText}"`).join(", ") || map.providers.map((p) => p.id).join(", "));
+    const unnamed = map.providers.filter((p) => { const status = p.aria?.replace(/^Inspect [^:]+: /, ""); return !p.aria?.startsWith("Inspect ") || !status || !p.title?.includes(status); });
+    check(unnamed.length === 0, `${tag}: each executor's name and status stay in its aria-label and title`, unnamed.map((p) => p.id).join(", ") || map.providers.map((p) => `${p.aria}`).join(" | "));
+    // The wires meet the logo itself: the hub spoke ends inside the logo box and every run branch starts there.
+    const inside = (pt, box) => pt.x >= box.left && pt.x <= box.right && pt.y >= box.top && pt.y <= box.bottom;
+    const offLogo = map.providers.flatMap((p) => p.wireEnds.filter((w) => !inside(w.wire === "spoke" ? w.ends[1] : w.ends[0], p.logo)).map((w) => `${p.id} ${w.wire} ${JSON.stringify(w.ends)} logo ${JSON.stringify(p.logo)}`));
+    check(offLogo.length === 0 && map.providers.every((p) => p.wireEnds.some((w) => w.wire === "spoke")), `${tag}: the connector lines pass through the logo`, offLogo.join(" | ") || `${map.providers.reduce((n, p) => n + p.wireEnds.length, 0)} wire ends on logos`);
+    // Trouble on the logo, without words.
+    const wantTrouble = expected.unavailable ? Object.fromEntries(map.providers.map((p) => [p.id, "delayed"])) : { ...Object.fromEntries((expected.suspended ?? []).map((id) => [id, "suspended"])), ...(expected.ended ? { antigravity: "failed" } : {}) };
+    // Ring colours from globals.css: failed #fb7185, suspended #fbbf24, delayed #94a3b8 (dashed).
+    const RING = { failed: "rgb(251, 113, 133)", suspended: "rgb(251, 191, 36)", delayed: "rgb(148, 163, 184)" };
+    // The glow is the trouble's colour even while the executor is busy (failed and suspended; delayed has none).
+    const glowWrong = (p) => p.trouble === "delayed" ? p.ring.glow !== "none" : !p.ring.glow.includes(RING[p.trouble].slice(4, -1));
+    const troubleWrong = map.providers.filter((p) => (wantTrouble[p.id] ?? null) !== p.trouble || (p.trouble ? !p.badge?.visible || p.badge.trouble !== p.trouble || p.badge.box.width < 10 || p.ring?.width !== "2px" || p.ring.color !== RING[p.trouble] || (p.trouble === "delayed") !== (p.ring.style === "dashed") || glowWrong(p) : p.badge !== null || p.ring?.width !== "1px"));
+    check(troubleWrong.length === 0, `${tag}: failed, suspended and delayed executors are marked on the logo (ring and badge), healthy ones are not`, troubleWrong.map((p) => `${p.id}=${p.trouble}`).join(", ") || map.providers.map((p) => `${p.id}:${p.trouble ?? "ok"}${p.ring ? ` ${p.ring.width} ${p.ring.style} ${p.ring.color}` : ""}`).join(" | "));
+    if (expected.unavailable) continue;
 
     // One child per run, each with task, model, role and elapsed time.
     check(map.runs.length === want, `${tag}: one child node per live run`, `${map.runs.length} nodes for ${expected.runs.length} runs + ${seats} sitting seats`);
     const missing = expected.runs.filter((r) => { const n = map.runs.find((x) => x.key === r.taskId); return !n || n.provider !== r.executor || n.title !== r.title; });
-    check(missing.length === 0, `${tag}: every run is under its own provider with its task title`, missing.map((r) => r.taskId).join(", ") || `${expected.runs.length} matched`);
-    const incomplete = map.runs.filter((n) => !n.title || !n.model || !n.role || !n.elapsed);
-    check(incomplete.length === 0, `${tag}: every node shows task, model, role and elapsed time`, incomplete.map((n) => n.key).join(", ") || "all complete");
+    check(missing.length === 0, `${tag}: every run is under its own provider with its task title on hover`, missing.map((r) => r.taskId).join(", ") || `${expected.runs.length} matched`);
+    const titled = map.runs.filter((n) => n.visibleTitle !== null || n.titleShown || !n.aria?.includes(n.title));
+    check(titled.length === 0, `${tag}: no run node draws its task title; the title stays in the hover title and aria-label`, titled.map((n) => n.key).join(", ") || `${map.runs.length} nodes`);
+    const incomplete = map.runs.filter((n) => !n.model || !n.role || !n.elapsed);
+    check(incomplete.length === 0, `${tag}: every node shows model, role and elapsed time`, incomplete.map((n) => n.key).join(", ") || "all complete");
     const wrongRole = expected.runs.filter((r) => map.runs.find((n) => n.key === r.taskId)?.role !== (r.kind === "qa" ? "reviewing" : "building"));
     check(wrongRole.length === 0, `${tag}: task runs read building, QA review runs read reviewing`, wrongRole.map((r) => r.taskId).join(", "));
-    const slotWrong = expected.runs.filter((r) => { const n = map.runs.find((x) => x.key === r.taskId); return r.slotNumber ? n?.slot !== `S${r.slotNumber}` : n?.slot !== null || n?.headChildren !== 1; });
-    check(slotWrong.length === 0, `${tag}: a slot shows S<number>, no slot shows no tag and no placeholder`, slotWrong.map((r) => r.taskId).join(", ") || `${expected.runs.filter((r) => r.slotNumber).length} tagged, ${expected.runs.filter((r) => !r.slotNumber).length} untagged`);
+    const slotWrong = expected.runs.filter((r) => {
+      const n = map.runs.find((x) => x.key === r.taskId);
+      const role = r.kind === "qa" ? "reviewing" : "building";
+      return r.slotNumber ? n?.slot !== `S${r.slotNumber}` || n.head?.cls !== "dispatch-run-slot" || n.standin !== null
+        : n?.slot !== null || n.head?.cls !== "dispatch-run-standin dispatch-run-role" || n.head.text !== role;
+    });
+    check(slotWrong.length === 0, `${tag}: a slotted run leads with S<number>, an unslotted run with its role word (never an empty head)`, slotWrong.map((r) => r.taskId).join(", ") || `${expected.runs.filter((r) => r.slotNumber).length} tagged, ${expected.runs.filter((r) => !r.slotNumber).length} with the role stand-in`);
     const unknownWrong = expected.runs.filter((r) => !r.model && !r.requestedModel && !r.servedModel && map.runs.find((n) => n.key === r.taskId)?.model !== "unknown");
     check(unknownWrong.length === 0, `${tag}: a run with no reported model reads 'unknown'`, `${expected.runs.filter((r) => !r.model && !r.requestedModel && !r.servedModel).length} such runs`);
     // Idle providers collapse; busy ones expand.
@@ -387,8 +473,9 @@ for (const vp of VIEWPORTS) {
     check(outside.length === 0, `${tag}: every run node lies inside the graphic at a usable size`, outside.map((n) => `${n.key} ${JSON.stringify(n.box)}`).join(" | ") || `narrowest ${Math.min(...map.runs.map((n) => n.box.width), Infinity)}px`);
     const clashes = map.runs.flatMap((a, i) => map.runs.slice(i + 1).filter((b) => overlaps(a.box, b.box)).map((b) => `${a.key}/${b.key}`));
     check(clashes.length === 0, `${tag}: no two run nodes overlap`, clashes.join(", "));
-    const tiny = map.runs.filter((n) => n.titleFontPx < 11 || n.titleBox.width < 60);
-    check(tiny.length === 0, `${tag}: run titles are legible (11px text, 60px or more of width)`, tiny.map((n) => n.key).join(", ") || (map.runs.length ? `narrowest title ${Math.min(...map.runs.map((n) => n.titleBox.width))}px` : "no runs"));
+    // 10px is the run line's size before this change (globals.css .dispatch-run-meta, then .dispatch-run).
+    const tiny = map.runs.filter((n) => n.fontPx < 10);
+    check(tiny.length === 0, `${tag}: run node text stays at 10px or more`, tiny.map((n) => n.key).join(", ") || (map.runs.length ? `rows per node: ${map.runs.map((n) => n.rows).join(",")}` : "no runs"));
     check(map.pageOverflowX <= 0, `${tag}: the page does not scroll sideways`, `overflow ${map.pageOverflowX}px at ${map.viewport}px`);
     // Logos: the four vendor files render at 20px or less (the old chip was 35px).
     const need = ["claude-code", "codex", "antigravity", "local-llm"];

@@ -642,14 +642,16 @@ test('recomposed question uses a fresh archive identity instead of replaying que
   assert.equal(speech[0].body.text, 'Blocked because Connection is missing. Which connection?');
 });
 
-test('the watched QA event stays silent and the delivered report plays once with its chat pointer', async t => {
+test('a watched QA report and a report recovered on reconnect each play once with their chat pointers', async t => {
   t.mock.timers.enable({ apis: ['Date', 'setTimeout', 'setInterval'], now: new Date(2026, 9, 28, 12).getTime() });
   t.mock.method(document, 'hasFocus', () => true);
-  const report = { id: 'follow-up:watch:trigger', speech: 'Keep the archive offline until verified. The details are in chat.' };
-  let delivered = false, claimed = false;
+  const report = { id: 'follow-up:watch:trigger', speech: 'Keep the archive offline until verified.' };
+  const recovered = { id: 'follow-up:offline:trigger', speech: 'Restore drill passed QA.' };
+  const rows = [{ id: 'archived', speech: 'An earlier report.', deliveredAt: new Date().toISOString() }];
+  const claims: string[] = [];
   const f = await mount(t, false, async url => {
-    if (url.endsWith('/voice/outcomes')) return Response.json(delivered && !claimed ? [report] : []);
-    if (url.endsWith('/claim')) { const won = !claimed; claimed = true; return Response.json({ claimed: won }); }
+    if (url.endsWith('/voice/outcomes')) return Response.json(rows);
+    if (url.endsWith('/claim')) { claims.push(url); return Response.json({ claimed: true }); }
   }, true);
   const socket = __sockets.at(-1);
   await act(async () => {
@@ -658,15 +660,21 @@ test('the watched QA event stays silent and the delivered report plays once with
     await tick();
   });
   assert.equal(FakeAudio.all.length, 0);
-  delivered = true;
+  rows.push({ ...report, deliveredAt: new Date().toISOString() });
   const message = { message: { id: report.id, metadata: { outcomeSpeech: report.speech } } };
   await act(async () => { socket.__emit('chat-message', message); await tick(); });
   await act(async () => { t.mock.timers.tick(400); await tick(); await tick(); });
   assert.deepEqual(f.requests.filter(r => r.url.endsWith('/speak')).map(r => r.body.text), [report.speech]);
-  assert.equal(claimed, true);
   await act(async () => { FakeAudio.all[0].onended?.(); await tick(); FakeAudio.all[1].onended?.(); await tick(); });
-  await act(async () => { socket.__emit('chat-message', message); t.mock.timers.tick(120000); await tick(); });
-  assert.equal(FakeAudio.all.length, 2, 'one cue and one spoken report');
+  await act(async () => { socket.__emit('disconnect'); t.mock.timers.tick(120000); await tick(); });
+  rows.push({ ...recovered, deliveredAt: new Date().toISOString() });
+  await act(async () => { socket.__emit('connect'); socket.__emit('praxis:resync', {}); await tick(); });
+  await act(async () => { t.mock.timers.tick(400); await tick(); await tick(); });
+  assert.deepEqual(f.requests.filter(r => r.url.endsWith('/speak')).map(r => r.body.text), [report.speech, recovered.speech]);
+  await act(async () => { FakeAudio.all[2].onended?.(); await tick(); FakeAudio.all[3].onended?.(); await tick(); });
+  await act(async () => { socket.__emit('chat-message', message); await tick(); t.mock.timers.tick(120000); await tick(); });
+  assert.deepEqual(claims, [report, recovered].map(row => '/api/voice/outcomes/' + encodeURIComponent(row.id) + '/claim'));
+  assert.equal(FakeAudio.all.length, 4, 'one cue and one spoken report per identity');
   assert.equal(f.requests.some(r => r.url.endsWith('/voice-prose') || r.url.endsWith('/sync')), false);
 });
 
@@ -674,12 +682,19 @@ test('reloading during the cue returns the unheard report to the durable queue',
   t.mock.timers.enable({ apis: ['Date', 'setTimeout', 'setInterval'], now: new Date(2026, 9, 28, 12).getTime() });
   t.mock.method(document, 'hasFocus', () => true);
   let owner: string | undefined;
+  const rows: { id: string; speech: string; deliveredAt: string }[] = [];
   const f = await mount(t, false, async (url, body) => {
-    if (url.endsWith('/voice/outcomes')) return Response.json([{ id: 'follow-up:reload:trigger', speech: 'Wait for review. The details are in chat.' }]);
+    if (url.endsWith('/voice/outcomes')) return Response.json(rows);
     if (url.endsWith('/claim')) { owner = body.token; return Response.json({ claimed: true }); }
     if (url.endsWith('/release')) { assert.equal(body.token, owner); owner = undefined; return Response.json({ ok: true }); }
+  }, true);
+  await act(async () => {
+    t.mock.timers.tick(1);
+    rows.push({ id: 'follow-up:reload:trigger', speech: 'Wait for review before you merge the branch.', deliveredAt: new Date().toISOString() });
+    __sockets.at(-1).__emit('chat-message', { message: { metadata: { outcomeSpeech: rows[0].speech } } });
+    await tick();
   });
-  await act(async () => { await tick(); });
+  await act(async () => { t.mock.timers.tick(400); await tick(); });
   assert.ok(owner);
   assert.equal(FakeAudio.all.length, 1, 'only the cue has started');
   await act(async () => { window.dispatchEvent(new window.Event('pagehide')); await tick(); });

@@ -99,6 +99,20 @@ test('a retired document\'s review page says what replaced it, with a link, when
   } finally { t.cleanup(); }
 });
 
+test('a chat retirement shows the cited reason without implying another document replaced it', async () => {
+  const reason = 'Robert settled every question in chat (message closing-12).';
+  const retirement = { ...RETIRED, source: 'chat_ruling', trigger: 'chat_ruling', reason, replaced_by: null,
+    replaced_by_revision_id: null, registration_id: null, task_id: null, task_path: null, named_as: null };
+  const t = mount(RetirementBanner, { retirement });
+  try {
+    await settle();
+    const banner = t.container.querySelector('[data-retirement-banner="chat_ruling"]');
+    assert.equal(banner.querySelector('[data-retirement-reason]').textContent, `Reason: ${reason}`);
+    assert.equal(banner.querySelector('[data-retirement-replaced-by]'), null);
+    assert.match(banner.textContent, /No decision was recorded and nothing was carried out/);
+  } finally { t.cleanup(); }
+});
+
 test('a manual close of 2026-11-18/19 shows its reason and replacement in the same form (criterion 7)', async () => {
   const t = mountPage({ retirement: MANUAL, retirement_history: [MANUAL], replaces: [], named_as_replaced: [] });
   try {

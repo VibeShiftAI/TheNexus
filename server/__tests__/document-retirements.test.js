@@ -796,3 +796,139 @@ describe('hardening after self-review (2026-11-19)', () => {
         expect(page.retirement_history.map(rt => [rt.source, rt.state])).toEqual([['replacement', 'retired'], ['manual', 'reopened']]);
     });
 });
+
+describe('purpose withdrawal at registration', () => {
+    const purpose = 'No decision or approval is requested.';
+    function withdraw(original, declaration = {}) {
+        return api('POST', '/api/documents', {
+            path: original.document.path, title: original.document.title, project_id: PROJECT_ID, task_id: OLD_TASK, kind: 'document',
+            deliverable: { key: original.document.deliverable_key, purpose, requires_review: false, intended_action: 'none', ...declaration },
+        });
+    }
+    function events() {
+        const raw = rawDb();
+        try { return raw.prepare('SELECT id, event_type, title, requires_action FROM ag_events ORDER BY id').all(); }
+        finally { raw.close(); }
+    }
+    async function expectWaiting(id, bucket = 'needs_review') {
+        expect(store().getDocument(id).requires_review).toBe(true);
+        const waiting = await api('GET', `/api/documents?status=${bucket}&include_mail=1`);
+        const reference = await api('GET', '/api/documents?status=reference&include_mail=1');
+        expect(waiting.status).toBe(200);
+        expect(reference.status).toBe(200);
+        expect(waiting.json.documents.map(d => d.id)).toContain(id);
+        expect(reference.json.documents.map(d => d.id)).not.toContain(id);
+        expect(store().listRetirements(id)).toEqual([]);
+        expect(decisionRows(id)).toEqual([]);
+        expect(events()).toEqual([]);
+        expect(delivery.deliver).not.toHaveBeenCalled();
+    }
+    test('keeps a draft and its unsubmitted comment', async () => {
+        const old = await original();
+        const draft = await draftWithComment(old.document.id, 'local_user', 'Keep this launch note.');
+        const comments = store().listComments(draft.id);
+        expect([200, 201]).toContain((await withdraw(old)).status);
+        await expectWaiting(old.document.id);
+        expect(store().listUnsubmittedDrafts(old.document.id).map(d => d.review.id)).toEqual([draft.id]);
+        expect(store().listComments(draft.id)).toEqual(comments);
+    });
+    test('keeps an active waiter on the initial withdrawal and its byte-identical requires_review=false replay', async () => {
+        const old = await original('brief-v1.md', { blocking_task_ids: [WAITER_TASK] });
+        for (let attempt = 0; attempt < 2; attempt++) {
+            expect([200, 201]).toContain((await withdraw(old)).status);
+            await expectWaiting(old.document.id);
+            expect(store().getBlockingTasks(old.document.id).map(task => task.id)).toEqual([WAITER_TASK]);
+        }
+    });
+    test('checks a new active waiter introduced by the withdrawing registration itself', async () => {
+        const old = await original();
+        expect(store().getBlockingTasks(old.document.id)).toEqual([]);
+        const res = await withdraw(old, { requires_review: true, blocking_task_ids: [WAITER_TASK] });
+        expect([200, 201]).toContain(res.status);
+        await expectWaiting(old.document.id);
+        expect(store().getBlockingTasks(old.document.id).map(task => task.id)).toEqual([WAITER_TASK]);
+    });
+    test('keeps the exact unsent message draft', async () => {
+        const old = await original('brief-v1.md', { intended_action: 'send' });
+        const outgoing = store().prepareOutgoing(old.document.id, old.revision, {
+            envelope: { to: ['draft@example.test'], cc: [], subject: 'Fixture', text: 'Unsent launch note.' },
+            provenance: { project_id: PROJECT_ID, task_id: OLD_TASK },
+        });
+        expect(outgoing.status).toBe('draft');
+        const res = await withdraw(old, { requires_review: true, intended_action: 'send' });
+        expect([200, 201]).toContain(res.status);
+        await expectWaiting(old.document.id);
+        expect(store().getOutgoing(old.document.id)).toEqual(outgoing);
+        const conflicting = await withdraw(old, { requires_review: false, intended_action: 'none' });
+        expect(conflicting.status).toBe(409);
+        await expectWaiting(old.document.id);
+        expect(store().getOutgoing(old.document.id)).toEqual(outgoing);
+    });
+    test('keeps unfinished replacement work in progress', async () => {
+        const old = await original();
+        const work = store().insertReplacement({ document_id: old.document.id, base_revision_id: old.revision.id,
+            client_request_id: 'withdrawal-open-revision', task_id: WAITER_TASK, state: 'running', accepted_by: 'local_user' });
+        expect([200, 201]).toContain((await withdraw(old)).status);
+        await expectWaiting(old.document.id, 'in_progress');
+        expect(store().findOpenReplacement(old.document.id)).toMatchObject({ id: work.id, state: 'running' });
+    });
+    test.each([
+        ['an imperative in the revision', '# Report\n\n- **Choose the next reporting period.**', null],
+        ['an indirect request without a question mark', '# Report\n\nThe proposed date still needs your confirmation.', null],
+        ['an independent request in the review brief', '# Report\n', { brief: { ask: 'Specify a release date.' } }],
+    ])('keeps %s after a purpose withdrawal', async (_label, content, metadata) => {
+        const old = await register(writeFile('with-request.md', content), { key: 'with-request' });
+        expect(old.status).toBe(201);
+        if (metadata) store().updateDocument(old.json.document.id, { metadata });
+        expect([200, 201]).toContain((await withdraw(old.json)).status);
+        await expectWaiting(old.json.document.id);
+    });
+    test('keeps the historical Bowery layout review, then retires the static email preview when the whole request is withdrawn', async () => {
+        const title = 'Bowery Princes status report preview (email)';
+        const old = await register(writeFile('email-preview.html', '<!doctype html><html><body><p>The reporting period ended Friday.</p></body></html>'), { title, key: 'email-preview' });
+        expect(old.status).toBe(201);
+        const layout = 'Review layout only: historical intake revision 30 with all eight requested questions. Live revision 32 now has six open questions. This preview is not a current send-ready report; no send, approval or deployment is requested.';
+        expect([200, 201]).toContain((await withdraw(old.json, { purpose: layout })).status);
+        await expectWaiting(old.json.document.id);
+        const withdrawn = 'This preview is not a current send-ready report; no send, approval or deployment is requested.';
+        const change = await withdraw(old.json, { purpose: withdrawn });
+        expect([200, 201]).toContain(change.status);
+        const page = await read(old.json.document.id);
+        expect(page.review_status).toBe('reference');
+        expect(page.retirement.ground).toMatchObject({ purpose: withdrawn, previous_purpose: layout, registration_id: change.json.receipt.id });
+        expect(events()).toHaveLength(1);
+        expect(decisionRows(old.json.document.id)).toEqual([]);
+        expect(delivery.deliver).not.toHaveBeenCalled();
+    });
+    test.each([
+        '<p><b>Choose</b> the next reporting period.</p>',
+        '<p>Is this still needed&#63;</p>',
+        '<p aria-label="Which reporting period?">Report</p>',
+        '<iframe src="other.html"></iframe>',
+    ])('keeps an HTML preview with an outstanding or unreadable request: %s', async content => {
+        const old = await register(writeFile('request.html', content), { key: 'request' });
+        expect(old.status).toBe(201);
+        expect([200, 201]).toContain((await withdraw(old.json)).status);
+        await expectWaiting(old.json.document.id);
+    });
+    test('a replay with requires_review=false respects an explicit reopening and leaves exactly the original activity', async () => {
+        const old = await original();
+        const initial = await withdraw(old);
+        expect([200, 201]).toContain(initial.status);
+        const retired = (await read(old.document.id)).retirement;
+        expect(retired).toMatchObject({ trigger: 'purpose_changed', ground: { purpose, registration_id: initial.json.receipt.id } });
+        const initialEvents = events();
+        expect(initialEvents).toHaveLength(1);
+        expect(initialEvents[0]).toMatchObject({ event_type: 'document_retired', requires_action: 0 });
+        expect(initialEvents[0].title).toContain(initial.json.receipt.id);
+        expect((await requestReview(old.document.id)).status).toBe(200);
+        expect([200, 201]).toContain((await withdraw(old)).status);
+        const page = await read(old.document.id);
+        expect(page).toMatchObject({ document: { requires_review: true }, review_status: 'needs_review', retirement: null });
+        expect(page.retirement_history).toHaveLength(1);
+        expect(page.retirement_history[0]).toMatchObject({ id: retired.id, state: 'reopened', reopened_via: 'request_review' });
+        expect(decisionRows(old.document.id)).toEqual([]);
+        expect(events()).toEqual(initialEvents);
+        expect(delivery.deliver).not.toHaveBeenCalled();
+    });
+});
