@@ -492,9 +492,10 @@ describe('the local model chosen under Model Control', () => {
         const applied = await api('POST', '/model-control/local-model/apply', { selectionId: second.body.selectionId, model: 'google/gemma-4-31b' });
         expect(applied).toEqual({ status: 200, body: { active: 'google/gemma-4-31b', selectionId: second.body.selectionId } });
         // Its new row takes a free id: local-gemma-4-31b already names the QAT model, and keeps naming it.
+        // LM Studio lists no reasoning for Gemma 4 31B, so its row claims none.
         expect(await db.getModel('local-gemma-4-31b')).toEqual(expect.objectContaining({ api_model_id: 'google/gemma-4-31b-qat' }));
         expect((await db.getModels(false)).filter(r => r.api_model_id === 'google/gemma-4-31b')).toEqual([
-            expect.objectContaining({ id: 'local-gemma-4-31b-2', display_name: 'Gemma 4 31B (local)' }),
+            expect.objectContaining({ id: 'local-gemma-4-31b-2', display_name: 'Gemma 4 31B (local)', capabilities: { chat: true, local: true } }),
         ]);
         // A repeated apply (a lost answer) is answered the same way, not as a new switch.
         const repeat = await api('POST', '/model-control/local-model/apply', { selectionId: second.body.selectionId, model: 'google/gemma-4-31b' });
