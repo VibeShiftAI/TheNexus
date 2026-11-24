@@ -41,6 +41,7 @@ const { createAgentReviewStore } = require('./document-agent-reviews');
 const { ACTIVE_TASK_SQL, WAITING_TASKS_FROM_SQL } = require('./document-review-blockers');
 const { initializeDocumentOutgoing, createDocumentOutgoingStore } = require('./document-outgoing');
 const { initializeDocumentRetirements, createDocumentRetirementStore } = require('./document-retirements');
+const { initializeDocumentRelocations, createDocumentRelocationStore } = require('./document-relocations');
 
 function now() { return new Date().toISOString(); }
 
@@ -525,6 +526,8 @@ function initializeDocumentReviews(db) {
     initializeDocumentOutgoing(db);
     // Retiring documents a later deliverable replaces (task d9f46e2f, contract §13). Additive tables only.
     initializeDocumentRetirements(db);
+    // Moving a registration to its landed file when the run that wrote it lands (task ec3e1d0c, contract §14). Additive table only.
+    initializeDocumentRelocations(db);
 }
 
 const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration', 'provenance', 'blocking_task_ids', 'anchor', 'selection_json', 'manifest', 'superseded_review_ids', 'author', 'suggestion', 'decision_answers']);
@@ -597,6 +600,7 @@ function serialize(value) {
 function createDocumentReviewStore(db) {
     const outgoing = createDocumentOutgoingStore(db);
     const retirements = createDocumentRetirementStore(db);
+    const relocations = createDocumentRelocationStore(db);
     const hasTasks = () => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'tasks'").get());
     const queryDocuments = (filters) => documentQuery(filters, hasTasks()
         ? `CASE WHEN (${REVIEW_STATUS_SQL}) IN ('needs_review', 'changes_requested')
@@ -619,6 +623,7 @@ function createDocumentReviewStore(db) {
     return {
         ...outgoing,
         ...retirements,
+        ...relocations,
         transaction(fn) { return db.transaction(fn)(); },
 
         // ── Documents ────────────────────────────────────────────────────

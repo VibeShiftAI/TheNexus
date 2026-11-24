@@ -1276,3 +1276,107 @@ Activation: the two tables are created additively at API startup; the live
 :4000 serves this section only after the Nexus API restarts on the new code.
 Nothing is retired until a registration names something, and the existing
 manual closes are read as they are.
+
+## 14. Moving a registration when the run that wrote it lands (2026-11-24, task ec3e1d0c)
+
+A Praxis run writes in its own Git worktree
+(`/Volumes/Projects/.praxis-worktrees/<task>/<repository>`) and registers its
+documents there. When QA passes, the run's commits land in the checkout of the
+target branch and the worktree is removed. A registration that still names the
+worktree path then points at a file that is gone: the document reads from its
+captured revision, but decisions, Finish review and request-review answer 409
+`file_unavailable` (`outside_roots`). Before this section, 41 documents had
+been stranded that way, 14 of them waiting for Robert's review.
+
+### 14.1 The operation
+
+`POST /api/documents/relocations` with
+`{ from_root, to_root, source?, task_id?, reason? }`:
+
+- `from_root`: the run worktree, an absolute normalized path (no trailing
+  separator, not `/`). It need not exist any more.
+- `to_root`: the checkout the run landed in (an existing directory), or `null`
+  when no checkout has the target branch checked out. The two may not overlap.
+- `source`: `landing` (default; Praxis, when a run lands) or `repair` (the
+  one-time repair of documents stranded before landings moved them).
+- `task_id`, `reason`: recorded with each move (the reason at most 500
+  characters, the purpose bound of a declaration).
+
+For every document registered at a path inside `from_root`, the landed copy is
+the file at the same relative path under `to_root`. The registration moves only
+when that file:
+
+1. resolves inside the registered project roots (the boundary every
+   registration passes) and sits at exactly that path, not behind a link; and
+2. hashes, by the identity rule revision capture uses (`revisionHash` in
+   `server/services/document-registry.js`: the exact file bytes for a document
+   with a deliverable key, a binary file or a design package, the
+   line-normalized text for a legacy registration), to the document's current
+   revision.
+
+A move changes the document's `path`, its `root_project_id` and, for a `path:`
+key (which is the registration's path), its `deliverable_key`
+(`path:<old>` becomes `path:<new>`, so a later registration of the landed file
+without a key finds the same document). A producer's own key never changes.
+Nothing else changes: the id, revisions, decisions, reviews and comments,
+drafts, replacements, retirements, the review requirement and waiting tasks
+stay as they are; no revision, decision, notice or delivery is recorded, and an
+outgoing grant (bound to the revision and its exact bytes, never the path)
+stays in force. Each move is recorded once in the append-only
+`review_document_relocations` table.
+
+### 14.2 The answer
+
+`200 { from_root, to_root, applied, relocated, already_relocated, left }`.
+Every entry names the document (`document_id`, `title`, `requires_review`,
+`task_id`), `from_path`, `to_path`, `revision_id`, `registered_hash` (the
+current revision's hash) and `landed_hash`:
+
+- `relocated`: moved by this call, with `from_deliverable_key`,
+  `to_deliverable_key` and `relocation_id`.
+- `already_relocated`: moved out of this `from_root` by an earlier call and
+  still at the path it was moved to (`relocated_at`).
+- `left`: not moved, with `reason`:
+  `hash_mismatch` (both hashes given), `landed_file_missing`,
+  `landed_file_refused` / `landed_file_unreadable` (`detail` is the registry
+  code), `landed_path_is_a_link` (`detail` is where it resolves),
+  `no_landed_checkout`, `no_revision`, or a refusal of the compare-and-set:
+  `path_changed`, `revision_changed`, `path_occupied` / `key_occupied`
+  (`detail` names the document holding it).
+
+A document that is left stays registered where it was and stays readable from
+its captured revision.
+
+### 14.3 Exactly once
+
+Each move is one compare-and-set in one immediate SQLite transaction: the
+document must still be at the path, and on the revision, the caller hashed. A
+repeated call (a retried landing, a restart between the merge and the worktree
+removal) finds the document no longer inside `from_root` and answers it from
+the record of the earlier move; a concurrent call that loses the race answers
+it the same way. Nothing is moved twice and no document or revision is created.
+
+### 14.4 Consumer guidance for Praxis
+
+Praxis calls this from the one merge path (`src/orchestrator/run-merge.ts`)
+after the work has landed and before the worktree is retired, for each
+repository the run landed in, with `to_root` the checkout the target branch is
+checked out in. The landing result names what moved and what was left (with
+both hashes). TheNexus unreachable or failing (a 5xx) makes the landing wait
+and retry with the worktree still in place, so its documents stay decidable; a
+404 (a Nexus API not yet restarted on this code) is reported and does not hold
+the landing.
+
+### 14.5 Verification and activation
+
+`server/__tests__/document-relocations.test.js` covers a landed document
+staying decidable with the same id, revision, review and comments after the
+worktree is removed (and the same landing without the move answering 409
+`file_unavailable`), a mismatched and a missing landed file named with both
+hashes and no revision recorded, a repeated and a raced move moving once, a
+`path:` key moving with the path so later registrations from the main checkout
+(same and other task, same and new bytes) land on the same document, the
+store's refusals, request validation and `to_root: null`.
+
+Activation: the table is created additively at API startup; the live :4000
+serves the route only after the Nexus API restarts on the new code.

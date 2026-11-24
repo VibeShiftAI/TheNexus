@@ -9,6 +9,11 @@
  *   GET    /api/documents?status=&task_id=&project_id=&kind=&q=&limit=&offset=
  *                                                          one page of documents (newest first) with the caller's
  *                                                          review state, review_status and the matching total
+ *   POST   /api/documents/relocations                      { from_root, to_root, source?, task_id?, reason? }: move every
+ *                                                          registration inside a landed run's worktree to the same
+ *                                                          relative path in the checkout it landed in, when that file
+ *                                                          holds the exact bytes of the current revision; id, revisions,
+ *                                                          decisions and review state kept (contract §14)
  *   GET    /api/documents/counts?task_id=&project_id=&kind=&q=   per-review-status totals for the same filters
  *   GET    /api/documents/:id                              document + current revision + content + the caller's review
  *   GET    /api/documents/:id/raw?revision=&download=1     Markdown source (current or pinned revision)
@@ -78,7 +83,8 @@ const { createDocumentOutgoingRouter } = require('./document-outgoing');
 const path = require('path');
 const fs = require('fs');
 const { randomUUID } = require('crypto');
-const { listProjectRoots, resolveDocumentPath, readDocumentFile, readArtifactFile, sha256 } = require('../services/document-registry');
+const { listProjectRoots, resolveDocumentPath, readDocumentFile, readArtifactFile, sha256, exactIdentity, revisionHash } = require('../services/document-registry');
+const { RELOCATION_SOURCES, parseRoot, rootsOverlap, relocateDocuments } = require('../services/document-relocation');
 const media = require('../services/review-media');
 const fmt = require('../services/document-review-format');
 const { createDocumentDecisionAuthority } = require('../services/document-decision-authority');
@@ -112,6 +118,8 @@ const TASK_DONE = new Set(['completed', 'complete', 'done']);
 const TASK_CANCELLED = new Set(['cancelled', 'canceled', 'rejected', 'deleted', 'archived']);
 const TASK_FAILED = new Set(['failed']);
 const PAGE = { default: 100, max: 200 };
+/** What a request to move registrations to a landed checkout may carry (contract §14). */
+const RELOCATION_FIELDS = new Set(['from_root', 'to_root', 'source', 'task_id', 'reason']);
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
 
@@ -772,15 +780,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             .map(row => ({ ...supersessionView(row), replacing: documentRef(row.document_id) }));
     }
 
-    // Binary and design revisions are always identified by their exact bytes (contract §1).
-    function exactIdentity(doc, read) {
-        return Boolean(doc.deliverable_key) || read.binary || read.mediaType === 'design';
-    }
-
-    /** The hash recordRevision files these bytes under for this document. */
-    function revisionHash(doc, read) {
-        return exactIdentity(doc, read) ? read.exactHash : read.contentHash;
-    }
+    // Binary and design revisions are always identified by their exact bytes (contract §1): `exactIdentity` and
+    // `revisionHash` come from services/document-registry.js, shared with moving a registration (§14).
 
     /**
      * Find or record the revision for bytes just read. A declared deliverable
@@ -1368,6 +1369,49 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (err.status === 409) return res.status(409).json({ error: err.message, code: err.code });
             console.error('[Documents] register failed:', err);
             return res.status(500).json({ error: 'Failed to register document' });
+        }
+    });
+
+    // ── Moving registrations to the checkout a run landed in (task ec3e1d0c, contract §14) ──
+    // Every document registered inside `from_root` (a run worktree) whose file at the same relative path under
+    // `to_root` (the checkout the run landed in) holds the exact bytes of its current revision is moved there,
+    // keeping its id, revisions, decisions and review state; the rest are named with the reason and both hashes.
+    // Idempotent by document. `to_root: null` (the target branch is checked out nowhere) moves nothing and names them.
+    router.post('/relocations', async (req, res) => {
+        try {
+            if (req.get('sec-fetch-site') === 'cross-site') return res.status(403).json({ error: 'Same-origin requests only', code: 'cross_site' });
+            const body = req.body;
+            const invalid = error => res.status(400).json({ error, code: 'invalid_relocation' });
+            if (!isPlainObject(body) || Object.keys(body).some(key => !RELOCATION_FIELDS.has(key))) {
+                return invalid(`Only ${[...RELOCATION_FIELDS].join(', ')} may be supplied`);
+            }
+            const fromRoot = parseRoot(body.from_root);
+            if (!fromRoot) return invalid('from_root must be an absolute, normalized directory path');
+            if (!('to_root' in body)) return invalid('to_root is required: the checkout the run landed in, or null when none has the target branch checked out');
+            const toRoot = body.to_root === null ? null : parseRoot(body.to_root);
+            if (body.to_root !== null && !toRoot) return invalid('to_root must be an absolute, normalized directory path, or null');
+            if (toRoot && rootsOverlap(fromRoot, toRoot)) return invalid('from_root and to_root must be separate directories');
+            if (toRoot && !fs.statSync(toRoot, { throwIfNoEntry: false })?.isDirectory()) {
+                return res.status(409).json({ error: 'to_root is not an existing directory', code: 'to_root_missing' });
+            }
+            const source = body.source === undefined ? 'landing' : body.source;
+            if (!RELOCATION_SOURCES.includes(source)) return invalid(`source must be one of: ${RELOCATION_SOURCES.join(', ')}`);
+            // The task-id bound the registration path applies (observeOutgoingRegistration).
+            const taskId = body.task_id == null ? null : text(body.task_id, 120);
+            if (body.task_id != null && !taskId) return invalid('task_id must be a non-empty string');
+            const reason = body.reason == null ? null : text(body.reason, LIMITS.purpose);
+            if (body.reason != null && !reason) return invalid(`reason must be a non-empty string of at most ${LIMITS.purpose} characters`);
+            const result = await relocateDocuments({ db, store: store(), fromRoot, toRoot, source, taskId, reason, actorId: req.user.id });
+            for (const row of result.relocated) {
+                console.log(`[Documents] ${row.document_id} moved from ${row.from_path} to ${row.to_path} (${source}${taskId ? `, task ${taskId}` : ''})`);
+            }
+            for (const row of result.left) {
+                console.log(`[Documents] ${row.document_id} left at ${row.from_path}: ${row.reason}${row.landed_hash ? ` (registered ${row.registered_hash}, landed ${row.landed_hash})` : ''}`);
+            }
+            return res.json(result);
+        } catch (err) {
+            console.error('[Documents] relocation failed:', err);
+            return res.status(500).json({ error: 'Failed to move document registrations' });
         }
     });
 

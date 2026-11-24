@@ -238,6 +238,23 @@ function readArtifactFile(canonicalPath, { mediaType = media.classifyPath(canoni
     };
 }
 
+/**
+ * Whether a document's revisions are identified by the exact file bytes.
+ * Declared deliverables (any document with a deliverable key), binary media
+ * and design packages are (contract §1); a legacy registration keeps the
+ * line-normalized identity it always had. Shared by revision capture and by
+ * moving a registration to its landed file, so a move is checked against the
+ * same hash a capture of the moved file would file its bytes under.
+ */
+function exactIdentity(doc, read) {
+    return Boolean(doc.deliverable_key) || read.binary || read.mediaType === 'design';
+}
+
+/** The hash a revision of these bytes is filed under for this document. */
+function revisionHash(doc, read) {
+    return exactIdentity(doc, read) ? read.exactHash : read.contentHash;
+}
+
 module.exports = {
     MAX_DOCUMENT_BYTES,
     listProjectRoots,
@@ -246,4 +263,6 @@ module.exports = {
     readArtifactFile,
     sha256,
     isMarkdownPath,
+    exactIdentity,
+    revisionHash,
 };
