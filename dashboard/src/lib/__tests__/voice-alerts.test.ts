@@ -334,27 +334,78 @@ test('only the owed success changes eligibility across alert modes', () => {
   }
 });
 
-test('conversational reports keep FIFO order beyond the ordinary age window', async () => {
+function report(id: string, time: number) {
+  return { id, speech: 'The archive is ready. The details are in chat.', deliveredAt: new Date(time).toISOString() };
+}
+
+for (const device of ['fresh', 'previously conversational']) test(`${device} cockpit skips six archived reports and speaks the next one once`, async t => {
+  localStorage.clear();
+  const archivedAt = new Date(2026, 8, 4, 12).getTime();
+  const reopenedAt = new Date(2026, 8, 7, 12).getTime();
+  if (device === 'previously conversational') {
+    const previous = fixture(true, archivedAt);
+    previous.alerts.setMode('off');
+    previous.alerts.setMode('conversational');
+    previous.alerts.dispose();
+  }
+  const archived = Array.from({ length: 6 }, (_, i) => report(`follow-up:${i}:trigger`, archivedAt + i));
+  const f = fixture(true, reopenedAt);
+  t.after(() => f.alerts.dispose());
+  f.alerts.update([event('task.qa-passed', { at: archived[0].deliveredAt })], 'conversational');
+  f.alerts.updateOutcomes(archived);
+  await tick();
+  for (const _ of archived) { f.advance(120000); await tick(); }
+  assert.deepEqual(f.spoken, []);
+
+  const latest = report('follow-up:new:trigger', reopenedAt + archived.length * 120000);
+  f.alerts.updateOutcomes([...archived, latest]);
+  await tick();
+  f.alerts.updateOutcomes([...archived, latest]);
+  await tick();
+  f.advance(120000); await tick();
+  assert.deepEqual(f.spoken, [latest.id]);
+});
+
+test('an ordinary QA alert from this session stays eligible after a delayed reconnect', async t => {
   localStorage.clear();
   const f = fixture();
-  const deliveredAt = new Date(2026, 8, 7, 12).toISOString();
-  const outcomes = Array.from({ length: 8 }, (_, i) => ({ id: `follow-up:${i}:trigger`, speech: `Finding ${i}. The details are in chat.`, deliveredAt }));
+  t.after(() => f.alerts.dispose());
+  f.alerts.update([], 'conversational');
+  f.advance(3 * 24 * 60 * 60_000);
+  const qa = event('task.qa-passed');
+  f.alerts.update([qa], 'conversational');
+  await tick();
+  assert.deepEqual(f.spoken, [qa.eventId]);
+  assert.equal(await f.alerts.canPlay(qa, new AbortController().signal, () => true), true);
+});
+
+test('conversational reports keep FIFO order and dedupe replay after the shared history rolls over', async t => {
+  localStorage.clear();
+  const start = new Date(2026, 8, 7, 8).getTime();
+  const f = fixture(true, start);
+  t.after(() => f.alerts.dispose());
+  // One more identity than the shared registry holds, all within speaking hours.
+  const outcomes = Array.from({ length: 301 }, (_, i) => report(`follow-up:${i}:trigger`, start));
   f.alerts.update([], 'conversational');
   f.alerts.updateOutcomes(outcomes);
   await tick();
   for (const _ of outcomes.slice(1)) { f.advance(120000); await tick(); }
   assert.deepEqual(f.spoken, outcomes.map(row => row.id));
-  f.alerts.dispose();
+  assert.ok(!JSON.parse(localStorage.getItem(ALERT_STORE_KEY)!).ids.includes(outcomes[0].id));
+  f.alerts.updateOutcomes(outcomes);
+  await tick();
+  f.advance(120000); await tick();
+  assert.deepEqual(f.spoken, outcomes.map(row => row.id));
 });
 
-for (const mode of ['off', 'attention'] as const) test(`three days in ${mode} expire muted reports on this device, including after reload`, async () => {
+for (const mode of ['off', 'attention'] as const) test(`reports from before conversational mode or reopening stay silent after ${mode}`, async t => {
   localStorage.clear();
   const start = new Date(2026, 8, 7, 12).getTime();
   const elapsed = 3 * 24 * 60 * 60_000;
   const f = fixture(true, start);
-  const report = (id: string, time: number) => ({ id, speech: 'The archive is ready. The details are in chat.', deliveredAt: new Date(time).toISOString() });
   const stale = report('stale', start);
-  const recent = report('recent', start + elapsed - 10 * 60_000);
+  const recent = report('recent-muted', start + elapsed - 1);
+  t.after(() => f.alerts.dispose());
   f.alerts.update([], mode);
   f.alerts.updateOutcomes([stale]);
   f.advance(elapsed); await tick();
@@ -362,17 +413,24 @@ for (const mode of ['off', 'attention'] as const) test(`three days in ${mode} ex
   f.alerts.update([], 'conversational');
   f.alerts.updateOutcomes([stale, recent]); // First archive fetch on unmute.
   await tick();
-  assert.deepEqual(f.spoken, ['recent']);
+  assert.deepEqual(f.spoken, []);
+  f.advance(1);
+  const live = report('live', start + elapsed + 1);
+  f.alerts.updateOutcomes([stale, recent, live]);
+  await tick();
+  assert.deepEqual(f.spoken, [live.id]);
   f.alerts.dispose();
 
-  // A continuously conversational device keeps a report delayed overnight,
-  // but fetching the archive again cannot resurrect the older muted report.
   const reload = fixture(true, start + 2 * elapsed);
+  t.after(() => reload.alerts.dispose());
   reload.alerts.update([], 'conversational');
-  reload.alerts.updateOutcomes([stale, report('queued', start + elapsed)]);
+  reload.alerts.updateOutcomes([stale, live, report('queued', start + elapsed)]);
   await tick();
-  assert.deepEqual(reload.spoken, ['queued']);
-  reload.alerts.dispose();
+  assert.deepEqual(reload.spoken, []);
+  const afterReload = report('after-reload', start + 2 * elapsed);
+  reload.alerts.updateOutcomes([afterReload]);
+  await tick();
+  assert.deepEqual(reload.spoken, [afterReload.id]);
 });
 
 test('a sleeping tab observes the device cutoff even when it misses both mode changes', async () => {
