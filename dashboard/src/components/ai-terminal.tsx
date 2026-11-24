@@ -67,6 +67,14 @@ export interface AITerminalHandle {
 // modes and the model picker were removed — every message relays to Praxis,
 // which does its own model routing (the picked model was ignored end-to-end).
 
+/** A failed submission the transcript cannot show in full. Only chat turns have a saved-turn page. */
+interface UnconfirmedSend {
+    id: string;
+    heading: string;
+    text: string;
+    turnId?: string;
+}
+
 function createClientMessageId(): string {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
         return crypto.randomUUID();
@@ -88,7 +96,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
     // NOTE: the composer's draft text deliberately does NOT live here — it is
     // ChatComposer's own state, so keystrokes can't re-render the transcript.
     const [loading, setLoading] = useState(false);
-    const [unconfirmedSends, setUnconfirmedSends] = useState<{ id: string; text: string }[]>([]);
+    const [unconfirmedSends, setUnconfirmedSends] = useState<UnconfirmedSend[]>([]);
     // A turn's status, steps and elapsed time live in the step store, outside the transcript.
     const turnSteps = useChatTurnSteps({ messages, conversationId, isLoadingHistory });
 
@@ -164,19 +172,19 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
 
     // A pending switch previews the row immediately. Accept (and clear) the
     // draft only once its conversation opens, so a failed switch is retryable.
-    const sendInConversation = (message: Message, send: (chat: SendConversation) => void) => {
+    const sendInConversation = (message: Message, send: (chat: SendConversation, waitedForSwitch: boolean) => void) => {
         setLoading(true);
         const destination = beginChatSend(message);
         if (destination instanceof Promise) {
             return destination.then(chat => {
-                send(chat);
+                send(chat, true);
                 return true;
             }, () => {
                 setLoading(false);
                 return false;
             });
         }
-        send(destination);
+        send(destination, false);
         return true;
     };
 
@@ -201,11 +209,12 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
 
             // Show user message
             const isUrl = /^https?:\/\//i.test(payload);
+            const rowPayload = isUrl ? payload : payload.substring(0, 80) + (payload.length > 80 ? '...' : '');
             return sendInConversation({
                 role: 'user',
-                content: `📥 /ingest ${isUrl ? payload : payload.substring(0, 80) + (payload.length > 80 ? '...' : '')}`,
+                content: `📥 /ingest ${rowPayload}`,
                 timestamp: new Date()
-            }, chat => { void runIngest(payload, isUrl, chat); });
+            }, (chat, waitedForSwitch) => { void runIngest(payload, isUrl, chat, waitedForSwitch && rowPayload !== payload); });
         }
 
         // Build user message content
@@ -232,11 +241,12 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             clearAttachments(attachedPreviews);
             clearAudio();
             chatTurnSteps.begin(clientMessageId, chat.id, 'Sending your message…');
-            void runSend(chat, text, clientMessageId, attachedFiles, audioBlob);
+            void runSend(chat, text, clientMessageId, attachedFiles, audioBlob, 0, messageContent);
         });
     };
 
-    const runIngest = async (payload: string, isUrl: boolean, { setMessages, finish }: SendConversation) => {
+    const runIngest = async (payload: string, isUrl: boolean, chat: SendConversation, rowCutPayload: boolean) => {
+        const { setMessages, finish } = chat;
         try {
             const authHeader = await getAuthHeader();
             const body = isUrl
@@ -268,6 +278,14 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 content: `❌ Ingestion failed: ${err.message}`,
                 timestamp: new Date()
             }]);
+            // The draft is gone by now, so the payload must stay readable somewhere.
+            if (rowCutPayload || !chat.isVisible()) {
+                setUnconfirmedSends(prev => [...prev, {
+                    id: createClientMessageId(),
+                    heading: `An /ingest sent before you switched chats failed: ${err.message}`,
+                    text: `/ingest ${payload}`,
+                }]);
+            }
         } finally {
             finish();
             setLoading(false);
@@ -298,14 +316,19 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         })();
     };
 
-    const runSend = async (chat: SendConversation, text: string, clientMessageId: string, filesToUpload: File[], currentAudioBlob: Blob | null, relayDepth = 0) => {
+    // `submitted` is the row's text: the message plus every attached file and voice memo.
+    const runSend = async (chat: SendConversation, text: string, clientMessageId: string, filesToUpload: File[], currentAudioBlob: Blob | null, relayDepth = 0, submitted = text) => {
         const { setMessages } = chat;
         let receivedReply: Message | undefined;
         const reportFailure = (detail: string) => {
             noteChatSend(clientMessageId, 'failed', { detail });
             if (!chat.isVisible()) {
-                const submitted = text || filesToUpload.map(file => file.name).join(', ') || 'Voice recording';
-                setUnconfirmedSends(prev => [...prev, { id: clientMessageId, text: submitted }]);
+                setUnconfirmedSends(prev => [...prev, {
+                    id: clientMessageId,
+                    turnId: clientMessageId,
+                    heading: 'A message sent before you switched chats could not be confirmed.',
+                    text: submitted,
+                }]);
             }
         };
         try {
@@ -643,10 +666,10 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             {/* Input */}
             {unconfirmedSends.map(failure => (
                 <div key={failure.id} role="alert" className="shrink-0 rounded-md border border-amber-700/60 p-2 text-sm text-amber-200">
-                    A message sent before you switched chats could not be confirmed.
+                    {failure.heading}
                     <p className="my-1 max-h-24 overflow-y-auto whitespace-pre-wrap break-words">{failure.text}</p>
-                    <a className="underline" href={`/chat/turns/${encodeURIComponent(failure.id)}`} target="_blank" rel="noreferrer">Check this saved turn</a>
-                    <button type="button" className="ml-3 underline" onClick={() => setUnconfirmedSends(prev => prev.filter(item => item.id !== failure.id))}>Dismiss</button>
+                    {failure.turnId && <a className="mr-3 underline" href={`/chat/turns/${encodeURIComponent(failure.turnId)}`} target="_blank" rel="noreferrer">Check this saved turn</a>}
+                    <button type="button" className="underline" onClick={() => setUnconfirmedSends(prev => prev.filter(item => item.id !== failure.id))}>Dismiss</button>
                 </div>
             ))}
             <ComposerRow

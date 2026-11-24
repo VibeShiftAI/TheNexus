@@ -32,7 +32,7 @@ function gate() {
     return { promise, resolve };
 }
 
-async function fixture(t, operation, delay, { rejectNavigation = false, modelReply, sendPost } = {}) {
+async function fixture(t, operation, delay, { rejectNavigation = false, modelReply, sendPost, ingestPost } = {}) {
     const target = await db.createConversation('praxis', 'History ' + t.name);
     const previous = await db.createConversation('praxis', 'Previous');
     const seed = (id, content) => db.saveChatMessage({ conversation_id: id, mode: 'praxis', role: 'assistant', content });
@@ -61,6 +61,7 @@ async function fixture(t, operation, delay, { rejectNavigation = false, modelRep
             if (!JSON.parse(init.body).stream) return Response.json({ response: 'Test reply' });
             return new Response('data: {"type":"final","response":"Test reply"}\n\ndata: [DONE]\n\n');
         }
+        if (pathname === '/api/ingest' && ingestPost) return ingestPost(JSON.parse(init.body));
         const request = () => nativeFetch(origin + pathname + search, init);
         const switching = pathname.endsWith('/switch') || (pathname === '/api/chat/conversations' && init?.method === 'POST');
         if (switching && delay === 'request') {
@@ -413,3 +414,113 @@ for (const [sequence, bOpens, attemptC] of [
         assert.equal(view.rows('system').some(row => row.includes('Could not open')), attemptC);
     });
 }
+
+// Longer than the 80 characters the /ingest row keeps, with its end past that cut.
+const longNote = 'important pasted note '.repeat(8) + 'tail of the note';
+const shortNote = 'short pasted note';
+const alertWith = (view, text) => [...view.host.querySelectorAll('[role="alert"]')].find(el => el.textContent.includes(text));
+
+function heldIngest(t) {
+    const started = gate();
+    const result = gate();
+    const bodies = [];
+    t.after(result.resolve);
+    return {
+        started, result, bodies,
+        ingestPost: async body => {
+            bodies.push(body);
+            started.resolve();
+            await result.promise;
+            return Response.json({ error: 'Ingest unavailable' }, { status: 503 });
+        },
+    };
+}
+
+function submitIngest(view, note) {
+    const field = view.host.querySelector('textarea');
+    typeCharacter(field, '/ingest ' + note);
+    pressKey(field, 'Enter');
+    return field;
+}
+
+test('New, send /ingest, B opens, ingest fails: a notice keeps the full payload and has no turn link', async t => {
+    const ingest = heldIngest(t);
+    const view = await fixture(t, 'create', 'response', { ingestPost: ingest.ingestPost });
+    const field = submitIngest(view, longNote);
+    await view.pick(view.target);
+    await act(async () => { view.release.resolve(); await ingest.started.promise; });
+    await view.until(() => view.currentId() === view.target.id);
+    await act(async () => { ingest.result.resolve(); });
+    await view.until(() => !field.disabled);
+    const notice = alertWith(view, longNote);
+    t.diagnostic(JSON.stringify({ shownIsB: view.currentId() === view.target.id, draft: field.value, notice: notice?.textContent ?? null }));
+    assert.equal(ingest.bodies[0].text, longNote);
+    assert.ok(notice, 'the full submitted payload is on screen');
+    assert.match(notice.textContent, /Ingest unavailable/);
+    assert.equal(notice.querySelector('a')?.getAttribute('href') ?? null, null, 'ingest has no client turn to link to');
+    act(() => notice.querySelector('button').click());
+    assert.equal(view.host.contains(notice), false);
+});
+
+for (const [label, note, needsNotice] of [['long', longNote, true], ['short', shortNote, false]]) {
+    test('New, send a ' + label + ' /ingest, B fails, ingest fails: the whole payload stays on screen', async t => {
+        const ingest = heldIngest(t);
+        const view = await fixture(t, 'create', 'response', { ingestPost: ingest.ingestPost });
+        const created = (await db.getActiveConversation()).id;
+        const field = submitIngest(view, note);
+        await view.pick(view.target);
+        await db.deleteConversation(view.target.id);
+        await act(async () => { view.release.resolve(); await ingest.started.promise; });
+        await view.until(() => view.currentId() === created && view.rows('system').some(row => row.includes('Could not open')));
+        await act(async () => { ingest.result.resolve(); });
+        await view.until(() => !field.disabled);
+        const notice = alertWith(view, note);
+        t.diagnostic(JSON.stringify({ rows: view.rows('user'), notice: notice?.textContent ?? null }));
+        assert.equal(view.rows('system').some(row => row.includes('Ingestion failed: Ingest unavailable')), true);
+        assert.equal(view.rows('user').some(row => row.includes(note)), !needsNotice);
+        assert.equal(Boolean(notice), needsNotice, 'a notice appears only when the row cut the payload');
+        assert.equal(view.host.textContent.includes(note), true);
+    });
+}
+
+test('New, send text with files and a voice memo, B opens, POST fails: the notice names all of them', async t => {
+    class FakeRecorder {
+        start() {}
+        stop() {
+            this.ondataavailable?.({ data: new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'audio/webm' }) });
+            this.onstop?.();
+        }
+    }
+    globalThis.MediaRecorder = FakeRecorder;
+    Object.defineProperty(window.navigator, 'mediaDevices', {
+        configurable: true,
+        value: { getUserMedia: async () => ({ getTracks: () => [] }) },
+    });
+    t.after(() => { delete globalThis.MediaRecorder; delete window.navigator.mediaDevices; });
+    const post = gate();
+    t.after(post.resolve);
+    const view = await fixture(t, 'create', 'response', {
+        sendPost: async () => { await post.promise; return new Response(null, { status: 503 }); },
+    });
+    for (const name of ['evidence.txt', 'second.txt']) {
+        const event = new window.Event('drop', { bubbles: true, cancelable: true });
+        Object.defineProperty(event, 'dataTransfer', { value: { files: [new File([name], name, { type: 'text/plain' })] } });
+        act(() => view.host.querySelector('.custom-scrollbar.overflow-y-auto').dispatchEvent(event));
+    }
+    await act(async () => { view.host.querySelector('button[title="Record voice memo"]').click(); });
+    await view.until(() => view.host.querySelector('button[title="Stop recording"]'));
+    await act(async () => { view.host.querySelector('button[title="Stop recording"]').click(); });
+    const field = submitDuringSwitch(view);
+    await view.pick(view.target);
+    await act(async () => { view.release.resolve(); });
+    await view.until(() => view.currentId() === view.target.id && view.posts.length === 1);
+    await act(async () => { post.resolve(); });
+    await view.until(() => !field.disabled);
+    const notice = alertWith(view, message);
+    t.diagnostic(JSON.stringify({ draft: field.value, notice: notice?.textContent ?? null }));
+    assert.ok(notice, 'the failed send is reported');
+    for (const part of ['evidence.txt', 'second.txt', 'Voice memo']) {
+        assert.ok(notice.textContent.includes(part), 'the notice names ' + part);
+    }
+    assert.equal(notice.querySelector('a').getAttribute('href'), '/chat/turns/' + view.posts[0].clientMessageId);
+});
