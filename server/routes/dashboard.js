@@ -19,6 +19,14 @@ function createBoardStateHandler({ db, compat = false }) {
                 return res.json(await db.getBoardSummary(parseSummaryQuery(req.query)));
             }
             const projectId = req.query.project_id;
+            if (typeof db.getBoardStateResponse === 'function') {
+                const gzip = req.acceptsEncodings('gzip') === 'gzip';
+                const bytes = await db.getBoardStateResponse(projectId || undefined, { compat, gzip });
+                res.vary('Accept-Encoding');
+                if (gzip) res.set('Content-Encoding', 'gzip');
+                res.set('Content-Type', 'application/json; charset=utf-8');
+                return res.send(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength));
+            }
             const boardState = await db.getBoardState(projectId || undefined);
             // Board state carries antigravity_payload per task — gate external-
             // tier payloads at this read seam (server/lib/provenance.js).

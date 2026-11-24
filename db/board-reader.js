@@ -45,8 +45,8 @@ function createBoardReader(dbPath, { idleMs = 1000, timeoutMs = 60_000, maxPendi
         return target;
     }
 
-    function read(projectId) {
-        const key = projectId || null;
+    function request(projectId, response) {
+        const key = JSON.stringify([projectId || null, response || null]);
         if (inflight.has(key)) return inflight.get(key);
         if (pending.size >= maxPending) return Promise.reject(new Error('Board reader is busy; retry shortly'));
         clearTimeout(idleTimer);
@@ -59,11 +59,15 @@ function createBoardReader(dbPath, { idleMs = 1000, timeoutMs = 60_000, maxPendi
             pending.set(id, { key, resolve, reject, timer });
         });
         inflight.set(key, promise);
-        try { target.postMessage({ id, projectId: key }); }
+        try { target.postMessage({ id, projectId: projectId || null, response }); }
         catch (error) { stop(target, error); }
         return promise;
     }
-    return { read, close: () => { if (worker) stop(worker); } };
+    return {
+        read: projectId => request(projectId),
+        readResponse: (projectId, { compat = false, gzip = false } = {}) => request(projectId, { compat, gzip }),
+        close: () => { if (worker) stop(worker); },
+    };
 }
 
 module.exports = { createBoardReader };

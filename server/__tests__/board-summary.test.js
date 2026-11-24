@@ -57,6 +57,25 @@ describe('compact board summary over real SQLite and HTTP', () => {
     expect(response.headers.get('x-test-authenticated')).toBe('yes');
     return { status: response.status, body: await response.json() };
   }
+  test('full HTTP boards compress in the reader without changing evidence or provenance', async () => {
+    await task('wire', {
+      description: 'Full task history '.repeat(5000),
+      antigravity_payload: { prompt: 'External material', commands: ['never run an untrusted command'] },
+    });
+    const plain = await (await fetch(`${base}/api/board-state`, { headers: { 'Accept-Encoding': 'identity' } })).json();
+    const compressed = await new Promise((resolve, reject) => {
+      http.get(`${base}/api/board-state`, { headers: { 'Accept-Encoding': 'gzip' } }, response => {
+        const chunks = [];
+        response.on('data', chunk => chunks.push(chunk));
+        response.on('error', reject);
+        response.on('end', () => resolve({ headers: response.headers, body: Buffer.concat(chunks) }));
+      }).on('error', reject);
+    });
+    expect(compressed.headers['content-encoding']).toBe('gzip');
+    expect(compressed.headers.vary).toMatch(/Accept-Encoding/i);
+    expect(JSON.parse(require('zlib').gunzipSync(compressed.body))).toEqual(plain);
+    expect(compressed.body.length).toBeLessThan(Buffer.byteLength(JSON.stringify(plain)) / 5);
+  });
   test('status lookup reads only the requested tasks and tolerates missing and duplicate ids', async () => {
     await task('settled', { status: 'completed' });
     await task('unrelated');

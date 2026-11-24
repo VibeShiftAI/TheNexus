@@ -1492,6 +1492,13 @@ async function getBoardState(projectId) {
     return boardReader.read(projectId);
 }
 
+async function getBoardStateResponse(projectId, options) {
+    if (!db) throw new Error('Database unavailable');
+    if (db.memory) return require('../server/services/board-response').encodeBoardResponse(await getBoardState(projectId), options);
+    boardReader ||= require('./board-reader').createBoardReader(DB_PATH);
+    return boardReader.readResponse(projectId, options);
+}
+
 /**
  * Reorder tasks within a project by updating sort_order values.
  * Accepts an array of { id, sort_order } pairs and updates them atomically.
@@ -3573,6 +3580,7 @@ module.exports = {
     // Dual-Payload Task Operations (Phase 1: Executive Planning)
     batchCreateTasks: async (...args) => leasedBoardWrite(batchCreateTasks)(...args),
     getBoardState,
+    getBoardStateResponse,
     getBoardSummary: options => require('./board-summary').getBoardSummary(db, options),
     // Markdown document reviews (db/document-reviews.js); undefined when the DB failed to open
     documentReviews,
