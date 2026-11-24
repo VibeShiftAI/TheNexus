@@ -1,0 +1,64 @@
+# Criterion 9 read-back at the end of the task, 2026-11-24 13:00:23 EST, read-only
+
+## Live Nexus database (/Volumes/Projects/TheNexus/nexus.db, opened mode=ro)
+alias          target                   is_active  alias_updated_at     display_name             provider  api_model_id          
+-------------  -----------------------  ---------  -------------------  -----------------------  --------  ----------------------
+local_default  model:local-gemma-4-31b  1          2026-06-03 02:03:45  Gemma 4 31B QAT (local)  local     google/gemma-4-31b-qat
+
+Live rows this task would add once landed (none expected: the change has not landed):
+  local_model_switches table: 0 (0 = absent)
+  model_control_settings key local_model_selection: 0 (0 = absent)
+  local models rows: local-gemma-4-31b=google/gemma-4-31b-qat, local-inkling-2-mini=thinkingmachines/inkling-2-mini
+
+## LM Studio listing (one GET http://127.0.0.1:1234/api/v1/models at 13:00:23; a listing loads nothing)
+llm       thinkingmachines/inkling-2-mini        loaded_instances=0
+llm       qwen/qwen3.8-27b                       loaded_instances=0
+llm       google/gemma-4-31b-qat                 loaded_instances=0
+llm       google/gemma-4-31b                     loaded_instances=0
+embedding text-embedding-nomic-embed-text-v1.5   loaded_instances=1 ["text-embedding-nomic-embed-text-v1.5"]
+models listed: 5; loaded: 1
+
+## Live services: listener PID and start time now (compare live-services-before-browser-check.txt)
+port 1234 pid 651 started Sun Nov  8 08:54:46 2026    
+port 3000 pid 68929 started Tue Nov 24 05:51:12 2026    
+port 4000 pid 68822 started Tue Nov 24 05:51:10 2026    
+port 8100 pid 8089 started Tue Nov 24 11:50:22 2026    
+port 54322 pid 68621 started Tue Nov 24 05:50:52 2026    
+
+## Every model load and unload LM Studio logged today (/Users/robertwashko/.lmstudio/server-logs/2026-11/2026-11-24.*.log)
+[2026-11-24 04:42:36][INFO] Unloading model google/gemma-4-31b-qat due to TTL expiration.
+[2026-11-24 04:48:57][INFO][LMSAuthenticator][Client=lms-cli][Endpoint=loadModel] Loading model: google/gemma-4-31b-qat
+[2026-11-24 05:01:29][INFO] Unloading model google/gemma-4-31b-qat due to TTL expiration.
+[2026-11-24 05:08:04][INFO][LMSAuthenticator][Client=lms-cli][Endpoint=loadModel] Loading model: google/gemma-4-31b-qat
+[2026-11-24 05:20:49][INFO] Unloading model google/gemma-4-31b-qat due to TTL expiration.
+[2026-11-24 05:27:00][INFO][LMSAuthenticator][Client=lms-cli][Endpoint=loadModel] Loading model: google/gemma-4-31b-qat
+[2026-11-24 06:02:01][INFO] Unloading model google/gemma-4-31b-qat due to TTL expiration.
+[2026-11-24 10:25:11][INFO][LMSAuthenticator][Client=lms-cli][Endpoint=loadModel] Loading model: google/gemma-4-31b-qat
+[2026-11-24 11:51:59][INFO][LMSAuthenticator][Client=lms-cli][Endpoint=unloadModel] Unloading model: google/gemma-4-31b-qat
+
+## Who asked for each load: the live Praxis log's autoload lines today (/Volumes/Projects/Praxis/data/logs/praxis.log, executor report echoes excluded)
+[2026-11-24T00:11:21.078Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-24T00:11:21.163Z] [INFO] [LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 600 (unloads after 600 s idle)
+[2026-11-24T00:12:06.648Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 46s
+[2026-11-24T03:00:04.468Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-24T03:00:04.500Z] [INFO] [LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 600 (unloads after 600 s idle)
+[2026-11-24T03:00:37.775Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 33s
+[2026-11-24T04:00:05.051Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-24T04:00:05.080Z] [INFO] [LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 600 (unloads after 600 s idle)
+[2026-11-24T04:00:35.886Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 31s
+[2026-11-24T09:48:57.315Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-24T09:48:57.337Z] [INFO] [LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 600 (unloads after 600 s idle)
+[2026-11-24T09:49:02.151Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 5s
+[2026-11-24T10:08:04.480Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-24T10:08:04.501Z] [INFO] [LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 600 (unloads after 600 s idle)
+[2026-11-24T10:08:08.988Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 5s
+[2026-11-24T10:27:00.640Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-24T10:27:00.660Z] [INFO] [LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 600 (unloads after 600 s idle)
+[2026-11-24T10:27:05.184Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 5s
+[2026-11-24T15:25:11.053Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-24T15:25:11.077Z] [INFO] [LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 600 (unloads after 600 s idle)
+[2026-11-24T15:25:49.028Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 38s
+
+## The lane grants behind those loads (LocalLane lines in the same minutes)
+[2026-11-24T00:11:20.646Z] [INFO] [LocalLane] ingestion.graphiti runs on the local model at 19:11 ET, outside the 22:00-06:00 ET window, under its standing grant: Robert selected alias:local_default for Graphiti episode extraction through the /v1/llm gateway, with on-demand reload (2026-11-07). Furt
+[2026-11-24T15:25:10.697Z] [INFO] [LocalLane] ingestion.graphiti runs on the local model at 10:25 ET, outside the 22:00-06:00 ET window, under its standing grant: Robert selected alias:local_default for Graphiti episode extraction through the /v1/llm gateway, with on-demand reload (2026-11-07). Furt

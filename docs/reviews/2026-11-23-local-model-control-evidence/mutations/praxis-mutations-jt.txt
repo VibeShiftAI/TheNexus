@@ -1,0 +1,52 @@
+== mutation j (src/llm/manager.ts): applied
+ℹ tests 32 ℹ pass 29 ℹ fail 3 exit 1 
+✖ a streamed call that falls to the local primary, because its role's CLI target cannot stream, streams from the chosen model
+✖ chat() on a local primary pinned in the environment sends the model chosen under Model Control, before and after a switch, never LLM_PRIMARY_MODEL
+✖ switching the primary to another local model by name still runs the Model Control setting, and the confirmation says so
+guards: lmstudio=0 net=0
+== mutation k (src/local-llm/worker.ts): applied
+ℹ tests 32 ℹ pass 31 ℹ fail 1 exit 1 
+✖ a job the local worker claims holds the switch from the claim: one chosen while the job's calendar entry is written waits, and the job runs on Gemma
+guards: lmstudio=0 net=0
+== mutation l (src/llm/manager.ts): applied
+ℹ tests 32 ℹ pass 30 ℹ fail 2 exit 1 
+✖ a pinned local call is local work from the moment it is made: a switch chosen while it waits for a slot waits for it, and the call is counted once
+✖ a pinned local call that finds LM Studio's slot empty stays local work through the reload and its retry, so a switch chosen meanwhile waits for it
+guards: lmstudio=0 net=0
+== mutation m (src/llm/local-lane-policy.ts): applied
+ℹ tests 32 ℹ pass 31 ℹ fail 1 exit 1 
+✖ a pinned local call is local work from the moment it is made: a switch chosen while it waits for a slot waits for it, and the call is counted once
+guards: lmstudio=0 net=0
+== mutation n (src/llm/manager.ts): applied
+ℹ tests 32 ℹ pass 31 ℹ fail 1 exit 1 
+✖ while a switch waits, a pinned call naming the chosen model that finds the slot empty loads nothing and is deferred
+guards: lmstudio=0 net=0
+== mutation o (src/llm/lmstudio-autoload.ts): applied
+ℹ tests 32 ℹ pass 31 ℹ fail 1 exit 1 
+✖ a call naming the previous model that waited while Nexus recorded the switch is deferred once the switch is in effect, and nothing is loaded or unloaded
+guards: lmstudio=0 net=0
+== mutation p (src/llm/local-model-selection.ts): applied
+ℹ tests 32 ℹ pass 31 ℹ fail 1 exit 1 
+✖ while Nexus holds a switch for its Studio jobs, Praxis says so once for each set of jobs, however often it asks
+guards: lmstudio=0 net=0
+== mutation q (src/llm/local-model-selection.ts): applied
+ℹ tests 32 ℹ pass 31 ℹ fail 1 exit 1 
+✖ an answer from Nexus that was on its way while a newer read was acted on is not acted on: Praxis never goes back to the model the switch replaced
+guards: lmstudio=0 net=0
+== mutation r (src/llm/local-model-selection.ts): applied
+ℹ tests 32 ℹ pass 31 ℹ fail 1 exit 1 
+✖ when the answer to a recorded switch is lost, Praxis takes the model in effect in Nexus's own spelling, and the next read finds nothing to do
+guards: lmstudio=0 net=0
+== mutation r2 (src/llm/local-model-selection.ts): applied
+ℹ tests 32 ℹ pass 31 ℹ fail 1 exit 1 
+✖ when the answer to a recorded switch is lost, Praxis takes the model in effect in Nexus's own spelling, and the next read finds nothing to do
+guards: lmstudio=0 net=0
+== mutation t (src/llm/local-model-selection.ts): applied
+ℹ tests 32 ℹ pass 31 ℹ fail 1 exit 1 
+✖ Praxis goes by Nexus's own waiting flag: an answer that says nothing waits asks Nexus for nothing, whatever names it carries
+guards: lmstudio=0 net=0
+== mutation g2 (src/llm/local-model-selection.ts): applied
+ℹ tests 32 ℹ pass 30 ℹ fail 2 exit 1 
+✖ Praxis goes by Nexus's own waiting flag: an answer that says nothing waits asks Nexus for nothing, whatever names it carries
+✖ with no model in effect, a choice Nexus holds as waiting is put into effect through Nexus, never adopted by Praxis alone
+guards: lmstudio=0 net=0

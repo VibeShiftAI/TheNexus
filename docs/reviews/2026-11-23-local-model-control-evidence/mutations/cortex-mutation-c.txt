@@ -1,0 +1,156 @@
+....FFF.F.............                                                   [100%]
+=================================== FAILURES ===================================
+____ test_fallback_is_logged_once_until_nexus_answers_and_the_recovery_too _____
+
+nexus = <tests.test_local_model_setting.FakeNexus object at 0x117c9d0f0>
+caplog = <_pytest.logging.LogCaptureFixture object at 0x117c74ec0>
+
+    def test_fallback_is_logged_once_until_nexus_answers_and_the_recovery_too(nexus, caplog):
+        caplog.set_level(logging.INFO, logger="cortex.local_model")
+        nexus.down = True
+        picks = [
+            local_model.local_model_or(GEMMA, purpose="the eval teacher",
+                                       fallback_source="the built-in default")
+            for _ in range(3)
+        ]
+        assert picks == [GEMMA, GEMMA, GEMMA]
+        [warning] = _warnings(caplog)
+        assert warning.startswith("[LocalModel] Nexus did not answer at ")
+        assert "/model-control/local-model/current" in warning
+        assert ("so the eval teacher uses google/gemma-4-31b-qat (the built-in default) "
+                "until Nexus answers") in warning
+    
+        nexus.down = False
+        nexus.switch(INKLING)
+        assert local_model.local_model_or(
+            GEMMA, purpose="the eval teacher", fallback_source="the built-in default") == INKLING
+        assert _infos(caplog) == [
+            "[LocalModel] Nexus answers again: the eval teacher uses "
+            "thinkingmachines/inkling-2-mini, the local model chosen under Model Control."
+        ]
+    
+        # A later outage is reported again, and the caller keeps the model Nexus
+        # last named instead of going back to the pre-switch fallback.
+        nexus.down = True
+>       assert local_model.local_model_or(
+            GEMMA, purpose="the eval teacher", fallback_source="the built-in default") == INKLING
+E       AssertionError: assert 'google/gemma-4-31b-qat' == 'thinkingmach...nkling-2-mini'
+E         
+E         - thinkingmachines/inkling-2-mini
+E         + google/gemma-4-31b-qat
+
+tests/test_local_model_setting.py:148: AssertionError
+----------------------------- Captured stderr call -----------------------------
+WARNING:cortex.local_model:[LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses google/gemma-4-31b-qat (the built-in default) until Nexus answers; it then follows the local model chosen under Model Control.
+INFO:cortex.local_model:[LocalModel] Nexus answers again: the eval teacher uses thinkingmachines/inkling-2-mini, the local model chosen under Model Control.
+WARNING:cortex.local_model:[LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses google/gemma-4-31b-qat (the built-in default) until Nexus answers; it then follows the local model chosen under Model Control.
+------------------------------ Captured log call -------------------------------
+WARNING  cortex.local_model:local_model.py:122 [LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses google/gemma-4-31b-qat (the built-in default) until Nexus answers; it then follows the local model chosen under Model Control.
+INFO     cortex.local_model:local_model.py:102 [LocalModel] Nexus answers again: the eval teacher uses thinkingmachines/inkling-2-mini, the local model chosen under Model Control.
+WARNING  cortex.local_model:local_model.py:122 [LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses google/gemma-4-31b-qat (the built-in default) until Nexus answers; it then follows the local model chosen under Model Control.
+_______ test_an_answer_naming_no_model_keeps_the_last_model_nexus_named ________
+
+nexus = <tests.test_local_model_setting.FakeNexus object at 0x117c9e060>
+
+    def test_an_answer_naming_no_model_keeps_the_last_model_nexus_named(nexus):
+        def pick():
+            return local_model.local_model_or(
+                GEMMA, purpose="the eval teacher", fallback_source="the built-in default")
+    
+        nexus.answer = {"active": None, "selected": None, "waiting": False}
+        assert pick() == GEMMA  # nothing named yet: the fallback
+        nexus.switch(INKLING)
+        assert pick() == INKLING
+        nexus.answer = {"active": None, "selected": None, "waiting": False}
+>       assert pick() == INKLING
+E       AssertionError: assert 'google/gemma-4-31b-qat' == 'thinkingmach...nkling-2-mini'
+E         
+E         - thinkingmachines/inkling-2-mini
+E         + google/gemma-4-31b-qat
+
+tests/test_local_model_setting.py:167: AssertionError
+----------------------------- Captured stderr call -----------------------------
+WARNING:cortex.local_model:[LocalModel] Nexus at http://127.0.0.1:1/api/model-control/local-model/current names no local model in effect, so the eval teacher uses google/gemma-4-31b-qat (the built-in default) until Nexus answers; it then follows the local model chosen under Model Control.
+INFO:cortex.local_model:[LocalModel] Nexus answers again: the eval teacher uses thinkingmachines/inkling-2-mini, the local model chosen under Model Control.
+WARNING:cortex.local_model:[LocalModel] Nexus at http://127.0.0.1:1/api/model-control/local-model/current names no local model in effect, so the eval teacher uses google/gemma-4-31b-qat (the built-in default) until Nexus answers; it then follows the local model chosen under Model Control.
+------------------------------ Captured log call -------------------------------
+WARNING  cortex.local_model:local_model.py:122 [LocalModel] Nexus at http://127.0.0.1:1/api/model-control/local-model/current names no local model in effect, so the eval teacher uses google/gemma-4-31b-qat (the built-in default) until Nexus answers; it then follows the local model chosen under Model Control.
+INFO     cortex.local_model:local_model.py:102 [LocalModel] Nexus answers again: the eval teacher uses thinkingmachines/inkling-2-mini, the local model chosen under Model Control.
+WARNING  cortex.local_model:local_model.py:122 [LocalModel] Nexus at http://127.0.0.1:1/api/model-control/local-model/current names no local model in effect, so the eval teacher uses google/gemma-4-31b-qat (the built-in default) until Nexus answers; it then follows the local model chosen under Model Control.
+___ test_an_outage_after_a_switch_keeps_the_switched_model_for_every_caller ____
+
+nexus = <tests.test_local_model_setting.FakeNexus object at 0x117cc3770>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x117cba450>
+
+    def test_an_outage_after_a_switch_keeps_the_switched_model_for_every_caller(nexus, monkeypatch):
+        # Robert switches to Inkling and Praxis applies it; then Nexus restarts
+        # while TheCortex starts an eval run or makes a Graphiti call.
+        for var in ("CORTEX_TEACHER_MODEL", "CORTEX_GRAPHITI_MODEL"):
+            monkeypatch.delenv(var, raising=False)
+        nexus.switch(INKLING)
+        assert harness.teacher_model(referee.DEFAULT_TEACHER_MODEL) == INKLING
+        nexus.down = True
+>       assert harness.teacher_model(referee.DEFAULT_TEACHER_MODEL) == INKLING
+E       AssertionError: assert 'google/gemma-4-31b-qat' == 'thinkingmach...nkling-2-mini'
+E         
+E         - thinkingmachines/inkling-2-mini
+E         + google/gemma-4-31b-qat
+
+tests/test_local_model_setting.py:178: AssertionError
+----------------------------- Captured stderr call -----------------------------
+WARNING:cortex.local_model:[LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses google/gemma-4-31b-qat (the built-in default) until Nexus answers; it then follows the local model chosen under Model Control.
+------------------------------ Captured log call -------------------------------
+WARNING  cortex.local_model:local_model.py:122 [LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses google/gemma-4-31b-qat (the built-in default) until Nexus answers; it then follows the local model chosen under Model Control.
+________________ test_cortex_teacher_model_is_only_the_fallback ________________
+
+nexus = <tests.test_local_model_setting.FakeNexus object at 0x117db0490>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x117bd46e0>
+caplog = <_pytest.logging.LogCaptureFixture object at 0x117b9bed0>
+
+    def test_cortex_teacher_model_is_only_the_fallback(nexus, monkeypatch, caplog):
+        caplog.set_level(logging.INFO, logger="cortex.local_model")
+        monkeypatch.setenv("CORTEX_TEACHER_MODEL", "my-teacher")
+        # Before Nexus has answered: CORTEX_TEACHER_MODEL, else the built-in default.
+        nexus.down = True
+        assert harness.teacher_model(referee.DEFAULT_TEACHER_MODEL) == "my-teacher"
+        [warning] = _warnings(caplog)
+        assert "the eval teacher uses my-teacher (CORTEX_TEACHER_MODEL)" in warning
+    
+        monkeypatch.delenv("CORTEX_TEACHER_MODEL")
+        assert harness.teacher_model(referee.DEFAULT_TEACHER_MODEL) == GEMMA
+    
+        # Once Nexus answers, its model wins over CORTEX_TEACHER_MODEL, and an
+        # outage after that keeps it.
+        monkeypatch.setenv("CORTEX_TEACHER_MODEL", "my-teacher")
+        nexus.down = False
+        nexus.switch(INKLING)
+        assert harness.teacher_model(referee.DEFAULT_TEACHER_MODEL) == INKLING
+        nexus.down = True
+>       assert harness.teacher_model(referee.DEFAULT_TEACHER_MODEL) == INKLING
+E       AssertionError: assert 'my-teacher' == 'thinkingmach...nkling-2-mini'
+E         
+E         - thinkingmachines/inkling-2-mini
+E         + my-teacher
+
+tests/test_local_model_setting.py:214: AssertionError
+----------------------------- Captured stderr call -----------------------------
+WARNING:cortex.local_model:[LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses my-teacher (CORTEX_TEACHER_MODEL) until Nexus answers; it then follows the local model chosen under Model Control.
+INFO:cortex.local_model:[LocalModel] Nexus answers again: the eval teacher uses thinkingmachines/inkling-2-mini, the local model chosen under Model Control.
+WARNING:cortex.local_model:[LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses my-teacher (CORTEX_TEACHER_MODEL) until Nexus answers; it then follows the local model chosen under Model Control.
+------------------------------ Captured log call -------------------------------
+WARNING  cortex.local_model:local_model.py:122 [LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses my-teacher (CORTEX_TEACHER_MODEL) until Nexus answers; it then follows the local model chosen under Model Control.
+INFO     cortex.local_model:local_model.py:102 [LocalModel] Nexus answers again: the eval teacher uses thinkingmachines/inkling-2-mini, the local model chosen under Model Control.
+WARNING  cortex.local_model:local_model.py:122 [LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses my-teacher (CORTEX_TEACHER_MODEL) until Nexus answers; it then follows the local model chosen under Model Control.
+=============================== warnings summary ===============================
+../../TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22
+  /Volumes/Projects/TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SearchInterface(BaseModel):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_local_model_setting.py::test_fallback_is_logged_once_until_nexus_answers_and_the_recovery_too
+FAILED tests/test_local_model_setting.py::test_an_answer_naming_no_model_keeps_the_last_model_nexus_named
+FAILED tests/test_local_model_setting.py::test_an_outage_after_a_switch_keeps_the_switched_model_for_every_caller
+FAILED tests/test_local_model_setting.py::test_cortex_teacher_model_is_only_the_fallback
+4 failed, 18 passed, 1 warning in 0.13s
+exit=1

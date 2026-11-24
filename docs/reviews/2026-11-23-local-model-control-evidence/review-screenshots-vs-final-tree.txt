@@ -1,0 +1,43 @@
+# The three registered review screenshots against the same subjects from the final-tree browser rerun (2026-11-24 12:59 EST)
+# registered: docs/reviews/2026-11-23-local-model-control/ (round-1 run, registered revision 5a481277); rerun: the final-tree rerun in a scratch copy (browser-check-final-tree-rerun.txt)
+# made by review-shots-compare.py (beside this file)
+
+== desktop-model-in-effect-and-list.png
+   registered sha256 c7199413194f657647e0966e6570363e56cc1a8a2116816a4ea3dcb9c574b4ed  2512x2012
+   rerun      sha256 c7199413194f657647e0966e6570363e56cc1a8a2116816a4ea3dcb9c574b4ed  2512x2012
+   differing pixels 0 of 5054144 (0.000%), bounding box None
+   identical pixels
+== phone-model-in-effect-and-list.png
+   registered sha256 78dc7042156d7516d6701e94d1a06a276f43150c43a4053e5cfd66e503f98beb  732x2177
+   rerun      sha256 e66b013aa03699ae0270621f6406ad16b3a202edd2b8ae6a0f62a15e093a88c8  732x2177
+   differing pixels 114814 of 1593564 (7.205%), bounding box (16, 16, 716, 2162)
+   70 differing row bands; per 100-row band, the vertical shift of the rerun that best matches:
+   rows   20- 120: best shift -1 px, differing px 2357 unshifted, 0 shifted
+   rows  120- 220: best shift -1 px, differing px 3495 unshifted, 843 shifted
+   rows  220- 320: best shift +1 px, differing px 3195 unshifted, 421 shifted
+   rows  320- 420: best shift +1 px, differing px 2969 unshifted, 0 shifted
+   rows  420- 520: best shift +1 px, differing px 4069 unshifted, 2342 shifted
+   rows  520- 620: best shift -1 px, differing px 2577 unshifted, 461 shifted
+   rows  620- 720: best shift -1 px, differing px 4584 unshifted, 0 shifted
+   rows  720- 820: best shift +1 px, differing px 4175 unshifted, 2795 shifted
+   rows  820- 920: best shift -1 px, differing px 5716 unshifted, 2747 shifted
+   rows  920-1020: best shift -1 px, differing px 4541 unshifted, 2755 shifted
+   rows 1020-1120: best shift -1 px, differing px 2562 unshifted, 1124 shifted
+   rows 1120-1220: best shift -1 px, differing px 4886 unshifted, 0 shifted
+   rows 1220-1320: best shift -1 px, differing px 2444 unshifted, 461 shifted
+   rows 1320-1420: best shift -1 px, differing px 3984 unshifted, 0 shifted
+   rows 1420-1520: best shift -1 px, differing px 3527 unshifted, 0 shifted
+   rows 1520-1620: best shift +1 px, differing px 4270 unshifted, 3149 shifted
+   rows 1620-1720: best shift -1 px, differing px 3288 unshifted, 456 shifted
+   rows 1720-1820: best shift -1 px, differing px 3598 unshifted, 2495 shifted
+   rows 1820-1920: best shift +1 px, differing px 4573 unshifted, 495 shifted
+   rows 1920-2020: best shift +1 px, differing px 4254 unshifted, 0 shifted
+   rows 2020-2120: best shift +1 px, differing px 3469 unshifted, 0 shifted
+   largest best shift: 1 device px; a single shift leaves no differing pixel in 8 of 21 bands
+   (the shift search compares grey values at a threshold of 24 of 255; the differing-pixel count above counts any channel difference)
+== desktop-switch-waiting-behind-local-job.png
+   registered sha256 38e7da1a943ac3d89e1b529c22cc0a67f43efe24e444afd7c76078dd9b5830bf  2512x2547
+   rerun      sha256 7fe0d37d7bd70ebcd5900ab690036382edf5a6f40a326fd4d48cd907f976c1b0  2512x2547
+   differing pixels 5824 of 6398064 (0.091%), bounding box (1944, 480, 2414, 1984)
+   differing row bands (device px): [[480, 501], [660, 680], [1962, 1983]]
+   saved the differing bands, registered above rerun, to waiting-shot-differences-registered-above-rerun.png

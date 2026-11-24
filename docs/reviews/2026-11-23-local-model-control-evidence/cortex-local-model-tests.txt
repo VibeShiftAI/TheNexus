@@ -1,12 +1,33 @@
 ============================= test session starts ==============================
-platform darwin -- Python 3.13.14, pytest-9.0.2, pluggy-1.6.0
+platform darwin -- Python 3.13.14, pytest-9.0.2, pluggy-1.6.0 -- /Volumes/Projects/TheCortex/TheCortex/venv/bin/python
 rootdir: /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/TheCortex/TheCortex
 configfile: pytest.ini
 plugins: anyio-4.12.1, mock-3.15.1, cov-7.1.0, env-1.6.0, asyncio-1.3.0, langsmith-0.7.22
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
-collected 19 items
+collecting ... collected 22 items
 
-tests/test_local_model_setting.py ...................                    [100%]
+tests/test_local_model_setting.py::test_reads_the_model_in_effect_never_a_waiting_choice PASSED [  4%]
+tests/test_local_model_setting.py::test_asks_nexus_under_nexus_api_url_with_the_registry_read_timeout PASSED [  9%]
+tests/test_local_model_setting.py::test_nexus_naming_no_model_in_effect_is_no_answer PASSED [ 13%]
+tests/test_local_model_setting.py::test_fetch_current_setting_reads_one_json_object PASSED [ 18%]
+tests/test_local_model_setting.py::test_fallback_is_logged_once_until_nexus_answers_and_the_recovery_too PASSED [ 22%]
+tests/test_local_model_setting.py::test_an_answer_naming_no_model_keeps_the_last_model_nexus_named PASSED [ 27%]
+tests/test_local_model_setting.py::test_an_outage_after_a_switch_keeps_the_switched_model_for_every_caller PASSED [ 31%]
+tests/test_local_model_setting.py::test_the_eval_teacher_follows_a_switch_with_no_env_edit_and_no_restart PASSED [ 36%]
+tests/test_local_model_setting.py::test_cortex_teacher_model_is_only_the_fallback PASSED [ 40%]
+tests/test_local_model_setting.py::test_one_referee_run_asks_one_model_and_the_next_run_the_new_one PASSED [ 45%]
+tests/test_local_model_setting.py::test_eval_actors_take_the_model_in_effect_once_per_run[acted_on_retrieval.ModelActor] PASSED [ 50%]
+tests/test_local_model_setting.py::test_eval_actors_take_the_model_in_effect_once_per_run[curation_replay.Curator] PASSED [ 54%]
+tests/test_local_model_setting.py::test_eval_actors_take_the_model_in_effect_once_per_run[citation_recovery.ModelVerifier] PASSED [ 59%]
+tests/test_local_model_setting.py::test_eval_actors_take_the_model_in_effect_once_per_run[packet_format.MeteredModel] PASSED [ 63%]
+tests/test_local_model_setting.py::test_an_explicit_model_still_wins_for_one_run PASSED [ 68%]
+tests/test_local_model_setting.py::test_the_relevance_judge_runs_on_and_records_the_model_in_effect PASSED [ 72%]
+tests/test_local_model_setting.py::test_graphiti_lmstudio_route_names_the_model_in_effect_at_each_call PASSED [ 77%]
+tests/test_local_model_setting.py::test_concurrent_graphiti_calls_each_send_the_model_they_read PASSED [ 81%]
+tests/test_local_model_setting.py::test_only_the_lmstudio_route_uses_the_per_call_client PASSED [ 86%]
+tests/test_local_model_setting.py::test_cortex_graphiti_model_is_only_the_fallback_on_the_lmstudio_route PASSED [ 90%]
+tests/test_local_model_setting.py::test_building_the_lmstudio_client_reads_nothing_from_nexus PASSED [ 95%]
+tests/test_local_model_setting.py::test_the_gateway_route_leaves_the_model_to_praxis PASSED [100%]
 
 =============================== warnings summary ===============================
 ../../../../TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22
@@ -14,57 +35,5 @@ tests/test_local_model_setting.py ...................                    [100%]
     class SearchInterface(BaseModel):
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-==================================== PASSES ====================================
-____ test_fallback_is_logged_once_until_nexus_answers_and_the_recovery_too _____
------------------------------ Captured stderr call -----------------------------
-WARNING:cortex.local_model:[LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses google/gemma-4-31b-qat (the built-in default) until Nexus answers; it then follows the local model chosen under Model Control.
-INFO:cortex.local_model:[LocalModel] Nexus answers again: the eval teacher uses thinkingmachines/inkling-2-mini, the local model chosen under Model Control.
-WARNING:cortex.local_model:[LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses google/gemma-4-31b-qat (the built-in default) until Nexus answers; it then follows the local model chosen under Model Control.
------------------------------- Captured log call -------------------------------
-WARNING  cortex.local_model:local_model.py:103 [LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses google/gemma-4-31b-qat (the built-in default) until Nexus answers; it then follows the local model chosen under Model Control.
-INFO     cortex.local_model:local_model.py:94 [LocalModel] Nexus answers again: the eval teacher uses thinkingmachines/inkling-2-mini, the local model chosen under Model Control.
-WARNING  cortex.local_model:local_model.py:103 [LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses google/gemma-4-31b-qat (the built-in default) until Nexus answers; it then follows the local model chosen under Model Control.
-________________ test_cortex_teacher_model_is_only_the_fallback ________________
------------------------------ Captured stderr call -----------------------------
-WARNING:cortex.local_model:[LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses my-teacher (CORTEX_TEACHER_MODEL) until Nexus answers; it then follows the local model chosen under Model Control.
------------------------------- Captured log call -------------------------------
-WARNING  cortex.local_model:local_model.py:103 [LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so the eval teacher uses my-teacher (CORTEX_TEACHER_MODEL) until Nexus answers; it then follows the local model chosen under Model Control.
-_____ test_graphiti_lmstudio_route_names_the_model_in_effect_at_each_call ______
----------------------------- Captured stderr setup -----------------------------
-DEBUG:asyncio:Using selector: KqueueSelector
-DEBUG:asyncio:Using selector: KqueueSelector
------------------------------- Captured log setup ------------------------------
-DEBUG    asyncio:selector_events.py:64 Using selector: KqueueSelector
-DEBUG    asyncio:selector_events.py:64 Using selector: KqueueSelector
-_________ test_concurrent_graphiti_calls_each_send_the_model_they_read _________
----------------------------- Captured stderr setup -----------------------------
-DEBUG:asyncio:Using selector: KqueueSelector
------------------------------- Captured log setup ------------------------------
-DEBUG    asyncio:selector_events.py:64 Using selector: KqueueSelector
-____ test_cortex_graphiti_model_is_only_the_fallback_on_the_lmstudio_route _____
------------------------------ Captured stderr call -----------------------------
-WARNING:cortex.local_model:[LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so Graphiti ingestion on the lmstudio route uses my-model (CORTEX_GRAPHITI_MODEL) until Nexus answers; it then follows the local model chosen under Model Control.
------------------------------- Captured log call -------------------------------
-WARNING  cortex.local_model:local_model.py:103 [LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so Graphiti ingestion on the lmstudio route uses my-model (CORTEX_GRAPHITI_MODEL) until Nexus answers; it then follows the local model chosen under Model Control.
-=========================== short test summary info ============================
-PASSED tests/test_local_model_setting.py::test_reads_the_model_in_effect_never_a_waiting_choice
-PASSED tests/test_local_model_setting.py::test_asks_nexus_under_nexus_api_url_with_the_registry_read_timeout
-PASSED tests/test_local_model_setting.py::test_nexus_naming_no_model_in_effect_is_no_answer
-PASSED tests/test_local_model_setting.py::test_fetch_current_setting_reads_one_json_object
-PASSED tests/test_local_model_setting.py::test_fallback_is_logged_once_until_nexus_answers_and_the_recovery_too
-PASSED tests/test_local_model_setting.py::test_the_eval_teacher_follows_a_switch_with_no_env_edit_and_no_restart
-PASSED tests/test_local_model_setting.py::test_cortex_teacher_model_is_only_the_fallback
-PASSED tests/test_local_model_setting.py::test_one_referee_run_asks_one_model_and_the_next_run_the_new_one
-PASSED tests/test_local_model_setting.py::test_eval_actors_take_the_model_in_effect_once_per_run[acted_on_retrieval.ModelActor]
-PASSED tests/test_local_model_setting.py::test_eval_actors_take_the_model_in_effect_once_per_run[curation_replay.Curator]
-PASSED tests/test_local_model_setting.py::test_eval_actors_take_the_model_in_effect_once_per_run[citation_recovery.ModelVerifier]
-PASSED tests/test_local_model_setting.py::test_eval_actors_take_the_model_in_effect_once_per_run[packet_format.MeteredModel]
-PASSED tests/test_local_model_setting.py::test_an_explicit_model_still_wins_for_one_run
-PASSED tests/test_local_model_setting.py::test_the_relevance_judge_runs_on_and_records_the_model_in_effect
-PASSED tests/test_local_model_setting.py::test_graphiti_lmstudio_route_names_the_model_in_effect_at_each_call
-PASSED tests/test_local_model_setting.py::test_concurrent_graphiti_calls_each_send_the_model_they_read
-PASSED tests/test_local_model_setting.py::test_only_the_lmstudio_route_uses_the_per_call_client
-PASSED tests/test_local_model_setting.py::test_cortex_graphiti_model_is_only_the_fallback_on_the_lmstudio_route
-PASSED tests/test_local_model_setting.py::test_the_gateway_route_leaves_the_model_to_praxis
-======================== 19 passed, 1 warning in 0.17s =========================
+======================== 22 passed, 1 warning in 0.09s =========================
 exit=0

@@ -1,0 +1,29 @@
+== plain main 24c1abaa, archived, no branch diff
+ℹ tests 50 ℹ pass 48 ℹ fail 2 exit 1 
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+"not a git repository" lines: 8
+guards: lmstudio=0 net=0
+== the same two files on the branch worktree (a git checkout)
+ℹ tests 50 ℹ pass 50 ℹ fail 0 exit 0 
+== files the Praxis branch diff (1fcf4b59..HEAD) changes
+src/config.ts
+src/index.ts
+src/llm/lmstudio-autoload.ts
+src/llm/local-lane-policy.ts
+src/llm/local-model-capabilities.ts
+src/llm/local-model-selection.ts
+src/llm/local-model-state.ts
+src/llm/manager.ts
+src/llm/providers.ts
+src/local-llm/runtime.ts
+src/local-llm/worker.ts
+src/nexus/client.ts
+src/routes/ops.ts
+tests/local_model_primary.test.ts
+tests/local_model_selection.test.ts
+tests/webhook_routes_inventory.test.ts
+== route registrations or freshness code in that diff
+983:+  router.get("/local-model", (_req: Request, res: Response) => {
+990:+  router.post("/local-model/sync", async (req: Request, res: Response) => {
+(end)

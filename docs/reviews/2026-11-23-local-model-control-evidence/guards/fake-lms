@@ -1,0 +1,4 @@
+#!/bin/sh
+printf '%s %s :: %s\n' "$$" "$*" "$(ps -o command= -p $PPID | tr ' ' '\n' | grep '/tests/' | grep -v bootstrap | tr '\n' ' ')" >> /Volumes/Projects/.scratch-fa032fc0/lms-calls.log
+echo "fake lms: refused in this test run" >&2
+exit 1

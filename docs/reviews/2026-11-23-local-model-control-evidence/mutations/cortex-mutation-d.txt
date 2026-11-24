@@ -1,0 +1,32 @@
+....................F.                                                   [100%]
+=================================== FAILURES ===================================
+__________ test_building_the_lmstudio_client_reads_nothing_from_nexus __________
+
+nexus = <tests.test_local_model_setting.FakeNexus object at 0x1144892e0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1143bb230>
+
+    def test_building_the_lmstudio_client_reads_nothing_from_nexus(nexus, monkeypatch):
+        # MemoryClient is built at import (module-level MemoryRepository()) and
+        # inside the gateway's event loop, so building it must not block on Nexus.
+        # Its configured model is a placeholder every call replaces.
+        monkeypatch.delenv("CORTEX_GRAPHITI_BASE_URL", raising=False)
+        monkeypatch.setenv("CORTEX_GRAPHITI_LLM_PROVIDER", "lmstudio")
+        monkeypatch.setenv("CORTEX_GRAPHITI_MODEL", "my-model")
+        nexus.switch(INKLING)
+>       assert memory_client._resolve_graphiti_llm()[1] == "my-model"
+E       AssertionError: assert 'thinkingmach...nkling-2-mini' == 'my-model'
+E         
+E         - my-model
+E         + thinkingmachines/inkling-2-mini
+
+tests/test_local_model_setting.py:383: AssertionError
+=============================== warnings summary ===============================
+../../TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22
+  /Volumes/Projects/TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SearchInterface(BaseModel):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_local_model_setting.py::test_building_the_lmstudio_client_reads_nothing_from_nexus
+1 failed, 21 passed, 1 warning in 0.13s
+exit=1
