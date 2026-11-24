@@ -307,8 +307,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const [finishOpen, setFinishOpen] = useState(false);
     const [finishing, setFinishing] = useState(false);
     const [finishError, setFinishError] = useState<string | null>(null);
-    // Robert's explicit approve-after-changes grant, sent with Finish review (task a2553798).
-    const [delegateApproval, setDelegateApproval] = useState(false);
+    // Robert's approve checkbox, sent with Finish review: it approves the version he reviewed and keeps his note (task 282c64fa).
+    const [approveAtFinish, setApproveAtFinish] = useState(false);
     const [retrying, setRetrying] = useState(false);
     const [outlineOpen, setOutlineOpen] = useState(false);
     const [reviewOpen, setReviewOpen] = useState(false);
@@ -633,6 +633,12 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const pins = useMemo(() => pinsFor(comments), [comments]);
     const directions = data?.manifest?.directions ?? [];
     const selectedDirection = data?.current_decision?.applies_to_current_revision && data.current_decision.decision === "approve" ? data.current_decision.selection?.direction ?? null : null;
+    // The checkbox approves this exact version at finish. Where the server could only refuse that, the panel says why instead of offering it.
+    const approvalBlocked = data?.review_status === "reference" ? "reference" as const
+        : documentChanged ? "changed" as const
+        : directions.length >= 2 && !selectedDirection ? "direction" as const
+        : null;
+    const approving = approveAtFinish && !approvalBlocked;
     const mediaLoad = useCallback((assetKey: string, state: "loaded" | "failed") => setLoadStates((prev) => (prev[assetKey] === state ? prev : { ...prev, [assetKey]: state })), []);
 
     // Once per document, after its first read: put back the text this browser was holding when the page last went
@@ -1020,7 +1026,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     useEffect(() => () => { if (summaryTimer.current) window.clearTimeout(summaryTimer.current); }, []);
 
     const adoptFinished = (finished: ReviewView, sub: SubmissionView | null) => {
-        setDelegateApproval(false);
+        setApproveAtFinish(false);
         summaryDirty.current = false;
         writeSequence.current += 1;
         setSummaryRestored(false);
@@ -1030,6 +1036,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         setFinishOpen(false);
         setComposer(null);
         setSelected(null);
+        // The finish recorded his approval: read it back so the decision card shows it with its note.
+        if (finished.approval_decision_id) void load();
     };
 
     const finish = async () => {
@@ -1040,7 +1048,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         try {
             const draft = await ensureReview();
             draftId = draft.id;
-            const result = await finishReview(draft.id, summary, { approveAfterChanges: delegateApproval });
+            const result = await finishReview(draft.id, summary, { approveAfterChanges: approving });
             adoptFinished(result.review, result.submission);
         } catch (err) {
             const message = messageOf(err);
@@ -1321,20 +1329,31 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         </ul>
     );
 
+    // The approval's note is his summary and comments, so with neither there is no note to mention.
+    const approvalHasNote = Boolean(review?.summary?.trim() || review?.comments?.length);
+
     const submissionCard = submission && (
         <div className="rounded-lg border border-slate-700 bg-slate-950/80 p-3" data-submission-card="">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <DeliveryBadge submission={submission} />
                 <span className="text-[11px] text-slate-500">Finished {formatWhen(review?.submitted_at)}</span>
             </div>
-            {review?.approval_delegated && (
-                <p className="mt-2 text-[11px] text-emerald-200" data-approval-delegated="">
-                    Approval delegated: the executor that makes this change records your approval of the corrected revision, citing this review.
+            {review?.approval_decision_id ? (approvalHasNote ? (
+                <p className="mt-2 text-[11px] text-emerald-200" data-approved-with-note="">
+                    Approved with your note: this version is approved, and your summary and comments stay with it. No revision was started and it needs no second review.
                 </p>
-            )}
+            ) : (
+                <p className="mt-2 text-[11px] text-emerald-200" data-approved-no-note="">
+                    Approved: this version is approved. No revision was started and it needs no second review.
+                </p>
+            )) : review?.approval_delegated ? (
+                <p className="mt-2 text-[11px] text-slate-300" data-approval-delegated="">
+                    Finished under the earlier approve-after-changes rule. Revision work already started for this review finishes the way it began.
+                </p>
+            ) : null}
             {submission.delivery_status === "delivered" && submission.receipt && (
                 <p className="mt-2 text-[11px] text-slate-400">
-                    Receipt: Praxis notified {formatWhen(submission.receipt.delivered_at)}. Feedback remains saved with this document; notification does not mean revision work is complete.
+                    Receipt: Praxis notified {formatWhen(submission.receipt.delivered_at)}. {review?.approval_decision_id ? (approvalHasNote ? "Your approval and its note stay with this document." : "Your approval stays with this document.") : "Feedback remains saved with this document; notification does not mean revision work is complete."}
                 </p>
             )}
             {submission.delivery_status === "failed" && (
@@ -1344,7 +1363,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 </div>
             )}
             {(submission.delivery_status === "queued" || submission.delivery_status === "relaying") && (
-                <p className="mt-2 text-[11px] text-slate-400">Your feedback is stored. It will show as notified once Praxis confirms receipt (attempt {submission.delivery_attempts}).</p>
+                <p className="mt-2 text-[11px] text-slate-400">{review?.approval_decision_id ? (approvalHasNote ? "Your approval and its note are stored." : "Your approval is stored.") : "Your feedback is stored."} It will show as notified once Praxis confirms receipt (attempt {submission.delivery_attempts}).</p>
             )}
             {submission.delivery_status !== "delivered" && (
                 <button type="button" onClick={() => void retry()} disabled={retrying} className="mt-2 inline-flex items-center gap-1 rounded-md border border-slate-600 px-2.5 py-1 text-[11px] text-slate-200 hover:border-cyan-500/60 disabled:opacity-50">
@@ -1360,8 +1379,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 Finishing saves your comments and the exact reviewed revision, then notifies Praxis to retrieve them directly. Finishing with no comments is fine.
             </p>
             <p className="mt-1 text-[11px] text-emerald-100/70" data-finish-scope="">
-                {delegateApproval
-                    ? "Approval is delegated: once the executor makes the change you ask for, it records your approval of that corrected revision only, citing this review. Nothing goes to anyone else or gets published."
+                {approving
+                    ? "This approves the version you reviewed, now. Your summary and comments stay with it as a note. It starts no revision and no second review, and nothing goes to anyone else or gets published."
                     : "This is feedback only: it does not approve the document, and nothing goes to anyone else or gets published."}
             </p>
             {unsendable.length > 0 && (
@@ -1378,15 +1397,25 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                     {sendableCount === 1 ? "Your decision answer goes" : `Your ${sendableCount} decision answers go`} with it. Praxis carries out each chosen action; an answer does not approve, edit, publish or send the document.
                 </p>
             )}
-            <label className="mt-2 flex items-start gap-2 text-[11px] text-emerald-100/90 max-lg:min-h-11 max-lg:items-center" data-delegate-approval="">
-                <input type="checkbox" checked={delegateApproval} onChange={(e) => setDelegateApproval(e.target.checked)} className="mt-0.5 accent-emerald-400" />
-                <span>Approve once this change is made. Needs your verified session; the executor can record only this approval.</span>
-            </label>
+            {approvalBlocked ? (
+                <p className="mt-2 text-[11px] text-emerald-100/70" data-approve-with-note-unavailable={approvalBlocked}>
+                    {approvalBlocked === "direction"
+                        ? "To approve this design package, choose a direction with Approve document first. You can then finish here to keep your note with that approval."
+                        : approvalBlocked === "changed"
+                            ? "The document changed after this round opened, so finishing it cannot approve the current version. Send it as feedback, or decide on the current version under Your decision."
+                            : "This is a reference document, so there is nothing to approve."}
+                </p>
+            ) : (
+                <label className="mt-2 flex items-start gap-2 text-[11px] text-emerald-100/90 max-lg:min-h-11 max-lg:items-center" data-approve-with-note="">
+                    <input type="checkbox" checked={approveAtFinish} onChange={(e) => setApproveAtFinish(e.target.checked)} className="mt-0.5 accent-emerald-400" />
+                    <span>Approve this version and keep my summary and comments with it as a note. Needs your verified session.</span>
+                </label>
+            )}
             <label className="mt-2 block text-[11px] font-semibold text-slate-300" htmlFor="review-summary-final">Summary (optional)</label>
             <textarea id="review-summary-final" value={summary} onChange={(e) => onSummaryChange(e.target.value)} className="mt-1 h-20 w-full resize-y rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-emerald-500/60" />
             {finishError && <p role="alert" className="mt-1 text-[11px] text-rose-200">{finishError}</p>}
-            {/* The grant and decision answers are confirmed in a native dialog on this Mac (task 5e513530); plain feedback is not. */}
-            {finishing && (delegateApproval || sendableCount > 0) && confirmsOnThisMac() && (
+            {/* The approval and decision answers are confirmed in a native dialog on this Mac (task 5e513530); plain feedback is not. */}
+            {finishing && (approving || sendableCount > 0) && confirmsOnThisMac() && (
                 <p role="status" className="mt-1 text-[11px] text-cyan-100" data-finish-confirm-on-mac="">{CONFIRM_ON_THIS_MAC}</p>
             )}
             <div className="mt-2 flex justify-end gap-2">

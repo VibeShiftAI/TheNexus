@@ -32,7 +32,9 @@ const { reconcileDocumentDrafts } = require('./document-draft-versions');
  * decisions. A review records the operator proof it was finished with and
  * whether Robert granted approval after changes (`submitted_authority`,
  * `approval_delegated`); only such a review can be the source of an
- * executor-recorded approval.
+ * executor-recorded approval. Since task 282c64fa (2026-11-23) finishing with
+ * that checkbox records Robert's own approval of the reviewed revision instead
+ * (`approval_decision_id`), so only reviews finished earlier carry the grant.
  */
 const { randomUUID } = require('crypto');
 const { createAgentReviewStore } = require('./document-agent-reviews');
@@ -183,11 +185,20 @@ const DECISION_COLUMNS = [
  * on legacy and unanswered reviews. A finish that carries answers needs the
  * same operator proof, so `submitted_authority` is set on it too; that alone
  * grants nothing, because executors act only on `approval_delegated`.
+ *
+ * `approval_decision_id` (task 282c64fa, 2026-11-23) names the `approve`
+ * decision recorded when Robert finished this review with the approve-with-
+ * changes checkbox: his approval of the exact revision he reviewed, with his
+ * summary and comments as its note. Since then a finish never sets
+ * `approval_delegated`, so that flag only ever marks a review finished under
+ * the old rule, whose replacement work and executor-recorded approval keep the
+ * lifecycle they started with.
  */
 const REVIEW_COLUMNS = [
     ['submitted_authority', 'TEXT'],
     ['approval_delegated', 'INTEGER NOT NULL DEFAULT 0'],
     ['decision_answers', 'TEXT'],
+    ['approval_decision_id', 'TEXT'],
 ];
 
 /**

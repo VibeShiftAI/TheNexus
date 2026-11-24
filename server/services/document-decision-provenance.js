@@ -1,6 +1,12 @@
 /**
  * Executor-recorded document approvals (2026-10-04, task a2553798).
  *
+ * Since task 282c64fa (2026-11-23) the approve-with-changes checkbox approves
+ * the reviewed revision when the review is finished and stores no grant, so
+ * this path serves only reviews finished before that change, whose revision
+ * work finishes the way it began. A review approved at finish is never a
+ * source here (`approval_delegated` is false on it).
+ *
  * Robert's ruling in questionnaire ask-robert-81299292-0878-4db1-a108-a14cc332f5dc:
  * his recurring "Approve with changes" review does not need a second click
  * from him. The flow: Robert reviews a revision and finishes the review with

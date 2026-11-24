@@ -19,6 +19,7 @@ const path = require('path');
 const http = require('http');
 const express = require('express');
 const access = require('./helpers/operator-access');
+const { markFinishedUnderOldRule } = require('./helpers/legacy-approval-grant');
 
 const nativeFetch = global.fetch;
 const OPERATOR_KEY = 'operator-test-credential-0123456789abcdef';
@@ -80,15 +81,22 @@ async function setup(name, content = V1) {
     return { file, document: registered.json.document, v1: registered.json.revision };
 }
 
-/** Robert's feedback round from his verified session: open, comment, finish (202). */
+/**
+ * Robert's feedback round from his verified session: open, comment, finish (202).
+ * `grant: true` models a round finished before task 282c64fa, whose stored
+ * approve-after-changes grant still opens revision work.
+ */
 async function finishReview(documentId, { summary = 'Fix the HWC row: it is installed and verified.', comment = 'This row is out of date.', grant = false, user = 'local_user', options = session } = {}) {
     const opened = await api('POST', `/api/documents/${documentId}/reviews`, {}, { user });
     expect(opened.status).toBe(201);
     const review = opened.json.review;
     if (comment) expect((await api('POST', `/api/documents/reviews/${review.id}/comments`, { kind: 'document', body: comment }, { user })).status).toBe(201);
-    const finished = await api('POST', `/api/documents/reviews/${review.id}/finish`, { summary, ...(grant ? { approve_after_changes: true } : {}) }, { user, ...options });
+    const finished = await api('POST', `/api/documents/reviews/${review.id}/finish`, { summary }, { user, ...options });
     expect(finished.status).toBe(202);
-    return { review: finished.json.review, submission: finished.json.submission };
+    if (!grant) return { review: finished.json.review, submission: finished.json.submission };
+    markFinishedUnderOldRule(db.documentReviews, review.id);
+    const legacy = await api('GET', `/api/documents/reviews/${review.id}`, undefined, { user });
+    return { review: legacy.json.review, submission: finished.json.submission };
 }
 
 function decide(documentId, revisionId, decision = 'request_changes', extra = {}, options = operator) {

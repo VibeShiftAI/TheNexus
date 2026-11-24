@@ -38,7 +38,7 @@ function server(options = {}) {
     calls.push({ method, path: url.pathname, body });
     const p = url.pathname;
     if (method === 'GET' && p === '/api/documents/doc-1') {
-      return response({ document: options.document ?? DOCUMENT, revision: REVISION, content: options.content ?? CONTENT, file_state: 'ok', file_error: null, source: SOURCE, review: state.review, links: LINKS });
+      return response({ document: options.document ?? DOCUMENT, revision: REVISION, content: options.content ?? CONTENT, file_state: 'ok', file_error: null, source: SOURCE, review: state.review && { ...state.review, comments: state.comments, submission: state.submission }, links: LINKS, ...(options.read ?? {}), ...(state.decision ? { current_decision: state.decision, review_status: 'approved' } : {}) });
     }
     if (method === 'POST' && p === '/api/documents/doc-1/reviews') {
       if (!state.review || state.review.status !== 'draft') { state.review = makeReview({ id: `rev-${calls.length}` }); state.comments = []; state.submission = null; }
@@ -60,7 +60,9 @@ function server(options = {}) {
     if (method === 'POST' && rest === '/finish') {
       if (state.failNextFinish) { const status = state.failNextFinish; state.failNextFinish = null; return response({ error: 'database is locked', code: 'save_failed' }, status); }
       if (state.review.status === 'submitted') return response({ review: { ...state.review, comments: state.comments }, submission: state.submission, duplicate: true });
-      state.review = { ...state.review, status: 'submitted', summary: body.summary ?? state.review.summary, submitted_at: '2026-09-10T10:10:00Z', approval_delegated: body.approve_after_changes === true, submitted_authority: body.approve_after_changes === true ? 'access_user' : null };
+      const approving = body.approve_after_changes === true;
+      state.review = { ...state.review, status: 'submitted', summary: body.summary ?? state.review.summary, submitted_at: '2026-09-10T10:10:00Z', approval_delegated: false, approval_decision_id: approving ? 'decision-1' : null, submitted_authority: approving ? 'access_user' : null };
+      if (approving) state.decision = { id: 'decision-1', document_id: 'doc-1', revision_id: REVISION.id, content_hash: REVISION.content_hash, decision: 'approve', actor_id: 'local_user', authority: 'access_user', note: body.summary ?? '', client_decision_id: `review-finish:${state.review.id}`, intended_action: 'none', selection: null, created_at: '2026-09-10T10:10:00Z', applies_to_current_revision: true };
       state.submission = { id: 'sub-1', review_id: state.review.id, delivery_status: 'queued', delivery_attempts: 0, next_attempt_at: null, last_error: null, delivered_at: null, receipt: null, created_at: '2026-09-10T10:10:00Z', updated_at: '2026-09-10T10:10:00Z' };
       // The server processed the finish, but the response never reached the client.
       if (state.loseFinishResponse) { state.loseFinishResponse = false; throw new TypeError('Failed to fetch'); }
@@ -330,9 +332,10 @@ test('on the phone, adding a whole-document note closes the review drawer so the
   } finally { t.cleanup(); }
 });
 
-// ── Executor-recorded approvals (task a2553798, repair round): Robert's explicit grant rides on Finish review ──
+// ── Approve with a note (task 282c64fa): the checkbox approves the version he read and his note stays with it ──
 
-test('"Approve once this change is made" sends the approve_after_changes grant with the finish and the finished review shows the delegation', async () => {
+test('the checkbox says it approves this version and keeps the note, sends the flag with the finish, and the page shows the approval with its note', async () => {
+  const note = 'Approved. Separately, remove the boilerplate sentence from the chat.';
   const srv = server();
   const t = mount(srv);
   try {
@@ -341,26 +344,68 @@ test('"Approve once this change is made" sends the approve_after_changes grant w
     await click(button(c, 'Finish review'));
     const panel = c.querySelector('[data-finish-panel]');
     assert.match(panel.querySelector('[data-finish-scope]').textContent, /feedback only/);
-    const box = panel.querySelector('[data-delegate-approval] input[type="checkbox"]');
-    assert.ok(box, 'the grant control is offered');
+    const label = panel.querySelector('[data-approve-with-note]');
+    assert.equal(label.textContent, 'Approve this version and keep my summary and comments with it as a note. Needs your verified session.');
+    const box = label.querySelector('input[type="checkbox"]');
+    assert.ok(box, 'the approval control is offered');
     assert.equal(box.checked, false, 'off by default: a plain finish is feedback');
     await click(box);
     assert.equal(box.checked, true);
-    assert.match(c.querySelector('[data-finish-scope]').textContent, /Approval is delegated/);
-    await type(c.querySelector('[data-finish-panel] textarea'), 'Fix the figure in section 2, then approve.');
+    assert.equal(c.querySelector('[data-finish-scope]').textContent, 'This approves the version you reviewed, now. Your summary and comments stay with it as a note. It starts no revision and no second review, and nothing goes to anyone else or gets published.');
+    assert.doesNotMatch(c.querySelector('[data-finish-panel]').textContent, /executor|delegat|once this change is made/i, 'no promise of a later executor-recorded approval');
+    await type(c.querySelector('[data-finish-panel] textarea'), note);
     await settle(40);
     await click(button(c.querySelector('[data-finish-panel]'), 'Send to Praxis'));
     const finish = srv.calls.filter(x => x.path.endsWith('/finish'));
     assert.equal(finish.length, 1);
     assert.equal(finish[0].body.approve_after_changes, true);
-    assert.equal(finish[0].body.summary, 'Fix the figure in section 2, then approve.');
-    assert.ok(c.querySelector('[data-approval-delegated]'), 'the finished review shows the delegation');
-    assert.match(c.querySelector('[data-approval-delegated]').textContent, /records your approval of the corrected revision/);
+    assert.equal(finish[0].body.summary, note);
+
+    // The submitted-review card says what happened.
+    const card = c.querySelector('[data-submission-card]');
+    assert.equal(card.querySelector('[data-approved-with-note]').textContent, 'Approved with your note: this version is approved, and your summary and comments stay with it. No revision was started and it needs no second review.');
+    assert.ok(!card.querySelector('[data-approval-delegated]'));
+    assert.doesNotMatch(card.textContent, /executor|revision work/i);
+
+    // The finish read the document back: the decision card holds the approval and the whole note beside it.
     await settle(40);
+    assert.equal(c.querySelector('[data-decision-card]').getAttribute('data-decision-card'), 'approved');
+    assert.equal(c.querySelector('[data-current-decision]').getAttribute('data-current-decision'), 'approve');
+    assert.equal(c.querySelector('[data-current-decision-note]').textContent, `Note with this approval: ${note}`);
+    assert.doesNotMatch(c.querySelector('[data-submission-card]').textContent, /notification does not mean revision work/);
   } finally { t.cleanup(); }
 });
 
-test('a plain finish carries no approve_after_changes field and shows no delegation', async () => {
+test('an approval with no summary and no comments says approved and claims no note, while queued and once delivered', async () => {
+  const srv = server({ deliveredAfterPolls: Infinity });
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    await click(button(c, 'Finish review'));
+    await click(c.querySelector('[data-approve-with-note] input[type="checkbox"]'));
+    await click(button(c.querySelector('[data-finish-panel]'), 'Send to Praxis'));
+    assert.equal(srv.calls.filter(x => x.path.endsWith('/finish')).length, 1);
+    const card = c.querySelector('[data-submission-card]');
+    assert.equal(card.querySelector('[data-approved-no-note]').textContent.trim(), 'Approved: this version is approved. No revision was started and it needs no second review.');
+    assert.ok(!card.querySelector('[data-approved-with-note]'));
+    assert.match(card.textContent, /Your approval is stored\./);
+    assert.doesNotMatch(card.textContent, /\bnote\b/i);
+    await settle(40);
+  } finally { t.cleanup(); }
+
+  const delivered = { id: 'sub-1', review_id: 'rev-plain', delivery_status: 'delivered', delivery_attempts: 1, next_attempt_at: null, last_error: null, delivered_at: '2026-09-10T10:10:05Z', receipt: { delivered_at: '2026-09-10T10:10:05Z' }, created_at: '2026-09-10T10:10:00Z', updated_at: '2026-09-10T10:10:05Z' };
+  const later = mount(server({ review: makeReview({ id: 'rev-plain', status: 'submitted', submitted_at: '2026-09-10T10:10:00Z', approval_delegated: false, approval_decision_id: 'decision-1', submitted_authority: 'access_user', submission: delivered }) }));
+  try {
+    await settle(40);
+    const card = later.container.querySelector('[data-submission-card]');
+    assert.ok(card.querySelector('[data-approved-no-note]'));
+    assert.match(card.textContent, /Your approval stays with this document\./);
+    assert.doesNotMatch(card.textContent, /\bnote\b/i);
+  } finally { later.cleanup(); }
+});
+
+test('a plain finish carries no approve_after_changes field and shows no approval', async () => {
   const srv = server();
   const t = mount(srv);
   try {
@@ -372,7 +417,65 @@ test('a plain finish carries no approve_after_changes field and shows no delegat
     assert.equal(finish.length, 1);
     assert.equal('approve_after_changes' in finish[0].body, false);
     assert.ok(!c.querySelector('[data-approval-delegated]'));
+    assert.ok(!c.querySelector('[data-approved-with-note]'));
+    assert.ok(!c.querySelector('[data-current-decision-note]'));
     await settle(40);
+  } finally { t.cleanup(); }
+});
+
+test('a round finished under the old rule keeps an accurate card that promises no executor approval', async () => {
+  const submission = { id: 'sub-old', review_id: 'rev-old', delivery_status: 'delivered', delivery_attempts: 1, next_attempt_at: null, last_error: null, delivered_at: '2026-09-10T10:10:05Z', receipt: { delivered_at: '2026-09-10T10:10:05Z' }, created_at: '2026-09-10T10:10:00Z', updated_at: '2026-09-10T10:10:05Z' };
+  const srv = server({ review: makeReview({ id: 'rev-old', status: 'submitted', submitted_at: '2026-09-10T10:10:00Z', approval_delegated: true, approval_decision_id: null, submitted_authority: 'access_user', submission }), deliveredAfterPolls: 1 });
+  const t = mount(srv);
+  try {
+    await settle(40);
+    const legacy = t.container.querySelector('[data-approval-delegated]');
+    assert.equal(legacy.textContent.trim(), 'Finished under the earlier approve-after-changes rule. Revision work already started for this review finishes the way it began.');
+    assert.doesNotMatch(legacy.textContent, /executor/i);
+    assert.ok(!t.container.querySelector('[data-approved-with-note]'));
+  } finally { t.cleanup(); }
+});
+
+test('where approving at finish could only be refused, the panel offers no checkbox and says why', async () => {
+  const directions = { manifest: { directions: [{ id: '1a', title: 'Hairline', recommended: true }, { id: '1b', title: 'Masthead' }], screens: [] } };
+  for (const [name, options, reason, words] of [
+    ['a package with two directions and none chosen', { read: directions }, 'direction', /choose a direction with Approve document first/],
+    ['a draft on a version that has since changed', { review: makeReview({ document_changed: true }) }, 'changed', /cannot approve the current version/],
+    ['a reference document', { read: { review_status: 'reference' } }, 'reference', /nothing to approve/],
+  ]) {
+    const srv = server(options);
+    const t = mount(srv);
+    try {
+      await settle();
+      await click(button(t.container, 'Finish review'));
+      const panel = t.container.querySelector('[data-finish-panel]');
+      assert.ok(panel, `${name}: the finish panel opens`);
+      assert.ok(!panel.querySelector('[data-approve-with-note]'), `${name}: no checkbox`);
+      const why = panel.querySelector('[data-approve-with-note-unavailable]');
+      assert.equal(why.getAttribute('data-approve-with-note-unavailable'), reason, name);
+      assert.match(why.textContent, words, name);
+      await click(button(panel, 'Send to Praxis'));
+      const [finish] = srv.calls.filter(x => x.path.endsWith('/finish'));
+      assert.equal('approve_after_changes' in finish.body, false, `${name}: finishes as plain feedback`);
+      await settle(40);
+    } finally { t.cleanup(); }
+  }
+});
+
+test('a design package whose direction he already approved still offers the checkbox', async () => {
+  const srv = server({ read: {
+    manifest: { directions: [{ id: '1a', title: 'Hairline' }, { id: '1b', title: 'Masthead' }], screens: [] },
+    current_decision: { id: 'decision-0', document_id: 'doc-1', revision_id: REVISION.id, content_hash: REVISION.content_hash, decision: 'approve', actor_id: 'local_user', authority: 'access_user', note: '', client_decision_id: null, intended_action: 'none', selection: { direction: '1b' }, created_at: '2026-09-10T10:01:00Z', applies_to_current_revision: true },
+    review_status: 'approved',
+  } });
+  const t = mount(srv);
+  try {
+    await settle();
+    await click(button(t.container, 'Finish review'));
+    const panel = t.container.querySelector('[data-finish-panel]');
+    assert.ok(panel.querySelector('[data-approve-with-note] input[type="checkbox"]'));
+    assert.ok(!panel.querySelector('[data-approve-with-note-unavailable]'));
+    assert.ok(!t.container.querySelector('[data-current-decision-note]'), 'an approval with no note shows no note row');
   } finally { t.cleanup(); }
 });
 
@@ -462,7 +565,7 @@ test('every control in the review drawer, its expanded states, the navigator and
 
     await click(drawer.querySelector('[data-finish-button]'));
     const finish = drawer.querySelector('[data-finish-panel]');
-    assert.match(finish.querySelector('[data-delegate-approval]').className, /\bmax-lg:min-h-11\b/, 'the approval checkbox\'s label is the 44px target');
+    assert.match(finish.querySelector('[data-approve-with-note]').className, /\bmax-lg:min-h-11\b/, 'the approval checkbox\'s label is the 44px target');
     assert.deepEqual(uncovered(finish), [], 'finish confirmation: checkbox label, Keep reviewing, Send to Praxis');
     await click(button(finish, 'Keep reviewing'));
 

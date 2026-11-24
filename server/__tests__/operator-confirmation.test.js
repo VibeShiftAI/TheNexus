@@ -429,7 +429,7 @@ describe('finishing a review through the local session', () => {
         expect(finished.status).toBe(202); expect(prompts).toHaveLength(0);
     });
 
-    test('the approve-after-changes grant asks once, names the grant, and is refused when a comment lands during the dialog', async () => {
+    test('approving at finish asks once, says what it does, and is refused when a comment lands during the dialog', async () => {
         const cookie = await bootstrap();
         const review = await draftReview(cookie);
         answers.push(async () => {
@@ -440,20 +440,37 @@ describe('finishing a review through the local session', () => {
         expect(refused.status).toBe(409); expect(refused.json).toMatchObject({ code: 'operator_confirmation_mismatch', nothing_recorded: true });
         expect(store.getReview(review.id)).toMatchObject({ status: 'draft' });
         expect(store.getSubmissionForReview(review.id)).toBeFalsy();
+        expect(store.listDecisions(doc.id)).toHaveLength(0);
         const [prompt] = prompts;
-        expect(prompt).toMatchObject({ title: 'Nexus: finish this review?', confirmLabel: 'Approve after changes' });
+        expect(prompt).toMatchObject({ title: 'Nexus: finish this review?', confirmLabel: 'Approve this version' });
         expect(prompt.message).toContain('Finish your review of "Synthetic brief"');
-        expect(prompt.message).toContain('This lets the executor that applies your changes record your approval of the revised version.');
+        expect(prompt.message).toContain('This approves this exact version now and keeps your summary and comments with it as a note. It starts no revision and sends nothing.');
         expect(prompt.message).toContain('Comments in this review: 1.');
-        // Asked again with the comment now visible in the count, it finishes once.
+        // Asked again with the comment now visible in the count, it finishes once and records his approval once.
         const finished = await api('POST', `/api/documents/reviews/${review.id}/finish`, { summary: 'Approve after these changes.', approve_after_changes: true }, { cookie });
         expect(finished.status).toBe(202);
-        expect(finished.json.review).toMatchObject({ status: 'submitted', approval_delegated: true, submitted_authority: 'operator_credential' });
+        expect(finished.json.review).toMatchObject({ status: 'submitted', approval_delegated: false, submitted_authority: 'operator_credential' });
         expect(prompts[1].message).toContain('Comments in this review: 2.');
+        expect(store.listDecisions(doc.id)).toEqual([expect.objectContaining({ id: finished.json.review.approval_decision_id, decision: 'approve', revision_id: revision.id, authority: 'operator_credential', recorded_by: 'operator' })]);
+        // A declined dialog records nothing and keeps the draft.
         const declinedReview = await draftReview(cookie);
         answers.push('declined');
         const declined = await api('POST', `/api/documents/reviews/${declinedReview.id}/finish`, { approve_after_changes: true }, { cookie });
         expect(declined.status).toBe(403); expect(store.getReview(declinedReview.id)).toMatchObject({ status: 'draft', approval_delegated: false });
+        expect(store.listDecisions(doc.id)).toHaveLength(1);
+    });
+
+    test('a document that changes while the dialog is open is not approved, and the draft is kept', async () => {
+        const cookie = await bootstrap();
+        const review = await draftReview(cookie);
+        answers.push(() => { fs.writeFileSync(file, '# Synthetic review\n\nChanged while the dialog was open.\n', 'utf8'); return 'confirmed'; });
+        const refused = await api('POST', `/api/documents/reviews/${review.id}/finish`, { summary: 'Approved.', approve_after_changes: true }, { cookie });
+        expect(refused.status).toBe(409);
+        expect(refused.json).toMatchObject({ code: 'stale_revision', revision_id: revision.id, nothing_recorded: true });
+        expect(refused.json.current_revision.id).not.toBe(revision.id);
+        expect(store.getReview(review.id)).toMatchObject({ status: 'draft', approval_decision_id: null });
+        expect(store.getSubmissionForReview(review.id)).toBeFalsy();
+        expect(store.listDecisions(doc.id)).toHaveLength(0);
     });
 });
 

@@ -255,14 +255,14 @@ function documentDecisionAction({ identity, title, revision, version, decision, 
     };
 }
 
-function reviewFinishAction({ identity, title, revisionId, version, delegated, answers, summary, commentCount }) {
+function reviewFinishAction({ identity, title, revisionId, version, approving, answers, summary, commentCount }) {
     return {
         kind: 'review_finish', identity,
         title: 'Nexus: finish this review?',
-        confirmLabel: delegated ? 'Approve after changes' : 'Send answers',
+        confirmLabel: approving ? 'Approve this version' : 'Send answers',
         lines: [
             `Finish your review of "${oneLine(title, 200)}" (${version ? `version ${version}, ` : ''}revision ${oneLine(revisionId, 120)})?`,
-            delegated ? 'This lets the executor that applies your changes record your approval of the revised version.' : null,
+            approving ? 'This approves this exact version now and keeps your summary and comments with it as a note. It starts no revision and sends nothing.' : null,
             answers.length ? `Decision answers (${answers.length}):` : null,
             ...answers.map(answer => `- ${oneLine(answer.question, 160)}: ${oneLine(answer.label, 200)}`),
             `Comments in this review: ${commentCount}.`,

@@ -29,7 +29,8 @@
  *   PATCH  /api/documents/reviews/:reviewId/comments/:commentId   { body }
  *   DELETE /api/documents/reviews/:reviewId/comments/:commentId
  *   POST   /api/documents/reviews/:reviewId/finish         { summary?, approve_after_changes? } → one durable submission per
- *                                                          review, delivery queued; the grant needs Robert's own operator proof
+ *                                                          review, delivery queued; the flag records Robert's approval of the
+ *                                                          reviewed revision with his note, and needs his own operator proof
  *   GET    /api/documents/reviews/:reviewId/submission     delivery state + receipt
  *   POST   /api/documents/reviews/:reviewId/submission/retry
  *   POST   /api/documents/:id/replacements                 accept replacement work for an authorized change request
@@ -96,6 +97,8 @@ const DELIVERABLE_FIELDS = new Set(['key', 'purpose', 'requires_review', 'intend
 const SOURCE_TYPES = new Set(['task', 'chat', 'report']);
 const SOURCE_ID_FIELDS = ['conversation_id', 'message_id', 'execution_id'];
 const DECISIONS = new Set(['approve', 'request_changes']);
+/** Idempotency key of the approval a finished review records (one per review); a direct decision may not use this prefix. */
+const FINISH_APPROVAL_KEY = 'review-finish:';
 const STATUS_FILTERS = new Set(['all', ...LIST_STATUSES]);
 /** States a consumer may report on a replacement; `ready` is verified against the document before it is stored. */
 const REPORTABLE_STATES = new Set(REPLACEMENT_STATES);
@@ -956,7 +959,10 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             status: review.status, summary: review.summary || '', created_at: review.created_at, updated_at: review.updated_at,
             submitted_at: review.submitted_at || null,
             submitted_authority: review.submitted_authority || null,
+            // True only on a review finished under the old approve-after-changes rule (before task 282c64fa).
             approval_delegated: Boolean(review.approval_delegated),
+            // The approve decision this review recorded when it was finished with the checkbox.
+            approval_decision_id: review.approval_decision_id || null,
             // Version lifecycle (task 6b46dcc8): a draft closed by accepted replacement work is 'superseded' and read-only.
             closed_at: review.closed_at || null,
             closed_reason: review.closed_reason || null,
@@ -1771,6 +1777,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 reviews: store().listReviews(doc.id).map(review => ({
                     id: review.id, revision_id: review.revision_id, reviewer_id: review.reviewer_id, status: review.status,
                     created_at: review.created_at, submitted_at: review.submitted_at || null,
+                    approval_decision_id: review.approval_decision_id || null,
                     comment_count: store().listComments(review.id).length,
                     delivery_status: store().getSubmissionForReview(review.id)?.delivery_status || null,
                     // Closure (task 6b46dcc8): a superseded draft says when, why and by which work; an older round is historical.
@@ -1791,11 +1798,11 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
     // state. A decision on bytes that are no longer current is refused.
     //
     // With an `executor` block (document executor credential only, which can
-    // record nothing else) the approval is executor-recorded: the executor
-    // that applied Robert's "approve with changes" review records the approval
-    // of the resulting revision, and the decision carries the review it acted
-    // on, Robert's delegation grant on that review and the executor's identity
-    // (services/document-decision-provenance.js).
+    // record nothing else) the approval is executor-recorded. Since task
+    // 282c64fa that path serves only reviews finished under the old
+    // approve-after-changes rule, whose work is still in flight: the decision
+    // carries the review it acted on, Robert's delegation grant on that review
+    // and the executor's identity (services/document-decision-provenance.js).
     router.post('/:id/decisions', async (req, res) => {
         try {
             const doc = loadDocument(req, res);
@@ -1827,6 +1834,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (body.client_decision_id !== undefined) {
                 clientDecisionId = text(body.client_decision_id, LIMITS.clientId);
                 if (!clientDecisionId) return res.status(400).json({ error: 'client_decision_id must be a short string', code: 'invalid_decision' });
+                if (clientDecisionId.startsWith(FINISH_APPROVAL_KEY)) return res.status(400).json({ error: `client_decision_id may not start with "${FINISH_APPROVAL_KEY}": that key belongs to the approval a finished review records`, code: 'invalid_decision' });
             }
             const parsedExecutor = parseExecutorProvenance(body, { decision: body.decision, authority: authority.actor.authority });
             if (!parsedExecutor.ok) return res.status(parsedExecutor.status).json({ error: parsedExecutor.error, code: parsedExecutor.code });
@@ -2069,6 +2077,11 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         if (review) {
             if (review.status !== 'submitted' || !review.submitted_at) {
                 return { ok: false, status: 409, code: 'source_review_not_submitted', error: 'The cited review has not been finished; only a submitted review authorizes work', extra: { review_id: review.id, status: review.status } };
+            }
+            // A review finished with the approve-with-changes checkbox approved its revision (task 282c64fa). Its note stays
+            // with the approval and is never revision work; only a later request_changes decision, cited itself, can open any.
+            if (review.approval_decision_id && !decision) {
+                return { ok: false, status: 409, code: 'source_not_change_request', error: 'The cited review approved this version when it was finished; its note stays with the approval and creates no revision work', extra: { review_id: review.id, decision_id: review.approval_decision_id } };
             }
             if (review.revision_id !== authorityId) return stale(`The cited review ${review.id}`, review.revision_id);
         }
@@ -2675,6 +2688,43 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         }
     });
 
+    /**
+     * What a direct approval of this review's revision has to pass, checked
+     * before the Mac dialog so a refusal asks Robert nothing and keeps his
+     * draft. Returns the direction selection the approval carries, or null
+     * after sending the refusal.
+     */
+    async function checkApprovalAtFinish(res, doc, review) {
+        const refuse = (status, body) => { res.status(status).json({ ...body, nothing_recorded: true }); return null; };
+        if (!doc.requires_review) {
+            return refuse(409, { error: 'This is a reference document; it does not take review decisions. Nothing was approved and your draft is kept', code: 'review_not_required' });
+        }
+        // A direction-selection design package: approving it is choosing a direction (contract §3.3). The finish has no
+        // direction of its own, so it carries the one Robert already approved on this revision or asks him to choose.
+        const manifest = store().getRevision(review.revision_id)?.manifest ?? null;
+        const directions = Array.isArray(manifest?.directions) ? manifest.directions.map(d => d.id) : [];
+        let selection = null;
+        if (directions.length >= 2) {
+            const latest = store().latestDecision(doc.id);
+            const chosen = latest?.decision === 'approve' && latest.revision_id === review.revision_id ? latest.selection : null;
+            if (typeof chosen?.direction !== 'string' || !directions.includes(chosen.direction)) {
+                return refuse(400, { error: 'Approving this design package means choosing a direction: choose one with Approve document, then finish. Your draft is kept', code: 'selection_required', directions });
+            }
+            selection = chosen;
+        }
+        const captured = await captureRevision(doc);
+        if (captured.fileState !== 'ok') {
+            return refuse(409, { error: `The document file cannot be confirmed right now (${captured.fileState}); nothing was approved and your draft is kept`, code: 'file_unavailable', file_state: captured.fileState });
+        }
+        if (captured.revision.id !== review.revision_id) {
+            return refuse(409, { error: 'The document changed after the revision you reviewed; nothing was approved and your draft is kept. Reopen it and decide on the current revision', code: 'stale_revision', revision_id: review.revision_id, current_revision: revisionMeta(captured.revision) });
+        }
+        await reconcileReplacement(doc);
+        const gate = reviewability(store().getDocument(doc.id), captured.revision);
+        if (!gate.ok) { notReviewable(res, gate); return null; }
+        return { selection };
+    }
+
     // ── Finish and delivery ───────────────────────────────────────────────
     router.post('/reviews/:reviewId/finish', async (req, res) => {
         try {
@@ -2695,26 +2745,34 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 }
                 summary = body.summary;
             }
-            // Robert's explicit grant (task a2553798): finishing with
-            // approve_after_changes lets the executor that applies this review
-            // record his approval of the resulting revision. The grant needs his
-            // own operator proof on this very request (verified Access session
-            // or operator credential): the shared local_user every local process
-            // carries is not Robert, and the document executor credential cannot
-            // grant to itself. Without the flag a finish is feedback, as before.
+            // Robert's approval with a note (task 282c64fa): finishing with
+            // approve_after_changes approves the exact revision he reviewed, now,
+            // as his own decision, with his summary and comments as its note. It
+            // opens no revision work. It needs his own operator proof on this very
+            // request (verified Access session or operator credential) and, through
+            // the local session, his answer to the Mac dialog: the shared local_user
+            // every local process carries is not Robert, and the document executor
+            // credential cannot approve for him. Without the flag a finish is
+            // feedback, as before.
             if (body.approve_after_changes !== undefined && typeof body.approve_after_changes !== 'boolean') {
                 return res.status(400).json({ error: 'approve_after_changes must be true or false', code: 'invalid_grant' });
             }
-            const delegated = body.approve_after_changes === true;
-            // Decision answers (task 50aa5747) go out only with Robert's own proof, like the grant, and only for the current revision.
+            const approving = body.approve_after_changes === true;
+            // Decision answers (task 50aa5747) go out only with Robert's own proof, like the approval, and only for the current revision.
             const storedAnswers = decisionItems.storedAnswers(review);
             let submittedAuthority = null;
             let finishActor = null;
-            if (delegated || storedAnswers.length) {
-                const actor = await operatorActor(req, res, delegated ? 'Delegating approval' : 'Sending decision answers');
+            if (approving || storedAnswers.length) {
+                const actor = await operatorActor(req, res, approving ? 'Approving this document' : 'Sending decision answers');
                 if (!actor) return;
                 submittedAuthority = actor.authority;
                 finishActor = actor;
+            }
+            let approvalSelection = null;
+            if (approving) {
+                const approvable = await checkApprovalAtFinish(res, doc, review);
+                if (!approvable) return;
+                approvalSelection = approvable.selection;
             }
             let decisionAnswers = [];
             let answeredItems = [];
@@ -2738,12 +2796,12 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 decisionAnswers = resolved.answers.map(({ decision_id, answer }) => ({ decision_id, answer }));
                 answeredItems = decisions.items.filter(item => decisionAnswers.some(a => a.decision_id === item.id));
             }
-            // The grant and decision answers through the local session also need
+            // The approval and decision answers through the local session also need
             // Robert's answer to a native dialog naming them (Option A, task 5e513530),
             // bound to this review's exact summary, comments and answers.
             const finishIdentity = commentRows => ({
                 kind: 'review_finish', document_id: doc.id, review_id: review.id, revision_id: review.revision_id,
-                approve_after_changes: delegated, answers: decisionAnswers,
+                approve_after_changes: approving, answers: decisionAnswers,
                 summary_sha256: confirmation.sha256(summary), comments_sha256: confirmation.sha256(JSON.stringify(commentRows)),
             });
             let asked = { ok: true, required: false, ref: null, consume: () => true };
@@ -2751,7 +2809,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 const shownComments = store().listComments(review.id);
                 asked = await confirmations.confirm({ res, auth: finishActor, action: confirmation.reviewFinishAction({
                     identity: finishIdentity(shownComments), title: doc.title || doc.id, revisionId: review.revision_id,
-                    version: store().revisionDraft(review.revision_id)?.version, delegated, summary, commentCount: shownComments.length,
+                    version: store().revisionDraft(review.revision_id)?.version, approving, summary, commentCount: shownComments.length,
                     answers: decisionAnswers.map(({ decision_id, answer }) => {
                         const item = answeredItems.find(i => i.id === decision_id);
                         return { question: item?.question || decision_id, label: item?.options?.find(o => o.id === answer)?.label || answer };
@@ -2760,30 +2818,32 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 if (!asked.ok) {
                     return res.status(asked.status).json({ error: asked.error, code: asked.code, nothing_recorded: true, ...(asked.confirmation_ref ? { confirmation_ref: asked.confirmation_ref } : {}) });
                 }
-                if (asked.required && storedAnswers.length) {
+                if (asked.required && (storedAnswers.length || approving)) {
                     // The wait can be long: capture the file again so a changed revision is caught below.
                     const again = await captureRevision(doc);
                     if (again.fileState !== 'ok') {
-                        return res.status(409).json({ error: `The document file cannot be confirmed right now (${again.fileState}); nothing was sent and your draft keeps its answers`, code: 'file_unavailable', file_state: again.fileState });
+                        return res.status(409).json({ error: `The document file cannot be confirmed right now (${again.fileState}); nothing was sent and your draft keeps its ${storedAnswers.length ? 'answers' : 'comments'}`, code: 'file_unavailable', file_state: again.fileState });
                     }
                 }
             }
             const revision = store().getRevisionMeta(review.revision_id);
-            const comments = store().listComments(review.id);
             const source = await sourceSummary(doc);
             const submittedAt = new Date().toISOString();
             const submissionId = randomUUID();
-            const finished = { ...review, summary, approval_delegated: delegated, submitted_authority: submittedAuthority };
-            const latestDecision = store().latestDecision(doc.id);
-            const selectedDirection = latestDecision?.decision === 'approve' && latestDecision.revision_id === review.revision_id ? latestDecision.selection?.direction ?? null : null;
-            // Decision notes are stored separately from review comments. Snapshot all
-            // change requests for this exact revision so neither input channel is lost.
-            const changeRequests = store().listDecisions(doc.id).filter(decision =>
-                decision.decision === 'request_changes' && decision.revision_id === review.revision_id && decision.note?.trim());
-            const payload = fmt.buildSubmissionPayload({ submissionId, review: finished, comments, document: doc, revision, source, submittedAt, selectedDirection, changeRequests, decisionAnswers, decisionItems: answeredItems });
-            payload.decisions = store().listDecisions(doc.id).filter(d => d.revision_id === review.revision_id);
-            payload.agent_reviews = db.agentReviews?.list(doc.id).filter(r => r.base_revision_id === review.revision_id) || [];
-            const messageText = fmt.formatSubmissionMessage(payload);
+            const finished = { ...review, summary, submitted_authority: submittedAuthority };
+            // Built inside the finish transaction, after the approval is inserted, so the stored package carries that decision.
+            const composeSubmission = (comments, approval) => {
+                const decisions = store().listDecisions(doc.id).filter(d => d.revision_id === review.revision_id);
+                const latestDecision = store().latestDecision(doc.id);
+                const selectedDirection = latestDecision?.decision === 'approve' && latestDecision.revision_id === review.revision_id ? latestDecision.selection?.direction ?? null : null;
+                // Decision notes are stored separately from review comments. Snapshot all
+                // change requests for this exact revision so neither input channel is lost.
+                const changeRequests = decisions.filter(decision => decision.decision === 'request_changes' && decision.note?.trim());
+                const payload = fmt.buildSubmissionPayload({ submissionId, review: finished, comments, document: doc, revision, source, submittedAt, selectedDirection, changeRequests, decisionAnswers, decisionItems: answeredItems, approval });
+                payload.decisions = decisions;
+                payload.agent_reviews = db.agentReviews?.list(doc.id).filter(r => r.base_revision_id === review.revision_id) || [];
+                return { payload, messageText: fmt.formatSubmissionMessage(payload) };
+            };
             let submission;
             try {
                 submission = store().transaction(() => {
@@ -2793,7 +2853,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                     // Answers changed in another tab after this finish read them: send nothing rather than a stale set.
                     if (JSON.stringify(decisionItems.storedAnswers(again)) !== JSON.stringify(storedAnswers)) return { answersChanged: true };
                     // Single use, and only for the review content Robert confirmed (a comment added meanwhile refuses).
-                    if (!asked.consume(finishIdentity(store().listComments(review.id)))) return { unconfirmed: true };
+                    const commentsNow = store().listComments(review.id);
+                    if (!asked.consume(finishIdentity(commentsNow))) return { unconfirmed: true };
                     if (decisionAnswers.length) {
                         // A registration during the awaits above (a new revision, or new items on this one) wins over the answers.
                         const now = store().getDocument(doc.id);
@@ -2803,7 +2864,39 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                         const itemsNow = resolvedNow.ok ? decisionsNow.items.filter(item => decisionAnswers.some(a => a.decision_id === item.id)) : null;
                         if (!resolvedNow.ok || JSON.stringify(itemsNow) !== JSON.stringify(answeredItems)) return { decisionsChanged: true, staleAnswers: resolvedNow.unsendable ?? [] };
                     }
-                    store().updateReview(review.id, { status: 'submitted', summary, submitted_at: submittedAt, approval_delegated: delegated, submitted_authority: submittedAuthority });
+                    let approval = null;
+                    if (approving) {
+                        // Re-checked inside the transaction: a new revision, an acceptance or a failure report landing meanwhile wins.
+                        const now = store().getDocument(doc.id);
+                        if (!now.requires_review) return { noReviewNeeded: true };
+                        if (now.current_revision_id !== review.revision_id) return { staleApproval: now.current_revision_id };
+                        const gateNow = reviewability(now, revision);
+                        if (!gateNow.ok) return { blockedBy: gateNow };
+                        if (approvalSelection) {
+                            // The direction this approval carries must still be the one he has approved on this revision.
+                            const latestNow = store().latestDecision(doc.id);
+                            if (latestNow?.decision !== 'approve' || latestNow.revision_id !== review.revision_id || latestNow.selection?.direction !== approvalSelection.direction) return { directionChanged: true };
+                        }
+                        // The key is unique per document, so one review can never hold two approvals.
+                        approval = store().insertDecision({
+                            document_id: doc.id, revision_id: revision.id, content_hash: revision.content_hash, decision: 'approve',
+                            actor_id: finishActor.id, authority: finishActor.authority, note: fmt.composeApprovalNote(summary, commentsNow),
+                            client_decision_id: `${FINISH_APPROVAL_KEY}${review.id}`, intended_action: now.intended_action, selection: approvalSelection,
+                            recorded_by: 'operator',
+                            provenance: {
+                                source: {
+                                    kind: 'review_finish', review_id: review.id, submission_id: submissionId, revision_id: revision.id,
+                                    revision_hash: revision.content_hash, reviewer_id: review.reviewer_id, submitted_at: submittedAt, summary,
+                                    comments: commentsNow.map(comment => ({
+                                        id: comment.id, kind: comment.kind, parent_id: comment.parent_id ?? null, start_line: comment.start_line,
+                                        end_line: comment.end_line, quote: comment.quote, body: comment.body,
+                                    })),
+                                },
+                            },
+                        });
+                    }
+                    const { payload, messageText } = composeSubmission(commentsNow, approval);
+                    store().updateReview(review.id, { status: 'submitted', summary, submitted_at: submittedAt, submitted_authority: submittedAuthority, approval_decision_id: approval?.id ?? null });
                     return store().insertSubmission({ id: submissionId, review_id: review.id, document_id: doc.id, revision_id: review.revision_id, payload, message_text: messageText });
                 });
             } catch (err) {
@@ -2824,6 +2917,16 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (submission?.decisionsChanged) {
                 return res.status(409).json({ error: 'The decisions listed for this revision changed after you answered; review your answers and send again. Nothing was sent', code: 'decisions_changed', stale_answers: submission.staleAnswers });
             }
+            if (submission?.staleApproval !== undefined) {
+                return res.status(409).json({ error: 'The document changed after the revision you reviewed; nothing was approved and your draft is kept. Reopen it and decide on the current revision', code: 'stale_revision', revision_id: review.revision_id, current_revision: revisionMeta(store().getRevisionMeta(submission.staleApproval)), nothing_recorded: true });
+            }
+            if (submission?.blockedBy) return notReviewable(res, submission.blockedBy);
+            if (submission?.noReviewNeeded) {
+                return res.status(409).json({ error: 'This is a reference document; it does not take review decisions. Nothing was approved and your draft is kept', code: 'review_not_required', nothing_recorded: true });
+            }
+            if (submission?.directionChanged) {
+                return res.status(409).json({ error: 'Your decision on this design package changed while this review was being finished; nothing was approved and your draft is kept', code: 'decisions_changed', nothing_recorded: true });
+            }
             if (!submission) {
                 const now = store().getReview(review.id);
                 const racedSubmission = store().getSubmissionForReview(review.id);
@@ -2831,7 +2934,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 requireDraft(now, res);
                 return;
             }
-            if (delegated) console.log(`[Documents] review ${review.id} finished with approval delegated (authority=${submittedAuthority}, submission=${submission.id}${asked.required ? `, operator confirmation ref=${asked.ref}` : ''})`);
+            if (approving) console.log(`[Documents] review ${review.id} finished with approval of revision ${review.revision_id} recorded (authority=${submittedAuthority}, submission=${submission.id}${asked.required ? `, operator confirmation ref=${asked.ref}` : ''})`);
             else if (asked.required) console.log(`[Documents] review ${review.id} finished with decision answers after operator confirmation ref=${asked.ref} (submission=${submission.id})`);
             if (delivery && typeof delivery.deliver === 'function') {
                 delivery.deliver(submission.id).catch(err => console.error(`[Documents] delivery of ${submission.id} failed:`, err?.message || err));

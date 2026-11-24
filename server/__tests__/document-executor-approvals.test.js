@@ -14,6 +14,12 @@
  * by the stakeholder decision endpoints and unable to record a direct
  * decision or a grant.
  *
+ * Since task 282c64fa (2026-11-23) the checkbox approves the reviewed version
+ * when the review is finished (document-approve-with-note.test.js), so the
+ * finish route no longer writes a grant. This pathway now serves reviews
+ * finished under the old rule: `instruct` finishes a plain review and puts the
+ * grant on the stored row as an old finish left it.
+ *
  * Isolated NEXUS_DB_PATH and temporary project roots. Delivery is a stub, the
  * Cloudflare Access signing keys are a local fixture and every credential is a
  * synthetic test value: nothing here reaches the live database, Praxis,
@@ -26,6 +32,7 @@ const http = require('http');
 const { spawn } = require('child_process');
 const express = require('express');
 const access = require('./helpers/operator-access');
+const { markFinishedUnderOldRule } = require('./helpers/legacy-approval-grant');
 
 const nativeFetch = global.fetch;
 const OPERATOR_KEY = 'operator-test-credential-0123456789abcdef';
@@ -67,6 +74,8 @@ const session = { headers: { 'cf-access-jwt-assertion': access.token() } };
 const device = { headers: { 'cf-access-jwt-assertion': access.serviceToken() } };
 /** The shared local_user every local process carries: no operator proof at all. */
 const unsigned = {};
+/** The authority an old grant stored for each of Robert's proofs. */
+const GRANT_AUTHORITY = new Map([[session, 'access_user'], [device, 'access_device'], [operator, 'operator_credential']]);
 
 function writeDoc(name, content) {
     const file = path.join(projectRoot, 'docs', name);
@@ -98,16 +107,20 @@ function recordAsExecutor(documentId, revisionId, submission, extra = {}, option
 /**
  * Robert's review round: open a review on the current revision (every local
  * process opens reviews as local_user), comment, and finish it with his
- * instruction. By default he finishes from his verified session with the
- * approve-after-changes grant; `grant: false` or other `options` model the
- * other callers. Returns the finished review and its submission.
+ * instruction. By default the round carries the approve-after-changes grant
+ * an old finish from his verified session stored; `grant: false` or other
+ * `options` model the other callers. Returns the finished review and its
+ * submission.
  */
 async function instruct(documentId, { summary = INSTRUCTION, comment = 'move this to the bottom as a reference.', grant = true, options = session } = {}) {
     const review = (await api('POST', `/api/documents/${documentId}/reviews`)).json.review;
     if (comment) await api('POST', `/api/documents/reviews/${review.id}/comments`, { kind: 'document', body: comment });
-    const finished = await api('POST', `/api/documents/reviews/${review.id}/finish`, { summary, ...(grant ? { approve_after_changes: true } : {}) }, options);
+    const finished = await api('POST', `/api/documents/reviews/${review.id}/finish`, { summary }, options);
     expect(finished.status).toBe(202);
-    return { review: finished.json.review, submission: finished.json.submission };
+    if (!grant) return { review: finished.json.review, submission: finished.json.submission };
+    markFinishedUnderOldRule(db.documentReviews, review.id, GRANT_AUTHORITY.get(options));
+    const legacy = await api('GET', `/api/documents/reviews/${review.id}`);
+    return { review: legacy.json.review, submission: finished.json.submission };
 }
 
 /** The producer rewrote the file; re-reading the document captures the resulting revision. */
@@ -221,7 +234,6 @@ test('an executor records Robert\'s "approve with changes" instruction as an app
     const everything = logSpy.mock.calls.map(call => call.join(' ')).join('\n') + JSON.stringify([recorded.json, check.json, after, delivered]);
     expect(everything).not.toContain(OPERATOR_KEY);
     expect(everything).not.toContain(DOCUMENT_KEY);
-    expect(logSpy.mock.calls.map(call => call.join(' ')).filter(line => line.includes('finished with approval delegated'))).toEqual([expect.stringContaining(`review ${review.id} finished with approval delegated (authority=access_user, submission=${submission.id})`)]);
 
     // Retrying is idempotent; the same attempt id for a different recorder or source is refused; the review authorizes one approval only.
     const replay = await recordAsExecutor(document.id, v2.id, submission, { content_hash: v2.content_hash, note: 'Moved the provenance block as instructed.', client_decision_id: 'exec-1' });

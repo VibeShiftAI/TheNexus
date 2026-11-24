@@ -260,8 +260,10 @@ export interface ReviewView {
     submitted_at: string | null;
     /** The operator proof the finish carried (access_user, access_device, operator_credential) or null for an unsigned finish. */
     submitted_authority?: string | null;
-    /** Robert's explicit approve-after-changes grant: the executor applying this review may record his approval of the result. */
+    /** True only on a review finished under the old approve-after-changes rule: revision work already started for it finishes the way it began. */
     approval_delegated?: boolean;
+    /** The approve decision this review recorded when it was finished with the checkbox; its note is the summary and comments. */
+    approval_decision_id?: string | null;
     comments: ReviewComment[];
     pinned_revision: RevisionMeta | null;
     document_changed: boolean;
@@ -850,9 +852,9 @@ export async function deleteComment(reviewId: string, commentId: string): Promis
 }
 
 /**
- * Finish a review. `approveAfterChanges` sends Robert's explicit grant: the
- * executor that applies this review may record his approval of the corrected
- * revision. The server accepts the grant only from his verified session or
+ * Finish a review. `approveAfterChanges` approves the exact revision reviewed,
+ * now, with the summary and comments as the note on that approval; it starts
+ * no revision. The server accepts it only from Robert's verified session or
  * operator credential, so a finish without it never carries the field.
  */
 export async function finishReview(reviewId: string, summary: string, options: { approveAfterChanges?: boolean } = {}): Promise<{ review: ReviewView; submission: SubmissionView }> {
