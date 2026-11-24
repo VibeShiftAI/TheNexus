@@ -199,13 +199,18 @@ test('run nodes draw no task title: a slotted run leads with S<number>, an unslo
 
 test('an executor node is the logo alone: no name or status text, both kept in the aria-label and title, and it still opens the runs', async () => {
   const opened = [];
-  await mounted({now: NOW, onInspect: id => opened.push(id), view: laneView([
+  const lanes = laneView([
     {taskId: 'a', executor: 'claude-code', title: 'One', kind: 'task', startedAt: ago(5_000)},
     {taskId: 'qa--b', executor: 'claude-code', title: 'Two', kind: 'qa', startedAt: ago(4_000)},
-  ])}, async container => {
+  ]);
+  const view = {...lanes, executors: [...lanes.executors, {name: 'openrouter', label: 'OpenRouter', runs: [], slots: 1, free: 1, suspended: false}]};
+  await mounted({now: NOW, onInspect: id => opened.push(id), view}, async container => {
+    assert.ok(container.querySelector('[data-provider="openrouter"]'));
     for (const pod of container.querySelectorAll('[data-provider]')) {
       const button = pod.querySelector('.dispatch-provider-button');
-      assert.equal(button.textContent.trim(), '', `${pod.dataset.provider} shows no text`);
+      // A provider without a vendor logo file draws a glyph as its logo; that glyph is the logo, not a label.
+      const glyph = pod.querySelector('.dispatch-logo-glyph')?.textContent ?? '';
+      assert.equal(button.textContent.replace(glyph, '').trim(), '', `${pod.dataset.provider} shows no text besides its logo`);
       assert.deepEqual([...button.children].map(c => c.className), ['dispatch-logo']);
       assert.equal(pod.querySelector('.dispatch-provider-label')?.textContent ?? null, null);
       assert.equal(pod.querySelector('.dispatch-phase')?.textContent ?? null, null);
