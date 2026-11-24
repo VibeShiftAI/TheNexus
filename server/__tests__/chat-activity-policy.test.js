@@ -166,7 +166,7 @@ test('system notices default to Activity, including new event types and untyped 
 test('one archived follow-up authorizes one playback across independent clients, reload and a restarted producer', async () => {
     const conversation = await db.createConversation('praxis', 'Outcomes');
     const id = 'follow-up:watch:trigger';
-    const speech = 'Keep the archive offline. The details are in chat.';
+    const speech = 'Keep the archive offline.';
     const message = { id, conversation_id: conversation.id, role: 'assistant', content: 'Keep the archive offline. Full report.', mode: 'praxis',
         metadata: { followUpId: 'watch', source: 'praxis:chat-follow-ups', outcomeSpeech: speech } };
     const archived = await db.saveChatMessage(message);

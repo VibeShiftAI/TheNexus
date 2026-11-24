@@ -168,6 +168,8 @@ test('QA pass speech carries the reviewer enhancements without claiming implemen
   assert.equal(facts.title, 'Repair sync');
   assert.deepEqual(facts.enhancements, [{ source: 'reviewer', text: 'Add retry jitter.' }]);
   assert.match(String(facts.enhancementStatus), /suggestions.*not.*implemented/i);
+  // The speech names what QA found; it never signs off by pointing at chat.
+  assert.doesNotMatch(String(facts.enhancementStatus), /\bin chat\b|details are in/i);
 });
 
 test('long enhancements fit the speech endpoint while indicating abridgement', () => {
@@ -335,7 +337,7 @@ test('only the owed success changes eligibility across alert modes', () => {
 });
 
 function report(id: string, time: number) {
-  return { id, speech: 'The archive is ready. The details are in chat.', deliveredAt: new Date(time).toISOString() };
+  return { id, speech: 'The archive is ready.', deliveredAt: new Date(time).toISOString() };
 }
 
 for (const device of ['fresh', 'previously conversational']) test(`${device} cockpit skips six archived reports and speaks the next one once`, async t => {
