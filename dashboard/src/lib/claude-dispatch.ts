@@ -2,9 +2,7 @@ import { Task, getProject } from "./nexus";
 
 /**
  * Build a self-contained dispatch brief for pasting into a Claude Code /
- * claude.ai session. Mirrors the prompt Praxis's claude-code executor sends,
- * including the completion protocol, so a manually-run task flows through the
- * same callback → QA → schedule-advance pipeline as an automated one.
+ * claude.ai session. Copying a brief does not register a Praxis execution.
  *
  * This is the manual fallback for when automated dispatch isn't possible —
  * e.g. the executor subscriptions are usage-limited and Robert wants to run
@@ -35,26 +33,10 @@ export function buildClaudeDispatchBrief(
     lines.push("- Verify your changes with the narrowest reliable build, test, or hand-execution command.");
     lines.push("");
     lines.push("## Completion Protocol (required)");
-    lines.push("When finished, notify Praxis so QA review and the day schedule advance automatically:");
-    lines.push("");
-    lines.push("```bash");
-    lines.push(`curl -X POST http://127.0.0.1:54322/callback \\`);
-    lines.push(`  -H "Content-Type: application/json" \\`);
-    lines.push(
-        `  -d '{"taskId": "${task.id}", "nexusTaskId": "${task.id}", "nexusProjectId": "${projectId}", ` +
-        `"result": "<one-paragraph summary of what you did and how you verified it>", "failed": false}'`,
-    );
-    lines.push("```");
-    lines.push("");
-    lines.push('If you could NOT complete the task, send the same request with `"failed": true` and the blocker in `result`.');
-    lines.push("");
-    lines.push("If Praxis (port 54322) is unreachable, mark the task directly in The Nexus instead:");
-    lines.push("");
-    lines.push("```bash");
-    lines.push(`curl -X PATCH http://localhost:4000/api/tasks/${task.id} \\`);
-    lines.push(`  -H "Content-Type: application/json" \\`);
-    lines.push(`  -d '{"status": "completed", "status_message": "Completed manually via Claude dispatch"}'`);
-    lines.push("```");
+    lines.push(`Return your result and verification evidence for Nexus task ${task.id} in project ${projectId}. Include any failure or partial work.`);
+    lines.push("Copying this brief does not start a tracked execution. For work done in this standalone session, give Robert the summary for review and leave the task status to Praxis.");
+    lines.push("If you are the executor of a registered Praxis dispatch, finish through that dispatch’s completion protocol. Its runner sends the callback.");
+    lines.push("If that callback was lost, tell Praxis the original execution_id and the evidence for that run. Praxis can verify the diff and use antigravity_control with action=complete, task_id, execution_id and result. Report its receipt or refusal reason.");
     return lines.join("\n");
 }
 
