@@ -1,10 +1,11 @@
-# guard logs under /Volumes/Projects/.scratch-fa032fc0, scanned 2026-11-24 14:50:25 EST
+# guard logs under /Volumes/Projects/.scratch-fa032fc0, scanned 2026-11-24 14:57:45 EST
 # columns: lines in the log, lines naming port 1234, path relative to the scratch folder
      6    0  cli-shims-main-two.log
      6    0  cli-shims-merged-failing.log
      0    0  cli-shims-merged-tts-alone.log
     13    0  cli-shims-merged5-full.log
      9    0  cli-shims-merged6.log
+     9    0  cli-shims-merged7.log
      0    0  cli-shims-mutation-q0.log
      0    0  cli-shims-mutation-q1.log
      0    0  cli-shims-mutation-z-restored.log
@@ -12,6 +13,7 @@
      6    0  cli-shims-plain-failing.log
      6    0  cli-shims-plain-hazards.log
      0    0  cli-shims-plain6-failing.log
+     0    0  cli-shims-plain7-failing.log
      3    0  cli-shims-related-r4.log
      6    0  cli-shims-wider-r4b.log
      0    0  cli-shims-wip-nine.log
@@ -22,6 +24,7 @@
      0    0  live-port-guard-merged-tts-alone.log
      3    0  live-port-guard-merged5-full.log
      0    0  live-port-guard-merged6.log
+     0    0  live-port-guard-merged7.log
      0    0  live-port-guard-mutation-q0.log
      0    0  live-port-guard-mutation-q1.log
      0    0  live-port-guard-mutation-z-restored.log
@@ -29,6 +32,7 @@
      3    0  live-port-guard-plain-failing.log
      0    0  live-port-guard-plain-hazards.log
      0    0  live-port-guard-plain6-failing.log
+     0    0  live-port-guard-plain7-failing.log
      0    0  live-port-guard-related-r4.log
      3    0  live-port-guard-selftest.log
      0    0  live-port-guard-wider-r4.log
@@ -49,6 +53,7 @@
      1    0  lmstudio-guard-merged4.log
      2    0  lmstudio-guard-merged5-full.log
      1    0  lmstudio-guard-merged6.log
+     1    0  lmstudio-guard-merged7.log
      0    0  lmstudio-guard-mut.log
      0    0  lmstudio-guard-mutation-q0.log
      0    0  lmstudio-guard-mutation-q1.log
@@ -59,6 +64,7 @@
      0    0  lmstudio-guard-plain.log
      0    0  lmstudio-guard-plain4.log
      0    0  lmstudio-guard-plain6-failing.log
+     0    0  lmstudio-guard-plain7-failing.log
      0    0  lmstudio-guard-r4.log
      0    0  lmstudio-guard-refl.log
      1    0  lmstudio-guard-related-r4.log
@@ -75,9 +81,10 @@
      1    0  net-guard-merged-failing.log
      9    0  net-guard-merged5-full.log
      6    0  net-guard-merged6.log
+     6    0  net-guard-merged7.log
      2    0  net-guard-mine-dummy.log
      1    0  net-guard-plain-failing.log
     11    0  net-guard-plain-hazards.log
      6    0  net-guard-wider-r4.log
      6    0  net-guard-wider-r4b.log
-# 80 guard logs, 0 lines naming port 1234
+# 87 guard logs, 0 lines naming port 1234

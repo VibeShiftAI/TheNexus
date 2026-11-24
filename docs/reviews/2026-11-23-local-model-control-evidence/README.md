@@ -11,8 +11,8 @@ Three repositories changed, each on its own task branch:
 
 | Repository | Baseline | Branch head | Main at the merged checks |
 | --- | --- | --- | --- |
-| TheNexus | `bd02642` | `6e14bc87`, plus the commit that adds this update | `3189bb99` |
-| Praxis | `1fcf4b59` | `cad6afb2` | `24c1abaa`, `4d076f91`, then `613f66b6` |
+| TheNexus | `bd02642` | `6e14bc87`, plus evidence-only commits after it (`f8761e33` and the one that adds this update) | `3189bb99` |
+| Praxis | `1fcf4b59` | `cad6afb2` | `24c1abaa`, `4d076f91`, `613f66b6`, then `fbce5c26` |
 | TheCortex | `5fdb76a` | `e611edc` | `3617672` |
 
 The task's commits, oldest first:
@@ -156,7 +156,7 @@ Every run used guards, kept in `guards/`:
 The guards log to the scratch folder named in each script, deleted at the end of
 the task; the logs cited below are copied here as `.txt`. Before the folder was
 deleted, `guards/guard-logs-scan.py` listed every guard log in it, with its line
-count and any line naming port 1234: 80 logs, no such line
+count and any line naming port 1234: 87 logs, no such line
 (`guards/guard-logs-scan.txt`).
 
 | File | What ran | Result |
@@ -338,13 +338,36 @@ separate hunks):
   `--version` calls (`praxis-tests-merged-613f66b6-*.txt`).
 - That script archived `main` twice, and main fast-forwarded to `3b431d2b` at
   14:31:18 between the two calls. Its plain copy was therefore `3b431d2b`, which
-  adds two files the branch does not touch (`src/telemetry/step-redaction.ts`,
+  changes two files the branch does not touch (`src/telemetry/step-redaction.ts`,
   `tests/run_record_redaction.test.ts`); see
   `praxis-copy-identity-check-output-before-rebuild.txt`.
   `praxis-plain-main-613f66b6-rerun.sh` (output beside it) rebuilt the plain
   copy from `613f66b6` by its full hash and checked it file by file, 0 differ.
   The two git-reading suites fail there the same way, 48/50
   (`praxis-git-reading-tests-plain-main-613f66b6.txt`).
+
+Main `fbce5c26` (moved at 14:36:24, the research-tool fixes). Its seven changed
+files since `613f66b6` (the research worker and the run-record redaction) share
+none with the branch, but two modules meet across the merge: the branch's
+`src/nexus/client.ts` imports `src/telemetry/step-redaction.ts`, which main
+changed, and main's `src/research/deep-research-worker.ts` imports
+`src/llm/manager.ts`, which the branch changed.
+- `praxis-merged-main-fbce5c26.sh` (output beside it) resolves main to its full
+  hash once and archives that, so a later move of main cannot change the copies.
+  Merge-tree clean; the merged copy matches the merge-tree's tree file for file
+  (2231 files, 0 differ, 0 extra); `tsc` exit 0 (`praxis-tsc-main-fbce5c26.txt`).
+- 96 suites: the 92 of the `613f66b6` check plus the four suites that import the
+  research worker or the step redaction and were not already among them
+  (`executor_trace_redaction`, `model_inputs_whole`, `research_worker_outcomes`,
+  `run_record_redaction`). 1179 tests, 1177 pass
+  (`praxis-tests-merged-fbce5c26.txt`). The two failures are the git-reading
+  tests again. They fail the same way on a plain copy of `fbce5c26` (checked
+  file by file: 2227 files, 0 differ), 48/50
+  (`praxis-git-reading-tests-plain-main-fbce5c26.txt`).
+- The guards caught the known calls only: `member_profile_updates`'s POST to
+  port 1, 6 openrouter requests and 6 CLI runs from `chat_turn_steps_legacy`, and
+  3 `--version` calls. The live-port guard refused nothing
+  (`praxis-tests-merged-fbce5c26-*.txt`).
 
 ## Mutations (`mutations/`)
 
@@ -509,7 +532,7 @@ restarted no service. Its only contact with LM Studio was seven listing requests
 In every test run the guards refused LM Studio's port, 1234: the network guard
 and the LM Studio guard in the Praxis and TheNexus runs, the live-port guard as
 well in round 4, and TheCortex's offline guards with every service URL on port
-1. The 80 guard logs in the scratch folder, scanned before it was deleted, show
+1. The 87 guard logs in the scratch folder, scanned before it was deleted, show
 no request to port 1234 (`guards/guard-logs-scan.txt`).
 
 ## Failures that are not this task's
@@ -588,7 +611,7 @@ no request to port 1234 (`guards/guard-logs-scan.txt`).
 
 `final-scans.sh` writes `encoding-and-dash-scans.txt` and
 `praxis-encoding-scan.txt`. At the end of the task:
-- UTF-8 (fatal decoder, BOM, U+FFFD): no problems in 212 TheNexus files (220
+- UTF-8 (fatal decoder, BOM, U+FFFD): no problems in 221 TheNexus files (229
   changed or added against `bd02642`, 8 PNGs skipped), 12 TheCortex files and 17
   Praxis files. Praxis's own `npm run check:encoding` passes on the same 17.
 - Em dashes in added lines: 0 in Praxis, 0 in TheCortex, 0 in the TheNexus code,
