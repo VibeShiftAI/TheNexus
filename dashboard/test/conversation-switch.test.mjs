@@ -420,7 +420,7 @@ const longNote = 'important pasted note '.repeat(8) + 'tail of the note';
 const shortNote = 'short pasted note';
 const alertWith = (view, text) => [...view.host.querySelectorAll('[role="alert"]')].find(el => el.textContent.includes(text));
 
-function heldIngest(t) {
+function heldIngest(t, outcome = () => Response.json({ error: 'Ingest unavailable' }, { status: 503 })) {
     const started = gate();
     const result = gate();
     const bodies = [];
@@ -431,7 +431,7 @@ function heldIngest(t) {
             bodies.push(body);
             started.resolve();
             await result.promise;
-            return Response.json({ error: 'Ingest unavailable' }, { status: 503 });
+            return outcome();
         },
     };
 }
@@ -523,4 +523,117 @@ test('New, send text with files and a voice memo, B opens, POST fails: the notic
         assert.ok(notice.textContent.includes(part), 'the notice names ' + part);
     }
     assert.equal(notice.querySelector('a').getAttribute('href'), '/chat/turns/' + view.posts[0].clientMessageId);
+});
+
+// The provider reloads the chat list once a pick that is still current has settled.
+const settledLists = () => globalThis.fetch.mock.calls.filter(({ arguments: [url, init] }) =>
+    new URL(url, 'http://x').pathname === '/api/chat/conversations' && !init?.method).length;
+// Real chat turns from earlier tests stay tracked for the page's lifetime, so match ingest rows only.
+const turnLookups = () => globalThis.fetch.mock.calls.map(call => String(call.arguments[0])).filter(url => url.includes('/turns/ingest'));
+const ingestRows = (view, text) => view.rows('user').filter(row => row.includes('/ingest ' + text)).length;
+
+async function openingChat(t, view, opening) {
+    if (opening === 'switch') return view.target;
+    const created = await db.getActiveConversation();
+    const title = 'Created ' + t.name;
+    await db.updateConversationTitle(created.id, title);
+    return { ...created, title };
+}
+
+async function assertIngestKept(t, view, field, chosen, note, needsNotice) {
+    const notice = alertWith(view, note);
+    const stored = (await db.getChatMessages(chosen.id)).filter(row => row.role === 'user');
+    t.diagnostic(JSON.stringify({ shown: view.currentId(), active: (await db.getActiveConversation()).id, draft: field.value, rows: view.rows('user'), system: view.rows('system'), notice: notice?.textContent ?? null, stored: stored.length }));
+    assert.equal(view.currentId(), chosen.id);
+    assert.equal((await db.getActiveConversation()).id, chosen.id);
+    assert.equal(view.host.textContent.includes(note), true, 'the full payload is on screen');
+    assert.equal(ingestRows(view, note.slice(0, 60)), 1, 'the sent row is visible exactly once');
+    assert.equal(view.rows('system').some(row => row.includes('Ingestion failed: Ingest unavailable')), true);
+    assert.equal(Boolean(notice), needsNotice);
+    assert.equal(notice?.querySelector('a')?.getAttribute('href') ?? null, null);
+    assert.deepEqual(stored, [], 'a failed ingest is not a stored chat message');
+    assert.deepEqual(turnLookups(), [], 'an ingest row is not followed as a chat turn');
+}
+
+for (const [opening, label] of [['create', 'New'], ['switch', 'Existing chat']]) {
+    for (const [size, note, needsNotice] of [['short', shortNote, false], ['long', longNote, true]]) {
+        test(label + ', send a ' + size + ' /ingest, pick that chat again, ingest fails: the payload stays', async t => {
+            const ingest = heldIngest(t);
+            const view = await fixture(t, opening, 'response', { ingestPost: ingest.ingestPost });
+            const chosen = await openingChat(t, view, opening);
+            const field = submitIngest(view, note);
+            await view.pick(chosen);
+            const before = settledLists();
+            await act(async () => { view.release.resolve(); await ingest.started.promise; });
+            await view.until(() => settledLists() > before && view.currentId() === chosen.id);
+            assert.equal(ingestRows(view, note.slice(0, 60)), 1, 'the row survives the repeat pick while the ingest runs');
+            await act(async () => { ingest.result.resolve(); });
+            await view.until(() => !field.disabled);
+            await assertIngestKept(t, view, field, chosen, note, needsNotice);
+        });
+    }
+}
+
+for (const [size, note, needsNotice] of [['short', shortNote, false], ['long', longNote, true]]) {
+    test('Chat already open, send a ' + size + ' /ingest, pick that chat again, ingest fails: the payload stays', async t => {
+        const ingest = heldIngest(t);
+        const view = await fixture(t, 'switch', 'response', { ingestPost: ingest.ingestPost });
+        const opened = settledLists();
+        await act(async () => { view.release.resolve(); });
+        await view.until(() => view.currentId() === view.target.id && settledLists() > opened);
+        const field = submitIngest(view, note);
+        await act(async () => { await ingest.started.promise; });
+        await view.pick(view.target);
+        const before = settledLists();
+        await view.until(() => settledLists() > before);
+        await act(async () => { ingest.result.resolve(); });
+        await view.until(() => !field.disabled);
+        await assertIngestKept(t, view, field, view.target, note, needsNotice);
+    });
+}
+
+test('an /ingest failing while the repeat pick still loads keeps its payload and error in a notice', async t => {
+    const ingest = heldIngest(t);
+    const snapshotRead = gate();
+    const releaseSnapshot = gate();
+    t.after(releaseSnapshot.resolve);
+    const view = await fixture(t, 'switch', 'response', { ingestPost: ingest.ingestPost });
+    const field = submitIngest(view, shortNote);
+    await view.pick(view.target);
+    const getHistory = db.getChatMessages;
+    t.mock.method(db, 'getChatMessages', async (...args) => {
+        const rows = await getHistory(...args);
+        snapshotRead.resolve();
+        await releaseSnapshot.promise;
+        return rows;
+    }, { times: 1 });
+    await act(async () => { view.release.resolve(); await ingest.started.promise; await snapshotRead.promise; });
+    await act(async () => { ingest.result.resolve(); });
+    await view.until(() => !field.disabled);
+    const before = settledLists();
+    await act(async () => { releaseSnapshot.resolve(); });
+    await view.until(() => settledLists() > before);
+    const notice = alertWith(view, shortNote);
+    t.diagnostic(JSON.stringify({ rows: view.rows('user'), notice: notice?.textContent ?? null }));
+    assert.ok(notice, 'the failure is reported after the snapshot replaces the transcript');
+    assert.match(notice.textContent, /Ingest unavailable/);
+    assert.equal(notice.querySelector('a')?.getAttribute('href') ?? null, null);
+    assert.equal(ingestRows(view, shortNote), 1);
+    assert.deepEqual(turnLookups(), []);
+});
+
+test('a successful /ingest across a repeat pick keeps one row and raises no notice', async t => {
+    const ingest = heldIngest(t, () => Response.json({ success: true, title: 'Saved note', contentLength: 17 }));
+    const view = await fixture(t, 'switch', 'response', { ingestPost: ingest.ingestPost });
+    const field = submitIngest(view, shortNote);
+    await view.pick(view.target);
+    const before = settledLists();
+    await act(async () => { view.release.resolve(); await ingest.started.promise; });
+    await view.until(() => settledLists() > before);
+    await act(async () => { ingest.result.resolve(); });
+    await view.until(() => !field.disabled);
+    assert.equal(ingestRows(view, shortNote), 1);
+    assert.equal(view.rows('system').some(row => row.includes('Ingested: "Saved note"')), true);
+    assert.equal(view.host.querySelectorAll('[role="alert"]').length, 0);
+    assert.deepEqual(turnLookups(), []);
 });

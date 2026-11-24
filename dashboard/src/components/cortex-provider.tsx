@@ -149,6 +149,8 @@ export interface SendConversation {
     history: Message[];
     setMessages: Dispatch<SetStateAction<Message[]>>;
     isVisible: () => boolean;
+    /** True when a chat switch was pending at submit or has started since. */
+    crossedSwitch: () => boolean;
     finish: (reply?: Message) => void;
 }
 
@@ -384,6 +386,7 @@ export function CortexProvider({ children }: { children: ReactNode }) {
                 id, history,
                 setMessages: update => { if (isActive()) setMessages(update); },
                 isVisible: () => !pendingSwitch.current && isActive(),
+                crossedSwitch: () => Boolean(pending) || revision !== navigationRevision.current,
                 finish: reply => {
                     if (reply) turn.rows.push(reply);
                     sending.current.delete(turn);

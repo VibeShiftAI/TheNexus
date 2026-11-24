@@ -172,19 +172,19 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
 
     // A pending switch previews the row immediately. Accept (and clear) the
     // draft only once its conversation opens, so a failed switch is retryable.
-    const sendInConversation = (message: Message, send: (chat: SendConversation, waitedForSwitch: boolean) => void) => {
+    const sendInConversation = (message: Message, send: (chat: SendConversation) => void) => {
         setLoading(true);
         const destination = beginChatSend(message);
         if (destination instanceof Promise) {
             return destination.then(chat => {
-                send(chat, true);
+                send(chat);
                 return true;
             }, () => {
                 setLoading(false);
                 return false;
             });
         }
-        send(destination, false);
+        send(destination);
         return true;
     };
 
@@ -211,10 +211,11 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             const isUrl = /^https?:\/\//i.test(payload);
             const rowPayload = isUrl ? payload : payload.substring(0, 80) + (payload.length > 80 ? '...' : '');
             return sendInConversation({
+                id: `ingest:${createClientMessageId()}`, // Survives a repeat pick; the colon keeps it from being followed as a chat turn.
                 role: 'user',
                 content: `📥 /ingest ${rowPayload}`,
                 timestamp: new Date()
-            }, (chat, waitedForSwitch) => { void runIngest(payload, isUrl, chat, waitedForSwitch && rowPayload !== payload); });
+            }, chat => { void runIngest(payload, isUrl, chat, rowPayload !== payload); });
         }
 
         // Build user message content
@@ -279,7 +280,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 timestamp: new Date()
             }]);
             // The draft is gone by now, so the payload must stay readable somewhere.
-            if (rowCutPayload || !chat.isVisible()) {
+            if (!chat.isVisible() || (rowCutPayload && chat.crossedSwitch())) {
                 setUnconfirmedSends(prev => [...prev, {
                     id: createClientMessageId(),
                     heading: `An /ingest sent before you switched chats failed: ${err.message}`,
