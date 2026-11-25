@@ -245,8 +245,8 @@ function main() {
     }
     if (!fs.existsSync(args.db)) usage(`no database at ${args.db}`);
 
+    // Waits for a busy database as long as the Nexus API's own connection does (db/index.js): better-sqlite3's default.
     const db = new Database(args.db, args.execute ? { fileMustExist: true } : { readonly: true, fileMustExist: true });
-    db.pragma('busy_timeout = 15000');
     if (args.execute) {
         db.pragma('foreign_keys = ON');
         initializeDocumentReviews(db);
