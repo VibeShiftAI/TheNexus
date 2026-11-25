@@ -2114,6 +2114,25 @@ async function getModelRole(role) {
     }
 }
 
+/**
+ * Remove one model-control role row. Returns the row as it was, or null when
+ * no such role exists. A role listed in the fresh-database seed above is put
+ * back by the next boot's INSERT OR IGNORE; deleting is for roles nothing
+ * seeds any more (task 7266e9f3: the retired trading.council row).
+ */
+async function deleteModelRole(role) {
+    if (!db) throw new Error('Database connection required for model roles');
+    try {
+        const existing = deserRow(db.prepare('SELECT * FROM model_roles WHERE role = ?').get(role)) || null;
+        if (!existing) return null;
+        db.prepare('DELETE FROM model_roles WHERE role = ?').run(role);
+        return existing;
+    } catch (err) {
+        console.error('[Database] Error deleting model role:', err.message);
+        throw new Error(`Failed to delete model role: ${err.message}`);
+    }
+}
+
 async function upsertProjectModelAlias(projectId, aliasRecord) {
     if (!db) throw new Error('Database connection required for project model aliases');
     try {
@@ -3639,6 +3658,7 @@ module.exports = {
     upsertModelRole,
     getModelRoles,
     getModelRole,
+    deleteModelRole,
     upsertProjectModelAlias,
     getProjectModelAliases,
     setModelControlSetting,

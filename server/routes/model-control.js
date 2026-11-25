@@ -946,6 +946,19 @@ function createModelControlRouter({ db, syncModelSources, callAI, io, localModel
         }
     });
 
+    // Removes a role row nothing uses any more. Answers with the row as it was,
+    // so the caller can keep it; 404 when there is no such role.
+    router.delete('/roles/:role', async (req, res) => {
+        try {
+            const deleted = await db.deleteModelRole(req.params.role);
+            if (!deleted) return res.status(404).json({ error: 'role_not_found', role: req.params.role });
+            res.json({ deleted });
+        } catch (error) {
+            console.error('[Model Control] Failed to delete role:', error);
+            res.status(500).json({ error: 'Failed to delete model role: ' + error.message });
+        }
+    });
+
     router.put('/local-only', async (req, res) => {
         try {
             res.json(await db.setModelControlSetting('local_only', {
