@@ -1,0 +1,31 @@
+{
+  "format": "nexus-design-package/1",
+  "title": "Model Control: choose the local model from LM Studio's list",
+  "summary": "Recommended: approve. Model Control is now the one place the local model is chosen. A Local model box at the top of Model Aliases lists the chat models downloaded in LM Studio, read from LM Studio's own listing (which loads nothing). Each shows its size on disk, the context length saved in LM Studio's load settings, and whether Praxis has tested handling for it or uses conservative defaults. Choosing one loads nothing and restarts nothing: Praxis, Studio jobs and TheCortex use it from their next local call once no local work is running, and a choice made during a local job waits for it. A model with no saved context cannot be chosen and says what is missing; embedding models are listed under Not offered. Every switch is recorded, and the previous choice comes back in one click. Names ending in '(local)' are the Nexus model rows that roles point at; the list itself uses LM Studio's names. Screenshots are from the running dashboard on an isolated stack: a throwaway Nexus API on an empty database, a fake LM Studio listing with this machine's five models in LM Studio's order, and a stand-in Praxis running one local job. Nothing live was read or changed, and Gemma 4 31B QAT stays the local model until you switch it here.",
+  "screens": [
+    {
+      "id": "desktop-list",
+      "title": "Local model in effect and LM Studio's list (desktop)",
+      "viewport": "1440x900 @2x",
+      "state": "Gemma 4 31B QAT in effect",
+      "file": "desktop-model-in-effect-and-list.png",
+      "notes": "In effect: Gemma 4 31B QAT (local), with its LM Studio key under it. The four downloaded chat models follow in LM Studio's order, each with size on disk, saved context and handling; the three models in Praxis's capability table show 'tested handling'. Qwen3.8 27B has no saved load context, so it cannot be picked, and the red text says what is missing and how to fix it in LM Studio. The embedding model sits under 'Not offered (1)'. The Model Aliases card now spans both rows of the page grid, so Call-site Roles starts right under Global Local Only instead of below the tall card; roles on alias:local_default (agent.consolidate, cortex.entity_extract, cortex.query_expand) resolve to local/google/gemma-4-31b-qat. The shot ends at the bottom of the Model Aliases card; the role list continues below it."
+    },
+    {
+      "id": "phone",
+      "title": "Model Aliases card with the local model list (phone)",
+      "viewport": "390x844 @2x",
+      "state": "Gemma 4 31B QAT in effect",
+      "file": "phone-model-in-effect-and-list.png",
+      "notes": "The Model Aliases card alone; on the phone it comes after Global Local Only and before Call-site Roles, as before. One column, and nothing scrolls sideways (the check measured no page overflow). Each option wraps its facts, and the whole reason under Qwen3.8 27B shows without truncation. 'Not offered (1)' is open and says why the embedding model is left out. The option rows are the tap targets for choosing (67 to 168 px tall); the confirm button is 34 px tall, the page's existing button style, the same as Save Alias."
+    },
+    {
+      "id": "switch-waiting",
+      "title": "Inkling 2 Mini chosen while a local job runs (desktop)",
+      "viewport": "1440x900 @2x",
+      "state": "switch waiting for a local job",
+      "file": "desktop-switch-waiting-behind-local-job.png",
+      "notes": "Inkling 2 Mini was chosen here while the stand-in Praxis was running its 'Nightly transcript summaries' local job. The amber box says the switch is waiting, that running work keeps Gemma 4 31B QAT (local) until it finishes, that nothing is interrupted or loaded, and what it waits for. Inkling carries 'waiting' and Gemma 4 31B QAT stays 'in effect'. The green notice repeats that nothing was loaded. Switch history records it with where and when it was chosen. 'Restore Gemma 4 31B QAT' puts the previous choice back in one action. During this state the fake LM Studio received only listing requests and the stand-in made no apply call; when the job ended the switch took effect without a reload (screenshots of that and of the restore are in the evidence folder beside this package, not in it)."
+    }
+  ]
+}

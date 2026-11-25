@@ -1,0 +1,29 @@
+== TheNexus: main 3189bb99, branch f2644c44, base bd02642
+patch applied: 56 files
+merged server/server.js parses
+server suites named: 23
+Test Suites: 1 failed, 22 passed, 23 total
+Tests:       1 failed, 269 passed, 270 total
+exit 1
+FAIL server/__tests__/local-model-selection.test.js
+FAIL server/__tests__/local-model-selection.test.js
+network guard refusals: 0
+dashboard tsc: exit 0 (0 errors)
+ℹ tests 23 ℹ pass 23 ℹ fail 0 exit 0 
+== Praxis: main 24c1abaa, branch 6f9fb79b, base 1fcf4b59
+patch applied: 16 files
+tsc: exit 0
+related test files on the merged tree: 38; not on main: trading_reflection_local_model trading_reflections
+ℹ tests 509 ℹ pass 507 ℹ fail 2 ℹ cancelled 0 exit 1 
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+guards: lmstudio=1 fake-lms=1 net=0
+== TheCortex: main 3617672, branch 0909b22, base 5fdb76a
+patch applied: 12 files
+22:def local_model_setting_offline(monkeypatch):
+46:cortex_test_guard.install()
+  /Volumes/Projects/TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+292 passed, 1 warning in 1.75s
+exit=0
+== done
+script exit 0

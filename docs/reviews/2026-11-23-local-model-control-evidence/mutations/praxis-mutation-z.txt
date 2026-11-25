@@ -1,0 +1,62 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/quantized_tool_gate.test.ts
+
+Running 1 of 889 suite(s): tests/quantized_tool_gate.test.ts
+
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T19:25:04.752Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-z/tests/quantized_tool_gate.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-24T19:25:04.770Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-z/tests/quantized_tool_gate.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LLM-stream] ❌ local/gemma-q4 create failed: [QuantizedToolGate] blocked local/gemma-q4: nexus_tasks=5/5 (100% >= 30%)
+[2026-11-24T19:25:04.782Z] [WARN] [LLM-stream] ❌ local/gemma-q4 create failed: [QuantizedToolGate] blocked local/gemma-q4: nexus_tasks=5/5 (100% >= 30%)
+[LLM-stream] ✅ Streaming via fallback google/antigravity-default
+[2026-11-24T19:25:04.782Z] [INFO] [LLM-stream] ✅ Streaming via fallback google/antigravity-default
+[QuantizedToolGate] telemetry unavailable (/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/missing-quantized-1795548304782.sqlite): unable to open database file
+[2026-11-24T19:25:04.782Z] [WARN] [QuantizedToolGate] telemetry unavailable (/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/missing-quantized-1795548304782.sqlite): unable to open database file
+[LLM] Pinned call → local/gemma-q4
+[2026-11-24T19:25:04.782Z] [INFO] [LLM] Pinned call → local/gemma-q4
+✔ gates a local quantized candidate when an exposed tool reaches its failure threshold (0.681709ms)
+✔ does not gate non-local candidates or channels below the minimum sample (0.063083ms)
+✔ applies per-tool overrides instead of one aggregate ceiling (0.094375ms)
+✔ unknown-tool hallucinations gate the whole local tool lane (0.03925ms)
+✔ loads bounded policy values and ignores invalid overrides (0.109417ms)
+✔ attributes failures by selected provider/model despite response aliases and provider name collisions (5.922125ms)
+✔ manager-facing enforcement rejects breached local tool calls but permits tool-less work (4.455042ms)
+✔ chatVia refuses a breached local candidate before invoking its provider (4.594ms)
+✖ chat skips a breached local primary and succeeds through the online fallback (6.919125ms)
+✔ chatStream skips a breached local role candidate before stream creation (4.777166ms)
+✔ missing telemetry fails open and still invokes the local provider (4.051333ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 10
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 759.271208
+
+✖ failing tests:
+
+test at tests/quantized_tool_gate.test.ts:45:1340
+✖ chat skips a breached local primary and succeeds through the online fallback (6.919125ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+  +   googleCalls: 0,
+  +   localCalls: 1
+  -   googleCalls: 1,
+  -   localCalls: 0
+    }
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/praxis-mut-z/tests/quantized_tool_gate.test.ts:402:12)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { localCalls: 1, googleCalls: 0 },
+    expected: { localCalls: 0, googleCalls: 1 },
+    operator: 'deepStrictEqual'
+  }
+exit 1

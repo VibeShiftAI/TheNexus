@@ -1,0 +1,17 @@
+# cmp of guards/ against the copies in /Volumes/Projects/.scratch-fa032fc0 that the round-5 to round-7 runs used, 2026-11-24 20:56:57 EST, before the scratch folder was deleted
+same  praxis-files-guarded.sh
+same  lmstudio-guard.mjs
+same  net-guard.mjs
+same  live-port-guard.mjs
+same  fake-lms
+same  cortex-tests.sh
+same  guard-logs-scan.py
+same  cli-shims/afplay
+same  cli-shims/agy
+same  cli-shims/claude
+same  cli-shims/codex
+same  cli-shims/lms
+same  cli-shims/ollama
+same  cli-shims/osascript
+same  cli-shims/say
+# files in /Volumes/Projects/.scratch-fa032fc0/cli-shims: 8; in guards/cli-shims: 8

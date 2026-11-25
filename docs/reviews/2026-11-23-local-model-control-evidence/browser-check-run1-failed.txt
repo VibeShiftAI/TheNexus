@@ -1,0 +1,136 @@
+CHECK_API http://127.0.0.1:61193 (empty temp database; Praxis stand-in http://127.0.0.1:61191; fake LM Studio http://127.0.0.1:61190)
+CHECK_OK   Chrome's host-resolver rules hold for localhost: a port nothing listens on reached the probe server
+CHECK_FAIL desktop: the panel lists LM Studio's chat models with the model in effect :: listing http://127.0.0.1:61190/api/v1/models
+CHECK_OK   desktop: the Not offered list: the control is on screen and takes the click :: hit summary at 1150,401
+CHECK_FAIL desktop: Gemma 4 31B QAT is in effect :: {"label":"Gemma 4 31B QAT (local)","model":"google/gemma-4-31b-qat","lines":[]}
+CHECK_OK   desktop: the @local_default role card resolves to Gemma 4 31B QAT :: @local_defaultGemma 4 31B QAT (local)local
+CHECK_OK   desktop: the four chat models are offered, in LM Studio's order :: Downloaded chat models in LM Studio (4)
+CHECK_OK   desktop: Inkling 2 Mini shows name, size on disk, saved context and handling :: 18.1 GB · context 131,072 (saved) · tested handling
+CHECK_OK   desktop: Qwen3.8 27B shows name, size on disk, saved context and handling :: 16.1 GB · no saved context · conservative defaults
+CHECK_OK   desktop: Gemma 4 31B QAT shows name, size on disk, saved context and handling :: 18.9 GB · context 131,072 (saved) · tested handling
+CHECK_OK   desktop: Gemma 4 31B shows name, size on disk, saved context and handling :: 19.9 GB · context 131,072 (saved) · tested handling
+CHECK_OK   desktop: Qwen3.8 27B (no saved context) cannot be selected and the panel says what is missing :: Cannot be chosen. No saved load context in LM Studio, so the context it would load with is not set. Its maximum is 262,144 tokens, which can need more memory than this machine's 64 GB. Save a context length for it in LM Studio's load settings to make it selectable.
+CHECK_OK   desktop: the embedding model is not offered; it is listed under Not offered with the reason :: [{"summary":"Not offered (1)","open":true,"rows":[["Nomic Embed Text v1.5","Embedding model: it makes embeddings, not chat replies."]]}]
+CHECK_OK   desktop: the model in effect is marked and its button says so
+CHECK_OK   desktop: the page does not scroll sideways :: overflow 0px
+CHECK_SHOT docs/reviews/2026-11-23-local-model-control/desktop-model-in-effect-and-list.png (1256x1006 CSS px at 2x)
+CHECK_OK   desktop: the Qwen3.8 27B row: the control is on screen and takes the click :: hit span at 1150,401
+CHECK_OK   desktop: clicking Qwen3.8 27B picks nothing
+CHECK_OK   API: choosing Qwen3.8 27B is refused (422 no_saved_context) and says what is missing :: Qwen3.8 27B: No saved load context in LM Studio, so the context it would load with is not set. Its maximum is 262,144 tokens, which can need more memory than this machine's 64 GB. Save a context length for it in LM Studio's load settings to make it selectable.
+CHECK_OK   API: choosing the embedding model is refused (422 not_a_chat_model) :: Nomic Embed Text v1.5 is not a chat model (LM Studio lists it as embedding).
+CHECK_OK   API: the refusals changed nothing
+CHECK_FAIL phone: the panel lists the four chat models with the model in effect
+CHECK_OK   phone: the Not offered list: the control is on screen and takes the click :: hit summary at 195,374
+CHECK_OK   phone: the page does not scroll sideways :: overflow 0px at 390px
+CHECK_OK   phone: every option row fits the screen width :: rows 290x67, 290x168, 290x70, 290x67
+CHECK_OK   phone: Inkling 2 Mini shows the same facts :: 18.1 GB · context 131,072 (saved) · tested handling
+CHECK_OK   phone: Qwen3.8 27B shows the same facts :: 16.1 GB · no saved context · conservative defaults
+CHECK_OK   phone: Gemma 4 31B QAT shows the same facts :: 18.9 GB · context 131,072 (saved) · tested handling
+CHECK_OK   phone: Gemma 4 31B shows the same facts :: 19.9 GB · context 131,072 (saved) · tested handling
+CHECK_NOTE phone: tap heights: option rows 67/168/70/67 px, buttons Gemma 4 31B QAT is in ef 34px
+CHECK_SHOT docs/reviews/2026-11-23-local-model-control/phone-model-in-effect-and-list.png (366x1089 CSS px at 2x)
+CHECK_FAIL desktop (job running): the panel is back with Gemma 4 31B QAT in effect
+CHECK_OK   desktop: the page's Socket.IO connection to the throwaway API is open
+CHECK_OK   desktop: the Inkling 2 Mini row: the control is on screen and takes the click :: hit span at 1150,401
+CHECK_OK   desktop: picking Inkling 2 Mini offers 'Use Inkling 2 Mini'
+CHECK_OK   desktop: Use Inkling 2 Mini: the control is on screen and takes the click :: hit button at 1150,401
+CHECK_FAIL desktop: the panel shows the switch waiting for the running local job
+CHECK_OK   desktop: the switch history: the control is on screen and takes the click :: hit summary at 1150,402
+CHECK_FAIL desktop: Gemma 4 31B QAT stays in effect while the job runs :: {"label":"Gemma 4 31B QAT (local)","model":"google/gemma-4-31b-qat","lines":[]}
+CHECK_OK   desktop: the waiting box names the job it waits for :: Nightly transcript summaries (Praxis local job, since Nov 24, 10:22 AM)
+CHECK_OK   desktop: Inkling 2 Mini is marked waiting, Gemma 4 31B QAT in effect
+CHECK_OK   desktop: the panel says nothing was loaded :: Chose Inkling 2 Mini. Nothing was loaded; the switch waits until no local work runs, then the next local call uses it.
+CHECK_FAIL desktop: the switch is recorded with what, when and from which surface :: [["Gemma 4 31B QAT (local) → Inkling 2 Mini (local)","Chosen under Model Control · Nov 24, 10:27 AM · waiting for local work"]]
+CHECK_OK   API: Nexus holds Inkling 2 Mini as the waiting choice, Gemma 4 31B QAT in effect :: {"active":"google/gemma-4-31b-qat","activeLabel":"Gemma 4 31B QAT (local)","selected":"thinkingmachines/inkling-2-mini","selectionId":"4afa6779-dbb6-40b3-acd9-016c961bafea","requestedAt":"2026-11-24T15:27:36.902Z","surface":"model-control","waiting":true}
+CHECK_OK   Praxis stand-in: no apply was asked while its job runs
+CHECK_OK   LM Studio: choosing made no request but listing reads (no load) :: GET /api/v1/models, GET /api/v1/models, GET /api/v1/models, GET /api/v1/models
+CHECK_SHOT docs/reviews/2026-11-23-local-model-control/desktop-switch-waiting-behind-local-job.png (1256x1274 CSS px at 2x)
+CHECK_SHOT docs/reviews/2026-11-23-local-model-control-evidence/phone-switch-waiting.png (366x1373 CSS px at 2x)
+CHECK_FAIL desktop: after the job ends the panel shows Inkling 2 Mini in effect, without a reload
+CHECK_OK   desktop: the panel says when and where it was chosen :: Chosen under Model Control, in effect from Nov 24, 10:28 AM
+CHECK_OK   desktop: the history row turns to in effect :: [["Gemma 4 31B QAT (local) → Inkling 2 Mini (local)","Chosen under Model Control · Nov 24, 10:27 AM · in effect from Nov 24, 10:28 AM"]]
+CHECK_OK   API and Praxis stand-in: Inkling 2 Mini is in effect :: {"active":"thinkingmachines/inkling-2-mini","activeLabel":"Inkling 2 Mini (local)","selected":"thinkingmachines/inkling-2-mini","selectionId":"4afa6779-dbb6-40b3-acd9-016c961bafea","requestedAt":"2026-11-24T15:27:36.902Z","surface":"model-control","waiting":false}
+CHECK_OK   desktop: the previous choice is one button away
+CHECK_SHOT docs/reviews/2026-11-23-local-model-control-evidence/desktop-switch-applied-after-job.png (1256x1135 CSS px at 2x)
+CHECK_OK   desktop: the @local_default role card now resolves to Inkling 2 Mini :: @local_defaultInkling 2 Mini (local)local
+CHECK_FAIL desktop: the panel is back with Inkling 2 Mini in effect
+CHECK_OK   desktop: Restore Gemma 4 31B QAT: the control is on screen and takes the click :: hit button at 1150,402
+CHECK_FAIL desktop: one click restores Gemma 4 31B QAT
+CHECK_OK   desktop: the switch history: the control is on screen and takes the click :: hit summary at 1150,401
+CHECK_FAIL desktop: the restore is recorded as its own switch :: [["Inkling 2 Mini (local) → Gemma 4 31B QAT (local)","Restored under Model Control · Nov 24, 10:30 AM · in effect from Nov 24, 10:30 AM"],["Gemma 4 31B QAT (local) → Inkling 2 Mini (local)","Chosen under Model Control · Nov 24, 10:27 AM · in effect from Nov 24, 10:28 AM"]]
+CHECK_OK   desktop: the panel says the restore loaded nothing :: Gemma 4 31B QAT is now the local model. Nothing was loaded; it loads when a local call next needs it.
+CHECK_OK   API and Praxis stand-in: Gemma 4 31B QAT is in effect again :: {"active":"google/gemma-4-31b-qat","activeLabel":"Gemma 4 31B QAT (local)","selected":"google/gemma-4-31b-qat","selectionId":"de957244-f0ff-4ef7-ae73-fc760ff88e12","requestedAt":"2026-11-24T15:30:40.209Z","surface":"model-control","waiting":false}
+CHECK_SHOT docs/reviews/2026-11-23-local-model-control-evidence/desktop-restored-in-one-action.png (1256x1213 CSS px at 2x)
+CHECK_OK   desktop: the newly downloaded Ministral 4 14B is offered
+CHECK_OK   desktop: Ministral 4 14B shows its size, saved context and conservative defaults, and can be chosen :: 8.8 GB · context 32,768 (saved) · conservative defaults
+CHECK_SHOT docs/reviews/2026-11-23-local-model-control-evidence/desktop-new-download-listed.png (396x1116 CSS px at 2x)
+CHECK_OK   no uncaught page exception during the run
+CHECK_OK   LM Studio: every request in the whole run was a listing read (nothing loaded, unloaded or called) :: 22 GET /api/v1/models
+CHECK_OK   browser: every local response came from the stack's own ports, none from the live :3000 or :4000 :: 454 responses from ports 61192, 61198, 61193
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_NOTE api-network-guard refused fetch POST http://localhost:8100/api/graph/cypher (live local port 8100)
+CHECK_RESULT fail (11): desktop: the panel lists LM Studio's chat models with the model in effect; desktop: Gemma 4 31B QAT is in effect; phone: the panel lists the four chat models with the model in effect; desktop (job running): the panel is back with Gemma 4 31B QAT in effect; desktop: the panel shows the switch waiting for the running local job; desktop: Gemma 4 31B QAT stays in effect while the job runs; desktop: the switch is recorded with what, when and from which surface; desktop: after the job ends the panel shows Inkling 2 Mini in effect, without a reload; desktop: the panel is back with Inkling 2 Mini in effect; desktop: one click restores Gemma 4 31B QAT; desktop: the restore is recorded as its own switch

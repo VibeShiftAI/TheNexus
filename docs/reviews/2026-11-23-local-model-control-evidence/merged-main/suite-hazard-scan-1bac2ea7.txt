@@ -1,0 +1,167 @@
+# 2026-11-24 17:08:57 EST, read-only, over /Volumes/Projects/.scratch-fa032fc0/merged-praxis11
+suites scanned: 180
+
+== 1. lines naming /Volumes/Projects, a home folder or a live port
+-- alert_investigation (6 lines)
+280:  const fence = { taskId: a.diagnosisTaskId!, workspace: '/Volumes/Projects/alert-fixture', workspaceReal: '/Volumes/Projects/alert-fixture', declaredPaths: [], mode:
+290:    bindingRecords: [{ taskId: 'sibling', runId: 'foreign-sibling-run', entry: { decision: 'allow', foreign: ['/Volumes/Projects/foreign/x.ts'] } as any }] },
+300:  ['foreign', '/Volumes/Projects/foreign/landed.ts', false], ['shared both writers', 'src/shared.ts', true]] as const) {
+305:    const fence = { taskId: a.diagnosisTaskId!, workspace: '/Volumes/Projects/alert-fixture', workspaceReal: '/Volumes/Projects/alert-fixture', declaredPaths: [], mod
+328:  deps.audit = async () => auditAlertInvestigationWrites({ taskId: a.diagnosisTaskId!, workspace: '/Volumes/Projects/alert-fixture', workspaceReal: '/Volumes/Projects
+344:  const request = { taskId: a.diagnosisTaskId!, workspace: '/Volumes/Projects/alert-fixture', title: 'diagnosis', description: '',
+-- chat_turn_steps (11 lines)
+59:      `curl -s -H "X-Praxis-Bridge-Token: ${secret}" http://127.0.0.1:54322/agent-tool`,
+60:      `curl -H 'x-praxis-operator-grant: ${secret}' http://127.0.0.1:54322/agent-tool`,
+97:    '/Volumes/Projects/TheNexus/dashboard/src/components/bridge/praxis-core.tsx',
+179:    ['Bash', { command: `curl -s -X POST http://127.0.0.1:54322/agent-tool -H "X-Praxis-Bridge-Token: ${PLANTED_BRIDGE}" -d '{"name":"nexus_tasks","args":{}}'` }, 'Us
+180:    ['Bash', { command: 'curl -s http://127.0.0.1:54322/agent-tools' }, 'List Praxis tools'],
+183:    ['Read', { file_path: '/Volumes/Projects/TheNexus/server/server.js' }, 'Read TheNexus/server/server.js'],
+184:    ['Edit', { file_path: '/Volumes/Projects/Praxis/src/agent.ts' }, 'Edit Praxis/src/agent.ts'],
+189:    ['file_change', { changes: [{ path: '/Volumes/Projects/Praxis/a.ts' }, { path: 'b.ts' }] }, 'Edit 2 files'],
+710:    line(opts, assistant('m2', [{ type: 'tool_use', id: 't2', name: 'Read', input: { file_path: '/Volumes/Projects/TheNexus/README.md' } }]));
+758:      command: `curl -s -X POST -H "X-Praxis-Bridge-Token: ${mintedToken}" -H "X-Praxis-Operator-Grant: ${PLANTED_GRANT}" http://127.0.0.1:54322/agent-tool -d '{"name
+796:      command: `curl -H "X-Praxis-Operator-Grant: ${grant}" http://127.0.0.1:54322/agent-tool`, description: `Restart using ${grant} and ${token}`,
+-- day_schedule_approval (33 lines)
+61:      workspace: "/Volumes/Projects/Praxis",
+67:      workspace: "/Volumes/Projects/Praxis",
+80:      workspace: "/Volumes/Projects/Praxis",
+86:      workspace: "/Volumes/Projects/Praxis",
+104:      workspace: "/Volumes/Projects/Praxis",
+125:      workspace: "/Volumes/Projects/Praxis",
+148:        workspace: "/Volumes/Projects/Praxis",
+156:        workspace: "/Volumes/Projects/Praxis",
+163:        workspace: "/Volumes/Projects/Praxis",
+191:        workspace: "/Volumes/Projects/Praxis",
+240:        workspace: "/Volumes/Projects/Praxis",
+247:        workspace: "/Volumes/Projects/Praxis",
+273:        workspace: "/Volumes/Projects/Praxis",
+280:        workspace: "/Volumes/Projects/Praxis",
+287:        workspace: "/Volumes/Projects/Praxis",
+319:      workspace: "/Volumes/Projects/Praxis",
+325:      workspace: "/Volumes/Projects/Praxis",
+364:      workspace: "/Volumes/Projects/Praxis",
+371:      workspace: "/Volumes/Projects/Praxis",
+401:      workspace: "/Volumes/Projects/Praxis",
+419:      workspace: "/Volumes/Projects/Praxis",
+450:    workspace: "/Volumes/Projects/Praxis",
+456:      workspace: "/Volumes/Projects/Praxis",
+469:      workspace: "/Volumes/Projects/Praxis",
+475:      workspace: "/Volumes/Projects/Praxis",
+496:    workspace: "/Volumes/Projects/Praxis",
+502:      workspace: "/Volumes/Projects/Praxis",
+586:    { nexus_task_id: "slot-1", title: "First slot", workspace: "/Volumes/Projects/Praxis", estimated_minutes: 30 },
+587:    { nexus_task_id: "slot-2", title: "Second slot", workspace: "/Volumes/Projects/Praxis", estimated_minutes: 30 },
+608:    { nexus_task_id: "slot-1", title: "Only slot", workspace: "/Volumes/Projects/Praxis", estimated_minutes: 30 },
+638:    { nexus_task_id: "slot-1", title: "Escalated then repaired", workspace: "/Volumes/Projects/Praxis", estimated_minutes: 30 },
+662:    { nexus_task_id: "slot-1", title: "Still blocked", workspace: "/Volumes/Projects/Praxis", estimated_minutes: 30 },
+922:      workspace: "/Volumes/Projects/Praxis",
+-- delegation_monotonicity (1 lines)
+1892:  const ownExclusion = "/Volumes/Projects/TheCortex";
+-- executor_seam (1 lines)
+27:// first write) — keep this suite off the real ~/.praxis-mind ledger. Set the
+-- groundrules_runner (1 lines)
+8:const root='/Volumes/Projects/Groundrules.club/data/decoder/fixtures';
+-- llm_context_window (1 lines)
+44:  config.localLlmUrl = options.url ?? "http://127.0.0.1:1234/v1";
+-- lmstudio_autoload (6 lines)
+24:  configuredUrl: "http://127.0.0.1:1234/v1",
+122:  assert.ok(!isNoModelLoadedError("connect ECONNREFUSED 127.0.0.1:1234"));
+155:  config.localLlmUrl = 'http://127.0.0.1:1234/v1';
+198: * `~/.lmstudio/bin/lms ls --json` on the Mac Studio at 2026-10-20T06:00Z
+222:  config.localLlmUrl = "http://127.0.0.1:1234/v1";
+809:      throw new Error("connect ECONNREFUSED 127.0.0.1:1234");
+-- local_inference_safety (5 lines)
+13:  await assertLocalInferenceSafe('http://127.0.0.1:1234/v1', {
+20:  await assertLocalInferenceSafe('http://127.0.0.1:1234/v1', {
+31:    await assert.rejects(assertLocalInferenceSafe('http://127.0.0.1:1234/v1', {
+38:  await assertLocalInferenceSafe('http://127.0.0.1:1234/v1', {
+47:    await assert.rejects(assertLocalInferenceSafe('http://127.0.0.1:1234/v1', {
+-- local_model_demand_callers (6 lines)
+99:  config.localLlmUrl = "http://127.0.0.1:1234/v1";
+196:  const extractor = localProfileExtractor({ endpoint: "http://127.0.0.1:1234/v1", model: GEMMA, request: async () => empty() });
+203:    endpoint: "http://127.0.0.1:1234/v1",
+228:    endpoint: "http://127.0.0.1:1234/v1",
+246:    endpoint: "http://127.0.0.1:1234/v1", model: GEMMA, request,
+252:    endpoint: "http://127.0.0.1:1234/v1", model: GEMMA, request,
+-- local_model_selection (2 lines)
+90:        if (!state.reachable) throw new Error("connect ECONNREFUSED 127.0.0.1:4000");
+95:        if (!state.reachable) throw new Error("connect ECONNREFUSED 127.0.0.1:4000");
+-- maintenance_schedule (2 lines)
+6:const base:any={schemaVersion:1,projectId:'project',revision:'r1',mode:'maintenance',workspace:'/Volumes/Projects/app',taskAutonomy:'execute_simple',deployment:{kind:'i
+67: assert.match(await mod.maintenanceDispatchRefusal(f.tasks.a,{workspace:'/Volumes/Projects/other',checkReadiness:false},f.deps),/workspace/i);
+-- member_profile_updates (1 lines)
+95:  const extractor = localProfileExtractor({ endpoint: 'http://127.0.0.1:1234/v1', model: 'fixture', request: async (_url, init) => {
+-- nexus_client_funnel (1 lines)
+53:  "localhost:4000",
+-- qa_blocked_escalation (2 lines)
+75:const WS = "/Volumes/Projects/TheCortex";
+244:  assert.ok(!resolved.includes("/Volumes/Projects/Praxis/data/"), "must not be the production store");
+-- qa_state_persistence (1 lines)
+37:// "was this attempt really dispatched?" check — keep it off ~/.praxis-mind.
+-- skill_candidate_screen_refusal (1 lines)
+82:    "2. Re-point the task: `curl -s -X POST http://127.0.0.1:54322/api/tasks/<task-id>/workspace -H 'Content-Type: application/json'`.");
+-- swarm_local_provider (3 lines)
+12:    localLlmUrl: "http://127.0.0.1:1234/v1",
+26:    localLlmUrl: "http://127.0.0.1:1234/v1",
+47:      localLlmUrl: "http://127.0.0.1:1234/v1",
+-- system_map (6 lines)
+3537:  const cmd = "OPENAI_API_KEY=sk-live-123 /usr/local/bin/node /Volumes/Projects/Praxis/src/index.ts --api-key abc123 --token=xyz "
+3569:  for (const f of [".env", "a/.env.local", "a/.envrc", "a/prod.env", "/Volumes/Projects/.fleet-env", "a/.npmrc", "home/.netrc",
+3588:    "    service: http://localhost:4000",
+3590:    "    service: http://localhost:3000",
+3595:    { hostname: "nexus.example.com", path: "^/socket.io", service: "http://localhost:4000" },
+3596:    { hostname: "nexus.example.com", path: undefined, service: "http://localhost:3000" },
+-- run_worktree_report (3 lines)
+142:      "task-offline": { kind: "unreadable", why: "connect ECONNREFUSED 127.0.0.1:3000" },
+148:        ? { kind: "unreadable", why: "connect ECONNREFUSED 127.0.0.1:3000" }
+155:  assert.equal(row("task-offline").note, "the board could not be read (connect ECONNREFUSED 127.0.0.1:3000), so this worktree is counted as in flight, not as abandone
+-- fleet_preflight (1 lines)
+1195:        reason: "Cortex Gateway is down or not ready — GET http://127.0.0.1:8100/api/status did not answer ok/degraded",
+-- operator_restart_chat_turn (1 lines)
+568:        if (String(input) === "http://127.0.0.1:54322/api/chat") {
+-- slot_numbering (3 lines)
+82:  workspace: "/Volumes/Projects/Praxis",
+123:const task = (id) => ({ nexus_task_id: id, title: "Task " + id, workspace: "/Volumes/Projects/Praxis", estimated_minutes: 30 });
+937:    action: "schedule", task_id: taskId, workspace: "/Volumes/Projects/Praxis", start_time: start,
+-- maintenance_review_regressions (2 lines)
+5:process.env.PRAXIS_DATA_DIR=fs.mkdtempSync('/Volumes/Projects/maintenance-mode-worktrees/review-regressions-');
+12:const policy={schemaVersion:1 as const,projectId:'11111111-1111-4111-8111-111111111111',mode:'maintenance' as const,workspace:'/Volumes/Projects/client',feedback:{proj
+
+== 2. suites in the copy that make a folder under /Volumes (fs.mkdtempSync)
+maintenance_batches
+maintenance_intake
+maintenance_policy
+maintenance_policy_router
+maintenance_reports
+maintenance_review_regressions
+
+== 3. the 27 suites added to the 152, and which have a line in step 1
+added: 27
+  alert_ledger: none
+  approval_dispatch_stages: none
+  automatic_start_auth: none
+  automatic_start_corruption: none
+  chat_follow_up_bridge: none
+  chat_route_reliability: none
+  cli_gate_watchdog: none
+  conversation_history: none
+  council_auth_recovery: none
+  display_chat_route: none
+  document_delivery_chat_failure: none
+  document_revision_chat: none
+  eval_availability: none
+  fleet_degraded_mode: none
+  fleet_preflight: has lines in step 1
+  graph_episode_hold: none
+  graph_health_read_availability: none
+  hosted_credit: none
+  knowledge_council: none
+  lane_credit: none
+  llm_gateway_graph_hold: none
+  long_task_activity: none
+  operator_restart_chat_turn: has lines in step 1
+  run_model_dispatch_state: none
+  service_restore: none
+  slot_numbering: has lines in step 1
+  verified_background_recovery: none
+# done

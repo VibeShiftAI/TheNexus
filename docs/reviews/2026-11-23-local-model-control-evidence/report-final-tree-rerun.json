@@ -1,0 +1,1079 @@
+{
+  "at": "2026-11-24T17:39:24.937Z",
+  "base": "http://localhost:3000",
+  "ports": {
+    "dev": 61286,
+    "api": 61284,
+    "praxisStandIn": 61282,
+    "fakeLmStudio": 61281,
+    "probe": 61283
+  },
+  "steps": {
+    "desktopStart": {
+      "panel": {
+        "active": {
+          "label": "Gemma 4 31B QAT (local)",
+          "model": "google/gemma-4-31b-qat",
+          "lines": []
+        },
+        "waiting": null,
+        "legend": "Downloaded chat models in LM Studio (4)",
+        "options": [
+          {
+            "key": "thinkingmachines/inkling-2-mini",
+            "name": "Inkling 2 Mini",
+            "badges": [],
+            "facts": "18.1 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": false,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 51,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "qwen/qwen3.8-27b",
+            "name": "Qwen3.8 27B",
+            "badges": [],
+            "facts": "16.1 GB · no saved context · conservative defaults",
+            "reason": "Cannot be chosen. No saved load context in LM Studio, so the context it would load with is not set. Its maximum is 262,144 tokens, which can need more memory than this machine's 64 GB. Save a context length for it in LM Studio's load settings to make it selectable.",
+            "checked": false,
+            "disabled": true,
+            "describedBy": "local-model-reason-qwen-qwen3-8-27b",
+            "box": {
+              "width": 320,
+              "height": 152,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "google/gemma-4-31b-qat",
+            "name": "Gemma 4 31B QAT",
+            "badges": [
+              "in effect"
+            ],
+            "facts": "18.9 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": true,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 54,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "google/gemma-4-31b",
+            "name": "Gemma 4 31B",
+            "badges": [],
+            "facts": "19.9 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": false,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 51,
+              "left": 990,
+              "right": 1310
+            }
+          }
+        ],
+        "buttons": [
+          {
+            "text": "Gemma 4 31B QAT is in effect",
+            "disabled": true,
+            "box": {
+              "width": 320,
+              "height": 34,
+              "left": 990,
+              "right": 1310
+            }
+          }
+        ],
+        "notices": [],
+        "alerts": [],
+        "details": [
+          {
+            "summary": "Not offered (1)",
+            "open": true,
+            "rows": [
+              [
+                "Nomic Embed Text v1.5",
+                "Embedding model: it makes embeddings, not chat replies."
+              ]
+            ]
+          }
+        ],
+        "box": {
+          "width": 346,
+          "height": 704,
+          "left": 977,
+          "right": 1323
+        },
+        "pageOverflowX": 0
+      },
+      "localDefaultRole": "@local_defaultGemma 4 31B QAT (local)local",
+      "layout": {
+        "localOnlyHeight": 284,
+        "aliasCardHeight": 2247,
+        "rolesBelowLocalOnly": 32,
+        "aliasTopOffset": 0,
+        "aliasBesideRoles": true
+      },
+      "shot": "docs/reviews/2026-11-23-local-model-control/desktop-model-in-effect-and-list.png"
+    },
+    "refusals": [
+      {
+        "model": "qwen/qwen3.8-27b",
+        "status": 422,
+        "body": {
+          "error": "no_saved_context",
+          "message": "Qwen3.8 27B: No saved load context in LM Studio, so the context it would load with is not set. Its maximum is 262,144 tokens, which can need more memory than this machine's 64 GB. Save a context length for it in LM Studio's load settings to make it selectable.",
+          "model": "qwen/qwen3.8-27b"
+        }
+      },
+      {
+        "model": "text-embedding-nomic-embed-text-v1.5",
+        "status": 422,
+        "body": {
+          "error": "not_a_chat_model",
+          "message": "Nomic Embed Text v1.5 is not a chat model (LM Studio lists it as embedding)."
+        }
+      }
+    ],
+    "phone": {
+      "panel": {
+        "active": {
+          "label": "Gemma 4 31B QAT (local)",
+          "model": "google/gemma-4-31b-qat",
+          "lines": []
+        },
+        "waiting": null,
+        "legend": "Downloaded chat models in LM Studio (4)",
+        "options": [
+          {
+            "key": "thinkingmachines/inkling-2-mini",
+            "name": "Inkling 2 Mini",
+            "badges": [],
+            "facts": "18.1 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": false,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 290,
+              "height": 67,
+              "left": 50,
+              "right": 340
+            }
+          },
+          {
+            "key": "qwen/qwen3.8-27b",
+            "name": "Qwen3.8 27B",
+            "badges": [],
+            "facts": "16.1 GB · no saved context · conservative defaults",
+            "reason": "Cannot be chosen. No saved load context in LM Studio, so the context it would load with is not set. Its maximum is 262,144 tokens, which can need more memory than this machine's 64 GB. Save a context length for it in LM Studio's load settings to make it selectable.",
+            "checked": false,
+            "disabled": true,
+            "describedBy": "local-model-reason-qwen-qwen3-8-27b",
+            "box": {
+              "width": 290,
+              "height": 168,
+              "left": 50,
+              "right": 340
+            }
+          },
+          {
+            "key": "google/gemma-4-31b-qat",
+            "name": "Gemma 4 31B QAT",
+            "badges": [
+              "in effect"
+            ],
+            "facts": "18.9 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": true,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 290,
+              "height": 70,
+              "left": 50,
+              "right": 340
+            }
+          },
+          {
+            "key": "google/gemma-4-31b",
+            "name": "Gemma 4 31B",
+            "badges": [],
+            "facts": "19.9 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": false,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 290,
+              "height": 67,
+              "left": 50,
+              "right": 340
+            }
+          }
+        ],
+        "buttons": [
+          {
+            "text": "Gemma 4 31B QAT is in effect",
+            "disabled": true,
+            "box": {
+              "width": 290,
+              "height": 34,
+              "left": 50,
+              "right": 340
+            }
+          }
+        ],
+        "notices": [],
+        "alerts": [],
+        "details": [
+          {
+            "summary": "Not offered (1)",
+            "open": true,
+            "rows": [
+              [
+                "Nomic Embed Text v1.5",
+                "Embedding model: it makes embeddings, not chat replies."
+              ]
+            ]
+          }
+        ],
+        "box": {
+          "width": 316,
+          "height": 786,
+          "left": 37,
+          "right": 353
+        },
+        "pageOverflowX": 0
+      },
+      "shot": "docs/reviews/2026-11-23-local-model-control/phone-model-in-effect-and-list.png"
+    },
+    "waiting": {
+      "panel": {
+        "active": {
+          "label": "Gemma 4 31B QAT (local)",
+          "model": "google/gemma-4-31b-qat",
+          "lines": []
+        },
+        "waiting": {
+          "role": "status",
+          "heading": "Switch to Inkling 2 Mini (local) is waiting",
+          "text": "Switch to Inkling 2 Mini (local) is waitingChosen Nov 24, 12:39 PM. Running local work keeps Gemma 4 31B QAT (local) until it finishes; nothing is interrupted and nothing is loaded now.Waiting forNightly transcript summaries (Praxis local job, since Nov 24, 12:35 PM)",
+          "work": [
+            "Nightly transcript summaries (Praxis local job, since Nov 24, 12:35 PM)"
+          ]
+        },
+        "legend": "Downloaded chat models in LM Studio (4)",
+        "options": [
+          {
+            "key": "thinkingmachines/inkling-2-mini",
+            "name": "Inkling 2 Mini",
+            "badges": [
+              "waiting"
+            ],
+            "facts": "18.1 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": true,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 54,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "qwen/qwen3.8-27b",
+            "name": "Qwen3.8 27B",
+            "badges": [],
+            "facts": "16.1 GB · no saved context · conservative defaults",
+            "reason": "Cannot be chosen. No saved load context in LM Studio, so the context it would load with is not set. Its maximum is 262,144 tokens, which can need more memory than this machine's 64 GB. Save a context length for it in LM Studio's load settings to make it selectable.",
+            "checked": false,
+            "disabled": true,
+            "describedBy": "local-model-reason-qwen-qwen3-8-27b",
+            "box": {
+              "width": 320,
+              "height": 152,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "google/gemma-4-31b-qat",
+            "name": "Gemma 4 31B QAT",
+            "badges": [
+              "in effect"
+            ],
+            "facts": "18.9 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": false,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 54,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "google/gemma-4-31b",
+            "name": "Gemma 4 31B",
+            "badges": [],
+            "facts": "19.9 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": false,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 51,
+              "left": 990,
+              "right": 1310
+            }
+          }
+        ],
+        "buttons": [
+          {
+            "text": "Inkling 2 Mini is the waiting choice",
+            "disabled": true,
+            "box": {
+              "width": 320,
+              "height": 34,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "text": "Restore Gemma 4 31B QAT",
+            "disabled": false,
+            "box": {
+              "width": 320,
+              "height": 34,
+              "left": 990,
+              "right": 1310
+            }
+          }
+        ],
+        "notices": [
+          "Chose Inkling 2 Mini. Nothing was loaded; the switch waits until no local work runs, then the next local call uses it."
+        ],
+        "alerts": [],
+        "details": [
+          {
+            "summary": "Not offered (1)",
+            "open": false,
+            "rows": [
+              [
+                "Nomic Embed Text v1.5",
+                "Embedding model: it makes embeddings, not chat replies."
+              ]
+            ]
+          },
+          {
+            "summary": "Switch history (1)",
+            "open": true,
+            "rows": [
+              [
+                "Gemma 4 31B QAT (local) → Inkling 2 Mini (local)",
+                "Chosen under Model Control · Nov 24, 12:39 PM · waiting for local work"
+              ]
+            ]
+          }
+        ],
+        "box": {
+          "width": 346,
+          "height": 971,
+          "left": 977,
+          "right": 1323
+        },
+        "pageOverflowX": 0
+      },
+      "nexus": {
+        "active": "google/gemma-4-31b-qat",
+        "activeLabel": "Gemma 4 31B QAT (local)",
+        "selected": "thinkingmachines/inkling-2-mini",
+        "selectionId": "84f8c822-bfe1-4d62-aaf6-e2866583794a",
+        "requestedAt": "2026-11-24T17:39:31.180Z",
+        "surface": "model-control",
+        "waiting": true
+      },
+      "praxis": {
+        "active": "google/gemma-4-31b-qat",
+        "source": "nexus",
+        "since": "2026-11-24T17:39:18.175Z",
+        "pending": {
+          "model": "thinkingmachines/inkling-2-mini",
+          "selectionId": "84f8c822-bfe1-4d62-aaf6-e2866583794a",
+          "requestedAt": "2026-11-24T17:39:31.180Z",
+          "surface": "model-control",
+          "waitingFor": [
+            {
+              "kind": "local_job",
+              "label": "Nightly transcript summaries",
+              "id": "fx-local-job-1",
+              "since": "2026-11-24T17:35:30.666Z"
+            }
+          ],
+          "nexusWaitingFor": [],
+          "applying": false
+        },
+        "lastSync": {
+          "at": "2026-11-24T17:39:31.182Z",
+          "trigger": "Nexus asked",
+          "ok": true
+        },
+        "tested": [
+          "google/gemma-4-31b-qat",
+          "google/gemma-4-31b",
+          "thinkingmachines/inkling-2-mini"
+        ]
+      },
+      "lmStudioRequestsDuringChoice": [
+        {
+          "at": "2026-11-24T17:39:31.179Z",
+          "method": "GET",
+          "path": "/api/v1/models"
+        },
+        {
+          "at": "2026-11-24T17:39:31.182Z",
+          "method": "GET",
+          "path": "/api/v1/models"
+        },
+        {
+          "at": "2026-11-24T17:39:31.238Z",
+          "method": "GET",
+          "path": "/api/v1/models"
+        },
+        {
+          "at": "2026-11-24T17:39:31.266Z",
+          "method": "GET",
+          "path": "/api/v1/models"
+        }
+      ],
+      "shot": "docs/reviews/2026-11-23-local-model-control/desktop-switch-waiting-behind-local-job.png",
+      "phoneShot": "docs/reviews/2026-11-23-local-model-control-evidence/phone-switch-waiting.png"
+    },
+    "applied": {
+      "panel": {
+        "active": {
+          "label": "Inkling 2 Mini (local)",
+          "model": "thinkingmachines/inkling-2-mini",
+          "lines": [
+            "Chosen under Model Control, in effect from Nov 24, 12:39 PM"
+          ]
+        },
+        "waiting": null,
+        "legend": "Downloaded chat models in LM Studio (4)",
+        "options": [
+          {
+            "key": "thinkingmachines/inkling-2-mini",
+            "name": "Inkling 2 Mini",
+            "badges": [
+              "in effect"
+            ],
+            "facts": "18.1 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": true,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 54,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "qwen/qwen3.8-27b",
+            "name": "Qwen3.8 27B",
+            "badges": [],
+            "facts": "16.1 GB · no saved context · conservative defaults",
+            "reason": "Cannot be chosen. No saved load context in LM Studio, so the context it would load with is not set. Its maximum is 262,144 tokens, which can need more memory than this machine's 64 GB. Save a context length for it in LM Studio's load settings to make it selectable.",
+            "checked": false,
+            "disabled": true,
+            "describedBy": "local-model-reason-qwen-qwen3-8-27b",
+            "box": {
+              "width": 320,
+              "height": 152,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "google/gemma-4-31b-qat",
+            "name": "Gemma 4 31B QAT",
+            "badges": [],
+            "facts": "18.9 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": false,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 51,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "google/gemma-4-31b",
+            "name": "Gemma 4 31B",
+            "badges": [],
+            "facts": "19.9 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": false,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 51,
+              "left": 990,
+              "right": 1310
+            }
+          }
+        ],
+        "buttons": [
+          {
+            "text": "Inkling 2 Mini is in effect",
+            "disabled": true,
+            "box": {
+              "width": 320,
+              "height": 34,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "text": "Restore Gemma 4 31B QAT",
+            "disabled": false,
+            "box": {
+              "width": 320,
+              "height": 34,
+              "left": 990,
+              "right": 1310
+            }
+          }
+        ],
+        "notices": [
+          "Chose Inkling 2 Mini. Nothing was loaded; the switch waits until no local work runs, then the next local call uses it."
+        ],
+        "alerts": [],
+        "details": [
+          {
+            "summary": "Not offered (1)",
+            "open": false,
+            "rows": [
+              [
+                "Nomic Embed Text v1.5",
+                "Embedding model: it makes embeddings, not chat replies."
+              ]
+            ]
+          },
+          {
+            "summary": "Switch history (1)",
+            "open": true,
+            "rows": [
+              [
+                "Gemma 4 31B QAT (local) → Inkling 2 Mini (local)",
+                "Chosen under Model Control · Nov 24, 12:39 PM · in effect from Nov 24, 12:39 PM"
+              ]
+            ]
+          }
+        ],
+        "box": {
+          "width": 346,
+          "height": 832,
+          "left": 977,
+          "right": 1323
+        },
+        "pageOverflowX": 0
+      },
+      "nexus": {
+        "active": "thinkingmachines/inkling-2-mini",
+        "activeLabel": "Inkling 2 Mini (local)",
+        "selected": "thinkingmachines/inkling-2-mini",
+        "selectionId": "84f8c822-bfe1-4d62-aaf6-e2866583794a",
+        "requestedAt": "2026-11-24T17:39:31.180Z",
+        "surface": "model-control",
+        "waiting": false
+      },
+      "praxis": {
+        "active": "thinkingmachines/inkling-2-mini",
+        "source": "nexus",
+        "since": "2026-11-24T17:39:32.773Z",
+        "lastSync": {
+          "at": "2026-11-24T17:39:31.182Z",
+          "trigger": "Nexus asked",
+          "ok": true
+        },
+        "tested": [
+          "google/gemma-4-31b-qat",
+          "google/gemma-4-31b",
+          "thinkingmachines/inkling-2-mini"
+        ]
+      },
+      "shot": "docs/reviews/2026-11-23-local-model-control-evidence/desktop-switch-applied-after-job.png",
+      "localDefaultRole": "@local_defaultInkling 2 Mini (local)local"
+    },
+    "restored": {
+      "panel": {
+        "active": {
+          "label": "Gemma 4 31B QAT (local)",
+          "model": "google/gemma-4-31b-qat",
+          "lines": [
+            "Restored under Model Control, in effect from Nov 24, 12:39 PM"
+          ]
+        },
+        "waiting": null,
+        "legend": "Downloaded chat models in LM Studio (4)",
+        "options": [
+          {
+            "key": "thinkingmachines/inkling-2-mini",
+            "name": "Inkling 2 Mini",
+            "badges": [],
+            "facts": "18.1 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": false,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 51,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "qwen/qwen3.8-27b",
+            "name": "Qwen3.8 27B",
+            "badges": [],
+            "facts": "16.1 GB · no saved context · conservative defaults",
+            "reason": "Cannot be chosen. No saved load context in LM Studio, so the context it would load with is not set. Its maximum is 262,144 tokens, which can need more memory than this machine's 64 GB. Save a context length for it in LM Studio's load settings to make it selectable.",
+            "checked": false,
+            "disabled": true,
+            "describedBy": "local-model-reason-qwen-qwen3-8-27b",
+            "box": {
+              "width": 320,
+              "height": 152,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "google/gemma-4-31b-qat",
+            "name": "Gemma 4 31B QAT",
+            "badges": [
+              "in effect"
+            ],
+            "facts": "18.9 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": true,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 54,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "google/gemma-4-31b",
+            "name": "Gemma 4 31B",
+            "badges": [],
+            "facts": "19.9 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": false,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 51,
+              "left": 990,
+              "right": 1310
+            }
+          }
+        ],
+        "buttons": [
+          {
+            "text": "Gemma 4 31B QAT is in effect",
+            "disabled": true,
+            "box": {
+              "width": 320,
+              "height": 34,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "text": "Restore Inkling 2 Mini",
+            "disabled": false,
+            "box": {
+              "width": 320,
+              "height": 34,
+              "left": 990,
+              "right": 1310
+            }
+          }
+        ],
+        "notices": [
+          "Gemma 4 31B QAT is now the local model. Nothing was loaded; it loads when a local call next needs it."
+        ],
+        "alerts": [],
+        "details": [
+          {
+            "summary": "Not offered (1)",
+            "open": false,
+            "rows": [
+              [
+                "Nomic Embed Text v1.5",
+                "Embedding model: it makes embeddings, not chat replies."
+              ]
+            ]
+          },
+          {
+            "summary": "Switch history (2)",
+            "open": true,
+            "rows": [
+              [
+                "Inkling 2 Mini (local) → Gemma 4 31B QAT (local)",
+                "Restored under Model Control · Nov 24, 12:39 PM · in effect from Nov 24, 12:39 PM"
+              ],
+              [
+                "Gemma 4 31B QAT (local) → Inkling 2 Mini (local)",
+                "Chosen under Model Control · Nov 24, 12:39 PM · in effect from Nov 24, 12:39 PM"
+              ]
+            ]
+          }
+        ],
+        "box": {
+          "width": 346,
+          "height": 911,
+          "left": 977,
+          "right": 1323
+        },
+        "pageOverflowX": 0
+      },
+      "nexus": {
+        "active": "google/gemma-4-31b-qat",
+        "activeLabel": "Gemma 4 31B QAT (local)",
+        "selected": "google/gemma-4-31b-qat",
+        "selectionId": "33f74da5-95c2-44e1-b1ff-5a67bcd8c331",
+        "requestedAt": "2026-11-24T17:39:34.058Z",
+        "surface": "model-control",
+        "waiting": false
+      },
+      "praxis": {
+        "active": "google/gemma-4-31b-qat",
+        "source": "nexus",
+        "since": "2026-11-24T17:39:34.062Z",
+        "lastSync": {
+          "at": "2026-11-24T17:39:34.060Z",
+          "trigger": "Nexus asked",
+          "ok": true
+        },
+        "tested": [
+          "google/gemma-4-31b-qat",
+          "google/gemma-4-31b",
+          "thinkingmachines/inkling-2-mini"
+        ]
+      },
+      "shot": "docs/reviews/2026-11-23-local-model-control-evidence/desktop-restored-in-one-action.png"
+    },
+    "newDownload": {
+      "panel": {
+        "active": {
+          "label": "Gemma 4 31B QAT (local)",
+          "model": "google/gemma-4-31b-qat",
+          "lines": [
+            "Restored under Model Control, in effect from Nov 24, 12:39 PM"
+          ]
+        },
+        "waiting": null,
+        "legend": "Downloaded chat models in LM Studio (5)",
+        "options": [
+          {
+            "key": "thinkingmachines/inkling-2-mini",
+            "name": "Inkling 2 Mini",
+            "badges": [],
+            "facts": "18.1 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": false,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 51,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "qwen/qwen3.8-27b",
+            "name": "Qwen3.8 27B",
+            "badges": [],
+            "facts": "16.1 GB · no saved context · conservative defaults",
+            "reason": "Cannot be chosen. No saved load context in LM Studio, so the context it would load with is not set. Its maximum is 262,144 tokens, which can need more memory than this machine's 64 GB. Save a context length for it in LM Studio's load settings to make it selectable.",
+            "checked": false,
+            "disabled": true,
+            "describedBy": "local-model-reason-qwen-qwen3-8-27b",
+            "box": {
+              "width": 320,
+              "height": 152,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "google/gemma-4-31b-qat",
+            "name": "Gemma 4 31B QAT",
+            "badges": [
+              "in effect"
+            ],
+            "facts": "18.9 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": true,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 54,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "google/gemma-4-31b",
+            "name": "Gemma 4 31B",
+            "badges": [],
+            "facts": "19.9 GB · context 131,072 (saved) · tested handling",
+            "reason": null,
+            "checked": false,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 51,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "key": "mistralai/ministral-4-14b",
+            "name": "Ministral 4 14B",
+            "badges": [],
+            "facts": "8.8 GB · context 32,768 (saved) · conservative defaults",
+            "reason": null,
+            "checked": false,
+            "disabled": false,
+            "describedBy": null,
+            "box": {
+              "width": 320,
+              "height": 67,
+              "left": 990,
+              "right": 1310
+            }
+          }
+        ],
+        "buttons": [
+          {
+            "text": "Gemma 4 31B QAT is in effect",
+            "disabled": true,
+            "box": {
+              "width": 320,
+              "height": 34,
+              "left": 990,
+              "right": 1310
+            }
+          },
+          {
+            "text": "Restore Inkling 2 Mini",
+            "disabled": false,
+            "box": {
+              "width": 320,
+              "height": 34,
+              "left": 990,
+              "right": 1310
+            }
+          }
+        ],
+        "notices": [],
+        "alerts": [],
+        "details": [
+          {
+            "summary": "Not offered (1)",
+            "open": false,
+            "rows": [
+              [
+                "Nomic Embed Text v1.5",
+                "Embedding model: it makes embeddings, not chat replies."
+              ]
+            ]
+          },
+          {
+            "summary": "Switch history (2)",
+            "open": false,
+            "rows": [
+              [
+                "Inkling 2 Mini (local) → Gemma 4 31B QAT (local)",
+                "Restored under Model Control · Nov 24, 12:39 PM · in effect from Nov 24, 12:39 PM"
+              ],
+              [
+                "Gemma 4 31B QAT (local) → Inkling 2 Mini (local)",
+                "Chosen under Model Control · Nov 24, 12:39 PM · in effect from Nov 24, 12:39 PM"
+              ]
+            ]
+          }
+        ],
+        "box": {
+          "width": 346,
+          "height": 814,
+          "left": 977,
+          "right": 1323
+        },
+        "pageOverflowX": 0
+      },
+      "shot": "docs/reviews/2026-11-23-local-model-control-evidence/desktop-new-download-listed.png"
+    }
+  },
+  "lmStudioRequests": [
+    {
+      "at": "2026-11-24T17:39:29.043Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:29.092Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:29.723Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:29.724Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:30.186Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:31.089Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:31.179Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:31.182Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:31.238Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:31.266Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:32.778Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:33.882Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:34.058Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:34.062Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:34.063Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:34.071Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    },
+    {
+      "at": "2026-11-24T17:39:34.827Z",
+      "method": "GET",
+      "path": "/api/v1/models"
+    }
+  ],
+  "praxisStandInLog": [
+    "2026-11-24T17:39:18.672Z sync (Nexus asked): Nexus answered 200, active google/gemma-4-31b-qat, selected google/gemma-4-31b-qat",
+    "2026-11-24T17:39:30.666Z local job started: Nightly transcript summaries",
+    "2026-11-24T17:39:31.182Z sync (Nexus asked): Nexus answered 200, active google/gemma-4-31b-qat, selected thinkingmachines/inkling-2-mini",
+    "2026-11-24T17:39:31.182Z the switch to thinkingmachines/inkling-2-mini waits for Nightly transcript summaries; no apply",
+    "2026-11-24T17:39:32.767Z local job ended: Nightly transcript summaries",
+    "2026-11-24T17:39:32.773Z POST /api/model-control/local-model/apply thinkingmachines/inkling-2-mini -> 200",
+    "2026-11-24T17:39:34.060Z sync (Nexus asked): Nexus answered 200, active thinkingmachines/inkling-2-mini, selected google/gemma-4-31b-qat",
+    "2026-11-24T17:39:34.062Z POST /api/model-control/local-model/apply google/gemma-4-31b-qat -> 200"
+  ],
+  "apiNetworkGuardRefusals": [
+    {
+      "at": "2026-11-24T17:39:29.065Z",
+      "kind": "fetch POST",
+      "target": "http://localhost:8100/api/graph/cypher",
+      "why": "live local port 8100",
+      "stack": "at readTopicAccess (/Volumes/Projects/.scratch-fa032fc0/browser-final/server/services/topic-access.js:23:26) | at /Volumes/Projects/.scratch-fa032fc0/browser-final/server/routes/knowledge-activity.js:40:51"
+    },
+    {
+      "at": "2026-11-24T17:39:34.839Z",
+      "kind": "fetch POST",
+      "target": "http://localhost:8100/api/graph/cypher",
+      "why": "live local port 8100",
+      "stack": "at readTopicAccess (/Volumes/Projects/.scratch-fa032fc0/browser-final/server/services/topic-access.js:23:26) | at /Volumes/Projects/.scratch-fa032fc0/browser-final/server/routes/knowledge-activity.js:40:51"
+    }
+  ],
+  "browserResponsePorts": {
+    "61283": 2,
+    "61284": 35,
+    "61286": 193
+  },
+  "exceptions": [],
+  "apiLocalModelLog": [
+    "[LocalModel] Inkling 2 Mini (local) is now the local model (was Gemma 4 31B QAT (local)); nothing was loaded.",
+    "[LocalModel] Gemma 4 31B QAT (local) is now the local model (was Inkling 2 Mini (local)); nothing was loaded."
+  ],
+  "failures": []
+}

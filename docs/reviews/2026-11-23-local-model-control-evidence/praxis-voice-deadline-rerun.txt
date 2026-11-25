@@ -1,0 +1,33 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/voice_prose_deadline.test.ts
+
+Running 1 of 888 suite(s): tests/voice_prose_deadline.test.ts
+
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T15:58:28.787Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+✔ opt-in voice deadline aborts the HTTP request and makes no SDK retry (98.518958ms)
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:8100/api/status — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Identity] Canonical identity UNAVAILABLE (error) — Praxis has no persona to load and will not substitute one. Cause: Cortex gateway at http://127.0.0.1:8100 failed its health check
+[2026-11-24T15:58:28.893Z] [ERROR] [Identity] Canonical identity UNAVAILABLE (error) — Praxis has no persona to load and will not substitute one. Cause: Cortex gateway at http://127.0.0.1:8100 failed its health check
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/voice_prose_deadline.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-24T15:58:28.893Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/voice_prose_deadline.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LLM] Pinned call → local/gemini-3.1-pro-preview
+[2026-11-24T15:58:28.894Z] [INFO] [LLM] Pinned call → local/gemini-3.1-pro-preview
+✔ voice pin carries HTTP cancellation and releases its permit after failure, with no fallback (6.388959ms)
+[LLM] Pinned call → local/local-test
+[2026-11-24T15:58:28.901Z] [INFO] [LLM] Pinned call → local/local-test
+✔ late completion never becomes speech even if a provider ignores cancellation (5.679542ms)
+✔ ordinary pinned callers retain their existing reasoning and in-flight deadline defaults (0.764625ms)
+[LLM] Pinned call → local/gemini-3.1-pro-preview
+[2026-11-24T15:58:28.904Z] [INFO] [LLM] Pinned call → local/gemini-3.1-pro-preview
+✔ voice deadline covers a headers-first stalled JSON body and releases its manager permit (147.201708ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 889.98775
+exit 0

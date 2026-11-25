@@ -1,0 +1,24 @@
+== Praxis: main pinned at fbce5c261b22f26306ea22c1633788f844757115, branch cad6afb21630194fb87e7794eafe04b136b6fa1d, base 1fcf4b59
+main now: fbce5c26
+merge-base: 1fcf4b59
+merge-tree exit 0 (0 = merges without conflict); tree 443821387207af8de1b4e73c170ef6db24847a0f
+files both sides change since the base: src/config.ts src/index.ts src/llm/lmstudio-autoload.ts src/local-llm/worker.ts src/nexus/client.ts src/routes/ops.ts 
+files main changed since 613f66b6: docs/architecture/deep_research_loop.md src/research/deep-research-worker.ts src/research/scratch-pad.ts src/research/types.ts src/telemetry/step-redaction.ts tests/research_worker_outcomes.test.ts tests/run_record_redaction.test.ts 
+patch applied: 17 files
+merged-praxis7 against the merge-tree's tree: 2231 tracked files compared, 0 differ, 0 extra files in the copy
+tsc on the merged tree: exit 0 (0 errors)
+suites importing the research worker or the step redaction: cortex_long_answers executor_trace_redaction model_inputs_whole research_worker_outcomes run_record_redaction 
+suites on the merged tree: 96 (not on main: trading_reflection_local_model trading_reflections)
+ℹ tests 1179 ℹ pass 1177 ℹ fail 2 ℹ cancelled 0 exit 1 
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+guards: lmstudio=1 net=6 live-port=0 cli-shims=9
+suites with failures on the merged tree: code_freshness_recovery webhook_routes_inventory 
+plain-praxis-main7 against fbce5c261b22f26306ea22c1633788f844757115: 2227 tracked files compared, 0 differ, 0 extra files in the copy
+== the same suites on plain main fbce5c261b22f26306ea22c1633788f844757115
+ℹ tests 50 ℹ pass 48 ℹ fail 2 ℹ cancelled 0 exit 1 
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== done
+exit 0

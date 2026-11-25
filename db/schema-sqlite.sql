@@ -411,6 +411,26 @@ CREATE TABLE IF NOT EXISTS model_control_settings (
     updated_at TEXT DEFAULT (datetime('now'))
 );
 
+-- Every choice of local model made under Model Control: what it replaced,
+-- from which surface, and whether and when it took effect (status waiting,
+-- applied or replaced). server/services/local-model-selection.js.
+CREATE TABLE IF NOT EXISTS local_model_switches (
+    id TEXT PRIMARY KEY,
+    selection_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    from_model TEXT,
+    from_label TEXT,
+    to_model TEXT NOT NULL,
+    to_label TEXT,
+    surface TEXT NOT NULL,
+    requested_at TEXT NOT NULL,
+    status TEXT NOT NULL,
+    applied_at TEXT,
+    replaced_at TEXT,
+    details TEXT DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_local_model_switches_requested ON local_model_switches(requested_at);
+
 CREATE TABLE IF NOT EXISTS project_model_control_settings (
     project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     key TEXT NOT NULL,

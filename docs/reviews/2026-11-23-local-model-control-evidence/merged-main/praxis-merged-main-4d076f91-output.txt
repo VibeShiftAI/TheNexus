@@ -1,0 +1,69 @@
+Praxis branch 6f9fb79b merged with Praxis main 4d076f91 (task fa032fc0), 2026-11-24 13:15 EST
+
+Commits on main since the first merged check (24c1abaa):
+4d076f91 Merge praxis/run/8a6556f7-1cef-42fa-9d4c-0fe1755f031e into main: Give the research tool real web research, and make it say so when it finds nothing
+3e4da6bf Give the research tool real web research, and make it say so when it finds nothing
+53a100bd Retain isolated live research reports, page provenance and verification
+e92b0bf2 Search the publishing authority with the planner's explicit query
+9d3b48b7 Score routed evidence, record failures and finish empty jobs before synthesis
+03ab758f Read and attribute public pages through the metered discovery clients
+0bb2dd13 Classify research sources and accept only finished CLI replies
+
+Files both main (since 24c1abaa) and the branch (since 1fcf4b59) changed:
+src/nexus/client.ts
+
+git merge-tree 1fcf4b59 4d076f91 6f9fb79b (read-only, three-way): conflict markers = 0
+patch applied to git archive 4d076f91: 16 files
+tsc --noEmit: exit 0, 0 errors
+
+Test files run (the 40 of the branch runs plus nexus_client_funnel, which pins src/nexus/client.ts; main deleted the two trading files):
+  tests/cli_concurrency_local_lane.test.ts
+  tests/local_lane_manager_reroute.test.ts
+  tests/local_lane_policy.test.ts
+  tests/lmstudio_autoload.test.ts
+  tests/local_model_capabilities.test.ts
+  tests/member_profile_updates.test.ts
+  tests/swarm_local_provider.test.ts
+  tests/local_llm_worker.test.ts
+  tests/local_llm_spillover.test.ts
+  tests/critic_deadline_routes.test.ts
+  tests/groundrules_runner.test.ts
+  tests/llm_output_room.test.ts
+  tests/local_inference_safety.test.ts
+  tests/session_synthesis_worker.test.ts
+  tests/voice_prose_deadline.test.ts
+  tests/autonomy_api_routes.test.ts
+  tests/code_freshness_recovery.test.ts
+  tests/nexus_runtime_traffic.test.ts
+  tests/skill_amendment_review.test.ts
+  tests/skill_candidate_screen_refusal.test.ts
+  tests/token_report.test.ts
+  tests/webhook_routes_inventory.test.ts
+  tests/arbitrary_limits_runtime.test.ts
+  tests/trading_reflection_local_model.test.ts (not on main)
+  tests/trading_reflections.test.ts (not on main)
+  tests/local_model_demand_callers.test.ts
+  tests/classifier_inputs_whole.test.ts
+  tests/context_pruning_ceiling.test.ts
+  tests/llm_gateway_output_budget.test.ts
+  tests/per_pass_window_fit.test.ts
+  tests/eval_model_policy.test.ts
+  tests/ingestion_retrieval_details.test.ts
+  tests/llm_context_window.test.ts
+  tests/spoken_prose.test.ts
+  tests/local_model_selection.test.ts
+  tests/local_model_primary.test.ts
+  tests/llm_cli_lane_complete.test.ts
+  tests/knowledge_arbitrary_limits.test.ts
+  tests/standing_fact_sweep.test.ts
+  tests/state_doc.test.ts
+  tests/nexus_client_funnel.test.ts
+
+Result: ℹ tests 511 ℹ pass 509 ℹ fail 2 ℹ cancelled 0 exit 1 
+Failing tests:
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+
+Guards: lmstudio-guard refused 1; fake-lms refused 1; network guard refused 0
+  POST http://127.0.0.1:1/v1/chat/completions :: /Volumes/Projects/.scratch-fa032fc0/merged-praxis4/tests/member_profile_updates.test.ts ::     at glo
+  lms ls --json :: 

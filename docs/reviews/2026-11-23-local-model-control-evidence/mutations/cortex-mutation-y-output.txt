@@ -1,0 +1,18 @@
+mutation Y applied: the read-order guard is gone
+--- /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/TheCortex/TheCortex/python/cortex/local_model.py	2026-11-24 13:21:46
++++ /Volumes/Projects/.scratch-fa032fc0/cortex-mutation-y/TheCortex/python/cortex/local_model.py	2026-11-24 13:26:27
+@@ -108,8 +108,7 @@
+         if model:
+             # The call sends what its own read returned; only the newest
+             # answer is kept for the calls an outage leaves without one.
+-            if read > _last_answer_read:
+-                _last_answer, _last_answer_read = model, read
++            _last_answer, _last_answer_read = model, read
+             if purpose in _fallback_reported:
+                 _fallback_reported.discard(purpose)
+                 logger.info(
+tests/test_local_model_setting.py::test_an_older_read_that_answers_last_does_not_replace_a_newer_answer FAILED [ 34%]
+FAILED tests/test_local_model_setting.py::test_an_older_read_that_answers_last_does_not_replace_a_newer_answer
+=================== 1 failed, 22 passed, 1 warning in 0.11s ====================
+exit=1
+77:E       AssertionError: assert 'google/gemma-4-31b-qat' == 'thinkingmach...nkling-2-mini'

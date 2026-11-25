@@ -1,0 +1,394 @@
+# Criterion 2 sites, 2026-11-24 20:40:09 EST
+# Praxis 1fcf4b59 -> 196a5375, TheNexus bd026428 -> 6e14bc87, TheCortex 5fdb76a -> 892708c8
+
+## Praxis
+
+### P1 the one source: config.localLlmModel
+  1fcf4b59 src/config.ts:323:  localLlmModel: process.env.LOCAL_LLM_MODEL || process.env.LLM_PRIMARY_MODEL || "default",
+  196a5375 src/config.ts:4:import { runtimeLocalModel, setRuntimeLocalModel } from "./llm/local-model-state.js";
+  196a5375 src/config.ts:299:export const localLlmModelFromEnv: string =
+  196a5375 src/config.ts:300:  process.env.LOCAL_LLM_MODEL || process.env.LLM_PRIMARY_MODEL || "default";
+  196a5375 src/config.ts:336:  get localLlmModel(): string {
+  196a5375 src/config.ts:337:    return runtimeLocalModel() ?? localLlmModelFromEnv;
+  196a5375 src/config.ts:339:  set localLlmModel(model: string) {
+  196a5375 src/config.ts:340:    setRuntimeLocalModel(model);
+  196a5375 src/llm/local-model-selection.ts:262:  setRuntimeLocalModel(model);
+  196a5375 src/llm/local-model-selection.ts:450:export function initLocalModelSelection(): Promise<LocalModelSelectionSnapshot> {
+  196a5375 src/llm/local-model-selection.ts:543:  setRuntimeLocalModel(undefined);
+
+### P2 readers of config.localLlmModel outside the manager (each reads the getter at the call; the README names the lines that moved)
+  1fcf4b59 src/council/member-profile-updates.ts:206:          extract = localProfileExtractor({ endpoint: config.localLlmUrl, model: config.localLlmModel });
+  1fcf4b59 src/evals/inference-policy.ts:53:    model: (env.PRAXIS_EVAL_LOCAL_MODEL ?? "").trim() || config.localLlmModel,
+  1fcf4b59 src/evals/inference-policy.ts:132:  capabilities: LocalModelCapabilities = localModelCapabilities(route.model, config.localLlmModel),
+  1fcf4b59 src/groundrules/runner.ts:106: const lane:Lane=selectedLane ?? {id:'local-'+purpose,role:'extraction',model:config.localLlmModel,provider:'local'};
+  1fcf4b59 src/ingestion/salience-triage.ts:250:    config.localLlmModel,
+  1fcf4b59 src/llm/context-window.ts:216:  const model = config.localLlmModel !== "default" ? config.localLlmModel : requested;
+  1fcf4b59 src/llm/credit-exhaustion-preflight.ts:147:      `(job ${localJob.id}, local model ${config.localLlmModel})`,
+  1fcf4b59 src/llm/credit-failover.ts:48: *                                   Default: config.localLlmModel (the LM
+  1fcf4b59 src/llm/credit-failover.ts:75: * The local route a credit-failed step lands on. `config.localLlmModel` is the
+  1fcf4b59 src/llm/credit-failover.ts:83:    model: (env.PRAXIS_CREDIT_FALLBACK_MODEL ?? "").trim() || config.localLlmModel,
+  1fcf4b59 src/llm/lmstudio-autoload.ts:621:  return config.localLlmModel === "default" ? undefined : config.localLlmModel;
+  1fcf4b59 src/llm/lmstudio-autoload.ts:1034: * (config.localLlmModel) if the slot is empty. Resolves true when a model is
+  1fcf4b59 src/maintenance/fleet-preflight.ts:1416:  const expected = config.localLlmModel;
+  1fcf4b59 src/orchestrator/qa-lessons.ts:1838:      : { provider: "local", model: config.localLlmModel },
+  1fcf4b59 src/orchestrator/qa-lessons.ts:1972:    return config.localLlmModel || "local";
+  1fcf4b59 src/voice/spoken-prose.ts:114:      return chatVia("local", config.localLlmModel, {
+  at 196a5375:
+  196a5375 src/council/member-profile-updates.ts:215:          extract = localProfileExtractor({ endpoint: config.localLlmUrl, model: () => config.localLlmModel });
+  196a5375 src/evals/inference-policy.ts:53:    model: (env.PRAXIS_EVAL_LOCAL_MODEL ?? "").trim() || config.localLlmModel,
+  196a5375 src/evals/inference-policy.ts:132:  capabilities: LocalModelCapabilities = localModelCapabilities(route.model, config.localLlmModel),
+  196a5375 src/groundrules/runner.ts:106: const lane:Lane=selectedLane ?? {id:'local-'+purpose,role:'extraction',model:config.localLlmModel,provider:'local'};
+  196a5375 src/ingestion/salience-triage.ts:250:    config.localLlmModel,
+  196a5375 src/llm/context-window.ts:216:  const model = config.localLlmModel !== "default" ? config.localLlmModel : requested;
+  196a5375 src/llm/credit-exhaustion-preflight.ts:147:      `(job ${localJob.id}, local model ${config.localLlmModel})`,
+  196a5375 src/llm/credit-failover.ts:48: *                                   Default: config.localLlmModel (the LM
+  196a5375 src/llm/credit-failover.ts:75: * The local route a credit-failed step lands on. `config.localLlmModel` is the
+  196a5375 src/llm/credit-failover.ts:83:    model: (env.PRAXIS_CREDIT_FALLBACK_MODEL ?? "").trim() || config.localLlmModel,
+  196a5375 src/llm/lmstudio-autoload.ts:678:  return config.localLlmModel === "default" ? undefined : config.localLlmModel;
+  196a5375 src/llm/lmstudio-autoload.ts:1092: * (config.localLlmModel) if the slot is empty. Resolves true when a model is
+  196a5375 src/maintenance/fleet-preflight.ts:1416:  const expected = config.localLlmModel;
+  196a5375 src/orchestrator/qa-lessons.ts:1838:      : { provider: "local", model: config.localLlmModel },
+  196a5375 src/orchestrator/qa-lessons.ts:1972:    return config.localLlmModel || "local";
+  196a5375 src/voice/spoken-prose.ts:121:      return chatVia("local", config.localLlmModel, {
+
+### P3 the LLM manager: the local provider, the local lanes and the local fallback
+  1fcf4b59 src/llm/manager.ts:294:        config.localLlmModel,
+  1fcf4b59 src/llm/manager.ts:764:    return this.chatVia("local", config.localLlmModel, params, options);
+  1fcf4b59 src/llm/manager.ts:809:    if (role === LlmRole.MemorySynthesize) return { provider: "local", model: config.localLlmModel };
+  1fcf4b59 src/llm/manager.ts:915:      return this.chatVia("local", config.localLlmModel, params, { ...options, caller: options.role });
+  1fcf4b59 src/llm/manager.ts:1097:    const localFallback = { provider: "local", model: config.localLlmModel };
+  1fcf4b59 src/llm/manager.ts:1168:      provider === "local" ? localModelCapabilities(model, config.localLlmModel) : undefined,
+  1fcf4b59 src/llm/manager.ts:1323:              { ...params, model: config.localLlmModel } as OpenAI.ChatCompletionCreateParamsNonStreaming,
+  1fcf4b59 src/llm/manager.ts:1324:              { cacheNamespaceSeed: this.cacheNamespaceSeed("local", config.localLlmModel), deadlineAt: options?.deadlineAt, timeoutMs: options?.timeoutMs, requireNo
+  1fcf4b59 src/llm/manager.ts:1338:          model = config.localLlmModel;
+  at 196a5375:
+  196a5375 src/llm/manager.ts:87:   * local model in effect in Praxis at each call (config.localLlmModel), not
+  196a5375 src/llm/manager.ts:338:        () => config.localLlmModel,
+  196a5375 src/llm/manager.ts:381:   * local model chosen under Model Control (config.localLlmModel, which
+  196a5375 src/llm/manager.ts:387:    return this.activeProvider === "local" ? config.localLlmModel : this.activeModel;
+  196a5375 src/llm/manager.ts:774:      this.activeProvider === "local" && named !== config.localLlmModel
+  196a5375 src/llm/manager.ts:775:        ? `; local calls run ${config.localLlmModel}, the local model chosen under Model Control, not ${named}`
+  196a5375 src/llm/manager.ts:855:    return this.chatVia("local", config.localLlmModel, params, options);
+  196a5375 src/llm/manager.ts:900:    if (role === LlmRole.MemorySynthesize) return { provider: "local", model: config.localLlmModel };
+  196a5375 src/llm/manager.ts:1006:      return this.chatVia("local", config.localLlmModel, params, { ...options, caller: options.role });
+  196a5375 src/llm/manager.ts:1199:        : { ...target, ...(target.followsLocalModel ? { model: config.localLlmModel } : {}), localModelSwitches: localModelSwitchCount() };
+  196a5375 src/llm/manager.ts:1205:    const localFallback = (): RoleTarget => current({ provider: "local", model: config.localLlmModel });
+  196a5375 src/llm/manager.ts:1278:      provider === "local" ? localModelCapabilities(model, config.localLlmModel) : undefined,
+  196a5375 src/llm/manager.ts:1468:          const localModel = config.localLlmModel;
+  196a5375 src/llm/manager.ts:1742:        const model = followsLocalModel ? config.localLlmModel : listedModel;
+
+### P4 an explicit local primary (LLM_PRIMARY_PROVIDER=local) ran LLM_PRIMARY_MODEL
+  1fcf4b59 src/llm/manager.ts:308:      this.activeModel = config.llmPrimaryModel;
+  196a5375 src/llm/manager.ts:353:      this.activeModel = config.llmPrimaryModel;
+  196a5375 src/llm/manager.ts:386:  private primaryModel(): string {
+
+### P5 switchModel("local/<name>") set the model local calls ran
+  1fcf4b59 src/llm/manager.ts:693:        this.activeModel = modelName;
+  196a5375 src/llm/manager.ts:775:        ? `; local calls run ${config.localLlmModel}, the local model chosen under Model Control, not ${named}`
+  196a5375 src/llm/manager.ts:784:        this.activeModel = modelName;
+
+### P6 a role that resolves through local_default ran the alias target's fixed name
+  1fcf4b59 src/llm/manager.ts:1139:          const target: RoleTarget = { provider, model, minMaxTokens };
+  196a5375 src/llm/manager.ts:90:  followsLocalModel?: boolean;
+  196a5375 src/llm/manager.ts:1199:        : { ...target, ...(target.followsLocalModel ? { model: config.localLlmModel } : {}), localModelSwitches: localModelSwitchCount() };
+  196a5375 src/llm/manager.ts:1222:          followsLocalModel?: boolean;
+  196a5375 src/llm/manager.ts:1248:          const followsLocalModel = provider === "local" && r.followsLocalModel === true;
+  196a5375 src/llm/manager.ts:1249:          const target: RoleTarget = { provider, model, minMaxTokens, ...(followsLocalModel ? { followsLocalModel } : {}) };
+  196a5375 src/llm/manager.ts:1656:      // `followsLocalModel` marks the local primary, which runs the local model
+  196a5375 src/llm/manager.ts:1659:      type StreamCandidate = { provider: string; model: string; followsLocalModel?: boolean; localModelSwitches?: number };
+  196a5375 src/llm/manager.ts:1686:        list.push({ provider: this.activeProvider, model: this.currentModel, ...(this.activeProvider === "local" ? { followsLocalModel: true } : {}) });
+  196a5375 src/llm/manager.ts:1733:        const { provider: pname, model: listedModel, followsLocalModel, localModelSwitches: resolvedSwitches } = candidates[i];
+  196a5375 src/llm/manager.ts:1742:        const model = followsLocalModel ? config.localLlmModel : listedModel;
+  196a5375 src/llm/manager.ts:1744:          pname !== "local" ? {} : { localModelSwitches: followsLocalModel || resolvedSwitches === undefined ? localModelSwitchCount() : resolvedSwitches };
+
+### P7 the swarm and council local client (unchanged; built from config per run)
+  1fcf4b59 src/swarm/engine.ts:80:  return buildProviderClientsFromConfig(config, siblingModels);
+  1fcf4b59 src/swarm/engine.ts:148:    const configuredModel = cfg.localLlmModel ?? cfg.llmPrimaryModel;
+  196a5375 src/council/moa.ts:374:  const clients = buildProviderClients();
+  196a5375 src/swarm/engine.ts:80:  return buildProviderClientsFromConfig(config, siblingModels);
+  196a5375 src/swarm/engine.ts:148:    const configuredModel = cfg.localLlmModel ?? cfg.llmPrimaryModel;
+  196a5375 src/swarm/engine.ts:647:  const clients = buildProviderClients();
+
+### P8 trading read LOCAL_LLM_MODEL itself (unchanged on the branch; Praxis main deleted src/trading)
+  1fcf4b59 src/trading/council/personas.ts:74:  env: Partial<Record<"TRADING_COUNCIL_MODE" | "TRADING_LOCAL_MODEL" | "LOCAL_LLM_MODEL" | "LLM_PRIMARY_MODEL", string>> = process.env,
+  1fcf4b59 src/trading/reflections.ts:58:  env: Partial<Record<"REFLECTION_MODEL" | "TRADING_COUNCIL_MODE" | "TRADING_LOCAL_MODEL" | "LOCAL_LLM_MODEL" | "LLM_PRIMARY_MODEL", string>> = process.env,
+  1fcf4b59 src/trading/reflections.ts:65:    const localModel = (env.TRADING_LOCAL_MODEL ?? env.LOCAL_LLM_MODEL ?? env.LLM_PRIMARY_MODEL ?? "default").trim() || "default";
+  196a5375 src/trading/council/personas.ts:74:  env: Partial<Record<"TRADING_COUNCIL_MODE" | "TRADING_LOCAL_MODEL" | "LOCAL_LLM_MODEL" | "LLM_PRIMARY_MODEL", string>> = process.env,
+  196a5375 src/trading/reflections.ts:58:  env: Partial<Record<"REFLECTION_MODEL" | "TRADING_COUNCIL_MODE" | "TRADING_LOCAL_MODEL" | "LOCAL_LLM_MODEL" | "LLM_PRIMARY_MODEL", string>> = process.env,
+  196a5375 src/trading/reflections.ts:65:    const localModel = (env.TRADING_LOCAL_MODEL ?? env.LOCAL_LLM_MODEL ?? env.LLM_PRIMARY_MODEL ?? "default").trim() || "default";
+  files under src/trading on main fbce5c26: 0; on main 519530a9: 0
+  f8e444a2 2026-11-23 22:22:54 -0500 Retire the trading council and its paper-trading experiment
+  ed8d0442 2026-11-24 08:28:32 -0500 Merge praxis/run/aa32a9dc-0276-4872-bf0c-2e2f66bac564 into main: Retire the trading council and the paper-trading experiment 
+  f8e444a2 under ed8d0442: yes; under its first parent: no; under the baseline 1fcf4b59: no; under the branch head 196a5375: no
+
+### P9 eval and credit-failover routes: an optional named override, else config.localLlmModel
+  1fcf4b59 src/evals/inference-policy.ts:53:    model: (env.PRAXIS_EVAL_LOCAL_MODEL ?? "").trim() || config.localLlmModel,
+  1fcf4b59 src/llm/credit-failover.ts:83:    model: (env.PRAXIS_CREDIT_FALLBACK_MODEL ?? "").trim() || config.localLlmModel,
+  196a5375 src/evals/inference-policy.ts:53:    model: (env.PRAXIS_EVAL_LOCAL_MODEL ?? "").trim() || config.localLlmModel,
+  196a5375 src/llm/credit-failover.ts:83:    model: (env.PRAXIS_CREDIT_FALLBACK_MODEL ?? "").trim() || config.localLlmModel,
+
+### P10 the teacher-convergence eval's teacher (a deliberate second model; its student is evalLocalRoute)
+  1fcf4b59 src/evals/teacher-convergence.ts:58:export const DEFAULT_TEACHER_MODEL = "google/gemma-4-31b";
+  1fcf4b59 src/evals/teacher-convergence.ts:63:    model: (env.PRAXIS_EVAL_TEACHER_MODEL ?? "").trim() || DEFAULT_TEACHER_MODEL,
+  1fcf4b59 src/evals/teacher-convergence.ts:321:  const student = opts.student ?? evalLocalRoute();
+  196a5375 src/evals/teacher-convergence.ts:58:export const DEFAULT_TEACHER_MODEL = "google/gemma-4-31b";
+  196a5375 src/evals/teacher-convergence.ts:63:    model: (env.PRAXIS_EVAL_TEACHER_MODEL ?? "").trim() || DEFAULT_TEACHER_MODEL,
+  196a5375 src/evals/teacher-convergence.ts:321:  const student = opts.student ?? evalLocalRoute();
+
+### P11 the home-hub edge classifier (its own server URL; off unless HOME_HUB_EDGE_LLM_URL or EDGE_LLM_URL is set)
+  1fcf4b59 src/home-hub/edge-llm.ts:11:  if (!config.baseUrl) return undefined;
+  1fcf4b59 src/home-hub/edge-llm.ts:66:    baseUrl: env.HOME_HUB_EDGE_LLM_URL || env.EDGE_LLM_URL,
+  1fcf4b59 src/home-hub/edge-llm.ts:67:    model: env.HOME_HUB_EDGE_LLM_MODEL || env.EDGE_LLM_MODEL || "gemma",
+  196a5375 src/home-hub/edge-llm.ts:11:  if (!config.baseUrl) return undefined;
+  196a5375 src/home-hub/edge-llm.ts:66:    baseUrl: env.HOME_HUB_EDGE_LLM_URL || env.EDGE_LLM_URL,
+  196a5375 src/home-hub/edge-llm.ts:67:    model: env.HOME_HUB_EDGE_LLM_MODEL || env.EDGE_LLM_MODEL || "gemma",
+
+## TheNexus
+
+### N1 Studio jobs (routes/studio.js)
+  bd02642895fe server/routes/studio.js:710:      ? { provider: 'local', model: process.env.LOCAL_STUDIO_MODEL || 'llama3.2' }
+  6e14bc87 server/routes/studio.js:719:        runJobOn(def, params, channel, { provider: 'local', model: await local.localModelForWork() }));
+
+### N2 Studio ingestion (services/studio-ingestion.js)
+  bd02642895fe server/services/studio-ingestion.js:37:    return { provider: 'local', model: process.env.LOCAL_STUDIO_MODEL || 'gemma4' };
+  6e14bc87 server/services/studio-ingestion.js:42:    return { provider: 'local', model: await local.localModelForWork() };
+
+### N3 the local_default alias: seeded once, then edited by hand in the alias editor
+  bd02642895fe db/index.js:599:              ('local_default', 'model:local-gemma-4-31b', 'Local model (LM Studio) for bulk and background roles');
+  6e14bc87 db/index.js:621:              ('local_default', 'model:local-gemma-4-31b', 'Local model (LM Studio) for bulk and background roles');
+  6e14bc87 server/routes/model-control.js:841:    router.post('/local-model/apply', async (req, res) => {
+  6e14bc87 server/routes/model-control.js:867:            return { status: 400, body: { error: 'local_default_required', message: `${LOCAL_ALIAS} cannot be switched off: every role on the local model 
+  6e14bc87 server/routes/model-control.js:871:            return { status: 400, body: { error: 'local_default_target', message: `${LOCAL_ALIAS} must name the local model, which is chosen under Model C
+  6e14bc87 server/routes/model-control.js:878:            return { status: 400, body: { error: 'local_default_target', message: `${LOCAL_ALIAS} names the local model, which is chosen under Model Contr
+  6e14bc87 server/routes/model-control.js:975:                return res.status(400).json({ error: 'local_default_is_global', message: `The local model is one for the whole machine, so ${LOCAL_ALIAS} 
+  6e14bc87 server/services/local-model-selection.js:325:    async function setLocalDefault(rowId) {
+  6e14bc87 server/services/local-model-selection.js:495:    async function apply({ selectionId, model } = {}) {
+  6e14bc87 server/services/local-model-selection.js:511:            await setLocalDefault(row.id);
+
+### N4 role resolution through local_default
+  bd02642895fe server/services/model-control.js:456:    if (!localAlias.unavailable && localAlias.provider === 'local') return localAlias;
+  6e14bc87 server/services/model-control.js:373:        resolved.followsLocalModel = true;
+  6e14bc87 server/services/model-control.js:464:    if (!localAlias.unavailable && localAlias.provider === 'local') return localAlias;
+
+### N5 the start-up fallback, reported (the environment names, only until Nexus has a model in effect)
+  6e14bc87 server/services/local-model-selection.js:552:        const name = nonEmpty(env.LOCAL_STUDIO_MODEL) ? 'LOCAL_STUDIO_MODEL' : nonEmpty(env.LOCAL_LLM_MODEL) ? 'LOCAL_LLM_MODEL' : null;
+  6e14bc87 server/services/local-model-selection.js:677:        localModelForWork: async () => nonEmpty(env.LOCAL_STUDIO_MODEL) || nonEmpty(env.LOCAL_LLM_MODEL) || 'gemma4',
+
+## TheCortex (paths under TheCortex/python/cortex unless named)
+
+### C1 Graphiti's lmstudio route (memory/client.py)
+  5fdb76a TheCortex/python/cortex/memory/client.py:109:        model, api_key = "google/gemma-4-31b-qat", "lm-studio"
+  5fdb76a TheCortex/python/cortex/memory/client.py:127:    model_override = live_setting("cortex_graphiti_model")
+  892708c8 TheCortex/python/cortex/memory/client.py:113:        model, api_key = _graphiti_lmstudio_fallback()[0], "lm-studio"
+  892708c8 TheCortex/python/cortex/memory/client.py:134:    if model_override is not None and provider != "lmstudio":
+  892708c8 TheCortex/python/cortex/memory/client.py:155:def graphiti_local_model() -> str:
+  892708c8 TheCortex/python/cortex/memory/client.py:182:        model = await asyncio.to_thread(graphiti_local_model)
+
+### C2 the settings (config.py): CORTEX_TEACHER_MODEL and CORTEX_GRAPHITI_MODEL
+  5fdb76a TheCortex/python/cortex/config.py:286:        default=None, alias="CORTEX_GRAPHITI_MODEL"
+  5fdb76a TheCortex/python/cortex/config.py:315:        default="google/gemma-4-31b-qat", alias="CORTEX_TEACHER_MODEL"
+  892708c8 TheCortex/python/cortex/config.py:288:        default=None, alias="CORTEX_GRAPHITI_MODEL"
+  892708c8 TheCortex/python/cortex/config.py:320:        default="google/gemma-4-31b-qat", alias="CORTEX_TEACHER_MODEL"
+
+### C3 the eval teacher (evals/harness.py teacher_model)
+  5fdb76a TheCortex/python/cortex/evals/harness.py:128:def teacher_model(default: Optional[str] = None) -> str:
+  5fdb76a TheCortex/python/cortex/evals/harness.py:130:    value = live_setting("cortex_teacher_model")
+  892708c8 TheCortex/python/cortex/evals/harness.py:129:def teacher_model(default: Optional[str] = None) -> str:
+  892708c8 TheCortex/python/cortex/evals/harness.py:146:    return local_model_or(fallback, purpose="the eval teacher", fallback_source=source)
+
+### C4 eval defaults that named Gemma
+  5fdb76a TheCortex/python/cortex/evals/acted_on_retrieval.py:91:DEFAULT_MODEL = "google/gemma-4-31b-qat"
+  5fdb76a TheCortex/python/cortex/evals/acted_on_retrieval.py:486:    def __init__(self, url: str = DEFAULT_MODEL_URL, model: str = DEFAULT_MODEL,
+  5fdb76a TheCortex/python/cortex/evals/citation_recovery.py:384:    def __init__(self, url: str = DEFAULT_MODEL_URL, model: str = DEFAULT_MODEL,
+  5fdb76a TheCortex/python/cortex/evals/curation_replay.py:80:DEFAULT_MODEL = "google/gemma-4-31b-qat"
+  5fdb76a TheCortex/python/cortex/evals/curation_replay.py:600:    def __init__(self, url: str = DEFAULT_MODEL_URL, model: str = DEFAULT_MODEL,
+  5fdb76a TheCortex/python/cortex/evals/packet_format.py:177:    def __init__(self, url: str = DEFAULT_MODEL_URL, model: str = DEFAULT_MODEL,
+  5fdb76a TheCortex/python/cortex/evals/referee.py:102:DEFAULT_TEACHER_MODEL = "google/gemma-4-31b-qat"
+  5fdb76a TheCortex/python/cortex/evals/referee.py:677:    model: str = DEFAULT_TEACHER_MODEL,
+  5fdb76a TheCortex/python/cortex/evals/relevance_labels.py:291:    model: str = DEFAULT_JUDGE_MODEL,
+  5fdb76a TheCortex/python/cortex/evals/relevance_labels.py:353:    model: str = DEFAULT_JUDGE_MODEL,
+  5fdb76a TheCortex/python/cortex/evals/relevance_labels.py:421:    model: str = DEFAULT_JUDGE_MODEL,
+  5fdb76a TheCortex/python/cortex/evals/relevance_labels.py:747:    parser.add_argument("--model", default=DEFAULT_JUDGE_MODEL)
+  at 892708c8:
+  892708c8 TheCortex/python/cortex/evals/acted_on_retrieval.py:93:DEFAULT_MODEL = "google/gemma-4-31b-qat"
+  892708c8 TheCortex/python/cortex/evals/acted_on_retrieval.py:494:            model = harness.teacher_model(DEFAULT_MODEL)
+  892708c8 TheCortex/python/cortex/evals/acted_on_retrieval.py:893:    p.add_argument("--model", default=harness.teacher_model(DEFAULT_MODEL))
+  892708c8 TheCortex/python/cortex/evals/citation_recovery.py:390:            model = harness.teacher_model(DEFAULT_MODEL)
+  892708c8 TheCortex/python/cortex/evals/citation_recovery.py:848:    p.add_argument("--model", default=harness.teacher_model(DEFAULT_MODEL))
+  892708c8 TheCortex/python/cortex/evals/curation_replay.py:82:DEFAULT_MODEL = "google/gemma-4-31b-qat"
+  892708c8 TheCortex/python/cortex/evals/curation_replay.py:609:            model = harness.teacher_model(DEFAULT_MODEL)
+  892708c8 TheCortex/python/cortex/evals/curation_replay.py:1036:    r.add_argument("--model", default=harness.teacher_model(DEFAULT_MODEL))
+  892708c8 TheCortex/python/cortex/evals/packet_format.py:184:            model = harness.teacher_model(DEFAULT_MODEL)
+  892708c8 TheCortex/python/cortex/evals/packet_format.py:783:    p.add_argument("--model", default=harness.teacher_model(DEFAULT_MODEL))
+  892708c8 TheCortex/python/cortex/evals/referee.py:104:DEFAULT_TEACHER_MODEL = "google/gemma-4-31b-qat"
+  892708c8 TheCortex/python/cortex/evals/referee.py:689:        model = harness.teacher_model(DEFAULT_TEACHER_MODEL)
+  892708c8 TheCortex/python/cortex/evals/referee.py:708:    model = harness.teacher_model(DEFAULT_TEACHER_MODEL)
+  892708c8 TheCortex/python/cortex/evals/referee.py:1167:                   default=harness.teacher_model(DEFAULT_TEACHER_MODEL))
+  892708c8 TheCortex/python/cortex/evals/relevance_labels.py:302:        model = harness.teacher_model(DEFAULT_JUDGE_MODEL)
+  892708c8 TheCortex/python/cortex/evals/relevance_labels.py:373:        model = harness.teacher_model(DEFAULT_JUDGE_MODEL)
+  892708c8 TheCortex/python/cortex/evals/relevance_labels.py:449:        model = harness.teacher_model(DEFAULT_JUDGE_MODEL)
+  892708c8 TheCortex/python/cortex/evals/relevance_labels.py:783:                 else harness.teacher_model(DEFAULT_JUDGE_MODEL))
+
+### C5 the reader every site above uses (new in local_model.py)
+  892708c8 TheCortex/python/cortex/local_model.py:6:``GET /api/model-control/local-model/current``.
+  892708c8 TheCortex/python/cortex/local_model.py:112:def _read_after_asking() -> Tuple[Optional[str], Optional[str]]:
+  892708c8 TheCortex/python/cortex/local_model.py:118:        while _read_in_flight:
+  892708c8 TheCortex/python/cortex/local_model.py:136:                    _last_answer = result[0]
+  892708c8 TheCortex/python/cortex/local_model.py:142:def local_model_or(fallback: str, *, purpose: str, fallback_source: str) -> str:
+
+### C6 the model registry's direct-path rows (no role selects them; roles reach the local model through the Praxis gateway)
+  5fdb76a TheCortex/config/model_registry.yaml:99:    model_name: "role:cortex.query_expand"
+  5fdb76a TheCortex/config/model_registry.yaml:108:    model_name: "role:cortex.entity_extract"
+  5fdb76a TheCortex/config/model_registry.yaml:126:    model_name: "role:cortex.judge"
+  5fdb76a TheCortex/config/model_registry.yaml:135:    model_name: "role:cortex.epistemic_monitor"
+  5fdb76a TheCortex/config/model_registry.yaml:144:    model_name: "role:cortex.gardener"
+  5fdb76a TheCortex/config/model_registry.yaml:159:  gemma-local:
+  5fdb76a TheCortex/config/model_registry.yaml:173:  inkling-local:
+  892708c8 TheCortex/config/model_registry.yaml:99:    model_name: "role:cortex.query_expand"
+  892708c8 TheCortex/config/model_registry.yaml:108:    model_name: "role:cortex.entity_extract"
+  892708c8 TheCortex/config/model_registry.yaml:126:    model_name: "role:cortex.judge"
+  892708c8 TheCortex/config/model_registry.yaml:135:    model_name: "role:cortex.epistemic_monitor"
+  892708c8 TheCortex/config/model_registry.yaml:144:    model_name: "role:cortex.gardener"
+  892708c8 TheCortex/config/model_registry.yaml:159:  gemma-local:
+  892708c8 TheCortex/config/model_registry.yaml:173:  inkling-local:
+
+## Sweep at the baselines
+
+### Praxis 1fcf4b59: localLlmModel, LOCAL_LLM_MODEL, LLM_PRIMARY_MODEL, llmPrimaryModel (src)
+  src/config.ts:33:  localLlmModel: string;
+  src/config.ts:39:  llmPrimaryModel?: string;
+  src/config.ts:323:  localLlmModel: process.env.LOCAL_LLM_MODEL || process.env.LLM_PRIMARY_MODEL || "default",
+  src/config.ts:325:  llmPrimaryModel: process.env.LLM_PRIMARY_MODEL || undefined,
+  src/council/member-profile-updates.ts:206:          extract = localProfileExtractor({ endpoint: config.localLlmUrl, model: config.localLlmModel });
+  src/evals/inference-policy.ts:53:    model: (env.PRAXIS_EVAL_LOCAL_MODEL ?? "").trim() || config.localLlmModel,
+  src/evals/inference-policy.ts:132:  capabilities: LocalModelCapabilities = localModelCapabilities(route.model, config.localLlmModel),
+  src/groundrules/runner.ts:106: const lane:Lane=selectedLane ?? {id:'local-'+purpose,role:'extraction',model:config.localLlmModel,provider:'local'};
+  src/ingestion/salience-triage.ts:250:    config.localLlmModel,
+  src/llm/context-window.ts:216:  const model = config.localLlmModel !== "default" ? config.localLlmModel : requested;
+  src/llm/credit-exhaustion-preflight.ts:147:      `(job ${localJob.id}, local model ${config.localLlmModel})`,
+  src/llm/credit-failover.ts:83:    model: (env.PRAXIS_CREDIT_FALLBACK_MODEL ?? "").trim() || config.localLlmModel,
+  src/llm/lmstudio-autoload.ts:621:  return config.localLlmModel === "default" ? undefined : config.localLlmModel;
+  src/llm/manager.ts:294:        config.localLlmModel,
+  src/llm/manager.ts:304:      config.llmPrimaryModel &&
+  src/llm/manager.ts:308:      this.activeModel = config.llmPrimaryModel;
+  src/llm/manager.ts:614:            !!config.llmPrimaryModel &&
+  src/llm/manager.ts:619:              `[LLM] ✅ Fallback ${fb.provider}/${fb.model} succeeded — keeping explicit primary ${config.llmPrimaryProvider}/${config.llmPrimaryModel} for next call`,
+  src/llm/manager.ts:764:    return this.chatVia("local", config.localLlmModel, params, options);
+  src/llm/manager.ts:809:    if (role === LlmRole.MemorySynthesize) return { provider: "local", model: config.localLlmModel };
+  src/llm/manager.ts:915:      return this.chatVia("local", config.localLlmModel, params, { ...options, caller: options.role });
+  src/llm/manager.ts:1097:    const localFallback = { provider: "local", model: config.localLlmModel };
+  src/llm/manager.ts:1168:      provider === "local" ? localModelCapabilities(model, config.localLlmModel) : undefined,
+  src/llm/manager.ts:1323:              { ...params, model: config.localLlmModel } as OpenAI.ChatCompletionCreateParamsNonStreaming,
+  src/llm/manager.ts:1324:              { cacheNamespaceSeed: this.cacheNamespaceSeed("local", config.localLlmModel), deadlineAt: options?.deadlineAt, timeoutMs: options?.timeoutMs, requireNoTools: op
+  src/llm/manager.ts:1338:          model = config.localLlmModel;
+  src/maintenance/fleet-preflight.ts:1416:  const expected = config.localLlmModel;
+  src/orchestrator/qa-lessons.ts:1838:      : { provider: "local", model: config.localLlmModel },
+  src/orchestrator/qa-lessons.ts:1972:    return config.localLlmModel || "local";
+  src/swarm/engine.ts:56:  localLlmModel?: string;
+  src/swarm/engine.ts:57:  llmPrimaryModel?: string;
+  src/swarm/engine.ts:148:    const configuredModel = cfg.localLlmModel ?? cfg.llmPrimaryModel;
+  src/trading/council/personas.ts:74:  env: Partial<Record<"TRADING_COUNCIL_MODE" | "TRADING_LOCAL_MODEL" | "LOCAL_LLM_MODEL" | "LLM_PRIMARY_MODEL", string>> = process.env,
+  src/trading/reflections.ts:58:  env: Partial<Record<"REFLECTION_MODEL" | "TRADING_COUNCIL_MODE" | "TRADING_LOCAL_MODEL" | "LOCAL_LLM_MODEL" | "LLM_PRIMARY_MODEL", string>> = process.env,
+  src/trading/reflections.ts:65:    const localModel = (env.TRADING_LOCAL_MODEL ?? env.LOCAL_LLM_MODEL ?? env.LLM_PRIMARY_MODEL ?? "default").trim() || "default";
+  src/voice/spoken-prose.ts:114:      return chatVia("local", config.localLlmModel, {
+
+### Praxis 1fcf4b59: gemma, inkling, qwen in any case (src)
+  src/chat-cli-session.ts:1675:    ...(config.ttsProvider === "qwen-local" ? [
+  src/council/reputation.ts:88:    "youtube", "reader", "extraction", "extractor", "overnight", "nightly", "gemma",
+  src/evals/teacher-convergence.ts:58:export const DEFAULT_TEACHER_MODEL = "google/gemma-4-31b";
+  src/groundrules/providers.ts:23:  : /^(?:google\/)?(?:gemini-|gemma-)/.test(value)?'google'
+  src/groundrules/providers.ts:25:  : /^(?:qwen\/|qwen[0-9-])/.test(value)?'alibaba'
+  src/home-hub/edge-llm.ts:14:  const model = config.model || "gemma";
+  src/home-hub/edge-llm.ts:67:    model: env.HOME_HUB_EDGE_LLM_MODEL || env.EDGE_LLM_MODEL || "gemma",
+  src/ingestion/engine.ts:408:  logger.info(`  📖 Reading ${newItems.length} articles via local Gemma + tier-up…`);
+  src/ingestion/processing/comparison-report.ts:144:    "> Path B = Praxis local-reader on Gemma 4 31B (canonical write to `ai-research`).",
+  src/ingestion/processing/comparison-report.ts:157:  lines.push("| Metric | Path A (Cortex/Gemini) | Path B (Praxis/Gemma) |");
+  src/ingestion/processing/comparison-report.ts:286:      "Articles too large for Gemma's context window — routed to Gemini Pro just for that read.",
+  src/llm/eval-model-policy.ts:3:  if (/gemma/i.test(model)) {
+  src/llm/eval-model-policy.ts:4:    return "Gemma is excluded from evaluations by operator policy (2026-11-03). Keep its results as historical evidence and start a separate comparison with an approve
+  src/llm/free-model-ranking.ts:110:  { pattern: /^thinkingmachines\/inkling/, reason: "answers API calls with 403 (agentic harnesses only, seen 2026-10-30)" },
+  src/llm/free-model-ranking.ts:121:  return /^google\/gemma-/i.test(slug);
+  src/llm/free-model-ranking.ts:158:    else if (isMeshRestrictedFreeSlug(slug)) reason = "Gemma lineage, same as the local eval author (mesh rule); explicit use only";
+  src/llm/local-model-capabilities.ts:41:const GEMMA_4_31B: LocalModelCapabilities = {
+  src/llm/local-model-capabilities.ts:52:const INKLING_2_MINI: LocalModelCapabilities = {
+  src/llm/local-model-capabilities.ts:59:  ["google/gemma-4-31b-qat", GEMMA_4_31B],
+  src/llm/local-model-capabilities.ts:60:  ["google/gemma-4-31b", GEMMA_4_31B],
+  src/llm/local-model-capabilities.ts:61:  ["thinkingmachines/inkling-2-mini", INKLING_2_MINI],
+  src/llm/local-model-capabilities.ts:69:  ["gemma4", GEMMA_4_31B],
+  src/llm/local-model-capabilities.ts:134:const LOCAL_KEYS_WITH_A_HOSTED_SLUG: ReadonlySet<string> = new Set(["thinkingmachines/inkling-2-mini"]);
+  src/llm/openrouter-free.ts:230:export const MESH_RESTRICTED_FREE_SLUGS: readonly string[] = ["google/gemma-4-31b-it:free"];
+  src/morning/knowledge-council.ts:354:    `You are the Praxis morning knowledge council for ${inputs.date}. Praxis is Robert's autonomous agent system (Nexus task board + cockpit, Cortex knowledge gr
+  src/morning/newsletter.ts:40:import { localTtsStatus } from "../voice/local-qwen.js";
+  src/morning/newsletter.ts:520:  const local = config.ttsProvider === "qwen-local";
+  src/prompt.ts:129:- ${config.ttsProvider === "qwen-local" ? "Local speech has no hosted credit budget. Robert wants a conversational working relationship: use `speak` for useful greetings, replies t
+  src/reports/status-report.ts:1346:  const audio = config.ttsProvider === "qwen-local" ? await synthesis : await Promise.race([
+  src/skills/typed-skill-graph.ts:96:  ["llm", ["llm", "prompt", "gemma", "reasoning", "model"]],
+  src/trading/tools.ts:173:        "Set summarize=true for a local-Gemma brief of the top movers (slower).",
+  src/trading/us-trend-radar.ts:79:  summary?: string; // local-Gemma summary of top movers (best-effort)
+  src/voice/local-qwen.ts:101:      throw new Error(`Local Qwen TTS HTTP ${response.status}`);
+  src/voice/local-qwen.ts:105:      throw new InvalidLocalAudioError("Local Qwen TTS returned an invalid audio Content-Type");
+  src/voice/local-qwen.ts:108:    if (!isMp3(audio)) throw new InvalidLocalAudioError("Local Qwen TTS returned invalid or empty MP3 audio");
+  src/voice/local-qwen.ts:131:      throw new Error(`Local Qwen health HTTP ${response.status}`);
+  src/voice/local-qwen.ts:139:      throw new Error("Malformed local Qwen health response");
+  src/voice/local-qwen.ts:159:  const reason = !fresh ? "Local Qwen speech health has not been checked recently" : s.error ? `Local Qwen speech unavailable: ${s.error}` :
+  src/voice/local-qwen.ts:160:    !s.health?.ready ? "Local Qwen speech is not ready" : s.health.busy ? "Local Qwen speech is busy" :
+  src/voice/local-qwen.ts:161:    `Local Qwen speech ready · praxis · ${s.health.targetWpm} WPM${s.health.modelLoaded ? "" : " · model loads on first request"}`;
+  src/voice/local-qwen.ts:162:  return { provider: "qwen-local" as const, available, status, reason, lastSuccessAt: s.lastSuccessAt, lastFailureAt: s.lastFailureAt,
+  src/voice/tts-budget.ts:143:  if (config.ttsProvider === "qwen-local") return LOCAL_BRIEFING_CHAR_CEILING;
+  src/voice/tts-budget.ts:177:  if (config.ttsProvider === "qwen-local") return `Local Qwen speech · no hosted credits · briefing ceiling ${LOCAL_BRIEFING_CHAR_CEILING} chars`;
+  src/voice/tts-health.ts:27:import { localTtsStatus, probeLocalTtsHealth } from "./local-qwen.js";
+  src/voice/tts-health.ts:349:  if (config.ttsProvider === "qwen-local") await probeLocalTtsHealth();
+  src/voice/tts-health.ts:361:  if (config.ttsProvider === "qwen-local") {
+  src/voice/tts-health.ts:429:  if (config.ttsProvider === "qwen-local") return localTtsStatus(now);
+  src/voice/tts-provider.ts:2:import { synthesizeLocalSpeech } from "./local-qwen.js";
+  src/voice/tts-provider.ts:7:    return config.ttsProvider === "qwen-local" || (config.ttsProvider === "elevenlabs" && Boolean(config.elevenlabsApiKey));
+  src/voice/tts-provider.ts:11:    if (config.ttsProvider === "qwen-local") return synthesizeLocalSpeech(text);
+  src/voice/tts-settings.ts:2:export type TtsProvider = "elevenlabs" | "qwen-local" | "off";
+  src/voice/tts-settings.ts:5:  if (value === "elevenlabs" || value === "qwen-local" || value === "off") return value;
+  src/voice/tts-settings.ts:6:  throw new Error("TTS_PROVIDER must be elevenlabs, qwen-local, or off");
+
+### TheNexus bd026428: local model settings, names and local-provider branches (server, db, services, lib; no tests)
+  db/index.js:568:              ('local-gemma-4-31b', 'Gemma 4 31B QAT', 'local', 'google/gemma-4-31b-qat',
+  db/index.js:599:              ('local_default', 'model:local-gemma-4-31b', 'Local model (LM Studio) for bulk and background roles');
+  server/routes/studio.js:710:      ? { provider: 'local', model: process.env.LOCAL_STUDIO_MODEL || 'llama3.2' }
+  server/services/ai-service.js:221:        const role = provider === 'local' ? undefined : 'brain.chat';
+  server/services/model-control.js:456:    if (!localAlias.unavailable && localAlias.provider === 'local') return localAlias;
+  server/services/studio-ingestion.js:37:    return { provider: 'local', model: process.env.LOCAL_STUDIO_MODEL || 'gemma4' };
+
+### TheNexus bd026428: gemma, inkling in any case (dashboard/src, services; no tests)
+  dashboard/src/app/codex/page.tsx:181:            "LM Studio running Gemma 31B QAT as the on-metal worker under Praxis's queue: nightly ingestion, community summaries, skill harvesting, calendar and 
+  dashboard/src/app/codex/page.tsx:184:        stack: ["Gemma 31B QAT", "LM Studio", "Pressure governor"],
+  services/praxis-mind-mcp/tools/brain.js:77:    'Call Praxis\'s LLM cascade for plain-text reasoning. External callers are forced to tier=reasoning (Gemini Pro or stronger; bypasses local Gemma) and 
+
+### TheCortex 5fdb76a: model settings and names in any case (python, config; no tests)
+  TheCortex/config/model_registry.yaml:159:  gemma-local:
+  TheCortex/config/model_registry.yaml:161:    family: Gemma
+  TheCortex/config/model_registry.yaml:162:    nexus_model_id: local-gemma-4-31b
+  TheCortex/config/model_registry.yaml:163:    model_name: google/gemma-4-31b-qat
+  TheCortex/config/model_registry.yaml:173:  inkling-local:
+  TheCortex/config/model_registry.yaml:175:    family: Inkling
+  TheCortex/config/model_registry.yaml:176:    nexus_model_id: local-inkling-2-mini
+  TheCortex/config/model_registry.yaml:177:    model_name: thinkingmachines/inkling-2-mini
+  TheCortex/python/cortex/config.py:285:    cortex_graphiti_model: Optional[str] = Field(
+  TheCortex/python/cortex/config.py:286:        default=None, alias="CORTEX_GRAPHITI_MODEL"
+  TheCortex/python/cortex/config.py:314:    cortex_teacher_model: str = Field(
+  TheCortex/python/cortex/config.py:315:        default="google/gemma-4-31b-qat", alias="CORTEX_TEACHER_MODEL"
+  TheCortex/python/cortex/evals/acted_on_retrieval.py:91:DEFAULT_MODEL = "google/gemma-4-31b-qat"
+  TheCortex/python/cortex/evals/curation_replay.py:80:DEFAULT_MODEL = "google/gemma-4-31b-qat"
+  TheCortex/python/cortex/evals/harness.py:129:    """Local teacher-judge model id — ``CORTEX_TEACHER_MODEL``."""
+  TheCortex/python/cortex/evals/harness.py:130:    value = live_setting("cortex_teacher_model")
+  TheCortex/python/cortex/evals/referee.py:58:serving Gemma — the knowledge council's designated local judge), satisfying
+  TheCortex/python/cortex/evals/referee.py:102:DEFAULT_TEACHER_MODEL = "google/gemma-4-31b-qat"
+  TheCortex/python/cortex/evals/relevance_labels.py:20:(LM Studio serving Gemma, the same judge the eval referee uses for teacher
+  TheCortex/python/cortex/llm_factory.py:68:    """ChatOpenAI variant for LM Studio's local Gemma (a thinking model).
+  TheCortex/python/cortex/llm_factory.py:70:    Gemma 4 in LM Studio emits its chain-of-thought — and on budget
+  TheCortex/python/cortex/memory/client.py:109:        model, api_key = "google/gemma-4-31b-qat", "lm-studio"
+  TheCortex/python/cortex/memory/client.py:127:    model_override = live_setting("cortex_graphiti_model")
+  TheCortex/python/cortex/memory/entity_resolver.py:106:    ROBUSTNESS: Gemma 4 (the local verifier) frequently emits the verdict with
+  TheCortex/python/cortex/memory/entity_resolver.py:135:        """Coerce the common loosely-typed forms Gemma emits into a bool.
+  TheCortex/python/cortex/memory/entity_resolver.py:281:        There's only one Gemma 4 31B instance. If the Gardener's
+  TheCortex/python/cortex/memory/neo4j_layer.py:9:    1. Extract entities from query via the entity_extractor role (local Gemma
+  TheCortex/python/cortex/memory/neo4j_layer.py:252:        Uses the entity_extractor role (local Gemma through the Praxis
+  TheCortex/python/cortex/memory/query_expander.py:5:using a fast LLM (the ``query_expander`` role: local Gemma reached through
+
+# done

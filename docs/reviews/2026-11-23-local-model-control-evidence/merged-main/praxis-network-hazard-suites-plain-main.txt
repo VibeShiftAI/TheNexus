@@ -1,0 +1,980 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/stakeholders.test.ts tests/background_obligations.test.ts tests/model_prices.test.ts tests/openrouter_roster.test.ts tests/chat_turn_steps_legacy.test.ts
+
+Running 5 of 899 suite(s): tests/background_obligations.test.ts tests/chat_turn_steps_legacy.test.ts tests/model_prices.test.ts tests/openrouter_roster.test.ts tests/stakeholders.test.ts
+
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T19:22:41.339Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+✔ executor bridge requires registration before detachment and supplies this execution identity (0.95275ms)
+✔ registration requires an exact current attempt and immutable child identity (49.236291ms)
+✔ registration rejects an existing done receipt, stale freshness, and callback-time additions (23.199667ms)
+✔ parent callback remains durably waiting until a matching receipt and every artifact exist (61.860542ms)
+✔ a zero exit code cannot override wrong identity, hashes, freshness or a failed receipt (626.49925ms)
+✔ all registered children must finish; matching receipts enrich one continuation for normal QA (346.606917ms)
+✔ lost delivery retries only before durable callback claim (364.782ms)
+⏰ Scheduled wakeup "background-test-16" in 10m (at 2:32:43 PM) — waiting for registered verification
+[2026-11-24T19:22:43.606Z] [INFO] ⏰ Scheduled wakeup "background-test-16" in 10m (at 2:32:43 PM) — waiting for registered verification
+[Webhook] ── Received callback ──
+[2026-11-24T19:22:43.607Z] [INFO] [Webhook] ── Received callback ──
+[Webhook] Task ID: background-test-16
+[2026-11-24T19:22:43.607Z] [INFO] [Webhook] Task ID: background-test-16
+[Webhook] Nexus IDs: project=(none), task=background-test-16
+[2026-11-24T19:22:43.608Z] [INFO] [Webhook] Nexus IDs: project=(none), task=background-test-16
+[Webhook] Convo ID: (none)
+[2026-11-24T19:22:43.608Z] [INFO] [Webhook] Convo ID: (none)
+[Webhook] Result: Author returned; registered verification remains pending.
+[2026-11-24T19:22:43.608Z] [INFO] [Webhook] Result: Author returned; registered verification remains pending.
+[Webhook] Failed: false
+[2026-11-24T19:22:43.608Z] [INFO] [Webhook] Failed: false
+[2026-11-24T19:22:43.608Z] [DEBUG] [Webhook] Full body: {"taskId":"background-test-16","nexusTaskId":"background-test-16","executionId":"61ba67fe-e7e2-45fd-bcb6-dc82688a1fc2","executor":"codex","result":"Author returned; registered verification remains pending.","failed":false,"startedAt":"2026-11-24T19:22:43.597Z","completedAt":"2026-11-24T19:22:43.598Z","workspace":"/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-test-data-Tpmvwt/background-test-16"}
+⏰ Cancelled wakeup "background-test-16"
+[2026-11-24T19:22:43.624Z] [INFO] ⏰ Cancelled wakeup "background-test-16"
+  ⚠️ Nexus GET /api/tasks/background-test-19: fetch failed (network guard refused http://127.0.0.1:4000/api/tasks/background-test-19)
+  ⚠️ Nexus GET /api/tasks/background-test-19: fetch failed (network guard refused http://127.0.0.1:4000/api/tasks/background-test-19)
+[Webhook] ── Received callback ──
+[2026-11-24T19:22:44.965Z] [INFO] [Webhook] ── Received callback ──
+[Webhook] Task ID: background-test-21
+[2026-11-24T19:22:44.965Z] [INFO] [Webhook] Task ID: background-test-21
+[Webhook] Nexus IDs: project=(none), task=(none)
+[2026-11-24T19:22:44.965Z] [INFO] [Webhook] Nexus IDs: project=(none), task=(none)
+[Webhook] Convo ID: (none)
+[2026-11-24T19:22:44.965Z] [INFO] [Webhook] Convo ID: (none)
+[Webhook] Result: Author returned; registered verification remains pending.
+[2026-11-24T19:22:44.965Z] [INFO] [Webhook] Result: Author returned; registered verification remains pending.
+[Webhook] Failed: false
+[2026-11-24T19:22:44.966Z] [INFO] [Webhook] Failed: false
+[2026-11-24T19:22:44.966Z] [DEBUG] [Webhook] Full body: {"taskId":"background-test-21","executionId":"082dd841-4eff-4bbd-9a27-cf2a1d9455e1","executor":"codex","result":"Author returned; registered verification remains pending.","failed":false,"startedAt":"2026-11-24T19:22:44.956Z","completedAt":"2026-11-24T19:22:44.957Z","workspace":"/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-test-data-Tpmvwt/background-test-21"}
+⏰ Scheduled wakeup "background-test-21" in 10m (at 2:32:44 PM) — completion must cancel only after evidence
+[2026-11-24T19:22:44.976Z] [INFO] ⏰ Scheduled wakeup "background-test-21" in 10m (at 2:32:44 PM) — completion must cancel only after evidence
+[Webhook] ── Received callback ──
+[2026-11-24T19:22:45.056Z] [INFO] [Webhook] ── Received callback ──
+[Webhook] Task ID: background-test-21
+[2026-11-24T19:22:45.056Z] [INFO] [Webhook] Task ID: background-test-21
+[Webhook] Nexus IDs: project=(none), task=(none)
+[2026-11-24T19:22:45.056Z] [INFO] [Webhook] Nexus IDs: project=(none), task=(none)
+[Webhook] Convo ID: (none)
+[2026-11-24T19:22:45.056Z] [INFO] [Webhook] Convo ID: (none)
+[Webhook] Result: Author returned; registered verification remains pending.
+
+Registered background work completed (measurement evidence, not QA acceptance):
+verification: Verification completed; measured result retaine
+[2026-11-24T19:22:45.056Z] [INFO] [Webhook] Result: Author returned; registered verification remains pending.
+
+Registered background work completed (measurement evidence, not QA acceptance):
+verification: Verification completed; measured result retaine
+[Webhook] Failed: false
+[2026-11-24T19:22:45.056Z] [INFO] [Webhook] Failed: false
+[2026-11-24T19:22:45.057Z] [DEBUG] [Webhook] Full body: {"taskId":"background-test-21","executionId":"082dd841-4eff-4bbd-9a27-cf2a1d9455e1","executor":"codex","result":"Author returned; registered verification remains pending.\n\nRegistered background work completed (measurement evidence, not QA acceptance):\nverification: Verification completed; measured result retained for QA.\n/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-test-data-Tpmvwt/background-test-21/result.json sha256=fd22a5b64ad4bf2a9885631c2f30fe3cdcc4862adbcf0aa77087b883d19be89b","failed":false,"startedAt":"2026-11-24T19:22:44.956Z","completedAt":"2026-11-24T19:22:44.976Z","workspace":"/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-test-data-Tpmvwt/background-test-21","backgroundContinuationId":"6bfc220d-5b37-4b7c-9097-d0ded222408a"}
+⏰ Cancelled wakeup "background-test-21"
+[2026-11-24T19:22:45.068Z] [INFO] ⏰ Cancelled wakeup "background-test-21"
+[Webhook] ⏰ Auto-cancelled wakeup "background-test-21" — callback received first
+[2026-11-24T19:22:45.068Z] [INFO] [Webhook] ⏰ Auto-cancelled wakeup "background-test-21" — callback received first
+[Webhook] 📋 Ad-hoc task background-test-21 completed — publishing ops event
+[2026-11-24T19:22:45.068Z] [INFO] [Webhook] 📋 Ad-hoc task background-test-21 completed — publishing ops event
+[Webhook] ── Callback processing complete ──
+[2026-11-24T19:22:45.068Z] [INFO] [Webhook] ── Callback processing complete ──
+[Webhook] ── Received callback ──
+[2026-11-24T19:22:45.283Z] [INFO] [Webhook] ── Received callback ──
+[Webhook] Task ID: background-test-21
+[2026-11-24T19:22:45.283Z] [INFO] [Webhook] Task ID: background-test-21
+[Webhook] Nexus IDs: project=(none), task=(none)
+[2026-11-24T19:22:45.283Z] [INFO] [Webhook] Nexus IDs: project=(none), task=(none)
+[Webhook] Convo ID: (none)
+[2026-11-24T19:22:45.283Z] [INFO] [Webhook] Convo ID: (none)
+[Webhook] Result: Author returned; registered verification remains pending.
+
+Registered background work completed (measurement evidence, not QA acceptance):
+verification: Verification completed; measured result retaine
+[2026-11-24T19:22:45.283Z] [INFO] [Webhook] Result: Author returned; registered verification remains pending.
+
+Registered background work completed (measurement evidence, not QA acceptance):
+verification: Verification completed; measured result retaine
+[Webhook] Failed: false
+[2026-11-24T19:22:45.284Z] [INFO] [Webhook] Failed: false
+[2026-11-24T19:22:45.284Z] [DEBUG] [Webhook] Full body: {"taskId":"background-test-21","executionId":"082dd841-4eff-4bbd-9a27-cf2a1d9455e1","executor":"codex","result":"Author returned; registered verification remains pending.\n\nRegistered background work completed (measurement evidence, not QA acceptance):\nverification: Verification completed; measured result retained for QA.\n/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-test-data-Tpmvwt/background-test-21/result.json sha256=fd22a5b64ad4bf2a9885631c2f30fe3cdcc4862adbcf0aa77087b883d19be89b","failed":false,"startedAt":"2026-11-24T19:22:44.956Z","completedAt":"2026-11-24T19:22:44.976Z","workspace":"/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-test-data-Tpmvwt/background-test-21","backgroundContinuationId":"6bfc220d-5b37-4b7c-9097-d0ded222408a"}
+[QA-Dispatch] Live second executor asserted for background-review-parent: codex (test readiness) is distinct from author claude-code
+[2026-11-24T19:22:45.529Z] [INFO] [QA-Dispatch] Live second executor asserted for background-review-parent: codex (test readiness) is distinct from author claude-code
+[QA-Dispatch] 🧾 background-review-parent evidence ledger: 1 claim(s), 1 cited — 0 supported, 0 contradicted, 1 unsupported, 0 mixed
+[2026-11-24T19:22:45.550Z] [INFO] [QA-Dispatch] 🧾 background-review-parent evidence ledger: 1 claim(s), 1 cited — 0 supported, 0 contradicted, 1 unsupported, 0 mixed
+✔ concurrent duplicate continuation deliveries allow one finalization (163.161459ms)
+✔ superseded attempts never resume or admit new registrations (127.771584ms)
+✔ failed parent and altered continuation payload remain held (258.289416ms)
+✔ unregistered ordinary completion retains its existing route (0.195917ms)
+✔ the callback route holds before lifecycle, completion dependencies and wakeup cancellation (26.957792ms)
+✔ registration bridge maps the contract and rejects unknown execution ownership (11.244625ms)
+✔ a stopped attempt leaves a visible hold without signaling or replaying its child (157.414083ms)
+✔ claimed state survives a new process and failed finalization never retries (974.338167ms)
+✔ corrupt journals fail closed and altered artifacts cannot claim a ready continuation (188.668708ms)
+✔ verified evidence re-enters the ordinary callback route exactly once (329.141917ms)
+[QA-Dispatch:background-review-parent] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ ead15df
+[2026-11-24T19:22:45.594Z] [INFO] [QA-Dispatch:background-review-parent] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ ead15df
+[QA-Dispatch] 🔍 QA of background-review-parent dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[2026-11-24T19:22:45.632Z] [INFO] [QA-Dispatch] 🔍 QA of background-review-parent dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[Webhook] ── Received callback ──
+[2026-11-24T19:22:45.643Z] [INFO] [Webhook] ── Received callback ──
+[Webhook] Task ID: qa--background-review-parent
+[2026-11-24T19:22:45.643Z] [INFO] [Webhook] Task ID: qa--background-review-parent
+[Webhook] Nexus IDs: project=(none), task=qa--background-review-parent
+[2026-11-24T19:22:45.643Z] [INFO] [Webhook] Nexus IDs: project=(none), task=qa--background-review-parent
+[Webhook] Convo ID: (none)
+[2026-11-24T19:22:45.643Z] [INFO] [Webhook] Convo ID: (none)
+[Webhook] Result: PRAXIS_QA_VERDICT: pass
+PRAXIS_QA_NOTES:
+Q1: yes.
+Q2: nothing missing.
+[2026-11-24T19:22:45.643Z] [INFO] [Webhook] Result: PRAXIS_QA_VERDICT: pass
+PRAXIS_QA_NOTES:
+Q1: yes.
+Q2: nothing missing.
+[Webhook] Failed: false
+[2026-11-24T19:22:45.644Z] [INFO] [Webhook] Failed: false
+[2026-11-24T19:22:45.644Z] [DEBUG] [Webhook] Full body: {"taskId":"qa--background-review-parent","nexusTaskId":"qa--background-review-parent","executionId":"27f40271-9ea7-4065-ac61-436489486209","executor":"codex","result":"PRAXIS_QA_VERDICT: pass\nPRAXIS_QA_NOTES:\nQ1: yes.\nQ2: nothing missing.","failed":false,"startedAt":"2026-11-24T19:22:45.285Z","completedAt":"2026-11-24T19:22:45.286Z","workspace":"/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-test-data-Tpmvwt/qa--background-review-parent","qaReviewId":"mwv30naj-1"}
+✔ authenticated QA callbacks also wait for their registered child evidence (376.305459ms)
+✔ ordinary child wait stays waiting and never opens an operator question (186.402416ms)
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-3 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-3: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-3 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-3 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-3: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-3 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-5 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-5: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-5 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-5 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-5: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-5 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-4 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-4: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-4 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-4 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-4: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-4 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-7 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-7: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-7 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-7 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-7: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-7 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-14 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-14: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-14 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-14 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-14: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-14 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-8 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-8: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-8 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-8 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-8: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-8 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-9 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-9: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-9 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-9 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-9: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-9 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-18 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-18: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-18 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-18 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-18: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-18 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-23 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-23: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-23 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-23 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-23: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-23 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-6 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-6: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-6 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-6 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-6: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-6 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+✔ invalid final evidence opens one durable actionable inbox question and retries the same notice (1413.514542ms)
+✔ a pending first child cannot hide invalid evidence from another returned child (215.918375ms)
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-25 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-25: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-25 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-25 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-25: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-25 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-24 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-24: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-24 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-24 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/tasks/background-test-24: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/tasks/background-test-24 — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+✔ safe abandonment closes the hold card without creating a human-answer continuation (443.026708ms)
+✔ superseded execution journals do not open stale questions after restart (224.071334ms)
+✔ suspension releases finished failed and successful children without completing or replaying the task (245.231ms)
+✔ suspension asks for input while children run and releases only after valid terminal evidence (220.687667ms)
+✔ delayed successful child settles a suspension without sending its callback again (205.407584ms)
+✔ suspension never releases wrong identity or unknown child exit status (101.087959ms)
+✔ dispatch reconciliation recovers only acknowledged legacy suspensions and is idempotent (49.700458ms)
+✔ superseded suspended attempts retain the hold even with terminal receipts (249.32075ms)
+✔ concurrent suspension retries claim effects once and uncertain delivery retains ownership (47.353083ms)
+✔ extra receipt artifacts do not block required evidence or promote extras into verified evidence (248.338875ms)
+✔ background heartbeat uses current attempt artifact progress, never another attempt or stale registration (11.291291ms)
+✔ completed background child uses receipt time, excludes later edits and invalid receipts (11.275083ms)
+✔ extra artifacts never substitute for missing, duplicated, or corrupt required evidence (920.886459ms)
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T19:22:41.743Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[Consolidator] LEG middleware ENABLED — tool outputs will be consolidated.
+[2026-11-24T19:22:42.186Z] [INFO] [Consolidator] LEG middleware ENABLED — tool outputs will be consolidated.
+[ReasoningRouter] loaded router-config.json (mode=shadow)
+[2026-11-24T19:22:42.198Z] [INFO] [ReasoningRouter] loaded router-config.json (mode=shadow)
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:8100/api/status — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Identity] Canonical identity UNAVAILABLE (error) — Praxis has no persona to load and will not substitute one. Cause: Cortex gateway at http://127.0.0.1:8100 failed its health check
+[2026-11-24T19:22:42.220Z] [ERROR] [Identity] Canonical identity UNAVAILABLE (error) — Praxis has no persona to load and will not substitute one. Cause: Cortex gateway at http://127.0.0.1:8100 failed its health check
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/plain-praxis-main4/tests/chat_turn_steps_legacy.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-24T19:22:42.221Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/plain-praxis-main4/tests/chat_turn_steps_legacy.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[2026-11-24T19:22:42.221Z] [WARN] [ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[PromptActivation] identity=UNAVAILABLE — composing the scaffold prompt without a persona. Cause: Cortex gateway at http://127.0.0.1:8100 failed its health check
+[2026-11-24T19:22:42.222Z] [ERROR] [PromptActivation] identity=UNAVAILABLE — composing the scaffold prompt without a persona. Cause: Cortex gateway at http://127.0.0.1:8100 failed its health check
+[PromptActivation] security-instructions=present source=identity-unavailable
+[2026-11-24T19:22:42.222Z] [INFO] [PromptActivation] security-instructions=present source=identity-unavailable
+[ToolRouter] 20/63 tools included (43 excluded, categories: core, nexus, antigravity, cortex, skills, ingestion)
+[2026-11-24T19:22:42.223Z] [INFO] [ToolRouter] 20/63 tools included (43 excluded, categories: core, nexus, antigravity, cortex, skills, ingestion)
+⏱️ [SetupTiming] total=24ms state_and_memory=20ms context_fanout=2ms skills=1ms tool_routing=1ms (source=system)
+[ContextMode] lightweight provider=google model=antigravity-default history=0/0 tools=20/63
+[2026-11-24T19:22:42.223Z] [INFO] [ContextMode] lightweight provider=google model=antigravity-default history=0/0 tools=20/63
+[Agent] Pre-call prompt size: ~13061 tokens (2 messages, model window unknown, no ceiling)
+[2026-11-24T19:22:42.223Z] [INFO] [Agent] Pre-call prompt size: ~13061 tokens (2 messages, model window unknown, no ceiling)
+  🔄 Agent iteration 1/60
+[2026-11-24T19:22:42.223Z] [INFO]   🔄 Agent iteration 1/60
+  🔧 Tool call: get_current_time
+[2026-11-24T19:22:42.225Z] [INFO]   🔧 Tool call: get_current_time
+  🔄 Agent iteration 2/60
+[2026-11-24T19:22:42.226Z] [INFO]   🔄 Agent iteration 2/60
+✔ the buffered fallback loop reports steps and the reasoning the provider sent (1778.677917ms)
+[ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[2026-11-24T19:22:42.232Z] [WARN] [ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[LLM] Pinned call → local/gemini-3.1-pro-preview
+[2026-11-24T19:22:42.233Z] [INFO] [LLM] Pinned call → local/gemini-3.1-pro-preview
+[ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[2026-11-24T19:22:42.237Z] [WARN] [ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[PromptActivation] identity=UNAVAILABLE — composing the scaffold prompt without a persona. Cause: Cortex gateway at http://127.0.0.1:8100 failed its health check
+[2026-11-24T19:22:42.237Z] [ERROR] [PromptActivation] identity=UNAVAILABLE — composing the scaffold prompt without a persona. Cause: Cortex gateway at http://127.0.0.1:8100 failed its health check
+[PromptActivation] security-instructions=present source=identity-unavailable
+[2026-11-24T19:22:42.237Z] [INFO] [PromptActivation] security-instructions=present source=identity-unavailable
+[ToolRouter] 20/63 tools included (43 excluded, categories: core, nexus, antigravity, cortex, skills, ingestion)
+[2026-11-24T19:22:42.237Z] [INFO] [ToolRouter] 20/63 tools included (43 excluded, categories: core, nexus, antigravity, cortex, skills, ingestion)
+⏱️ [SetupTiming] total=1ms state_and_memory=0ms context_fanout=1ms skills=0ms tool_routing=0ms (source=system)
+[ContextMode] lightweight provider=google model=antigravity-default history=0/0 tools=20/63
+[2026-11-24T19:22:42.238Z] [INFO] [ContextMode] lightweight provider=google model=antigravity-default history=0/0 tools=20/63
+[Agent] Pre-call prompt size: ~13061 tokens (2 messages, model window unknown, no ceiling)
+[2026-11-24T19:22:42.238Z] [INFO] [Agent] Pre-call prompt size: ~13061 tokens (2 messages, model window unknown, no ceiling)
+  🔄 Agent iteration 1/60
+[2026-11-24T19:22:42.238Z] [INFO]   🔄 Agent iteration 1/60
+  🔧 Tool call: get_current_time
+[2026-11-24T19:22:42.238Z] [INFO]   🔧 Tool call: get_current_time
+  🔄 Agent iteration 2/60
+[2026-11-24T19:22:42.239Z] [INFO]   🔄 Agent iteration 2/60
+✔ the streamed fallback loop reports steps, and no reasoning step when none was sent (10.451208ms)
+[ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[2026-11-24T19:22:42.241Z] [WARN] [ContextWindow] Local context window unknown: LM Studio catalog unavailable
+[LLM] Pinned call → local/gemini-3.1-pro-preview
+[2026-11-24T19:22:42.241Z] [INFO] [LLM] Pinned call → local/gemini-3.1-pro-preview
+[LLM] role "router.classify" (local/gemini-3.1-pro-preview) failed — escalating via cascade: Local inference deferred: live memory pressure before model load (swapout=? (probe unavailable) memFree=89% (swap resident=6194MB))
+[2026-11-24T19:22:42.263Z] [WARN] [LLM] role "router.classify" (local/gemini-3.1-pro-preview) failed — escalating via cascade: Local inference deferred: live memory pressure before model load (swapout=? (probe unavailable) memFree=89% (swap resident=6194MB))
+[CliSeat] cli:antigravity convening (timeout 240s)
+[2026-11-24T19:22:42.264Z] [INFO] [CliSeat] cli:antigravity convening (timeout 240s)
+[LLM] role "router.classify" (local/gemini-3.1-pro-preview) failed — escalating via cascade: Local inference deferred: live memory pressure before model load (swapout=? (probe unavailable) memFree=89% (swap resident=6194MB))
+[2026-11-24T19:22:42.283Z] [WARN] [LLM] role "router.classify" (local/gemini-3.1-pro-preview) failed — escalating via cascade: Local inference deferred: live memory pressure before model load (swapout=? (probe unavailable) memFree=89% (swap resident=6194MB))
+[CliSeat] cli:antigravity convening (timeout 240s)
+[2026-11-24T19:22:42.283Z] [INFO] [CliSeat] cli:antigravity convening (timeout 240s)
+  ⚠️ [CliLane/provider.google] cli:antigravity error: exit 1 with no usable reply — trying next
+[2026-11-24T19:22:42.307Z] [WARN]   ⚠️ [CliLane/provider.google] cli:antigravity error: exit 1 with no usable reply — trying next
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/model-control/claude-default — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[CliSeat] cli:claude-code convening (timeout 240s)
+[2026-11-24T19:22:42.308Z] [INFO] [CliSeat] cli:claude-code convening (timeout 240s)
+  ⚠️ [CliLane/provider.google] cli:antigravity error: exit 1 with no usable reply — trying next
+[2026-11-24T19:22:42.312Z] [WARN]   ⚠️ [CliLane/provider.google] cli:antigravity error: exit 1 with no usable reply — trying next
+[CliSeat] cli:claude-code convening (timeout 240s)
+[2026-11-24T19:22:42.312Z] [INFO] [CliSeat] cli:claude-code convening (timeout 240s)
+  ⚠️ [CliLane/provider.google] cli:claude-code error: exit 1 with no usable reply — trying next
+[2026-11-24T19:22:42.321Z] [WARN]   ⚠️ [CliLane/provider.google] cli:claude-code error: exit 1 with no usable reply — trying next
+[CliSeat] cli:codex convening (timeout 240s)
+[2026-11-24T19:22:42.322Z] [INFO] [CliSeat] cli:codex convening (timeout 240s)
+  ⚠️ [CliLane/provider.google] cli:claude-code error: exit 1 with no usable reply — trying next
+[2026-11-24T19:22:42.325Z] [WARN]   ⚠️ [CliLane/provider.google] cli:claude-code error: exit 1 with no usable reply — trying next
+[CliSeat] cli:codex convening (timeout 240s)
+[2026-11-24T19:22:42.326Z] [INFO] [CliSeat] cli:codex convening (timeout 240s)
+  ⚠️ [CliLane/provider.google] cli:codex error: exit 1 with no usable reply — trying next
+[2026-11-24T19:22:42.332Z] [WARN]   ⚠️ [CliLane/provider.google] cli:codex error: exit 1 with no usable reply — trying next
+  ⚠️ [CliLane/provider.google] no CLI seat answered — falling back to local/Gemini
+[2026-11-24T19:22:42.333Z] [WARN]   ⚠️ [CliLane/provider.google] no CLI seat answered — falling back to local/Gemini
+[LLM] ⚠️ google/gemini-3.1-pro-preview exhausted; starting fallback cascade
+[2026-11-24T19:22:42.333Z] [WARN] [LLM] ⚠️ google/gemini-3.1-pro-preview exhausted; starting fallback cascade
+[LLM] 🔄 Trying fallback: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+[2026-11-24T19:22:42.333Z] [INFO] [LLM] 🔄 Trying fallback: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+[OpenRouter] no price catalog available — falling back to the static free roster; slugs outside it will be refused
+[2026-11-24T19:22:42.333Z] [WARN] [OpenRouter] no price catalog available — falling back to the static free roster; slugs outside it will be refused
+  ⚠️ [CliLane/provider.google] cli:codex error: exit 1 with no usable reply — trying next
+[2026-11-24T19:22:42.338Z] [WARN]   ⚠️ [CliLane/provider.google] cli:codex error: exit 1 with no usable reply — trying next
+  ⚠️ [CliLane/provider.google] no CLI seat answered — falling back to local/Gemini
+[2026-11-24T19:22:42.338Z] [WARN]   ⚠️ [CliLane/provider.google] no CLI seat answered — falling back to local/Gemini
+[LLM] ⚠️ google/gemini-3.1-pro-preview exhausted; starting fallback cascade
+[2026-11-24T19:22:42.338Z] [WARN] [LLM] ⚠️ google/gemini-3.1-pro-preview exhausted; starting fallback cascade
+[LLM] 🔄 Trying fallback: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+[2026-11-24T19:22:42.338Z] [INFO] [LLM] 🔄 Trying fallback: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+[OpenRouter] no price catalog available — falling back to the static free roster; slugs outside it will be refused
+[2026-11-24T19:22:42.338Z] [WARN] [OpenRouter] no price catalog available — falling back to the static free roster; slugs outside it will be refused
+[LLM] ❌ Fallback openrouter/nvidia/nemotron-3-ultra-550b-a55b:free failed: Connection error.
+[2026-11-24T19:22:43.518Z] [WARN] [LLM] ❌ Fallback openrouter/nvidia/nemotron-3-ultra-550b-a55b:free failed: Connection error.
+[LLM] 💀 All providers and models failed — no fallback remaining
+[2026-11-24T19:22:43.518Z] [ERROR] [LLM] 💀 All providers and models failed — no fallback remaining
+[SubTaskGate:shadow] source=system effort=HIGH engine=pro-agent tier=reasoning needsTools=true confidence=0.00 classifier=edge_llm prompt="What time is it?"
+[2026-11-24T19:22:43.526Z] [INFO] [SubTaskGate:shadow] source=system effort=HIGH engine=pro-agent tier=reasoning needsTools=true confidence=0.00 classifier=edge_llm prompt="What time is it?"
+[LLM] ❌ Fallback openrouter/nvidia/nemotron-3-ultra-550b-a55b:free failed: Connection error.
+[2026-11-24T19:22:43.635Z] [WARN] [LLM] ❌ Fallback openrouter/nvidia/nemotron-3-ultra-550b-a55b:free failed: Connection error.
+[LLM] 💀 All providers and models failed — no fallback remaining
+[2026-11-24T19:22:43.635Z] [ERROR] [LLM] 💀 All providers and models failed — no fallback remaining
+[SubTaskGate:shadow] source=system effort=HIGH engine=pro-agent tier=reasoning needsTools=true confidence=0.00 classifier=edge_llm prompt="What time is it?"
+[2026-11-24T19:22:43.636Z] [INFO] [SubTaskGate:shadow] source=system effort=HIGH engine=pro-agent tier=reasoning needsTools=true confidence=0.00 classifier=edge_llm prompt="What time is it?"
+[OpenRouter] no price catalog available — falling back to the static free roster; slugs outside it will be refused
+[2026-11-24T19:22:40.447Z] [WARN] [OpenRouter] no price catalog available — falling back to the static free roster; slugs outside it will be refused
+✔ prices parse from the catalog payload as USD per million tokens (1.32275ms)
+✔ CLI ids, dated aliases, agy names and slugs map to OpenRouter slugs (0.701ms)
+✔ priceForModel reads the catalog and never borrows a neighbour's price (2.087375ms)
+✔ the catalog file carries prices and the filtered free lane for The Nexus (0.555083ms)
+✔ the roster no longer names withdrawn or harness-only models (0.057166ms)
+✔ a withdrawn roster head drops out: the default is the first preferred slug still free (0.596458ms)
+✔ a refresh in a test run never reaches the network (4.714791ms)
+✔ the roster is non-empty, unique, and every entry is tool-capable (0.377416ms)
+✔ rotation can actually escape a throttled pool (0.05175ms)
+✔ defaultFreeModel is the roster head (0.122208ms)
+﹣ every roster slug still exists and is still free (1.260875ms) # catalog unreachable: fetch failed (network guard refused https://openrouter.ai/api/v1/models)
+﹣ the roster HEAD in particular is live — an unpinned dispatch depends on it (0.184541ms) # catalog unreachable: fetch failed (network guard refused https://openrouter.ai/api/v1/models)
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T19:22:41.201Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[Feedback] PX-MM-6: filed 1/1 task(s) on "Meeple Magnate" — queued for Primary Decision Maker approval
+[2026-11-24T19:22:41.283Z] [INFO] [Feedback] PX-MM-6: filed 1/1 task(s) on "Meeple Magnate" — queued for Primary Decision Maker approval
+✔ gate: no PDMs → not gated; PDMs → gated; owner key and PDM submitter exempt (4.852458ms)
+✔ gate metadata + gated batch task is blocked with the gate in metadata (0.34225ms)
+[Feedback] PX-MM-7: stakeholder lookup failed — filing ungated: nexus down
+[2026-11-24T19:22:41.288Z] [WARN] [Feedback] PX-MM-7: stakeholder lookup failed — filing ungated: nexus down
+[Feedback] PX-MM-7: filed 1/1 task(s) on "Meeple Magnate"
+[2026-11-24T19:22:41.290Z] [INFO] [Feedback] PX-MM-7: filed 1/1 task(s) on "Meeple Magnate"
+[Stakeholders] activity on Meeple (request, 1 in window) — report at 2026-11-24T19:22:41.411Z
+[2026-11-24T19:22:41.291Z] [INFO] [Stakeholders] activity on Meeple (request, 1 in window) — report at 2026-11-24T19:22:41.411Z
+[Stakeholders] activity on Meeple (reply, 2 in window) — report at 2026-11-24T19:22:41.411Z
+[2026-11-24T19:22:41.292Z] [INFO] [Stakeholders] activity on Meeple (reply, 2 in window) — report at 2026-11-24T19:22:41.411Z
+✔ fileFeedbackTasks gates when PDMs exist and arms the activity timer (8.704583ms)
+✔ computeFireAt: quiet period, extended through an in-progress or imminent meeting (0.1385ms)
+[Stakeholders] activity on Meeple (request, 1 in window) — report at 2026-11-24T20:22:41.694Z
+[2026-11-24T19:22:41.698Z] [INFO] [Stakeholders] activity on Meeple (request, 1 in window) — report at 2026-11-24T20:22:41.694Z
+[Stakeholders] report model returned unusable JSON for Meeple Magnate: not json at all
+[2026-11-24T19:22:41.705Z] [WARN] [Stakeholders] report model returned unusable JSON for Meeple Magnate: not json at all
+[Stakeholders] decision maker No Mail has no email — skipped as a recipient
+[2026-11-24T19:22:41.761Z] [WARN] [Stakeholders] decision maker No Mail has no email — skipped as a recipient
+✔ noteProjectActivity debounces, persists, rehydrates, and fires once (407.074291ms)
+✔ stakeholder meetings are calendar entries, never dispatched or 'missed' (0.222417ms)
+✔ report skeleton: requests (pending + deferred), lexical duplicates, done/progress/next, client-safe text (4.323541ms)
+✔ model verdict parses duplicate hints while narrative and client questions stay grounded (2.82275ms)
+✔ default template: brand from project + PDM tone + site hints; feedback applies allow-listed changes (1.413541ms)
+✔ template feedback keeps the whole request and every change-log entry (0.757334ms)
+✔ reports are light: a pale brand accent is darkened for text but still fills solid (4.236459ms)
+✔ rendered email is branded, escaped, lists items with decision hints and the hosted link (3.888042ms)
+✔ legacy report previews are preserved at their original paths (45.127ms)
+✔ recipients: PDMs with email, extra members/emails, operator cc, deduped (0.703917ms)
+[Stakeholders] created branded report template for Meeple Magnate (accent #654321)
+[2026-11-24T19:22:41.778Z] [INFO] [Stakeholders] created branded report template for Meeple Magnate (accent #654321)
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects/p1/client-access — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects/p1/client-access — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects/p1/client-access — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Stakeholders] DRY RUN report sr_mt4i8o00_13aed9 for Meeple Magnate: 0 item(s), 0 question(s)
+[2026-11-24T19:22:41.904Z] [INFO] [Stakeholders] DRY RUN report sr_mt4i8o00_13aed9 for Meeple Magnate: 0 item(s), 0 question(s)
+✔ runStakeholderReport: every mode freezes a Praxis Mail draft and sends nothing; inactive skips; empty skips (142.619625ms)
+📧 [HumanEmail] sent to sis@example.com cc robert@fixture-operator.dev (Health Wealth Capital · Status Report No. 2 · Aug 15 – Aug 22, 2026 [PX-HWC-2]) messageId=<2bb37ca5-f3b6-4fe9-bacf-d05b7ccdef4d@praxis.local>
+[2026-11-24T19:22:42.048Z] [INFO] 📧 [HumanEmail] sent to sis@example.com cc robert@fixture-operator.dev (Health Wealth Capital · Status Report No. 2 · Aug 15 – Aug 22, 2026 [PX-HWC-2]) messageId=<2bb37ca5-f3b6-4fe9-bacf-d05b7ccdef4d@praxis.local>
+✔ sendReport: freezes the decision maker's envelope in Praxis Mail with no sign-in minted and Robert in CC; only his exact approval sends it (167.608458ms)
+✔ sendReport: a failed Praxis Mail delivery stays uncertain, is never retried, and never marks the report sent (69.564916ms)
+📧 [HumanEmail] sent to sis@example.com cc robert@fixture-operator.dev (Meeple Magnate · Status Report No. 77 · Aug 15 – Aug 22, 2026 [PX-OCR-77]) messageId=<65fa3ba8-da82-465a-b392-a1f06c8f11e4@praxis.local>
+[2026-11-24T19:22:42.190Z] [INFO] 📧 [HumanEmail] sent to sis@example.com cc robert@fixture-operator.dev (Meeple Magnate · Status Report No. 77 · Aug 15 – Aug 22, 2026 [PX-OCR-77]) messageId=<65fa3ba8-da82-465a-b392-a1f06c8f11e4@praxis.local>
+✔ sendReport: Robert rides as CC on every stakeholder envelope; his redundant To-copy is skipped; a HELD copy blocks the draft, never sends bare (125.1215ms)
+[Stakeholders] created branded report template for Meeple Magnate (accent #047857)
+[2026-11-24T19:22:42.272Z] [INFO] [Stakeholders] created branded report template for Meeple Magnate (accent #047857)
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects/p1/client-access — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Stakeholders] hosted report reservation failed for Meeple Magnate (emailing without the online link): fetch failed (network guard refused https://vibeshiftai.com/api/reports)
+[2026-11-24T19:22:42.279Z] [WARN] [Stakeholders] hosted report reservation failed for Meeple Magnate (emailing without the online link): fetch failed (network guard refused https://vibeshiftai.com/api/reports)
+✔ review: the Praxis Mail envelope carries the operator copy the transport will apply; a changed copy policy refuses instead of changing it (45.25575ms)
+[Stakeholders] PDM decision approve on reserved task t1 (invitation) refused; Robert-only
+[2026-11-24T19:22:42.318Z] [INFO] [Stakeholders] PDM decision approve on reserved task t1 (invitation) refused; Robert-only
+✔ applyReportResponse: a decision maker's answer on a reserved task (invitation / scope change) is recorded, never forwarded as the decision (10.605208ms)
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.331Z&end=2026-11-25T01%3A22%3A42.331Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Stakeholders] activity on Meeple Magnate (response, 1 in window) — report at 2026-11-24T20:22:42.331Z
+[2026-11-24T19:22:42.333Z] [INFO] [Stakeholders] activity on Meeple Magnate (response, 1 in window) — report at 2026-11-24T20:22:42.331Z
+[Stakeholders] weekly report due for Due
+[2026-11-24T19:22:42.334Z] [INFO] [Stakeholders] weekly report due for Due
+[Stakeholders] weekly report for Due: sent
+[2026-11-24T19:22:42.334Z] [INFO] [Stakeholders] weekly report for Due: sent
+[Stakeholders] weekly report for review already made this week (sent, in Mail review or cancelled)
+[2026-11-24T19:22:42.335Z] [INFO] [Stakeholders] weekly report for review already made this week (sent, in Mail review or cancelled)
+[Stakeholders] weekly report for declined already made this week (sent, in Mail review or cancelled)
+[2026-11-24T19:22:42.335Z] [INFO] [Stakeholders] weekly report for declined already made this week (sent, in Mail review or cancelled)
+[Stakeholders] weekly report for activity already made this week (sent, in Mail review or cancelled)
+[2026-11-24T19:22:42.335Z] [INFO] [Stakeholders] weekly report for activity already made this week (sent, in Mail review or cancelled)
+[Stakeholders] weekly report due for stale
+[2026-11-24T19:22:42.335Z] [INFO] [Stakeholders] weekly report due for stale
+[Stakeholders] weekly report for stale: queued_for_review
+[2026-11-24T19:22:42.336Z] [INFO] [Stakeholders] weekly report for stale: queued_for_review
+[Stakeholders] weekly report due for failed
+[2026-11-24T19:22:42.336Z] [INFO] [Stakeholders] weekly report due for failed
+[Stakeholders] weekly report for failed: queued_for_review
+[2026-11-24T19:22:42.336Z] [INFO] [Stakeholders] weekly report for failed: queued_for_review
+[Stakeholders] weekly report due for manual
+[2026-11-24T19:22:42.336Z] [INFO] [Stakeholders] weekly report due for manual
+[Stakeholders] weekly report for manual: queued_for_review
+[2026-11-24T19:22:42.336Z] [INFO] [Stakeholders] weekly report for manual: queued_for_review
+[Stakeholders] weekly report due for fresh
+[2026-11-24T19:22:42.336Z] [INFO] [Stakeholders] weekly report due for fresh
+[Stakeholders] weekly report for fresh: queued_for_review
+[2026-11-24T19:22:42.337Z] [INFO] [Stakeholders] weekly report for fresh: queued_for_review
+✔ applyReportResponse: per-item decisions → Nexus, comments/overall stored, template feedback applied, receipt sent (10.069208ms)
+✔ weeklyReportDue honours day/hour in the project timezone and the 6-day gap (0.909708ms)
+✔ sweepWeeklyReports runs only due projects (0.845625ms)
+✔ sweepWeeklyReports skips a project whose report this week is in Mail review, cancelled or already sent (2.218041ms)
+✔ a report sent from Praxis Mail stamps the project's weekly clock once and keeps its other settings (102.926125ms)
+[Feedback] inbound reply for status report PX-MM-88 from sis@example.com
+[2026-11-24T19:22:42.446Z] [INFO] [Feedback] inbound reply for status report PX-MM-88 from sis@example.com
+[Stakeholders] activity on Meeple Magnate (reply, 2 in window) — report at 2026-11-24T20:22:42.445Z
+[2026-11-24T19:22:42.450Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 2 in window) — report at 2026-11-24T20:22:42.445Z
+✔ an email reply tagged with a report's PX tag lands on the report as feedback (6.166791ms)
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.453Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.454Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.458Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.461Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.461Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.462Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.462Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.463Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.467Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.471Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.471Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.472Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.472Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.476Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.476Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.479Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.479Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.480Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.481Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.482Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.482Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.483Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.484Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.485Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.486Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.486Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.487Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.487Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.488Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.488Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.489Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.489Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.492Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.496Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.499Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.499Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.500Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.501Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.505Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.505Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.509Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.510Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.510Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.514Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.514Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.518Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.518Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.519Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.523Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.527Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.527Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.528Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.532Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.535Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.536Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.537Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.541Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.545Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.546Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.547Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.547Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.551Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.555Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.556Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.557Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.558Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.559Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.563Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.567Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.568Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.569Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.572Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.575Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.576Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.577Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.585Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.586Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.586Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.587Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.588Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.588Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.589Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.590Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.590Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.591Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.592Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.592Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.593Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.594Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.594Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.595Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.596Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.596Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.597Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.598Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.598Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.599Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.600Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.600Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.601Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.602Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[2026-11-24T19:22:42.603Z] [INFO] [Feedback] inbound reply for status report PX-MM-89 from sis@example.com
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.453Z&end=2026-11-25T01%3A22%3A42.453Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.454Z&end=2026-11-25T01%3A22%3A42.454Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.458Z&end=2026-11-25T01%3A22%3A42.458Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.460Z&end=2026-11-25T01%3A22%3A42.460Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.461Z&end=2026-11-25T01%3A22%3A42.461Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.462Z&end=2026-11-25T01%3A22%3A42.462Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.462Z&end=2026-11-25T01%3A22%3A42.462Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.463Z&end=2026-11-25T01%3A22%3A42.463Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.466Z&end=2026-11-25T01%3A22%3A42.466Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.470Z&end=2026-11-25T01%3A22%3A42.470Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.471Z&end=2026-11-25T01%3A22%3A42.471Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.471Z&end=2026-11-25T01%3A22%3A42.471Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.472Z&end=2026-11-25T01%3A22%3A42.472Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.475Z&end=2026-11-25T01%3A22%3A42.475Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.476Z&end=2026-11-25T01%3A22%3A42.476Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.478Z&end=2026-11-25T01%3A22%3A42.478Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.479Z&end=2026-11-25T01%3A22%3A42.479Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.480Z&end=2026-11-25T01%3A22%3A42.480Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.480Z&end=2026-11-25T01%3A22%3A42.480Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.481Z&end=2026-11-25T01%3A22%3A42.481Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.482Z&end=2026-11-25T01%3A22%3A42.482Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.483Z&end=2026-11-25T01%3A22%3A42.483Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.484Z&end=2026-11-25T01%3A22%3A42.484Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.485Z&end=2026-11-25T01%3A22%3A42.485Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.485Z&end=2026-11-25T01%3A22%3A42.485Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.486Z&end=2026-11-25T01%3A22%3A42.486Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.486Z&end=2026-11-25T01%3A22%3A42.486Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.487Z&end=2026-11-25T01%3A22%3A42.487Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.487Z&end=2026-11-25T01%3A22%3A42.487Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.488Z&end=2026-11-25T01%3A22%3A42.488Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.488Z&end=2026-11-25T01%3A22%3A42.488Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.489Z&end=2026-11-25T01%3A22%3A42.489Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.491Z&end=2026-11-25T01%3A22%3A42.491Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.495Z&end=2026-11-25T01%3A22%3A42.495Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.498Z&end=2026-11-25T01%3A22%3A42.498Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.499Z&end=2026-11-25T01%3A22%3A42.499Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.500Z&end=2026-11-25T01%3A22%3A42.500Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.501Z&end=2026-11-25T01%3A22%3A42.501Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.504Z&end=2026-11-25T01%3A22%3A42.504Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.505Z&end=2026-11-25T01%3A22%3A42.505Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.509Z&end=2026-11-25T01%3A22%3A42.509Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.509Z&end=2026-11-25T01%3A22%3A42.509Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.510Z&end=2026-11-25T01%3A22%3A42.510Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.513Z&end=2026-11-25T01%3A22%3A42.513Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.514Z&end=2026-11-25T01%3A22%3A42.514Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.517Z&end=2026-11-25T01%3A22%3A42.517Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.518Z&end=2026-11-25T01%3A22%3A42.518Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.519Z&end=2026-11-25T01%3A22%3A42.519Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.522Z&end=2026-11-25T01%3A22%3A42.522Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.526Z&end=2026-11-25T01%3A22%3A42.526Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.527Z&end=2026-11-25T01%3A22%3A42.527Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.528Z&end=2026-11-25T01%3A22%3A42.528Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.531Z&end=2026-11-25T01%3A22%3A42.531Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.535Z&end=2026-11-25T01%3A22%3A42.535Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.536Z&end=2026-11-25T01%3A22%3A42.536Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.537Z&end=2026-11-25T01%3A22%3A42.537Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.540Z&end=2026-11-25T01%3A22%3A42.540Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.544Z&end=2026-11-25T01%3A22%3A42.544Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.546Z&end=2026-11-25T01%3A22%3A42.546Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.546Z&end=2026-11-25T01%3A22%3A42.546Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.547Z&end=2026-11-25T01%3A22%3A42.547Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.551Z&end=2026-11-25T01%3A22%3A42.551Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.555Z&end=2026-11-25T01%3A22%3A42.555Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.556Z&end=2026-11-25T01%3A22%3A42.556Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.556Z&end=2026-11-25T01%3A22%3A42.556Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.557Z&end=2026-11-25T01%3A22%3A42.557Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.558Z&end=2026-11-25T01%3A22%3A42.558Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.563Z&end=2026-11-25T01%3A22%3A42.563Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.567Z&end=2026-11-25T01%3A22%3A42.567Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.567Z&end=2026-11-25T01%3A22%3A42.567Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.569Z&end=2026-11-25T01%3A22%3A42.569Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.572Z&end=2026-11-25T01%3A22%3A42.572Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.575Z&end=2026-11-25T01%3A22%3A42.575Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.576Z&end=2026-11-25T01%3A22%3A42.576Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.577Z&end=2026-11-25T01%3A22%3A42.577Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.584Z&end=2026-11-25T01%3A22%3A42.584Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.585Z&end=2026-11-25T01%3A22%3A42.585Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.586Z&end=2026-11-25T01%3A22%3A42.586Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.587Z&end=2026-11-25T01%3A22%3A42.587Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.587Z&end=2026-11-25T01%3A22%3A42.587Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.588Z&end=2026-11-25T01%3A22%3A42.588Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.589Z&end=2026-11-25T01%3A22%3A42.589Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.589Z&end=2026-11-25T01%3A22%3A42.589Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.590Z&end=2026-11-25T01%3A22%3A42.590Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.591Z&end=2026-11-25T01%3A22%3A42.591Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.591Z&end=2026-11-25T01%3A22%3A42.591Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.592Z&end=2026-11-25T01%3A22%3A42.592Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.593Z&end=2026-11-25T01%3A22%3A42.593Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.594Z&end=2026-11-25T01%3A22%3A42.594Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.594Z&end=2026-11-25T01%3A22%3A42.594Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.595Z&end=2026-11-25T01%3A22%3A42.595Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.596Z&end=2026-11-25T01%3A22%3A42.596Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.596Z&end=2026-11-25T01%3A22%3A42.596Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.597Z&end=2026-11-25T01%3A22%3A42.597Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.598Z&end=2026-11-25T01%3A22%3A42.598Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.598Z&end=2026-11-25T01%3A22%3A42.598Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.599Z&end=2026-11-25T01%3A22%3A42.599Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.600Z&end=2026-11-25T01%3A22%3A42.600Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.600Z&end=2026-11-25T01%3A22%3A42.600Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.601Z&end=2026-11-25T01%3A22%3A42.601Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.602Z&end=2026-11-25T01%3A22%3A42.602Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/calendar?start=2026-11-24T13%3A22%3A42.602Z&end=2026-11-25T01%3A22%3A42.602Z&project_id=p1&event_type=stakeholder_meeting — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Stakeholders] activity on Meeple Magnate (reply, 3 in window) — report at 2026-11-24T20:22:42.453Z
+[2026-11-24T19:22:42.616Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 3 in window) — report at 2026-11-24T20:22:42.453Z
+[Stakeholders] activity on Meeple Magnate (reply, 4 in window) — report at 2026-11-24T20:22:42.454Z
+[2026-11-24T19:22:42.616Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 4 in window) — report at 2026-11-24T20:22:42.454Z
+[Stakeholders] activity on Meeple Magnate (reply, 5 in window) — report at 2026-11-24T20:22:42.458Z
+[2026-11-24T19:22:42.619Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 5 in window) — report at 2026-11-24T20:22:42.458Z
+[Stakeholders] activity on Meeple Magnate (reply, 6 in window) — report at 2026-11-24T20:22:42.460Z
+[2026-11-24T19:22:42.620Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 6 in window) — report at 2026-11-24T20:22:42.460Z
+[Stakeholders] activity on Meeple Magnate (reply, 7 in window) — report at 2026-11-24T20:22:42.461Z
+[2026-11-24T19:22:42.620Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 7 in window) — report at 2026-11-24T20:22:42.461Z
+[Stakeholders] activity on Meeple Magnate (reply, 8 in window) — report at 2026-11-24T20:22:42.462Z
+[2026-11-24T19:22:42.620Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 8 in window) — report at 2026-11-24T20:22:42.462Z
+[Stakeholders] activity on Meeple Magnate (reply, 9 in window) — report at 2026-11-24T20:22:42.462Z
+[2026-11-24T19:22:42.621Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 9 in window) — report at 2026-11-24T20:22:42.462Z
+[Stakeholders] activity on Meeple Magnate (reply, 10 in window) — report at 2026-11-24T20:22:42.463Z
+[2026-11-24T19:22:42.621Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 10 in window) — report at 2026-11-24T20:22:42.463Z
+[Stakeholders] activity on Meeple Magnate (reply, 11 in window) — report at 2026-11-24T20:22:42.466Z
+[2026-11-24T19:22:42.621Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 11 in window) — report at 2026-11-24T20:22:42.466Z
+[Stakeholders] activity on Meeple Magnate (reply, 12 in window) — report at 2026-11-24T20:22:42.470Z
+[2026-11-24T19:22:42.625Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 12 in window) — report at 2026-11-24T20:22:42.470Z
+[Stakeholders] activity on Meeple Magnate (reply, 13 in window) — report at 2026-11-24T20:22:42.471Z
+[2026-11-24T19:22:42.625Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 13 in window) — report at 2026-11-24T20:22:42.471Z
+[Stakeholders] activity on Meeple Magnate (reply, 14 in window) — report at 2026-11-24T20:22:42.471Z
+[2026-11-24T19:22:42.628Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 14 in window) — report at 2026-11-24T20:22:42.471Z
+[Stakeholders] activity on Meeple Magnate (reply, 15 in window) — report at 2026-11-24T20:22:42.472Z
+[2026-11-24T19:22:42.628Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 15 in window) — report at 2026-11-24T20:22:42.472Z
+[Stakeholders] activity on Meeple Magnate (reply, 16 in window) — report at 2026-11-24T20:22:42.475Z
+[2026-11-24T19:22:42.628Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 16 in window) — report at 2026-11-24T20:22:42.475Z
+[Stakeholders] activity on Meeple Magnate (reply, 17 in window) — report at 2026-11-24T20:22:42.476Z
+[2026-11-24T19:22:42.628Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 17 in window) — report at 2026-11-24T20:22:42.476Z
+[Stakeholders] activity on Meeple Magnate (reply, 18 in window) — report at 2026-11-24T20:22:42.478Z
+[2026-11-24T19:22:42.629Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 18 in window) — report at 2026-11-24T20:22:42.478Z
+[Stakeholders] activity on Meeple Magnate (reply, 19 in window) — report at 2026-11-24T20:22:42.479Z
+[2026-11-24T19:22:42.629Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 19 in window) — report at 2026-11-24T20:22:42.479Z
+[Stakeholders] activity on Meeple Magnate (reply, 20 in window) — report at 2026-11-24T20:22:42.480Z
+[2026-11-24T19:22:42.634Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 20 in window) — report at 2026-11-24T20:22:42.480Z
+[Stakeholders] activity on Meeple Magnate (reply, 21 in window) — report at 2026-11-24T20:22:42.480Z
+[2026-11-24T19:22:42.634Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 21 in window) — report at 2026-11-24T20:22:42.480Z
+[Stakeholders] activity on Meeple Magnate (reply, 22 in window) — report at 2026-11-24T20:22:42.481Z
+[2026-11-24T19:22:42.637Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 22 in window) — report at 2026-11-24T20:22:42.481Z
+[Stakeholders] activity on Meeple Magnate (reply, 23 in window) — report at 2026-11-24T20:22:42.482Z
+[2026-11-24T19:22:42.637Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 23 in window) — report at 2026-11-24T20:22:42.482Z
+[Stakeholders] activity on Meeple Magnate (reply, 24 in window) — report at 2026-11-24T20:22:42.483Z
+[2026-11-24T19:22:42.637Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 24 in window) — report at 2026-11-24T20:22:42.483Z
+[Stakeholders] activity on Meeple Magnate (reply, 25 in window) — report at 2026-11-24T20:22:42.484Z
+[2026-11-24T19:22:42.638Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 25 in window) — report at 2026-11-24T20:22:42.484Z
+[Stakeholders] activity on Meeple Magnate (reply, 26 in window) — report at 2026-11-24T20:22:42.485Z
+[2026-11-24T19:22:42.638Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 26 in window) — report at 2026-11-24T20:22:42.485Z
+[Stakeholders] activity on Meeple Magnate (reply, 27 in window) — report at 2026-11-24T20:22:42.485Z
+[2026-11-24T19:22:42.638Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 27 in window) — report at 2026-11-24T20:22:42.485Z
+[Stakeholders] activity on Meeple Magnate (reply, 28 in window) — report at 2026-11-24T20:22:42.486Z
+[2026-11-24T19:22:42.638Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 28 in window) — report at 2026-11-24T20:22:42.486Z
+[Stakeholders] activity on Meeple Magnate (reply, 29 in window) — report at 2026-11-24T20:22:42.486Z
+[2026-11-24T19:22:42.642Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 29 in window) — report at 2026-11-24T20:22:42.486Z
+[Stakeholders] activity on Meeple Magnate (reply, 30 in window) — report at 2026-11-24T20:22:42.487Z
+[2026-11-24T19:22:42.643Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 30 in window) — report at 2026-11-24T20:22:42.487Z
+[Stakeholders] activity on Meeple Magnate (reply, 31 in window) — report at 2026-11-24T20:22:42.487Z
+[2026-11-24T19:22:42.646Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 31 in window) — report at 2026-11-24T20:22:42.487Z
+[Stakeholders] activity on Meeple Magnate (reply, 32 in window) — report at 2026-11-24T20:22:42.488Z
+[2026-11-24T19:22:42.647Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 32 in window) — report at 2026-11-24T20:22:42.488Z
+[Stakeholders] activity on Meeple Magnate (reply, 33 in window) — report at 2026-11-24T20:22:42.488Z
+[2026-11-24T19:22:42.647Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 33 in window) — report at 2026-11-24T20:22:42.488Z
+[Stakeholders] activity on Meeple Magnate (reply, 34 in window) — report at 2026-11-24T20:22:42.489Z
+[2026-11-24T19:22:42.647Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 34 in window) — report at 2026-11-24T20:22:42.489Z
+[Stakeholders] activity on Meeple Magnate (reply, 35 in window) — report at 2026-11-24T20:22:42.491Z
+[2026-11-24T19:22:42.647Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 35 in window) — report at 2026-11-24T20:22:42.491Z
+[Stakeholders] activity on Meeple Magnate (reply, 36 in window) — report at 2026-11-24T20:22:42.495Z
+[2026-11-24T19:22:42.648Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 36 in window) — report at 2026-11-24T20:22:42.495Z
+[Stakeholders] activity on Meeple Magnate (reply, 37 in window) — report at 2026-11-24T20:22:42.498Z
+[2026-11-24T19:22:42.648Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 37 in window) — report at 2026-11-24T20:22:42.498Z
+[Stakeholders] activity on Meeple Magnate (reply, 38 in window) — report at 2026-11-24T20:22:42.499Z
+[2026-11-24T19:22:42.648Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 38 in window) — report at 2026-11-24T20:22:42.499Z
+[Stakeholders] activity on Meeple Magnate (reply, 39 in window) — report at 2026-11-24T20:22:42.500Z
+[2026-11-24T19:22:42.649Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 39 in window) — report at 2026-11-24T20:22:42.500Z
+[Stakeholders] activity on Meeple Magnate (reply, 40 in window) — report at 2026-11-24T20:22:42.501Z
+[2026-11-24T19:22:42.649Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 40 in window) — report at 2026-11-24T20:22:42.501Z
+[Stakeholders] activity on Meeple Magnate (reply, 41 in window) — report at 2026-11-24T20:22:42.504Z
+[2026-11-24T19:22:42.649Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 41 in window) — report at 2026-11-24T20:22:42.504Z
+[Stakeholders] activity on Meeple Magnate (reply, 42 in window) — report at 2026-11-24T20:22:42.505Z
+[2026-11-24T19:22:42.649Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 42 in window) — report at 2026-11-24T20:22:42.505Z
+[Stakeholders] activity on Meeple Magnate (reply, 43 in window) — report at 2026-11-24T20:22:42.509Z
+[2026-11-24T19:22:42.650Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 43 in window) — report at 2026-11-24T20:22:42.509Z
+[Stakeholders] activity on Meeple Magnate (reply, 44 in window) — report at 2026-11-24T20:22:42.509Z
+[2026-11-24T19:22:42.650Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 44 in window) — report at 2026-11-24T20:22:42.509Z
+[Stakeholders] activity on Meeple Magnate (reply, 45 in window) — report at 2026-11-24T20:22:42.510Z
+[2026-11-24T19:22:42.654Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 45 in window) — report at 2026-11-24T20:22:42.510Z
+[Stakeholders] activity on Meeple Magnate (reply, 46 in window) — report at 2026-11-24T20:22:42.513Z
+[2026-11-24T19:22:42.654Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 46 in window) — report at 2026-11-24T20:22:42.513Z
+[Stakeholders] activity on Meeple Magnate (reply, 47 in window) — report at 2026-11-24T20:22:42.514Z
+[2026-11-24T19:22:42.657Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 47 in window) — report at 2026-11-24T20:22:42.514Z
+[Stakeholders] activity on Meeple Magnate (reply, 48 in window) — report at 2026-11-24T20:22:42.517Z
+[2026-11-24T19:22:42.658Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 48 in window) — report at 2026-11-24T20:22:42.517Z
+[Stakeholders] activity on Meeple Magnate (reply, 49 in window) — report at 2026-11-24T20:22:42.518Z
+[2026-11-24T19:22:42.658Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 49 in window) — report at 2026-11-24T20:22:42.518Z
+[Stakeholders] activity on Meeple Magnate (reply, 50 in window) — report at 2026-11-24T20:22:42.519Z
+[2026-11-24T19:22:42.658Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 50 in window) — report at 2026-11-24T20:22:42.519Z
+[Stakeholders] activity on Meeple Magnate (reply, 51 in window) — report at 2026-11-24T20:22:42.522Z
+[2026-11-24T19:22:42.659Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 51 in window) — report at 2026-11-24T20:22:42.522Z
+[Stakeholders] activity on Meeple Magnate (reply, 52 in window) — report at 2026-11-24T20:22:42.526Z
+[2026-11-24T19:22:42.659Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 52 in window) — report at 2026-11-24T20:22:42.526Z
+[Stakeholders] activity on Meeple Magnate (reply, 53 in window) — report at 2026-11-24T20:22:42.527Z
+[2026-11-24T19:22:42.663Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 53 in window) — report at 2026-11-24T20:22:42.527Z
+[Stakeholders] activity on Meeple Magnate (reply, 54 in window) — report at 2026-11-24T20:22:42.528Z
+[2026-11-24T19:22:42.664Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 54 in window) — report at 2026-11-24T20:22:42.528Z
+[Stakeholders] activity on Meeple Magnate (reply, 55 in window) — report at 2026-11-24T20:22:42.531Z
+[2026-11-24T19:22:42.668Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 55 in window) — report at 2026-11-24T20:22:42.531Z
+[Stakeholders] activity on Meeple Magnate (reply, 56 in window) — report at 2026-11-24T20:22:42.535Z
+[2026-11-24T19:22:42.668Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 56 in window) — report at 2026-11-24T20:22:42.535Z
+[Stakeholders] activity on Meeple Magnate (reply, 57 in window) — report at 2026-11-24T20:22:42.536Z
+[2026-11-24T19:22:42.668Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 57 in window) — report at 2026-11-24T20:22:42.536Z
+[Stakeholders] activity on Meeple Magnate (reply, 58 in window) — report at 2026-11-24T20:22:42.537Z
+[2026-11-24T19:22:42.668Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 58 in window) — report at 2026-11-24T20:22:42.537Z
+[Stakeholders] activity on Meeple Magnate (reply, 59 in window) — report at 2026-11-24T20:22:42.540Z
+[2026-11-24T19:22:42.669Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 59 in window) — report at 2026-11-24T20:22:42.540Z
+[Stakeholders] activity on Meeple Magnate (reply, 60 in window) — report at 2026-11-24T20:22:42.544Z
+[2026-11-24T19:22:42.669Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 60 in window) — report at 2026-11-24T20:22:42.544Z
+[Stakeholders] activity on Meeple Magnate (reply, 61 in window) — report at 2026-11-24T20:22:42.546Z
+[2026-11-24T19:22:42.669Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 61 in window) — report at 2026-11-24T20:22:42.546Z
+[Stakeholders] activity on Meeple Magnate (reply, 62 in window) — report at 2026-11-24T20:22:42.546Z
+[2026-11-24T19:22:42.673Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 62 in window) — report at 2026-11-24T20:22:42.546Z
+[Stakeholders] activity on Meeple Magnate (reply, 63 in window) — report at 2026-11-24T20:22:42.547Z
+[2026-11-24T19:22:42.673Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 63 in window) — report at 2026-11-24T20:22:42.547Z
+[Stakeholders] activity on Meeple Magnate (reply, 64 in window) — report at 2026-11-24T20:22:42.551Z
+[2026-11-24T19:22:42.674Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 64 in window) — report at 2026-11-24T20:22:42.551Z
+[Stakeholders] activity on Meeple Magnate (reply, 65 in window) — report at 2026-11-24T20:22:42.555Z
+[2026-11-24T19:22:42.677Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 65 in window) — report at 2026-11-24T20:22:42.555Z
+[Stakeholders] activity on Meeple Magnate (reply, 66 in window) — report at 2026-11-24T20:22:42.556Z
+[2026-11-24T19:22:42.677Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 66 in window) — report at 2026-11-24T20:22:42.556Z
+[Stakeholders] activity on Meeple Magnate (reply, 67 in window) — report at 2026-11-24T20:22:42.556Z
+[2026-11-24T19:22:42.677Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 67 in window) — report at 2026-11-24T20:22:42.556Z
+[Stakeholders] activity on Meeple Magnate (reply, 68 in window) — report at 2026-11-24T20:22:42.557Z
+[2026-11-24T19:22:42.678Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 68 in window) — report at 2026-11-24T20:22:42.557Z
+[Stakeholders] activity on Meeple Magnate (reply, 69 in window) — report at 2026-11-24T20:22:42.558Z
+[2026-11-24T19:22:42.678Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 69 in window) — report at 2026-11-24T20:22:42.558Z
+[Stakeholders] activity on Meeple Magnate (reply, 70 in window) — report at 2026-11-24T20:22:42.563Z
+[2026-11-24T19:22:42.678Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 70 in window) — report at 2026-11-24T20:22:42.563Z
+[Stakeholders] activity on Meeple Magnate (reply, 71 in window) — report at 2026-11-24T20:22:42.567Z
+[2026-11-24T19:22:42.678Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 71 in window) — report at 2026-11-24T20:22:42.567Z
+[Stakeholders] activity on Meeple Magnate (reply, 72 in window) — report at 2026-11-24T20:22:42.567Z
+[2026-11-24T19:22:42.679Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 72 in window) — report at 2026-11-24T20:22:42.567Z
+[Stakeholders] activity on Meeple Magnate (reply, 73 in window) — report at 2026-11-24T20:22:42.569Z
+[2026-11-24T19:22:42.679Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 73 in window) — report at 2026-11-24T20:22:42.569Z
+[Stakeholders] activity on Meeple Magnate (reply, 74 in window) — report at 2026-11-24T20:22:42.572Z
+[2026-11-24T19:22:42.679Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 74 in window) — report at 2026-11-24T20:22:42.572Z
+[Stakeholders] activity on Meeple Magnate (reply, 75 in window) — report at 2026-11-24T20:22:42.575Z
+[2026-11-24T19:22:42.679Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 75 in window) — report at 2026-11-24T20:22:42.575Z
+[Stakeholders] activity on Meeple Magnate (reply, 76 in window) — report at 2026-11-24T20:22:42.576Z
+[2026-11-24T19:22:42.680Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 76 in window) — report at 2026-11-24T20:22:42.576Z
+[Stakeholders] activity on Meeple Magnate (reply, 77 in window) — report at 2026-11-24T20:22:42.577Z
+[2026-11-24T19:22:42.680Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 77 in window) — report at 2026-11-24T20:22:42.577Z
+[Stakeholders] activity on Meeple Magnate (reply, 78 in window) — report at 2026-11-24T20:22:42.584Z
+[2026-11-24T19:22:42.680Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 78 in window) — report at 2026-11-24T20:22:42.584Z
+[Stakeholders] activity on Meeple Magnate (reply, 79 in window) — report at 2026-11-24T20:22:42.585Z
+[2026-11-24T19:22:42.680Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 79 in window) — report at 2026-11-24T20:22:42.585Z
+[Stakeholders] activity on Meeple Magnate (reply, 80 in window) — report at 2026-11-24T20:22:42.586Z
+[2026-11-24T19:22:42.681Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 80 in window) — report at 2026-11-24T20:22:42.586Z
+[Stakeholders] activity on Meeple Magnate (reply, 81 in window) — report at 2026-11-24T20:22:42.587Z
+[2026-11-24T19:22:42.681Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 81 in window) — report at 2026-11-24T20:22:42.587Z
+[Stakeholders] activity on Meeple Magnate (reply, 82 in window) — report at 2026-11-24T20:22:42.587Z
+[2026-11-24T19:22:42.681Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 82 in window) — report at 2026-11-24T20:22:42.587Z
+[Stakeholders] activity on Meeple Magnate (reply, 83 in window) — report at 2026-11-24T20:22:42.588Z
+[2026-11-24T19:22:42.681Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 83 in window) — report at 2026-11-24T20:22:42.588Z
+[Stakeholders] activity on Meeple Magnate (reply, 84 in window) — report at 2026-11-24T20:22:42.589Z
+[2026-11-24T19:22:42.682Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 84 in window) — report at 2026-11-24T20:22:42.589Z
+[Stakeholders] activity on Meeple Magnate (reply, 85 in window) — report at 2026-11-24T20:22:42.589Z
+[2026-11-24T19:22:42.682Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 85 in window) — report at 2026-11-24T20:22:42.589Z
+[Stakeholders] activity on Meeple Magnate (reply, 86 in window) — report at 2026-11-24T20:22:42.590Z
+[2026-11-24T19:22:42.682Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 86 in window) — report at 2026-11-24T20:22:42.590Z
+[Stakeholders] activity on Meeple Magnate (reply, 87 in window) — report at 2026-11-24T20:22:42.591Z
+[2026-11-24T19:22:42.682Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 87 in window) — report at 2026-11-24T20:22:42.591Z
+[Stakeholders] activity on Meeple Magnate (reply, 88 in window) — report at 2026-11-24T20:22:42.591Z
+[2026-11-24T19:22:42.683Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 88 in window) — report at 2026-11-24T20:22:42.591Z
+[Stakeholders] activity on Meeple Magnate (reply, 89 in window) — report at 2026-11-24T20:22:42.592Z
+[2026-11-24T19:22:42.683Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 89 in window) — report at 2026-11-24T20:22:42.592Z
+[Stakeholders] activity on Meeple Magnate (reply, 90 in window) — report at 2026-11-24T20:22:42.593Z
+[2026-11-24T19:22:42.683Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 90 in window) — report at 2026-11-24T20:22:42.593Z
+[Stakeholders] activity on Meeple Magnate (reply, 91 in window) — report at 2026-11-24T20:22:42.594Z
+[2026-11-24T19:22:42.683Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 91 in window) — report at 2026-11-24T20:22:42.594Z
+[Stakeholders] activity on Meeple Magnate (reply, 92 in window) — report at 2026-11-24T20:22:42.594Z
+[2026-11-24T19:22:42.684Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 92 in window) — report at 2026-11-24T20:22:42.594Z
+[Stakeholders] activity on Meeple Magnate (reply, 93 in window) — report at 2026-11-24T20:22:42.595Z
+[2026-11-24T19:22:42.684Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 93 in window) — report at 2026-11-24T20:22:42.595Z
+[Stakeholders] activity on Meeple Magnate (reply, 94 in window) — report at 2026-11-24T20:22:42.596Z
+[2026-11-24T19:22:42.684Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 94 in window) — report at 2026-11-24T20:22:42.596Z
+[Stakeholders] activity on Meeple Magnate (reply, 95 in window) — report at 2026-11-24T20:22:42.596Z
+[2026-11-24T19:22:42.684Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 95 in window) — report at 2026-11-24T20:22:42.596Z
+[Stakeholders] activity on Meeple Magnate (reply, 96 in window) — report at 2026-11-24T20:22:42.597Z
+[2026-11-24T19:22:42.685Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 96 in window) — report at 2026-11-24T20:22:42.597Z
+[Stakeholders] activity on Meeple Magnate (reply, 97 in window) — report at 2026-11-24T20:22:42.598Z
+[2026-11-24T19:22:42.687Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 97 in window) — report at 2026-11-24T20:22:42.598Z
+[Stakeholders] activity on Meeple Magnate (reply, 98 in window) — report at 2026-11-24T20:22:42.598Z
+[2026-11-24T19:22:42.688Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 98 in window) — report at 2026-11-24T20:22:42.598Z
+[Stakeholders] activity on Meeple Magnate (reply, 99 in window) — report at 2026-11-24T20:22:42.599Z
+[2026-11-24T19:22:42.690Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 99 in window) — report at 2026-11-24T20:22:42.599Z
+[Stakeholders] activity on Meeple Magnate (reply, 100 in window) — report at 2026-11-24T20:22:42.600Z
+[2026-11-24T19:22:42.691Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 100 in window) — report at 2026-11-24T20:22:42.600Z
+[Stakeholders] activity on Meeple Magnate (reply, 101 in window) — report at 2026-11-24T20:22:42.600Z
+[2026-11-24T19:22:42.691Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 101 in window) — report at 2026-11-24T20:22:42.600Z
+[Stakeholders] activity on Meeple Magnate (reply, 102 in window) — report at 2026-11-24T20:22:42.601Z
+[2026-11-24T19:22:42.691Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 102 in window) — report at 2026-11-24T20:22:42.601Z
+[Stakeholders] activity on Meeple Magnate (reply, 103 in window) — report at 2026-11-24T20:22:42.602Z
+[2026-11-24T19:22:42.692Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 103 in window) — report at 2026-11-24T20:22:42.602Z
+[Stakeholders] activity on Meeple Magnate (reply, 104 in window) — report at 2026-11-24T20:22:42.602Z
+[2026-11-24T19:22:42.692Z] [INFO] [Stakeholders] activity on Meeple Magnate (reply, 104 in window) — report at 2026-11-24T20:22:42.602Z
+✔ every email reply lands on the report whole (162.290792ms)
+✔ hosted report links carry no respondent identity; the form offers Robert his own respondent entry (86.075959ms)
+[Stakeholders] report response reports/r_op/responses/nx-dana.json for PX-OCR-91 not applied: respondent id nx-dana is not a recipient of this report
+[2026-11-24T19:22:42.701Z] [WARN] [Stakeholders] report response reports/r_op/responses/nx-dana.json for PX-OCR-91 not applied: respondent id nx-dana is not a recipient of this report
+[Stakeholders] report response reports/r_op/responses/m-sis-attacker.json for PX-OCR-91 not applied: contradictory identity: m-sis is sis@example.com on this report but the response claims attacker@example.com; quarantined
+[2026-11-24T19:22:42.702Z] [WARN] [Stakeholders] report response reports/r_op/responses/m-sis-attacker.json for PX-OCR-91 not applied: contradictory identity: m-sis is sis@example.com on this report but the response claims attacker@example.com; quarantined
+[Stakeholders] report response reports/r_op/responses/operator-with-member-email.json for PX-OCR-91 not applied: contradictory identity: the operator entry together with a non-operator address (sis@example.com); quarantined
+[2026-11-24T19:22:42.703Z] [WARN] [Stakeholders] report response reports/r_op/responses/operator-with-member-email.json for PX-OCR-91 not applied: contradictory identity: the operator entry together with a non-operator address (sis@example.com); quarantined
+✔ applyReportResponse: a response from the operator's copy is operator commentary, never a member's decision; an unverified respondent applies nothing (10.730625ms)
+📧 [HumanEmail] sent to sis@example.com cc robert@fixture-operator.dev (Got your decisions on the Meeple Magnate report [PX-OCR-92]) messageId=<receipt@fixture>
+[2026-11-24T19:22:42.720Z] [INFO] 📧 [HumanEmail] sent to sis@example.com cc robert@fixture-operator.dev (Got your decisions on the Meeple Magnate report [PX-OCR-92]) messageId=<receipt@fixture>
+[ContextWindow] Meeple Magnate board tasks: 12476 characters cut to 416 for test window; whole text in /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-test-data-4zUd2A/model-inputs/meeple-magnate-board-tasks-3deb5f099836ad36.txt
+[2026-11-24T19:22:42.795Z] [INFO] [ContextWindow] Meeple Magnate board tasks: 12476 characters cut to 416 for test window; whole text in /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-test-data-4zUd2A/model-inputs/meeple-magnate-board-tasks-3deb5f099836ad36.txt
+✔ applyReportResponse: the member receipt rides the business transport and its copy disposition lands in the communication history (20.406375ms)
+✔ editorial theme: ivory statement with brass eyebrows, numbered items, oxblood only for an owed decision, and the review-area link (3.851667ms)
+✔ editorial helpers: report number from the tag, monogram from the name, review url precedence (0.115208ms)
+✔ tabletop theme: a game-night dispatch in the brand accent with dice section marks, board-game words, a plain-words headline and orange only where a move is owed (2.530625ms)
+✔ tabletop headline speaks in table talk from the report's own counts (0.083625ms)
+✔ hosted spec for the tabletop theme carries the theme, the dice section titles and the table-talk headline (0.844125ms)
+✔ hosted spec carries the theme and the review-area link (0.920875ms)
+✔ an already-sent report retains its recorded board figures in the statement, text and hosted copy (1.639625ms)
+✔ awaiting review: the design package leads, accepted and superseded work drops, and the statement, its links and the hosted spec land on it (5.03475ms)
+✔ client-safe content: QA-improvement follow-up tasks stay internal; identical client-facing lines collapse (0.389542ms)
+✔ arcade theme: a neon midway score screen with a navy panel, heavy capitals, lamp items, magenta control and red only where a move is owed (1.854125ms)
+✔ hosted spec for the arcade theme carries the theme and the midway section titles (0.853541ms)
+✔ a client report lists every open request (newest included), every done, in-progress and next item, and every question (4.770083ms)
+✔ the report model sees every board task, most like a request first, and a cut announces itself (47.147875ms)
+✔ a model duplicate pointing at a real task UUID is kept, not turned into "(internal reference)" (0.304917ms)
+✔ an internal-only task is never offered to the model or kept as a model's duplicate target (0.447917ms)
+[Stakeholders] created branded report template for Meeple Magnate (accent #047857)
+[2026-11-24T19:22:42.799Z] [INFO] [Stakeholders] created branded report template for Meeple Magnate (accent #047857)
+[Stakeholders] created branded report template for Meeple Magnate (accent #047857)
+[2026-11-24T19:22:42.830Z] [INFO] [Stakeholders] created branded report template for Meeple Magnate (accent #047857)
+[Stakeholders] created branded report template for Meeple Magnate (accent #047857)
+[2026-11-24T19:22:42.862Z] [INFO] [Stakeholders] created branded report template for Meeple Magnate (accent #047857)
+✔ an internal-only request, pending or deferred, reaches no client report: read by task identity through the real runner, model prompt and Mail draft (93.249209ms)
+✔ a request whose own row carries the flag is dropped too; without the task list no request is carried, since none could be checked (0.696417ms)
+✔ untracked prompts from a sent report never become new project questions (0.249875ms)
+✔ an automatic report does not re-ask a long request a pre-2026-10-31 report asked with its title cut to 140 (0.302875ms)
+ℹ tests 97
+ℹ suites 0
+ℹ pass 95
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 2
+ℹ todo 0
+ℹ duration_ms 10961.666125
+exit 0

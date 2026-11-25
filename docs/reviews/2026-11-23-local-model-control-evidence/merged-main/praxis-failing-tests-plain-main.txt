@@ -1,0 +1,46 @@
+✖ 3: callback records execution-scoped usage already captured from the native CLI stream
+✖ 5: real registry recovery reads full completed findings instead of the truncated preview
+✖ A: a non-loopback caller is rejected with 403 before anything else runs
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ QA redirects attribute exhaustion to the failed executor rather than the healthy replacement
+✖ a CLI counts as busy only while its own binary runs
+✖ a MAP call whose session was cut is given the directory with the whole text
+✖ a quota hold lacking reviewer identity does not infer exhaustion from the author
+✖ a session larger than the window is read around its hit, with the counts and the whole session in a file
+✖ a settled boot clears the counter and records the running revision as good
+✖ a token event creates a persisted acknowledgment-only yellow card and owns its notification
+✖ antigravity piped run survives simulated elapsed time beyond three hours until process exit
+✖ approved global sections stay inline and complete source is readable within workspace
+✖ claude-code piped run survives simulated elapsed time beyond three hours until process exit
+✖ claude-code reports a piped run finished only once its whole log is on disk (process exit)
+✖ claude-code reports a piped run finished only once its whole log is on disk (spawn error)
+✖ cli:claude-code/claude-opus-5-5 zero timeout survives the actual one-shot/lane/seat path without inactivity termination
+✖ cli:codex/gpt-6-astra zero timeout survives the actual one-shot/lane/seat path without inactivity termination
+✖ codex piped run survives simulated elapsed time beyond three hours until process exit
+✖ connection falls back before authentication when IPv6 is unreachable
+✖ context assembly changes only the approved expanded audit and preserves the full project section
+✖ delivery survives lost acknowledgment and restart without duplicating real ledger evidence
+✖ every registered tool declares every argument its handler reads
+✖ few-shot demonstrations are shown whole and the block says how many more matched
+✖ finalization keeps full JSON detail and regenerates the header on every save
+✖ header stays bounded for escaping, unicode and huge suggestion text without losing report detail
+✖ interactive Claude tool remains alive beyond its old five-minute run ceiling
+✖ model-only preload refuses fleet, external, TLS, and non-model fetch before loading application code
+✖ real Antigravity completion reaches the shared audit and retains findings with explicit unsupported evidence
+✖ retrieves full five-million-character tail with exact source hash and offsets
+✖ retrieves tail evidence in a five million character source with bounded prompts
+✖ review-only completion retains reason and per-finding evidence in the bounded header
+✖ seat removes the temp log dir it created
+✖ slot conversion failures hold reports through the production runner and Mail gate
+✖ synthesis success seals a bundle and cross-references it from the item output
+✖ synthetic profile pilot exercises capture, proposals, review, replay and exact-scoped briefings
+✖ tests/checkpoint_end_to_end.test.ts
+✖ tests/email_intake_council.test.ts
+✖ tests/email_intake_runtime.test.ts
+✖ tests/report_intake_questions.test.ts
+✖ the allowlist is what exempts internal args — not the check skipping them
+✖ the page connection refuses mixed public/private DNS answers and literal private addresses
+✖ the same pool dedupes across publishers and restart, including after acknowledgment
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+✖ verification records retain successful synthetic probe activation evidence
+✖ weekly, activity and manual runs update one preview/link/document while freezing each email

@@ -1,0 +1,15 @@
+# Criterion 2 environment names, 2026-11-24 15:44:19 EST, counts only
+== /Volumes/Projects/Praxis/.env:  LOCAL_LLM_MODEL=1 LLM_PRIMARY_MODEL=1 LLM_PRIMARY_PROVIDER=1 PRAXIS_EVAL_FALLBACK_MODEL=1
+== /Volumes/Projects/.fleet-env:  none of the names set
+== /Volumes/Projects/TheNexus/.env:  none of the names set
+== /Volumes/Projects/TheCortex/TheCortex/.env:  none of the names set
+== /Users/robertwashko/Library/LaunchAgents/com.praxis.bot.plist:  none of the names set
+== /Users/robertwashko/Library/LaunchAgents/com.praxis.homehub-updates.plist:  none of the names set
+== /Users/robertwashko/Library/LaunchAgents/com.praxis.voice.plist:  none of the names set
+== /Users/robertwashko/Library/LaunchAgents/com.praxis.watchdog.plist:  none of the names set
+== /Users/robertwashko/Library/LaunchAgents/com.thenexus.vault-watcher.plist:  none of the names set
+== /Users/robertwashko/Library/LaunchAgents/The Nexus.plist:  none of the names set
+/Volumes/Projects/Praxis/.env: LLM_PRIMARY_PROVIDER is local: no
+/Volumes/Projects/Praxis/.env: LOCAL_LLM_MODEL names Gemma: yes
+/Volumes/Projects/Praxis/.env: PRAXIS_EVAL_FALLBACK_MODEL route starts local/: no; starts cli/ or cli:: yes; names Gemma: no
+# done

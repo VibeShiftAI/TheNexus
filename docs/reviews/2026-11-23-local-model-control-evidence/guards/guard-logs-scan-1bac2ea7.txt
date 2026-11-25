@@ -1,0 +1,14 @@
+# guard logs under /Volumes/Projects/.scratch-fa032fc0, scanned 2026-11-24 16:40:38 EST
+# columns: lines in the log, lines naming port 1234, path relative to the scratch folder
+     9    0  cli-shims-merged11.log
+     0    0  cli-shims-plain11-failing.log
+     0    0  cli-shims.log
+     1    0  live-port-guard-merged10.log
+     1    0  live-port-guard-merged11.log
+     1    0  live-port-guard-plain11-failing.log
+     1    0  lmstudio-guard-merged10.log
+     2    0  lmstudio-guard-merged11.log
+     1    0  lmstudio-guard-plain11-failing.log
+     6    0  net-guard-merged10.log
+     6    0  net-guard-merged11.log
+# 11 guard logs, 0 lines naming port 1234

@@ -1,0 +1,781 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/local_model_selection.test.ts tests/lmstudio_autoload.test.ts tests/local_model_demand_callers.test.ts
+
+Running 3 of 889 suite(s): tests/lmstudio_autoload.test.ts tests/local_model_demand_callers.test.ts tests/local_model_selection.test.ts
+
+✔ empty slot with the model downloaded → load it (0.680584ms)
+✔ model already resident → noop (exact and fuzzy) (0.082834ms)
+✔ embeddings-only catalog is not a loadable LLM (0.081792ms)
+✔ vetoes: disabled, unconfigured, unreachable, pressure, cooldown (0.153417ms)
+✔ pressure and cooldown only matter when a load would actually happen (0.045834ms)
+✔ isNoModelLoadedError matches LM Studio's empty-slot family only (0.141791ms)
+✔ resident backend prevents a second load when catalog lost track of it (0.087541ms)
+✔ unknown process inventory fails closed before loading (0.036208ms)
+✔ embedding recovery selects only the configured unloaded embedding model (3.7885ms)
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/lmstudio_autoload.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T01:33:33.907Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/lmstudio_autoload.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LmAutoload] (test) downloaded-model inventory failed: Command failed: /Volumes/Projects/.scratch-fa032fc0/fake-lms ls --json
+fake lms: refused in this test run
+ (fake lms: refused in this test run
+); classifying from the resident catalog only
+[2026-11-25T01:33:33.916Z] [WARN] [LmAutoload] (test) downloaded-model inventory failed: Command failed: /Volumes/Projects/.scratch-fa032fc0/fake-lms ls --json
+fake lms: refused in this test run
+ (fake lms: refused in this test run
+); classifying from the resident catalog only
+[LmAutoload] embedding restore deferred: embedding file missing
+[2026-11-25T01:33:33.916Z] [WARN] [LmAutoload] embedding restore deferred: embedding file missing
+[LmAutoload] (test) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:33.916Z] [INFO] [LmAutoload] (test) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:33.916Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+✔ failed embedding recovery does not block a healthy Gemma load (10.544792ms)
+✔ parse: lms ls --json rows become typed, alias-carrying inventory in lms order (0.085709ms)
+✔ parse: duplicate keys collapse, untyped or keyless rows are dropped, non-array output is null (0.197458ms)
+✔ merge: embeddings-only resident catalog + inventory → unloaded LLMs appear, nothing becomes resident (0.106667ms)
+✔ merge: catalog wins on state and type; alias matches never duplicate; unreachable or missing inventory pass through (0.197708ms)
+✔ criterion 1: the JIT-off catalog alone says model-not-downloaded; merged with the inventory it loads gemma (0.055042ms)
+✔ every gate survives the merge: pressure, cooldown, resident backend, unknown process inventory (0.041666ms)
+✔ embedding restore: an unloaded nomic absent from the catalog is found through the inventory; LLMs never qualify (0.074375ms)
+✔ catalogSatisfied: the inventory is consulted only when the catalog cannot answer for both slots (0.038333ms)
+✔ readDownloadedModelInventory: the real lms exec is bounded and never throws (555.682625ms)
+[LmAutoload] (test-jit-off) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.477Z] [INFO] [LmAutoload] (test-jit-off) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (test-jit-off) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.478Z] [INFO] [LmAutoload] (test-jit-off) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:34.478Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+✔ criterion 2: ensureLocalModelLoaded reloads gemma from a JIT-off catalog in one pass; the resident embedding is untouched (5.138167ms)
+[LmAutoload] (test-embed) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.480Z] [INFO] [LmAutoload] (test-embed) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] restored embedding model text-embedding-nomic-embed-text-v1.5
+[2026-11-25T01:33:34.480Z] [INFO] [LmAutoload] restored embedding model text-embedding-nomic-embed-text-v1.5
+✔ criterion 2: an unloaded embedding absent from the catalog is restored through the same inventory (1.529292ms)
+[LmAutoload] (test-server-start) LM Studio server unreachable — starting it via lms
+[2026-11-25T01:33:34.481Z] [WARN] [LmAutoload] (test-server-start) LM Studio server unreachable — starting it via lms
+[LmAutoload] (test-server-start) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.483Z] [INFO] [LmAutoload] (test-server-start) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (test-server-start) LM Studio server started — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.483Z] [INFO] [LmAutoload] (test-server-start) LM Studio server started — loading google/gemma-4-31b-qat via lms
+✔ criterion 2: the pass after `lms server start` merges the inventory too (3.595042ms)
+✔ healthy catalog: the inventory is never consulted and nothing is loaded (1.32775ms)
+[LmAutoload] (test-inventory-failure) downloaded-model inventory unavailable: spawn lms ENOENT; classifying from the resident catalog only
+[2026-11-25T01:33:34.486Z] [WARN] [LmAutoload] (test-inventory-failure) downloaded-model inventory unavailable: spawn lms ENOENT; classifying from the resident catalog only
+[LmAutoload] (test-inventory-failure) not loading a model: model-not-downloaded
+[2026-11-25T01:33:34.486Z] [WARN] [LmAutoload] (test-inventory-failure) not loading a model: model-not-downloaded
+[LmAutoload] (test-inventory-failure) downloaded-model inventory timeout: killed after 5000 ms; classifying from the resident catalog only
+[2026-11-25T01:33:34.487Z] [WARN] [LmAutoload] (test-inventory-failure) downloaded-model inventory timeout: killed after 5000 ms; classifying from the resident catalog only
+[LmAutoload] (test-inventory-failure) not loading a model: model-not-downloaded
+[2026-11-25T01:33:34.487Z] [WARN] [LmAutoload] (test-inventory-failure) not loading a model: model-not-downloaded
+[LmAutoload] (test-inventory-failure) downloaded-model inventory malformed: not json; classifying from the resident catalog only
+[2026-11-25T01:33:34.487Z] [WARN] [LmAutoload] (test-inventory-failure) downloaded-model inventory malformed: not json; classifying from the resident catalog only
+[LmAutoload] (test-inventory-failure) not loading a model: model-not-downloaded
+[2026-11-25T01:33:34.487Z] [WARN] [LmAutoload] (test-inventory-failure) not loading a model: model-not-downloaded
+[LmAutoload] (test-inventory-failure) downloaded-model inventory failed: exit 3; classifying from the resident catalog only
+[2026-11-25T01:33:34.488Z] [WARN] [LmAutoload] (test-inventory-failure) downloaded-model inventory failed: exit 3; classifying from the resident catalog only
+[LmAutoload] (test-inventory-failure) not loading a model: model-not-downloaded
+[2026-11-25T01:33:34.488Z] [WARN] [LmAutoload] (test-inventory-failure) not loading a model: model-not-downloaded
+[LmAutoload] (test-inventory-failure) downloaded-model inventory failed: reader exploded; classifying from the resident catalog only
+[2026-11-25T01:33:34.489Z] [WARN] [LmAutoload] (test-inventory-failure) downloaded-model inventory failed: reader exploded; classifying from the resident catalog only
+[LmAutoload] (test-inventory-failure) not loading a model: model-not-downloaded
+[2026-11-25T01:33:34.489Z] [WARN] [LmAutoload] (test-inventory-failure) not loading a model: model-not-downloaded
+✔ inventory failures degrade to the pre-repair behaviour: no load, no throw, false (4.227459ms)
+[LmAutoload] (pressure) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.491Z] [INFO] [LmAutoload] (pressure) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (pressure) not loading a model: pressure
+[2026-11-25T01:33:34.491Z] [WARN] [LmAutoload] (pressure) not loading a model: pressure
+[LmAutoload] (resident) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.491Z] [INFO] [LmAutoload] (resident) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (resident) not loading a model: resident-backend
+[2026-11-25T01:33:34.492Z] [WARN] [LmAutoload] (resident) not loading a model: resident-backend
+[LmAutoload] (unknown-procs) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.492Z] [INFO] [LmAutoload] (unknown-procs) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (unknown-procs) not loading a model: process-inventory-unavailable
+[2026-11-25T01:33:34.492Z] [WARN] [LmAutoload] (unknown-procs) not loading a model: process-inventory-unavailable
+[LmAutoload] (first) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.492Z] [INFO] [LmAutoload] (first) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (first) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.492Z] [INFO] [LmAutoload] (first) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] load failed (first); retrying no sooner than 2026-11-25T01:38:34.492Z: lms load failed: boom
+[2026-11-25T01:33:34.492Z] [ERROR] [LmAutoload] load failed (first); retrying no sooner than 2026-11-25T01:38:34.492Z: lms load failed: boom
+[LmAutoload] (second) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.492Z] [INFO] [LmAutoload] (second) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (second) not loading a model: cooldown
+[2026-11-25T01:33:34.492Z] [WARN] [LmAutoload] (second) not loading a model: cooldown
+✔ gates at the shell level: pressure and a resident backend veto the merged load; a failed load arms the cooldown (3.309667ms)
+[LmAutoload] (vetoed) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.494Z] [INFO] [LmAutoload] (vetoed) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (vetoed) not loading a model: pressure
+[2026-11-25T01:33:34.494Z] [WARN] [LmAutoload] (vetoed) not loading a model: pressure
+[LmAutoload] (loads) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.494Z] [INFO] [LmAutoload] (loads) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (loads) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.494Z] [INFO] [LmAutoload] (loads) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:34.494Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[LmAutoload] (fails) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.494Z] [INFO] [LmAutoload] (fails) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (fails) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.495Z] [INFO] [LmAutoload] (fails) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] load failed (fails); retrying no sooner than 2026-11-25T01:38:34.495Z: lms load google/gemma-4-31b-qat failed: boom
+[2026-11-25T01:33:34.495Z] [ERROR] [LmAutoload] load failed (fails); retrying no sooner than 2026-11-25T01:38:34.495Z: lms load google/gemma-4-31b-qat failed: boom
+[LmAutoload] (fails-long) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.495Z] [INFO] [LmAutoload] (fails-long) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (fails-long) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.495Z] [INFO] [LmAutoload] (fails-long) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] load failed (fails-long); retrying no sooner than 2026-11-25T01:38:34.495Z: lms load google/gemma-4-31b-qat failed: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx TAIL-DIAGNOSTIC
+[2026-11-25T01:33:34.495Z] [ERROR] [LmAutoload] load failed (fails-long); retrying no sooner than 2026-11-25T01:38:34.495Z: lms load google/gemma-4-31b-qat failed: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx TAIL-DIAGNOSTIC
+✔ lastAutoloadFailure: only an attempted load that failed is recorded; a vetoed pass or a successful load leaves none (2.368125ms)
+[LmAutoload] (chatVia-1) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.518Z] [INFO] [LmAutoload] (chatVia-1) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chatVia-1) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.519Z] [INFO] [LmAutoload] (chatVia-1) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:34.519Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 1800 (unloads after 1800 s idle)
+[2026-11-25T01:33:34.524Z] [INFO] [LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 1800 (unloads after 1800 s idle)
+✔ concurrent callers share one pass: one inventory read, one load, every caller resolves true (23.829792ms)
+✔ criterion 1: PRAXIS_LOCAL_AUTOLOAD_IDLE_TTL_S semantics are explicit: unset = 1800 s ON, 0 = off, N = N, junk = default (0.416125ms)
+✔ criterion 1: lms load argv is `load <id> -y --ttl <s>` for an LLM and never names context, parallel or GPU (0.456208ms)
+[LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 900 (unloads after 900 s idle)
+[2026-11-25T01:33:34.710Z] [INFO] [LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 900 (unloads after 900 s idle)
+[LmAutoload] lms load google/gemma-4-31b-qat -y (no idle TTL: stays resident)
+[2026-11-25T01:33:34.720Z] [INFO] [LmAutoload] lms load google/gemma-4-31b-qat -y (no idle TTL: stays resident)
+[LmAutoload] PRAXIS_LOCAL_AUTOLOAD_IDLE_TTL_S="soon" is not a whole number of seconds; using the default 1800 s
+[2026-11-25T01:33:34.726Z] [WARN] [LmAutoload] PRAXIS_LOCAL_AUTOLOAD_IDLE_TTL_S="soon" is not a whole number of seconds; using the default 1800 s
+[LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 1800 (unloads after 1800 s idle)
+[2026-11-25T01:33:34.726Z] [INFO] [LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 1800 (unloads after 1800 s idle)
+✔ criterion 1: runLmsLoad execs the real lms binary with the TTL from the environment and nothing else (216.37725ms)
+[LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 1800 (unloads after 1800 s idle)
+[2026-11-25T01:33:34.737Z] [INFO] [LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 1800 (unloads after 1800 s idle)
+✔ runLmsLoad blocks live pressure before exec and allows 17015 MB sticky swap (143.883708ms)
+✔ criterion 3: the proactive sweep leaves an idle-unloaded LLM alone; a demand call, or TTL off, still loads it (0.298084ms)
+[LmAutoload] (service-restore) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.882Z] [INFO] [LmAutoload] (service-restore) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (service-restore) no LLM resident; idle TTL mode leaves it unloaded until a local call needs it
+[2026-11-25T01:33:34.882Z] [INFO] [LmAutoload] (service-restore) no LLM resident; idle TTL mode leaves it unloaded until a local call needs it
+[LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.882Z] [INFO] [LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.882Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:34.882Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[LmAutoload] (service-restore) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.882Z] [INFO] [LmAutoload] (service-restore) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (service-restore) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.882Z] [INFO] [LmAutoload] (service-restore) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:34.882Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+✔ criterion 3: ensureLocalModelLoaded('service-restore', { intent: 'proactive' }) does not reload; the same empty slot loads for a demand trigger (1.561167ms)
+[LmAutoload] (service-restore) LM Studio server unreachable — starting it via lms
+[2026-11-25T01:33:34.883Z] [WARN] [LmAutoload] (service-restore) LM Studio server unreachable — starting it via lms
+[LmAutoload] (service-restore) catalog lists 0 resident model(s); merged 4 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.885Z] [INFO] [LmAutoload] (service-restore) catalog lists 0 resident model(s); merged 4 downloaded, unloaded model(s) from lms ls
+[LmAutoload] restored embedding model text-embedding-nomic-embed-text-v1.5
+[2026-11-25T01:33:34.885Z] [INFO] [LmAutoload] restored embedding model text-embedding-nomic-embed-text-v1.5
+[LmAutoload] (service-restore) LM Studio server started; the LLM loads on demand (idle TTL mode)
+[2026-11-25T01:33:34.885Z] [INFO] [LmAutoload] (service-restore) LM Studio server started; the LLM loads on demand (idle TTL mode)
+✔ criterion 3: after `lms server start` a proactive pass restores the embedding and leaves the LLM for demand (2.9355ms)
+[LmAutoload] (swarm) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.886Z] [INFO] [LmAutoload] (swarm) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (swarm) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.886Z] [INFO] [LmAutoload] (swarm) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:34.886Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[LmAutoload] (swarm) not loading a model: pressure
+[2026-11-25T01:33:34.887Z] [WARN] [LmAutoload] (swarm) not loading a model: pressure
+✔ criterion 2: a local call made while the model is unloaded reloads it once and succeeds; other errors and a vetoed reload rethrow the original (1.706583ms)
+[LmAutoload] (service-restore) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.888Z] [INFO] [LmAutoload] (service-restore) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (service-restore) no LLM resident; idle TTL mode leaves it unloaded until a local call needs it
+[2026-11-25T01:33:34.888Z] [INFO] [LmAutoload] (service-restore) no LLM resident; idle TTL mode leaves it unloaded until a local call needs it
+[LmAutoload] (swarm) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.888Z] [INFO] [LmAutoload] (swarm) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (swarm) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.888Z] [INFO] [LmAutoload] (swarm) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:34.888Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+✔ criterion 2: a demand call that overlaps the proactive sweep does not inherit its skip: it waits, loads once and succeeds (2.273125ms)
+[LmAutoload] (service-restore) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.890Z] [INFO] [LmAutoload] (service-restore) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (service-restore) no LLM resident; idle TTL mode leaves it unloaded until a local call needs it
+[2026-11-25T01:33:34.891Z] [INFO] [LmAutoload] (service-restore) no LLM resident; idle TTL mode leaves it unloaded until a local call needs it
+[LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.891Z] [INFO] [LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.891Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:34.914Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+✔ criterion 2: single flight survives the per-intent rule: demand waiters behind a sweep share one load; a sweep during a demand pass joins it (24.631459ms)
+[LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.917Z] [INFO] [LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chatVia) not loading the LLM: the local model lane is closed (llm/local-lane-policy.ts); it loads again inside the window
+[2026-11-25T01:33:34.917Z] [INFO] [LmAutoload] (chatVia) not loading the LLM: the local model lane is closed (llm/local-lane-policy.ts); it loads again inside the window
+[LmAutoload] (service-restore) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.917Z] [INFO] [LmAutoload] (service-restore) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.917Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:34.917Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+✔ local model lane: a closed lane never loads the LLM for any intent; server recovery and the resident noop are unaffected (3.597167ms)
+[LmAutoload] (chatVia) LM Studio server unreachable — starting it via lms
+[2026-11-25T01:33:34.919Z] [WARN] [LmAutoload] (chatVia) LM Studio server unreachable — starting it via lms
+[LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.921Z] [INFO] [LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chatVia) LM Studio server started — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.921Z] [INFO] [LmAutoload] (chatVia) LM Studio server started — loading google/gemma-4-31b-qat via lms
+✔ local model lane: the server-start path re-reads the lane after the settle wait (3.503417ms)
+[LmAutoload] (chatVia) LM Studio server unreachable — starting it via lms
+[2026-11-25T01:33:34.925Z] [WARN] [LmAutoload] (chatVia) LM Studio server unreachable — starting it via lms
+[LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.927Z] [INFO] [LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chatVia) LM Studio server started — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.927Z] [INFO] [LmAutoload] (chatVia) LM Studio server started — loading google/gemma-4-31b-qat via lms
+✔ local model lane: a pass that started inside the window finishes its server recovery after the window closes, and an open-lane joiner shares it (5.975208ms)
+[LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.930Z] [INFO] [LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chatVia) not loading the LLM: the local model lane is closed (llm/local-lane-policy.ts); it loads again inside the window
+[2026-11-25T01:33:34.930Z] [INFO] [LmAutoload] (chatVia) not loading the LLM: the local model lane is closed (llm/local-lane-policy.ts); it loads again inside the window
+[LmAutoload] (swarm) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.930Z] [INFO] [LmAutoload] (swarm) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (swarm) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.930Z] [INFO] [LmAutoload] (swarm) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:34.930Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[LmAutoload] (swarm) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.930Z] [INFO] [LmAutoload] (swarm) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (swarm) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.930Z] [INFO] [LmAutoload] (swarm) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:34.930Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[LmAutoload] (service-restore) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.931Z] [INFO] [LmAutoload] (service-restore) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (service-restore) not loading the LLM: the local model lane is closed (llm/local-lane-policy.ts); it loads again inside the window
+[2026-11-25T01:33:34.931Z] [INFO] [LmAutoload] (service-restore) not loading the LLM: the local model lane is closed (llm/local-lane-policy.ts); it loads again inside the window
+[LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.931Z] [INFO] [LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 3 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.931Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:34.931Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+✔ local model lane: a granted caller does not inherit a closed-lane pass; it waits and loads in its own (3.871958ms)
+✔ parse: lms ps --json rows keep what the swap reads; a field that cannot be read never looks idle (0.457708ms)
+✔ review: a row that cannot be read makes the whole lms ps listing unreadable, never shorter (0.338958ms)
+✔ review: each unreadable field alone keeps an instance from looking idle (0.406833ms)
+✔ not being used = idle status, nothing queued, and no request for the idle period Praxis gives its own model (0.143625ms)
+✔ readLoadedInstances and runLmsUnload exec the real lms binary: `ps --json`, and `unload <identifier>` and nothing else (682.83275ms)
+✔ catalogSatisfied: another chat model loaded in place of the configured one is not 'some LLM is loaded' (0.405333ms)
+✔ swap: an idle other chat model is swapped out only where a plain load would have happened (0.556458ms)
+✔ review: a chat model the process count cannot see (MLX) is never loaded over (0.234083ms)
+✔ review: the sweep never swaps, with the idle TTL on or off (0.224542ms)
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/lmstudio_autoload.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T01:33:35.626Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/lmstudio_autoload.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:35.626Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[2026-11-25T01:33:35.626Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+[2026-11-25T01:33:35.626Z] [INFO] [LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:35.627Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[2026-11-25T01:33:35.627Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+[2026-11-25T01:33:35.627Z] [INFO] [LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+✔ swap: a demand pass unloads the idle other model, sees the slot empty, then loads gemma; the embedding model is untouched (9.661458ms)
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:35.628Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) loaded-instance read failed: daemon not running; leaving qwen/qwen3.8-27b loaded
+[2026-11-25T01:33:35.628Z] [WARN] [LmAutoload] (local-call) loaded-instance read failed: daemon not running; leaving qwen/qwen3.8-27b loaded
+[LmAutoload] (local-call) not loading a model: resident-backend
+[2026-11-25T01:33:35.628Z] [WARN] [LmAutoload] (local-call) not loading a model: resident-backend
+✔ review: with qwen invisible to the process count and lms ps unreadable, gemma is not loaded beside it (1.463958ms)
+[LmAutoload] (service-restore) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:35.629Z] [INFO] [LmAutoload] (service-restore) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (service-restore) qwen/qwen3.8-27b holds the chat slot, not the configured model; the sweep leaves it, and the next local call swaps it out if it is idle
+[2026-11-25T01:33:35.629Z] [INFO] [LmAutoload] (service-restore) qwen/qwen3.8-27b holds the chat slot, not the configured model; the sweep leaves it, and the next local call swaps it out if it is idle
+[LmAutoload] (service-restore) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:35.629Z] [INFO] [LmAutoload] (service-restore) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (service-restore) qwen/qwen3.8-27b holds the chat slot, not the configured model; the sweep leaves it, and the next local call swaps it out if it is idle
+[2026-11-25T01:33:35.629Z] [INFO] [LmAutoload] (service-restore) qwen/qwen3.8-27b holds the chat slot, not the configured model; the sweep leaves it, and the next local call swaps it out if it is idle
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:35.629Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, which is in use (status generating, 0 queued, last request 3600 s ago); leaving it loaded. Local calls fall back until it has gone 600 s without a request.
+[2026-11-25T01:33:35.629Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, which is in use (status generating, 0 queued, last request 3600 s ago); leaving it loaded. Local calls fall back until it has gone 600 s without a request.
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:35.629Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, which is in use (status idle, 2 queued, last request 3600 s ago); leaving it loaded. Local calls fall back until it has gone 600 s without a request.
+[2026-11-25T01:33:35.629Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, which is in use (status idle, 2 queued, last request 3600 s ago); leaving it loaded. Local calls fall back until it has gone 600 s without a request.
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:35.629Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, which is in use (status idle, 0 queued, last request 3600 s ago); leaving it loaded. Local calls fall back until it has gone 600 s without a request.
+[2026-11-25T01:33:35.629Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, which is in use (status idle, 0 queued, last request 3600 s ago); leaving it loaded. Local calls fall back until it has gone 600 s without a request.
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:35.629Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, which is in use (status idle, 0 queued, last request 30 s ago); leaving it loaded. Local calls fall back until it has gone 600 s without a request.
+[2026-11-25T01:33:35.630Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, which is in use (status idle, 0 queued, last request 30 s ago); leaving it loaded. Local calls fall back until it has gone 600 s without a request.
+✔ swap: the sweep never swaps, and a demand pass leaves a model that is in use (1.284792ms)
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:35.630Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, which is in use (status idle, 0 queued, last request 600 s ago); leaving it loaded. Local calls fall back until it has gone 600 s without a request.
+[2026-11-25T01:33:35.630Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, which is in use (status idle, 0 queued, last request 600 s ago); leaving it loaded. Local calls fall back until it has gone 600 s without a request.
+✔ review: a cached reading that ages past the idle period does not authorize an unload; the model is read again (452.167958ms)
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.084Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) loaded-instance read failed: daemon not running; leaving qwen/qwen3.8-27b loaded
+[2026-11-25T01:33:36.084Z] [WARN] [LmAutoload] (local-call) loaded-instance read failed: daemon not running; leaving qwen/qwen3.8-27b loaded
+[LmAutoload] (local-call) not loading a model: resident-backend
+[2026-11-25T01:33:36.084Z] [WARN] [LmAutoload] (local-call) not loading a model: resident-backend
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.085Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) not loading a model: resident-backend
+[2026-11-25T01:33:36.085Z] [WARN] [LmAutoload] (local-call) not loading a model: resident-backend
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.085Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) not loading a model: resident-backend
+[2026-11-25T01:33:36.085Z] [WARN] [LmAutoload] (local-call) not loading a model: resident-backend
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.085Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) not loading a model: resident-backend
+[2026-11-25T01:33:36.086Z] [WARN] [LmAutoload] (local-call) not loading a model: resident-backend
+✔ swap: without a usable reading nothing is unloaded (3.914584ms)
+[LmAutoload] (local-call) catalog lists 1 resident model(s); merged 4 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.088Z] [INFO] [LmAutoload] (local-call) catalog lists 1 resident model(s); merged 4 downloaded, unloaded model(s) from lms ls
+[LmAutoload] restored embedding model text-embedding-nomic-embed-text-v1.5
+[2026-11-25T01:33:36.088Z] [INFO] [LmAutoload] restored embedding model text-embedding-nomic-embed-text-v1.5
+✔ swap: the resident instance being the configured model under another identifier counts as loaded (2.738584ms)
+[LmAutoload] (first) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.092Z] [INFO] [LmAutoload] (first) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (first) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[2026-11-25T01:33:36.093Z] [INFO] [LmAutoload] (first) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[LmAutoload] load failed (first); retrying no sooner than 2026-11-25T01:38:36.093Z: lms unload failed: boom
+[2026-11-25T01:33:36.093Z] [ERROR] [LmAutoload] load failed (first); retrying no sooner than 2026-11-25T01:38:36.093Z: lms unload failed: boom
+[LmAutoload] (second) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.093Z] [INFO] [LmAutoload] (second) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (second) not loading a model: cooldown
+[2026-11-25T01:33:36.093Z] [WARN] [LmAutoload] (second) not loading a model: cooldown
+[LmAutoload] (stuck) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.093Z] [INFO] [LmAutoload] (stuck) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (stuck) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[2026-11-25T01:33:36.094Z] [INFO] [LmAutoload] (stuck) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[LmAutoload] load failed (stuck); retrying no sooner than 2026-11-25T01:38:36.114Z: Local inference deferred: the chat slot is not verifiably empty 0 s after lms unload (1 llama-server backend(s), 1 chat model(s) listed)
+[2026-11-25T01:33:36.114Z] [ERROR] [LmAutoload] load failed (stuck); retrying no sooner than 2026-11-25T01:38:36.114Z: Local inference deferred: the chat slot is not verifiably empty 0 s after lms unload (1 llama-server backend(s), 1 chat model(s) listed)
+[LmAutoload] (stuck) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.115Z] [INFO] [LmAutoload] (stuck) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (stuck) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[2026-11-25T01:33:36.115Z] [INFO] [LmAutoload] (stuck) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[LmAutoload] load failed (stuck); retrying no sooner than 2026-11-25T01:38:36.135Z: Local inference deferred: the chat slot is not verifiably empty 0 s after lms unload (0 llama-server backend(s), 1 chat model(s) listed)
+[2026-11-25T01:33:36.135Z] [ERROR] [LmAutoload] load failed (stuck); retrying no sooner than 2026-11-25T01:38:36.135Z: Local inference deferred: the chat slot is not verifiably empty 0 s after lms unload (0 llama-server backend(s), 1 chat model(s) listed)
+[LmAutoload] (blind) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.135Z] [INFO] [LmAutoload] (blind) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (blind) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[2026-11-25T01:33:36.136Z] [INFO] [LmAutoload] (blind) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[LmAutoload] load failed (blind); retrying no sooner than 2026-11-25T01:38:36.157Z: Local inference deferred: the chat slot is not verifiably empty 0 s after lms unload (1 llama-server backend(s), lms ps unreadable)
+[2026-11-25T01:33:36.157Z] [ERROR] [LmAutoload] load failed (blind); retrying no sooner than 2026-11-25T01:38:36.157Z: Local inference deferred: the chat slot is not verifiably empty 0 s after lms unload (1 llama-server backend(s), lms ps unreadable)
+[LmAutoload] (blind) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.157Z] [INFO] [LmAutoload] (blind) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (blind) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[2026-11-25T01:33:36.157Z] [INFO] [LmAutoload] (blind) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[LmAutoload] load failed (blind); retrying no sooner than 2026-11-25T01:38:36.178Z: Local inference deferred: the chat slot is not verifiably empty 0 s after lms unload (0 llama-server backend(s), lms ps unreadable)
+[2026-11-25T01:33:36.178Z] [ERROR] [LmAutoload] load failed (blind); retrying no sooner than 2026-11-25T01:38:36.178Z: Local inference deferred: the chat slot is not verifiably empty 0 s after lms unload (0 llama-server backend(s), lms ps unreadable)
+[LmAutoload] (blind) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.178Z] [INFO] [LmAutoload] (blind) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (blind) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[2026-11-25T01:33:36.178Z] [INFO] [LmAutoload] (blind) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[LmAutoload] load failed (blind); retrying no sooner than 2026-11-25T01:38:36.199Z: Local inference deferred: the chat slot is not verifiably empty 0 s after lms unload (1 llama-server backend(s), lms ps unreadable)
+[2026-11-25T01:33:36.199Z] [ERROR] [LmAutoload] load failed (blind); retrying no sooner than 2026-11-25T01:38:36.199Z: Local inference deferred: the chat slot is not verifiably empty 0 s after lms unload (1 llama-server backend(s), lms ps unreadable)
+[LmAutoload] (blind) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.200Z] [INFO] [LmAutoload] (blind) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (blind) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[2026-11-25T01:33:36.200Z] [INFO] [LmAutoload] (blind) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[LmAutoload] load failed (blind); retrying no sooner than 2026-11-25T01:38:36.221Z: Local inference deferred: the chat slot is not verifiably empty 0 s after lms unload (0 llama-server backend(s), lms ps unreadable)
+[2026-11-25T01:33:36.221Z] [ERROR] [LmAutoload] load failed (blind); retrying no sooner than 2026-11-25T01:38:36.221Z: Local inference deferred: the chat slot is not verifiably empty 0 s after lms unload (0 llama-server backend(s), lms ps unreadable)
+✔ swap: a failed unload, or a slot that is not verifiably empty afterwards, loads nothing and arms the cooldown (132.437417ms)
+✔ review: readLoadedInstances reports a listing with an unreadable row as malformed (202.022917ms)
+✔ claimLocalSlot: one cached catalog read when the slot is right; it acts only for a call naming the configured model (1.411959ms)
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.426Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[2026-11-25T01:33:36.426Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+[2026-11-25T01:33:36.426Z] [INFO] [LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.426Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, which is in use (status idle, 0 queued, last request 30 s ago); leaving it loaded. Local calls fall back until it has gone 600 s without a request.
+[2026-11-25T01:33:36.426Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, which is in use (status idle, 0 queued, last request 30 s ago); leaving it loaded. Local calls fall back until it has gone 600 s without a request.
+✔ claimLocalSlot: an idle other model is swapped out before the call; one in use defers the call instead of answering for gemma (1.844458ms)
+[LmAutoload] (local-call) downloaded-model inventory timeout: lms ls hung; classifying from the resident catalog only
+[2026-11-25T01:33:36.427Z] [WARN] [LmAutoload] (local-call) downloaded-model inventory timeout: lms ls hung; classifying from the resident catalog only
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.428Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.428Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[2026-11-25T01:33:36.428Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+[2026-11-25T01:33:36.428Z] [INFO] [LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+✔ review: a claim succeeds only on affirmative identity; an unreadable inventory is not a fuzzy name (1.340875ms)
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.429Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[2026-11-25T01:33:36.429Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+[2026-11-25T01:33:36.514Z] [INFO] [LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+✔ review: a caller waits for a swap only until its own deadline or abort; the swap itself carries on (86.363709ms)
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.561Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[2026-11-25T01:33:36.562Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+[2026-11-25T01:33:36.562Z] [INFO] [LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+✔ review: the caller's deadline covers the whole claim: the inventory read, the pass, the confirmation, and a deadline already past (110.097792ms)
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.660Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[2026-11-25T01:33:36.660Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+[2026-11-25T01:33:36.661Z] [INFO] [LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+✔ review: a deadline further off than a Node timer can hold does not expire the claim at once (36.427583ms)
+✔ review: a pass that keeps giving the same refusal says so once, and again after the slot was right in between (5.329834ms)
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:36.669Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[2026-11-25T01:33:36.669Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds qwen/qwen3.8-27b, unused for at least 600 s; unloading it to load google/gemma-4-31b-qat
+[LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+[2026-11-25T01:33:36.669Z] [INFO] [LmAutoload] swapped qwen/qwen3.8-27b for google/gemma-4-31b-qat in 0s
+✔ claimLocalSlot: a closed lane is the lane policy's business; the claim neither swaps nor refuses (2.705792ms)
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-25T01:33:33.970Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_demand_callers.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T01:33:33.973Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_demand_callers.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T01:33:33.973Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:33.974Z] [INFO] [LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:33.974Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:33.974Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[LLM] Token reporting failed: [tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[2026-11-25T01:33:33.978Z] [WARN] [LLM] Token reporting failed: [tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[LmAutoload] (chat) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:33.979Z] [INFO] [LmAutoload] (chat) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chat) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:33.979Z] [INFO] [LmAutoload] (chat) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:33.979Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[LLM] local model reloaded; retrying the primary call once
+[2026-11-25T01:33:33.979Z] [INFO] [LLM] local model reloaded; retrying the primary call once
+[tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[LLM] Token reporting failed: [tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[2026-11-25T01:33:33.980Z] [WARN] [LLM] Token reporting failed: [tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T01:33:33.980Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:33.980Z] [INFO] [LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chatVia) not loading a model: pressure
+[2026-11-25T01:33:33.980Z] [WARN] [LmAutoload] (chatVia) not loading a model: pressure
+[LmAutoload] (chat) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:33.980Z] [INFO] [LmAutoload] (chat) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chat) not loading a model: pressure
+[2026-11-25T01:33:33.980Z] [WARN] [LmAutoload] (chat) not loading a model: pressure
+[LLM] ⚠️ local provider has no model loaded and the reload was skipped; escalating to online cascade
+[2026-11-25T01:33:33.980Z] [WARN] [LLM] ⚠️ local provider has no model loaded and the reload was skipped; escalating to online cascade
+[LLM] ⚠️ local/google/gemma-4-31b-qat exhausted; starting fallback cascade
+[2026-11-25T01:33:33.980Z] [WARN] [LLM] ⚠️ local/google/gemma-4-31b-qat exhausted; starting fallback cascade
+[LLM] 🔄 Trying fallback: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+[2026-11-25T01:33:33.981Z] [INFO] [LLM] 🔄 Trying fallback: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+[tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[LLM] ✅ Fallback succeeded — switching to openrouter/nvidia/nemotron-3-ultra-550b-a55b:free for this session
+[2026-11-25T01:33:33.981Z] [INFO] [LLM] ✅ Fallback succeeded — switching to openrouter/nvidia/nemotron-3-ultra-550b-a55b:free for this session
+[LLM] Token reporting failed: [tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[2026-11-25T01:33:33.981Z] [WARN] [LLM] Token reporting failed: [tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[LmAutoload] (swarm) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:33.982Z] [INFO] [LmAutoload] (swarm) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (swarm) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:33.982Z] [INFO] [LmAutoload] (swarm) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:33.982Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[LmAutoload] (member-profile) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:33.983Z] [INFO] [LmAutoload] (member-profile) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (member-profile) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:33.983Z] [INFO] [LmAutoload] (member-profile) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:33.983Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+✔ criterion 2: chatVia on an unloaded local model reloads it once and the pinned call succeeds (6.1665ms)
+✔ criterion 2: chat() with a local primary reloads once and retries the primary instead of cascading (1.010292ms)
+✔ criterion 4: under the pressure veto the reload is skipped; chatVia surfaces the original error and chat() cascades as before (1.182ms)
+✔ criterion 2: the swarm's local seat (a direct LM Studio client) reloads once and answers; the seat's signal is passed through (0.706083ms)
+✔ criterion 2: the member-profile extractor wakes the model on LM Studio's empty slot and leaves the retry to its backoff (1.526959ms)
+✔ the member-profile extractor claims the chat slot inside its own deadline and sends nothing when the claim is refused (0.997125ms)
+✔ the member-profile extractor reads the model at each extraction: one made before a switch of local model claims the slot for, and asks, the model in effect (0.757292ms)
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-25T01:33:33.984Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:33.988Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:33.988Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-3) to finish.
+[2026-11-25T01:33:33.989Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-3) to finish.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was gemini-3.1-pro-preview): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:33.989Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was gemini-3.1-pro-preview): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:33.989Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-1) to finish.
+[2026-11-25T01:33:33.989Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-1) to finish.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:33.989Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T01:33:33.990Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:33.990Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds google/gemma-4-31b-qat, unused for at least 600 s; unloading it to load thinkingmachines/inkling-2-mini
+[2026-11-25T01:33:33.990Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds google/gemma-4-31b-qat, unused for at least 600 s; unloading it to load thinkingmachines/inkling-2-mini
+[LmAutoload] swapped google/gemma-4-31b-qat for thinkingmachines/inkling-2-mini in 0s
+[2026-11-25T01:33:33.991Z] [INFO] [LmAutoload] swapped google/gemma-4-31b-qat for thinkingmachines/inkling-2-mini in 0s
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:33.992Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[2026-11-25T01:33:33.992Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:33.992Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:33.993Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ad_hoc_local_prompt (5645b25c-555b-49aa-8816-50c4be6e4cea) to finish.
+[2026-11-25T01:33:33.995Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ad_hoc_local_prompt (5645b25c-555b-49aa-8816-50c4be6e4cea) to finish.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:33.995Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:33.996Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job nightly_synthesis (job-2) to finish.
+[2026-11-25T01:33:33.996Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job nightly_synthesis (job-2) to finish.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:33.996Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Nexus holds the switch to thinkingmachines/inkling-2-mini until Write script (writer + critic) finishes.
+[2026-11-25T01:33:33.996Z] [INFO] [LocalModel] Nexus holds the switch to thinkingmachines/inkling-2-mini until Write script (writer + critic) finishes.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:33.996Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:33.996Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T01:33:33.997Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:33.997Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:33.998Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T01:33:33.998Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T01:33:33.998Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.001Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LLM] Pinned call → local/thinkingmachines/inkling-2-mini
+[2026-11-25T01:33:34.001Z] [INFO] [LLM] Pinned call → local/thinkingmachines/inkling-2-mini
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.002Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T01:33:34.002Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LmAutoload] (no-model-loaded) catalog lists 1 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.002Z] [INFO] [LmAutoload] (no-model-loaded) catalog lists 1 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (no-model-loaded) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.002Z] [INFO] [LmAutoload] (no-model-loaded) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:34.002Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.002Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LmAutoload] (no-model-loaded) LM Studio has no model loaded — loading thinkingmachines/inkling-2-mini via lms
+[2026-11-25T01:33:34.002Z] [INFO] [LmAutoload] (no-model-loaded) LM Studio has no model loaded — loading thinkingmachines/inkling-2-mini via lms
+[LmAutoload] thinkingmachines/inkling-2-mini loaded in 0s
+[2026-11-25T01:33:34.002Z] [INFO] [LmAutoload] thinkingmachines/inkling-2-mini loaded in 0s
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.002Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+✔ start-up with Nexus unreachable: the environment's model is used, the log and the snapshot report it, and Nexus's setting wins once it answers (1.77975ms)
+✔ start-up with Nexus reachable: the setting applies at once and the environment is not used (0.220625ms)
+✔ Nexus answering without a local model is reported as well, and the environment's model stays in use (0.164042ms)
+✔ with no model in effect, a choice Nexus holds as waiting is put into effect through Nexus, never adopted by Praxis alone (0.475208ms)
+✔ a switch chosen during a local queue job waits for the job, the snapshot shows it waiting, and choosing loads nothing; the next local call loads it (1.885334ms)
+✔ right after a switch the next local call replaces the previous model, though the job the switch waited for used it a second before (0.535834ms)
+✔ a previous model something used after the switch keeps the idle period: the call is deferred and nothing is unloaded (0.393917ms)
+✔ the model a switch replaced may go without the idle period only when LM Studio says nothing ran, waits or was sent to it since the switch (0.134ms)
+✔ a local call in flight holds the switch too; it applies when the call returns (0.3575ms)
+✔ the local worker never changes model inside a job: the job that was running ends on Gemma and the next one starts on Inkling (3.263208ms)
+✔ a newer choice replaces a waiting one, and choosing the model in effect again cancels the switch (0.228709ms)
+✔ Nexus holds the switch while one of its Studio local jobs runs, and Praxis applies when Nexus asks again (0.229166ms)
+✔ roles resolved through local_default use the model in effect at each call, even from the role cache; a role pinned to one model keeps it (1.463666ms)
+✔ TheCortex's gateway calls (complete with a role, routes/chat.ts) reach LM Studio with the chosen model after a switch (4.031292ms)
+✔ the autoload pass follows the setting: with the chat slot empty it loads the model in effect, before and after a switch (0.456584ms)
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.007Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T01:33:34.007Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.007Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds google/gemma-4-31b-qat, unused for at least 600 s; unloading it to load thinkingmachines/inkling-2-mini
+[2026-11-25T01:33:34.007Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds google/gemma-4-31b-qat, unused for at least 600 s; unloading it to load thinkingmachines/inkling-2-mini
+[LmAutoload] swapped google/gemma-4-31b-qat for thinkingmachines/inkling-2-mini in 0s
+[2026-11-25T01:33:34.007Z] [INFO] [LmAutoload] swapped google/gemma-4-31b-qat for thinkingmachines/inkling-2-mini in 0s
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.007Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.007Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.008Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T01:33:34.008Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.008Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds google/gemma-4-31b-qat, unused for at least 600 s; unloading it to load thinkingmachines/inkling-2-mini
+[2026-11-25T01:33:34.008Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds google/gemma-4-31b-qat, unused for at least 600 s; unloading it to load thinkingmachines/inkling-2-mini
+[LmAutoload] swapped google/gemma-4-31b-qat for thinkingmachines/inkling-2-mini in 0s
+[2026-11-25T01:33:34.008Z] [INFO] [LmAutoload] swapped google/gemma-4-31b-qat for thinkingmachines/inkling-2-mini in 0s
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.008Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-3) to finish.
+[2026-11-25T01:33:34.008Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-3) to finish.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.008Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.008Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.009Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ad_hoc_local_prompt (dc0e7cbf-c229-4ec8-b0d9-0dac4155f5a7) to finish.
+[2026-11-25T01:33:34.009Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ad_hoc_local_prompt (dc0e7cbf-c229-4ec8-b0d9-0dac4155f5a7) to finish.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.009Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.010Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T01:33:34.010Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[2026-11-25T01:33:34.010Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T01:33:34.010Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.010Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.010Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.011Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T01:33:34.011Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T01:33:34.011Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T01:33:34.011Z] [INFO] [LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T01:33:34.011Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[2026-11-25T01:33:34.011Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T01:33:34.011Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.011Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.011Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-4) to finish.
+[2026-11-25T01:33:34.011Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-4) to finish.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T01:33:34.011Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LLM] Pinned call → local/thinkingmachines/inkling-2-mini
+[2026-11-25T01:33:34.011Z] [INFO] [LLM] Pinned call → local/thinkingmachines/inkling-2-mini
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.011Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.012Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+✔ a local call that arrives while Nexus records a switch waits for the answer, then is claimed for the chosen model, never beside the old one (4.882833ms)
+✔ a switch Nexus recorded whose answer was lost is settled by reading the setting again within the same apply (0.239208ms)
+✔ while Praxis cannot confirm a switch Nexus recorded, a call naming the new model is deferred, not loaded beside the old one, and the next settled local work brings Praxis level (0.52925ms)
+✔ while a switch waits for a local job, a call naming the chosen model is deferred instead of loading beside the job's model, and its claim loads nothing (0.236417ms)
+✔ Praxis reads the setting again every 60 s on its own, and reports a Nexus outage once until a read succeeds (0.384667ms)
+✔ a job the local worker claims holds the switch from the claim: one chosen while the job's calendar entry is written waits, and the job runs on Gemma (1.233542ms)
+✔ a pinned local call is local work from the moment it is made: a switch chosen while it waits for a slot waits for it, and the call is counted once (0.491333ms)
+✔ a local call the closed daytime lane sends elsewhere is not local work: a switch chosen while it runs applies at once, and the count of local calls stays at zero (0.590166ms)
+✔ a pinned local call that finds LM Studio's slot empty stays local work through the reload and its retry, so a switch chosen meanwhile waits for it (0.431084ms)
+✔ while a switch waits, a pinned call naming the chosen model that finds the slot empty loads nothing and is deferred (0.284458ms)
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.012Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.013Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.013Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+✔ a call naming the previous model that waited while Nexus recorded the switch is deferred once the switch is in effect, and nothing is loaded or unloaded (0.898583ms)
+✔ while Nexus holds a switch for its Studio jobs, Praxis says so once for each set of jobs, however often it asks (0.157875ms)
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.013Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.013Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+✔ an answer from Nexus that was on its way while a newer read was acted on is not acted on: Praxis never goes back to the model the switch replaced (0.302333ms)
+✔ Praxis goes by Nexus's own waiting flag: an answer that says nothing waits asks Nexus for nothing, whatever names it carries (0.077416ms)
+✔ when the answer to a recorded switch is lost, Praxis takes the model in effect in Nexus's own spelling, and the next read finds nothing to do (0.112167ms)
+✔ a call that waited through a switch that took nothing into effect is not refused, though an earlier switch replaced the model it names (0.420625ms)
+✔ after switches made one after another with no local call between them, the next call replaces the model still loaded without waiting out its idle period (0.457583ms)
+✔ a new spelling of the model in effect replaces no model: the model the switch replaced stays recorded and may still go without the idle period (0.124167ms)
+✔ a replaced model chosen again, under another spelling, is no longer recorded as replaced (0.092208ms)
+✔ a call that read the model in effect is refused at the slot claim when a switch replaces that model under a spelling Nexus gave it after the read (0.107709ms)
+✔ each model a switch replaced may go without the idle period, judged by the latest switch away from it (0.063917ms)
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.015Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+✔ the local provider as the manager registers it counts a call and its retry after a stop for length as one local call: a switch chosen during the call waits for both (0.646375ms)
+✔ chat() on a local primary that finds LM Studio's slot empty is one local call through the reload and its retry: a switch chosen meanwhile waits, and the retry goes to the model the reload loaded (0.71325ms)
+✔ a call that read its model before a switch is refused at the slot claim even when the switch took effect before the claim began; one that read it after the switch is not (0.100291ms)
+✔ a pinned local call that read Gemma before a switch took effect during its admission is deferred at the slot claim: Gemma does not answer and nothing is loaded (2.929209ms)
+✔ chat() on a local primary that read Gemma before a switch took effect during its admission is refused at the slot claim and answered by the cascade, not by Gemma (1.668209ms)
+▶ primaryForTest puts back the primary chat()'s fallback moved, model and cache epoch included, whatever the environment sets
+  ✔ chat() on a local primary, refused at the slot claim and answered by the cascade (0.672167ms)
+✖ primaryForTest puts back the primary chat()'s fallback moved, model and cache epoch included, whatever the environment sets (3.096875ms)
+✔ complete() for a role resolved through local_default that read Gemma before a switch took effect during its admission is refused at the slot claim and escalated, not answered by Gemma (1.357875ms)
+✔ a streamed call for a role resolved through local_default that read Gemma before a switch took effect during its admission is refused at the slot claim and streamed by the next candidate, not by Gemma (1.065875ms)
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.027Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T01:33:34.027Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T01:33:34.027Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[2026-11-25T01:33:34.028Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T01:33:34.028Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T01:33:34.028Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+✔ a switch that takes effect after a role's model is read and before complete() makes the call refuses the call: the count of switches is read with the role's model (0.928625ms)
+✔ local work a counted call starts and leaves running stays counted until it ends: joined while that call is open, counted on its own once it has ended (0.140291ms)
+✔ a local call that work inside a counted call starts and leaves running holds a switch until it ends, though the call that started it has returned, and is counted once (0.482292ms)
+✔ a call that read Gemma before the switch to Inkling took effect, and reaches the slot claim while a second switch to Qwen is being recorded, is refused for the switch that replaced Gemma: the refusal names Inkling and says the switch came before the claim (0.542625ms)
+✔ spoken prose reads the local model and the count of switches in one step: a switch that takes effect before its call reaches the manager refuses the call at the slot claim, Gemma does not answer and nothing is loaded (0.7705ms)
+✔ a switch that takes effect after a role's model is read and before chatStream tries it refuses the call: the stream's role candidate keeps the count of switches read with the role's model (0.776625ms)
+✔ a hosted pin rerouted to the local model when its credits ran out, whose local call read Gemma before a switch took effect during its admission, is refused at the slot claim: Gemma does not answer, nothing is loaded, and the hosted failure stands (1.477792ms)
+ℹ tests 125
+ℹ suites 0
+ℹ pass 124
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3762.011917
+
+✖ failing tests:
+
+test at tests/local_model_selection.test.ts:5:4213
+✖ primaryForTest puts back the primary chat()'s fallback moved, model and cache epoch included, whatever the environment sets (3.096875ms)
+  AssertionError [ERR_ASSERTION]: primaryForTest put the provider, the model and the cache epoch back
+  + actual - expected
+  
+    {
+  +   cacheEpoch: 2,
+  -   cacheEpoch: 1,
+      model: 'model-before-this-test',
+      provider: 'google'
+    }
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7/tests/local_model_selection.test.ts:1523:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: { provider: 'google', model: 'model-before-this-test', cacheEpoch: 2 },
+    expected: { provider: 'google', model: 'model-before-this-test', cacheEpoch: 1 },
+    operator: 'deepStrictEqual'
+  }
+exit 1

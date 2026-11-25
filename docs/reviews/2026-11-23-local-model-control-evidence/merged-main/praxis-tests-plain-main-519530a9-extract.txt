@@ -1,0 +1,196 @@
+# extract of praxis-plain8-all-run.txt (10170 lines): lines 1-5, then lines 9982-end
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/agent_intermediate_abort.test.ts tests/alert_investigation.test.ts tests/arbitrary_limits_runtime.test.ts tests/autonomy_api_routes.test.ts tests/board_summary.test.ts tests/captains_log.test.ts tests/chat_cli_failure_receipts.test.ts tests/chat_follow_up_runtime.test.ts tests/chat_turn_steps.test.ts tests/chat_turn_steps_legacy.test.ts tests/chatstream_role_guard.test.ts tests/checkpoint_planning.test.ts tests/checkpoint_stages.test.ts tests/classifier_inputs_whole.test.ts tests/cli_concurrency.test.ts tests/cli_concurrency_local_lane.test.ts tests/cli_dispatch_gate_wakeup.test.ts tests/cli_run_footprint.test.ts tests/client_intake.test.ts tests/client_pause.test.ts tests/client_wait_concurrency.test.ts tests/code_freshness_recovery.test.ts tests/completion_recovery.test.ts tests/consolidator_empty_content_fallback.test.ts tests/context_pruning_ceiling.test.ts tests/cortex_executor_contract.test.ts tests/cortex_long_answers.test.ts tests/critic_deadline_routes.test.ts tests/day_schedule_approval.test.ts tests/delegation_monotonicity.test.ts tests/dispatch_provenance.test.ts tests/dispatch_routing_preparation.test.ts tests/document_decisions.test.ts tests/document_delivery.test.ts tests/document_delivery_contract.test.ts tests/document_lifecycle_error_body.test.ts tests/document_replacement_declaration.test.ts tests/document_replacement_retirement.test.ts tests/document_review_routes.test.ts tests/document_revision_lifecycle.test.ts tests/email_intake_attribution.test.ts tests/email_intake_runtime.test.ts tests/email_reply_preparation.test.ts tests/epistemic-defense.test.ts tests/eval_arbitrary_limits.test.ts tests/eval_e2_qa_fidelity.test.ts tests/eval_e5_gate.test.ts tests/eval_judge_comparability.test.ts tests/eval_model_policy.test.ts tests/evidence_extraction_cli_boundary.test.ts tests/evidence_extraction_concurrency.test.ts tests/evidence_json_repair.test.ts tests/executor_routing_preparation.test.ts tests/executor_seam.test.ts tests/executor_trace_redaction.test.ts tests/groundrules_runner.test.ts tests/http_body_deadline.test.ts tests/ingest_empty_content_hardening.test.ts tests/ingestion_arbitrary_limits.test.ts tests/ingestion_cli_routing.test.ts tests/ingestion_retrieval_details.test.ts tests/ingestion_salience_triage.test.ts tests/ingestion_summary_health.test.ts tests/intake_backlog_handoff.test.ts tests/intake_backlog_morning.test.ts tests/intake_checkpoint_board.test.ts tests/knowledge_arbitrary_limits.test.ts tests/knowledge_council_evidence_override.test.ts tests/llm_cascade_request_shape.test.ts tests/llm_cli_lane_complete.test.ts tests/llm_context_window.test.ts tests/llm_gateway_cortex_roles.test.ts tests/llm_gateway_output_budget.test.ts tests/llm_output_room.test.ts tests/lmstudio_autoload.test.ts tests/local_inference_safety.test.ts tests/local_lane_manager_reroute.test.ts tests/local_lane_policy.test.ts tests/local_llm_spillover.test.ts tests/local_llm_worker.test.ts tests/local_model_capabilities.test.ts tests/local_model_demand_callers.test.ts tests/local_model_primary.test.ts tests/local_model_selection.test.ts tests/maintenance_schedule.test.ts tests/member_preparation_client.test.ts tests/member_profile_updates.test.ts tests/model_inputs_whole.test.ts tests/morning_archive_audit.test.ts tests/morning_empty_content_guard.test.ts tests/morning_executor_readiness.test.ts tests/morning_inputs_whole.test.ts tests/nexus_admission_contention.test.ts tests/nexus_board_lease_contention.test.ts tests/nexus_client_funnel.test.ts tests/nexus_runtime_traffic.test.ts tests/openai_chat_suspension.test.ts tests/orchestrator_consolidator_integration.test.ts tests/per_pass_window_fit.test.ts tests/presence_background.test.ts tests/project_tagger_parse.test.ts tests/proof_baseline_evidence.test.ts tests/proof_baseline_finality.test.ts tests/proof_baseline_release.test.ts tests/proof_baseline_release_event_loop.test.ts tests/proof_baseline_source.test.ts tests/qa_blocked_escalation.test.ts tests/qa_document_replacements.test.ts tests/qa_review_preparation_event_loop.test.ts tests/qa_state_persistence.test.ts tests/quantized_tool_gate.test.ts tests/rag_parallel_retrieval.test.ts tests/research_web_retrieval.test.ts tests/research_worker_outcomes.test.ts tests/run_landing_lifecycle.test.ts tests/run_record_redaction.test.ts tests/run_worktree_dispatch.test.ts tests/schedule_completion_progress.test.ts tests/self_knowledge_recall_anchor.test.ts tests/session_synthesis_worker.test.ts tests/skill_amendment_pairs.test.ts tests/skill_amendment_review.test.ts tests/skill_candidate_screen_refusal.test.ts tests/spillover.test.ts tests/spoken_prose.test.ts tests/standing_fact_sweep.test.ts tests/state_doc.test.ts tests/swarm_local_provider.test.ts tests/system_map.test.ts tests/system_map_dispatch_yield.test.ts tests/task_commits_visible_to_qa.test.ts tests/task_knowledge_creation.test.ts tests/task_knowledge_producers.test.ts tests/task_saved_model_dispatch.test.ts tests/terminal_hitl_route.test.ts tests/terminal_operator_note.test.ts tests/terminal_qa_advance_race.test.ts tests/terminal_qa_finalization.test.ts tests/terminal_reconciliation_board_lease.test.ts tests/token_report.test.ts tests/tts_provider.test.ts tests/voice_prose_deadline.test.ts tests/webhook_routes_inventory.test.ts tests/work_admission.test.ts
+
+Running 142 of 905 suite(s): tests/agent_intermediate_abort.test.ts tests/alert_investigation.test.ts tests/arbitrary_limits_runtime.test.ts tests/autonomy_api_routes.test.ts tests/board_summary.test.ts tests/captains_log.test.ts tests/chat_cli_failure_receipts.test.ts tests/chat_follow_up_runtime.test.ts tests/chat_turn_steps.test.ts tests/chat_turn_steps_legacy.test.ts tests/chatstream_role_guard.test.ts tests/checkpoint_planning.test.ts tests/checkpoint_stages.test.ts tests/classifier_inputs_whole.test.ts tests/cli_concurrency.test.ts tests/cli_concurrency_local_lane.test.ts tests/cli_dispatch_gate_wakeup.test.ts tests/cli_run_footprint.test.ts tests/client_intake.test.ts tests/client_pause.test.ts tests/client_wait_concurrency.test.ts tests/code_freshness_recovery.test.ts tests/completion_recovery.test.ts tests/consolidator_empty_content_fallback.test.ts tests/context_pruning_ceiling.test.ts tests/cortex_executor_contract.test.ts tests/cortex_long_answers.test.ts tests/critic_deadline_routes.test.ts tests/day_schedule_approval.test.ts tests/delegation_monotonicity.test.ts tests/dispatch_provenance.test.ts tests/dispatch_routing_preparation.test.ts tests/document_decisions.test.ts tests/document_delivery.test.ts tests/document_delivery_contract.test.ts tests/document_lifecycle_error_body.test.ts tests/document_replacement_declaration.test.ts tests/document_replacement_retirement.test.ts tests/document_review_routes.test.ts tests/document_revision_lifecycle.test.ts tests/email_intake_attribution.test.ts tests/email_intake_runtime.test.ts tests/email_reply_preparation.test.ts tests/epistemic-defense.test.ts tests/eval_arbitrary_limits.test.ts tests/eval_e2_qa_fidelity.test.ts tests/eval_e5_gate.test.ts tests/eval_judge_comparability.test.ts tests/eval_model_policy.test.ts tests/evidence_extraction_cli_boundary.test.ts tests/evidence_extraction_concurrency.test.ts tests/evidence_json_repair.test.ts tests/executor_routing_preparation.test.ts tests/executor_seam.test.ts tests/executor_trace_redaction.test.ts tests/groundrules_runner.test.ts tests/http_body_deadline.test.ts tests/ingest_empty_content_hardening.test.ts tests/ingestion_arbitrary_limits.test.ts tests/ingestion_cli_routing.test.ts tests/ingestion_retrieval_details.test.ts tests/ingestion_salience_triage.test.ts tests/ingestion_summary_health.test.ts tests/intake_backlog_handoff.test.ts tests/intake_backlog_morning.test.ts tests/intake_checkpoint_board.test.ts tests/knowledge_arbitrary_limits.test.ts tests/knowledge_council_evidence_override.test.ts tests/llm_cascade_request_shape.test.ts tests/llm_cli_lane_complete.test.ts tests/llm_context_window.test.ts tests/llm_gateway_cortex_roles.test.ts tests/llm_gateway_output_budget.test.ts tests/llm_output_room.test.ts tests/lmstudio_autoload.test.ts tests/local_inference_safety.test.ts tests/local_lane_manager_reroute.test.ts tests/local_lane_policy.test.ts tests/local_llm_spillover.test.ts tests/local_llm_worker.test.ts tests/local_model_capabilities.test.ts tests/local_model_demand_callers.test.ts tests/maintenance_schedule.test.ts tests/member_preparation_client.test.ts tests/member_profile_updates.test.ts tests/model_inputs_whole.test.ts tests/morning_archive_audit.test.ts tests/morning_empty_content_guard.test.ts tests/morning_executor_readiness.test.ts tests/morning_inputs_whole.test.ts tests/nexus_admission_contention.test.ts tests/nexus_board_lease_contention.test.ts tests/nexus_client_funnel.test.ts tests/nexus_runtime_traffic.test.ts tests/openai_chat_suspension.test.ts tests/orchestrator_consolidator_integration.test.ts tests/per_pass_window_fit.test.ts tests/presence_background.test.ts tests/project_tagger_parse.test.ts tests/proof_baseline_evidence.test.ts tests/proof_baseline_finality.test.ts tests/proof_baseline_release.test.ts tests/proof_baseline_release_event_loop.test.ts tests/proof_baseline_source.test.ts tests/qa_blocked_escalation.test.ts tests/qa_document_replacements.test.ts tests/qa_review_preparation_event_loop.test.ts tests/qa_state_persistence.test.ts tests/quantized_tool_gate.test.ts tests/rag_parallel_retrieval.test.ts tests/research_web_retrieval.test.ts tests/research_worker_outcomes.test.ts tests/run_landing_lifecycle.test.ts tests/run_record_redaction.test.ts tests/run_worktree_dispatch.test.ts tests/schedule_completion_progress.test.ts tests/self_knowledge_recall_anchor.test.ts tests/session_synthesis_worker.test.ts tests/skill_amendment_pairs.test.ts tests/skill_amendment_review.test.ts tests/skill_candidate_screen_refusal.test.ts tests/spillover.test.ts tests/spoken_prose.test.ts tests/standing_fact_sweep.test.ts tests/state_doc.test.ts tests/swarm_local_provider.test.ts tests/system_map.test.ts tests/system_map_dispatch_yield.test.ts tests/task_commits_visible_to_qa.test.ts tests/task_knowledge_creation.test.ts tests/task_knowledge_producers.test.ts tests/task_saved_model_dispatch.test.ts tests/terminal_hitl_route.test.ts tests/terminal_operator_note.test.ts tests/terminal_qa_advance_race.test.ts tests/terminal_qa_finalization.test.ts tests/terminal_reconciliation_board_lease.test.ts tests/token_report.test.ts tests/tts_provider.test.ts tests/voice_prose_deadline.test.ts tests/webhook_routes_inventory.test.ts tests/work_admission.test.ts
+# ... lines 6-9981 left out (passing output and per-test detail) ...
+ℹ tests 1955
+ℹ suites 0
+ℹ pass 1945
+ℹ fail 10
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 69084.617625
+
+✖ failing tests:
+
+test at tests/alert-investigation-audit-cases.ts:10:3461
+✖ real Antigravity completion reaches the shared audit and retains findings with explicit unsupported evidence (82.378625ms)
+  AssertionError [ERR_ASSERTION]: undefined == true
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/plain-praxis-main8/tests/alert-investigation-audit-cases.ts:470:46)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: '=='
+  }
+
+test at tests/alert_investigation.test.ts:3:15169
+✖ 5: real registry recovery reads full completed findings instead of the truncated preview (66.44075ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'inconclusive'
+  - 'reported'
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/plain-praxis-main8/tests/alert_investigation.test.ts:607:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'inconclusive',
+    expected: 'reported',
+    operator: 'strictEqual'
+  }
+
+test at tests/alert_investigation.test.ts:3:19826
+✖ 3: callback records execution-scoped usage already captured from the native CLI stream (49.605375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'inconclusive'
+  - 'reported'
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/plain-praxis-main8/tests/alert_investigation.test.ts:671:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'inconclusive',
+    expected: 'reported',
+    operator: 'strictEqual'
+  }
+
+test at tests/code_freshness_recovery.test.ts:5:8564
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only (8.948708ms)
+  Error: Command failed: git -C /Volumes/Projects/.scratch-fa032fc0/plain-praxis-main8 rev-parse HEAD
+  fatal: not a git repository (or any parent up to mount point /Volumes)
+  Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+  
+      at genericNodeError (node:internal/errors:983:15)
+      at wrappedFn (node:internal/errors:537:14)
+      at checkExecSyncError (node:child_process:882:11)
+      at execFileSync (node:child_process:918:15)
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/plain-praxis-main8/tests/code_freshness_recovery.test.ts:1710:16)
+      at Test.runInAsyncScope (node:async_hooks:211:14)
+      at Test.run (node:internal/test_runner/test:980:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:678:18)
+      at Test.postRun (node:internal/test_runner/test:1091:19)
+      at Test.run (node:internal/test_runner/test:1019:12) {
+    status: 128,
+    signal: null,
+    output: [ null, '', 'fatal: not a git repository (or any parent up to mount point /Volumes)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n' ],
+    pid: 15025,
+    stdout: '',
+    stderr: 'fatal: not a git repository (or any parent up to mount point /Volumes)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n'
+  }
+
+test at tests/email_intake_runtime.test.ts:1:1
+✖ tests/email_intake_runtime.test.ts (2621.16125ms)
+  'test failed'
+
+test at tests/qa_state_persistence.test.ts:1:13555
+✖ 3c: a reviewer that died with the daemon is retried on a different executor with NO strike (1976.797083ms)
+  AssertionError [ERR_ASSERTION]: the review was re-dispatched
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/plain-praxis-main8/tests/qa_state_persistence.test.ts:578:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual'
+  }
+
+test at tests/qa_state_persistence.test.ts:1:19167
+✖ B′: after a restart, the reviewer's callback with the RIGHT qaReviewId is 200 and finalizes (2021.677792ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    dispatchQaReview({
+    nexusTaskId: "p112-stale",
+    workspace: repo.dir,
+    resultSummary: "Rewrote the parser.",
+    completedBy: "claude-code",
+    baseSha: repo.head,
+    headShaAtDispatch: repo.head,
+    untrackedAtDispatch: [],
+    })
+  
+      at driveToQaDispatch (/Volumes/Projects/.scratch-fa032fc0/plain-praxis-main8/tests/qa_state_persistence.test.ts:739:10)
+      at async TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/plain-praxis-main8/tests/qa_state_persistence.test.ts:760:45)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '=='
+  }
+
+test at tests/qa_state_persistence.test.ts:1:23043
+✖ accepted pass survives a failed finalization and periodic recovery retries completion only (4467.663458ms)
+  AssertionError [ERR_ASSERTION]: recovery must not launch another reviewer or author
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/plain-praxis-main8/tests/qa_state_persistence.test.ts:887:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual'
+  }
+
+test at tests/research_web_retrieval.test.ts:2:3668
+✖ the page connection refuses mixed public/private DNS answers and literal private addresses (14.488625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'mixed.test'
+  - ]
+  
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/plain-praxis-main8/tests/research_web_retrieval.test.ts:154:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'mixed.test' ],
+    operator: 'deepStrictEqual'
+  }
+
+test at tests/webhook_routes_inventory.test.ts:1:4771
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions (2605.131959ms)
+  Error: Command failed: git show 1cac649:src/webhook.ts
+  fatal: not a git repository (or any parent up to mount point /Volumes)
+  Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+  
+      at genericNodeError (node:internal/errors:983:15)
+      at wrappedFn (node:internal/errors:537:14)
+      at checkExecSyncError (node:child_process:882:11)
+      at execFileSync (node:child_process:918:15)
+      at snapshotFromHead (/Volumes/Projects/.scratch-fa032fc0/plain-praxis-main8/tests/webhook_routes_inventory.test.ts:71:18)
+      at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/plain-praxis-main8/tests/webhook_routes_inventory.test.ts:209:18)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:297:3) {
+    status: 128,
+    signal: null,
+    output: [ null, '', 'fatal: not a git repository (or any parent up to mount point /Volumes)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n' ],
+    pid: 63925,
+    stdout: '',
+    stderr: 'fatal: not a git repository (or any parent up to mount point /Volumes)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n'
+  }
+exit 1

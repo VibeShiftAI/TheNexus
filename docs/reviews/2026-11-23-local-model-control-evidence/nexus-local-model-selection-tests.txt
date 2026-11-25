@@ -1,0 +1,1709 @@
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-X5NpKJ/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-8u75eA/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-hJgXwR/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-B48pqI/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-fhRaZw/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-xqhXSm/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-kwB0Ne/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-RPkey1/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-7pbnfA/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-4hPdB9/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-A46Mjz/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-salUiA/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-tNnDyQ/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-ElVlmN/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-Mld8b1/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-cZdJ1e/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+  console.log
+    [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+  console.log
+    [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+  console.warn
+    [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+  console.log
+    [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+  console.log
+    [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+  console.log
+    [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+  console.log
+    [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+  console.log
+    [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+  console.log
+    [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+  console.log
+    [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+  console.log
+    [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+  console.log
+    [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+  console.log
+    [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+  console.log
+    [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-cimD8o/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+PASS server/__tests__/local-model-selection.test.js
+  the local model chosen under Model Control
+    ✓ the options are LM Studio's chat models, each with its name, size, saved context and tested handling; embedding models are not offered (760 ms)
+    ✓ a model with no saved load context cannot be chosen, and the answer says what is missing (105 ms)
+    ✓ choosing records the switch and loads nothing; Praxis puts it into effect when nothing local runs (90 ms)
+    ✓ a switch chosen during a Studio local job waits for it; the job keeps its model and the next job uses the new one (87 ms)
+    ✓ Praxis's own local job holds the switch too, and the panel shows what it waits for (84 ms)
+    ✓ with no model in effect a choice is answered as waiting until Praxis applies it, and choosing makes no models row; the switch does (78 ms)
+    ✓ choosing a model whose row was switched off leaves it off until the switch takes effect, and a replaced choice leaves it off (78 ms)
+    ✓ a choice replaced before it took effect is refused as superseded, and a repeated choice is recorded once (77 ms)
+    ✓ choosing the model still in effect drops a waiting switch at once (79 ms)
+    ✓ each switch is recorded with what changed and when, and the previous choice restores in one action (85 ms)
+    ✓ the alias editor's local_default goes through the same choice; other targets and per-project overrides are refused (82 ms)
+    ✓ the alias editor cannot leave local_default without a target or switched off, whatever the request carries (79 ms)
+    ✓ roles that resolve through local_default follow the setting, and say so to Praxis (78 ms)
+    ✓ Studio local jobs name the model in effect, with no environment edit and no restart (76 ms)
+    ✓ Studio falls back to the environment only when local_default names no local model, and says so once (80 ms)
+    ✓ with Praxis out of reach the choice is still recorded and waits; nothing is applied behind its back (73 ms)
+    ✓ with LM Studio's listing out of reach nothing changes, and the panel says why (70 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       17 passed, 17 total
+Snapshots:   0 total
+Time:        2.434 s
+Ran all test suites matching server/__tests__/local-model-selection.test.js.
+exit 0

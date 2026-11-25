@@ -1,0 +1,42 @@
+# 2026-11-24 16:31:37 EST
+== Praxis: main pinned at 1bac2ea7901c8203a1ba271b555fbc3c2a1d8d7d, branch cad6afb21630194fb87e7794eafe04b136b6fa1d, base 1fcf4b59
+main now: 1bac2ea7; merge-base of the pinned main and the branch: 1fcf4b59
+files main changed since 59cacac6: 16; of them changed by the branch too: src/index.ts src/llm/local-lane-policy.ts src/llm/manager.ts src/nexus/client.ts tests/webhook_routes_inventory.test.ts 
+merge-tree exit 1 (0 = merges without conflict, 1 = conflicts); tree 63d20e5e3d0832545b97898a4d5f4c9f3e4f0d5f
+CONFLICT (content): Merge conflict in src/llm/local-lane-policy.ts
+CONFLICT (content): Merge conflict in src/llm/manager.ts
+-- src/llm/local-lane-policy.ts: 1 conflict hunk(s), as git merge-file --diff3 shows them:
+   (line 846)
+   <<<<<<< main
+     operatorGrantsOpen = 0;
+     operatorGrantListeners.clear();
+     admissions.clear();
+     graphHoldReading = null;
+   ||||||| base
+   =======
+     runningJobs.clear();
+   >>>>>>> branch
+   resolved with git merge-file --union. Against the marked file the resolution removes 4 line(s), 0 of them not a marker line, and adds 0
+-- src/llm/manager.ts: 2 conflict hunk(s), as git merge-file --diff3 shows them:
+   (line 33)
+   <<<<<<< main
+     isLocalLaneHoldCaller,
+   ||||||| base
+   =======
+     insideCountedLocalCall,
+   >>>>>>> branch
+   (line 45)
+   <<<<<<< main
+     runHeldLocalLaneCall,
+   ||||||| base
+   =======
+     trackLocalCall,
+   >>>>>>> branch
+   resolved with git merge-file --union. Against the marked file the resolution removes 8 line(s), 0 of them not a marker line, and adds 0
+merged-praxis10 against the merge-tree's tree: 6773 files compared; differing: src/llm/local-lane-policy.ts src/llm/manager.ts ; extra files in the copy: 0
+tsc on the resolved merged tree: exit 0 (0 errors)
+source modules main changed since 59cacac6: cortex/cortex-tools index llm/graph-episode-hold llm/local-lane-policy llm/manager llm/roles maintenance/fleet-preflight nexus/client routes/chat routes/dispatch
+suites main changed since 59cacac6: graph_episode_hold llm_gateway_graph_hold local_lane_manager_reroute local_lane_policy webhook_routes_inventory 
+suites importing one of those modules: 140
+suites on the merged tree: 180 (not on the merged tree: none); added to the 152: graph_episode_hold llm_gateway_graph_hold alert_ledger approval_dispatch_stages automatic_start_auth automatic_start_corruption chat_follow_up_bridge chat_route_reliability cli_gate_watchdog conversation_history council_auth_recovery display_chat_route document_delivery_chat_failure document_revision_chat eval_availability fleet_degraded_mode fleet_preflight graph_health_read_availability hosted_credit knowledge_council lane_credit long_task_activity maintenance_review_regressions operator_restart_chat_turn run_model_dispatch_state service_restore slot_numbering verified_background_recovery 
+nexus-for-merged-praxis10: TheNexus 2a7952fc plus the branch diff bd02642..6e14bc87, 3936 files, nexus.db files: 0

@@ -1,0 +1,21 @@
+== branch worktree: local-model-selection.test.js
+Tests:       17 passed, 17 total exit 0 
+net refusals: 0
+== merged tree: main 3189bb99 + branch working tree vs bd02642
+patch applied: 56 files
+Test Suites: 23 passed, 23 total Tests:       270 passed, 270 total exit 0 
+network guard refusals: 0
+== mutation h2: applied
+Tests:       2 failed, 15 passed, 17 total exit 1 
+    ✕ with no model in effect a choice is answered as waiting until Praxis applies it, and choosing makes no models row; the switch does
+    ✕ choosing a model whose row was switched off leaves it off until the switch takes effect, and a replaced choice leaves it off
+net refusals: 0
+== mutation v: applied
+Tests:       1 failed, 16 passed, 17 total exit 1 
+    ✕ a choice replaced before it took effect is refused as superseded, and a repeated choice is recorded once
+net refusals: 0
+== mutation w: applied
+Tests:       1 failed, 16 passed, 17 total exit 1 
+    ✕ with no model in effect a choice is answered as waiting until Praxis applies it, and choosing makes no models row; the switch does
+net refusals: 0
+== done

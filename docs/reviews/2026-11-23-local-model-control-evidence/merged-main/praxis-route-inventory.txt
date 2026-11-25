@@ -1,0 +1,25 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/webhook_routes_inventory.test.ts
+
+Running 1 of 897 suite(s): tests/webhook_routes_inventory.test.ts
+
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T17:35:13.970Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[Webhook] Ingestion control API mounted at /ingestion/*
+[2026-11-24T17:35:14.659Z] [INFO] [Webhook] Ingestion control API mounted at /ingestion/*
+[Webhook] Ingestion control API mounted at /ingestion/*
+[2026-11-24T17:35:14.664Z] [INFO] [Webhook] Ingestion control API mounted at /ingestion/*
+✔ the split routers register exactly the pre-split route surface plus the inventoried additions (3251.235917ms)
+✔ each inventoried addition is registered by the module the inventory names (2.667083ms)
+✔ no two routers register the same (method, path) (1.436542ms)
+✔ no route is registered twice on the app as a whole (0.600042ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3642.073709
+exit 0

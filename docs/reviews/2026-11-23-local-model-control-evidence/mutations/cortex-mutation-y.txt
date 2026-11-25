@@ -1,0 +1,96 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.14, pytest-9.0.2, pluggy-1.6.0 -- /Volumes/Projects/TheCortex/TheCortex/venv/bin/python
+rootdir: /Volumes/Projects/.scratch-fa032fc0/cortex-mutation-y/TheCortex
+configfile: pytest.ini
+plugins: anyio-4.12.1, mock-3.15.1, cov-7.1.0, env-1.6.0, asyncio-1.3.0, langsmith-0.7.22
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 23 items
+
+tests/test_local_model_setting.py::test_reads_the_model_in_effect_never_a_waiting_choice PASSED [  4%]
+tests/test_local_model_setting.py::test_asks_nexus_under_nexus_api_url_with_the_registry_read_timeout PASSED [  8%]
+tests/test_local_model_setting.py::test_nexus_naming_no_model_in_effect_is_no_answer PASSED [ 13%]
+tests/test_local_model_setting.py::test_fetch_current_setting_reads_one_json_object PASSED [ 17%]
+tests/test_local_model_setting.py::test_fallback_is_logged_once_until_nexus_answers_and_the_recovery_too PASSED [ 21%]
+tests/test_local_model_setting.py::test_an_answer_naming_no_model_keeps_the_last_model_nexus_named PASSED [ 26%]
+tests/test_local_model_setting.py::test_an_outage_after_a_switch_keeps_the_switched_model_for_every_caller PASSED [ 30%]
+tests/test_local_model_setting.py::test_an_older_read_that_answers_last_does_not_replace_a_newer_answer FAILED [ 34%]
+tests/test_local_model_setting.py::test_the_eval_teacher_follows_a_switch_with_no_env_edit_and_no_restart PASSED [ 39%]
+tests/test_local_model_setting.py::test_cortex_teacher_model_is_only_the_fallback PASSED [ 43%]
+tests/test_local_model_setting.py::test_one_referee_run_asks_one_model_and_the_next_run_the_new_one PASSED [ 47%]
+tests/test_local_model_setting.py::test_eval_actors_take_the_model_in_effect_once_per_run[acted_on_retrieval.ModelActor] PASSED [ 52%]
+tests/test_local_model_setting.py::test_eval_actors_take_the_model_in_effect_once_per_run[curation_replay.Curator] PASSED [ 56%]
+tests/test_local_model_setting.py::test_eval_actors_take_the_model_in_effect_once_per_run[citation_recovery.ModelVerifier] PASSED [ 60%]
+tests/test_local_model_setting.py::test_eval_actors_take_the_model_in_effect_once_per_run[packet_format.MeteredModel] PASSED [ 65%]
+tests/test_local_model_setting.py::test_an_explicit_model_still_wins_for_one_run PASSED [ 69%]
+tests/test_local_model_setting.py::test_the_relevance_judge_runs_on_and_records_the_model_in_effect PASSED [ 73%]
+tests/test_local_model_setting.py::test_graphiti_lmstudio_route_names_the_model_in_effect_at_each_call PASSED [ 78%]
+tests/test_local_model_setting.py::test_concurrent_graphiti_calls_each_send_the_model_they_read PASSED [ 82%]
+tests/test_local_model_setting.py::test_only_the_lmstudio_route_uses_the_per_call_client PASSED [ 86%]
+tests/test_local_model_setting.py::test_cortex_graphiti_model_is_only_the_fallback_on_the_lmstudio_route PASSED [ 91%]
+tests/test_local_model_setting.py::test_building_the_lmstudio_client_reads_nothing_from_nexus PASSED [ 95%]
+tests/test_local_model_setting.py::test_the_gateway_route_leaves_the_model_to_praxis PASSED [100%]
+
+=================================== FAILURES ===================================
+_____ test_an_older_read_that_answers_last_does_not_replace_a_newer_answer _____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x113cb2b70>
+
+    def test_an_older_read_that_answers_last_does_not_replace_a_newer_answer(monkeypatch):
+        # Two Graphiti calls read at once while Praxis applies a switch: read A is
+        # served before the switch (Gemma) but comes back last; read B starts after
+        # A, is served after the switch (Inkling) and comes back first. Each call
+        # sends what its own read returned, and an outage after that keeps
+        # Inkling, the newer answer, not the model the switch replaced.
+        a_in_read = threading.Event()
+        b_answered = threading.Event()
+        nexus_down = threading.Event()
+    
+        def fetch(url, timeout):
+            if nexus_down.is_set():
+                raise httpx.ConnectError("connection refused")
+            if threading.current_thread().name == "read-a":
+                a_in_read.set()
+                # A real read waits at most Nexus's read timeout.
+                b_answered.wait(local_model.NEXUS_TIMEOUT_S)
+                return {"active": GEMMA}
+            return {"active": INKLING}
+    
+        monkeypatch.setattr(local_model, "_fetch", fetch)
+        picks = {}
+    
+        def pick(name):
+            picks[name] = local_model.local_model_or(
+                GEMMA, purpose="Graphiti ingestion on the lmstudio route",
+                fallback_source="the built-in default")
+    
+        read_a = threading.Thread(target=pick, args=("a",), name="read-a")
+        read_a.start()
+        assert a_in_read.wait(local_model.NEXUS_TIMEOUT_S)
+        pick("b")
+        b_answered.set()
+        read_a.join(local_model.NEXUS_TIMEOUT_S)
+        assert not read_a.is_alive()
+        assert picks == {"a": GEMMA, "b": INKLING}
+    
+        nexus_down.set()
+>       assert memory_client.graphiti_local_model() == INKLING
+E       AssertionError: assert 'google/gemma-4-31b-qat' == 'thinkingmach...nkling-2-mini'
+E         
+E         - thinkingmachines/inkling-2-mini
+E         + google/gemma-4-31b-qat
+
+tests/test_local_model_setting.py:221: AssertionError
+----------------------------- Captured stderr call -----------------------------
+WARNING:cortex.local_model:[LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so Graphiti ingestion on the lmstudio route keeps google/gemma-4-31b-qat, the last model Nexus named, until Nexus answers.
+------------------------------ Captured log call -------------------------------
+WARNING  cortex.local_model:local_model.py:124 [LocalModel] Nexus did not answer at http://127.0.0.1:1/api/model-control/local-model/current (connection refused), so Graphiti ingestion on the lmstudio route keeps google/gemma-4-31b-qat, the last model Nexus named, until Nexus answers.
+=============================== warnings summary ===============================
+../../../TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22
+  /Volumes/Projects/TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SearchInterface(BaseModel):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_local_model_setting.py::test_an_older_read_that_answers_last_does_not_replace_a_newer_answer
+=================== 1 failed, 22 passed, 1 warning in 0.11s ====================
+exit=1

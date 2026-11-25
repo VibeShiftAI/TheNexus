@@ -1,0 +1,15 @@
+== TheNexus: main 3189bb99, branch 6e14bc87, base bd02642
+patch applied: 124 files
+server suites named: 23
+Test Suites: 23 passed, 23 total
+Tests:       270 passed, 270 total
+exit 0
+network guard refusals: 0
+== TheCortex: main 3617672, branch e611edc, base 5fdb76a
+patch applied: 12 files
+22:def local_model_setting_offline(monkeypatch):
+46:cortex_test_guard.install()
+  /Volumes/Projects/TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+293 passed, 1 warning in 1.23s
+exit=0
+== done

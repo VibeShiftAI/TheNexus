@@ -1,0 +1,7 @@
+# 2026-11-24 18:45:27 EST, TheCortex 892708c8, worktree clean
+1. test_local_model_setting.py, verbose: ======================== 26 passed, 1 warning in 0.10s ========================= exit=0 
+2. the 11 offline files: 296 passed, 1 warning in 1.37s exit=0 
+3. 25 runs: 25 of them 26 passed with exit 0
+the worktree after the runs: head 892708c8, 0 changed or untracked files, 0 files written since the start
+entries in /Volumes/Projects/maintenance-mode-worktrees changed since the start: 0
+# 2026-11-24 18:46:38 EST

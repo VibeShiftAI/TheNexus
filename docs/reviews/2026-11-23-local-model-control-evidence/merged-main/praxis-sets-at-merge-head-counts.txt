@@ -1,0 +1,35 @@
+# 2026-11-24 21:57:22 EST, read-only
+
+== selection (3 names): test files that differ between 196a5375 and 15b19a5c
+ tests/local_lane_policy.test.ts | 187 ++++++++++++++++++++++++++++++++++------
+ 1 file changed, 159 insertions(+), 28 deletions(-)
+  tests/local_lane_policy.test.ts: declarations at 196a5375 12, at 15b19a5c 17; at 15b19a5c the same as on main 1bac2ea7 (or absent from both): yes; changed by the branch (1fcf4b59..196a5375): no
+
+== related (40 names): test files that differ between 196a5375 and 15b19a5c
+ tests/arbitrary_limits_runtime.test.ts       |  92 ++++++++-----
+ tests/llm_context_window.test.ts             | 103 +++++++++++++--
+ tests/local_lane_manager_reroute.test.ts     |  97 ++++++++++++--
+ tests/local_lane_policy.test.ts              | 187 +++++++++++++++++++++++----
+ tests/local_llm_worker.test.ts               |   6 +-
+ tests/trading_reflection_local_model.test.ts |  25 ----
+ tests/trading_reflections.test.ts            | 157 ----------------------
+ tests/webhook_routes_inventory.test.ts       |   8 +-
+ 8 files changed, 405 insertions(+), 270 deletions(-)
+  tests/arbitrary_limits_runtime.test.ts: declarations at 196a5375 17, at 15b19a5c 17; at 15b19a5c the same as on main 1bac2ea7 (or absent from both): yes; changed by the branch (1fcf4b59..196a5375): no
+  tests/llm_context_window.test.ts: declarations at 196a5375 15, at 15b19a5c 21; at 15b19a5c the same as on main 1bac2ea7 (or absent from both): yes; changed by the branch (1fcf4b59..196a5375): no
+  tests/local_lane_manager_reroute.test.ts: declarations at 196a5375 20, at 15b19a5c 23; at 15b19a5c the same as on main 1bac2ea7 (or absent from both): yes; changed by the branch (1fcf4b59..196a5375): no
+  tests/local_lane_policy.test.ts: declarations at 196a5375 12, at 15b19a5c 17; at 15b19a5c the same as on main 1bac2ea7 (or absent from both): yes; changed by the branch (1fcf4b59..196a5375): no
+  tests/local_llm_worker.test.ts: declarations at 196a5375 4, at 15b19a5c 4; at 15b19a5c the same as on main 1bac2ea7 (or absent from both): yes; changed by the branch (1fcf4b59..196a5375): no
+  tests/trading_reflection_local_model.test.ts: declarations at 196a5375 2, at 15b19a5c absent; at 15b19a5c the same as on main 1bac2ea7 (or absent from both): yes; changed by the branch (1fcf4b59..196a5375): no
+  tests/trading_reflections.test.ts: declarations at 196a5375 14, at 15b19a5c absent; at 15b19a5c the same as on main 1bac2ea7 (or absent from both): yes; changed by the branch (1fcf4b59..196a5375): no
+  tests/webhook_routes_inventory.test.ts: declarations at 196a5375 4, at 15b19a5c 4; at 15b19a5c the same as on main 1bac2ea7 (or absent from both): no; changed by the branch (1fcf4b59..196a5375): yes
+
+== more-related (10 names): test files that differ between 196a5375 and 15b19a5c
+ tests/cli_concurrency.test.ts | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+  tests/cli_concurrency.test.ts: declarations at 196a5375 43, at 15b19a5c 43; at 15b19a5c the same as on main 1bac2ea7 (or absent from both): yes; changed by the branch (1fcf4b59..196a5375): no
+
+== wider (40 names): test files that differ between 196a5375 and 15b19a5c
+ tests/cortex_long_answers.test.ts | 10 ----------
+ 1 file changed, 10 deletions(-)
+  tests/cortex_long_answers.test.ts: declarations at 196a5375 14, at 15b19a5c 13; at 15b19a5c the same as on main 1bac2ea7 (or absent from both): yes; changed by the branch (1fcf4b59..196a5375): no

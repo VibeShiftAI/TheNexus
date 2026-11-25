@@ -1,0 +1,3 @@
+claude --version :: 
+codex --version :: 
+agy --version :: 

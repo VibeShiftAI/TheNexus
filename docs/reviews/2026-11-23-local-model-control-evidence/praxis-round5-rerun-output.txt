@@ -1,0 +1,16 @@
+head before: a8caeb0943e83bfeac10671cc019f59a499c8277 status:        0
+live ports at start: 62
+self-test: own server -> own; live :4000 -> refused ECONNREFUSED; off-machine -> refused ECONNREFUSED
+self-test guard log lines: 2
+files: 40
+ℹ tests 473
+ℹ suites 0
+ℹ pass 473
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+exit 0
+guards: lmstudio=0 fake-lms=0 net=6 live-port=0 cli-shims=6
+== alone
+alone exit 0
+head after: a8caeb0943e83bfeac10671cc019f59a499c8277 status:        0

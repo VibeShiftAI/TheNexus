@@ -1,0 +1,4812 @@
+PASS server/__tests__/astro-nightly-backfill.test.js
+PASS server/__tests__/model-roles.test.js
+  ● Console
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/utils/token-tracker.js:7:12)
+      at Object.require (server/services/model-control.js:2:27)
+      at Object.require (server/__tests__/model-roles.test.js:1:36)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-qlkqks/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+PASS server/__tests__/local-model-work.test.js
+PASS server/__tests__/model-rows-migration.test.js
+  ● Console
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at require (server/__tests__/model-rows-migration.test.js:19:12)
+      at Object.loadDb (server/__tests__/model-rows-migration.test.js:32:20)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-model-rows-UJLeR2/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at require (server/__tests__/model-rows-migration.test.js:19:12)
+      at Object.loadDb (server/__tests__/model-rows-migration.test.js:49:9)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-model-rows-Rzlj1C/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Retired API model rows: google-gemini-pro, openai-gpt, openrouter-glm, anthropic-claude-opus; aliases: gemini_default
+
+      at log (db/index.js:453:17)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-model-rows-Rzlj1C/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-model-rows-Rzlj1C/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+PASS server/__tests__/astro-nightly.test.js
+PASS server/__tests__/model-control-db.test.js
+  ● Console
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at require (server/__tests__/model-control-db.test.js:9:12)
+      at Object.loadFreshDb (server/__tests__/model-control-db.test.js:19:20)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-model-control-skyPVO/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+PASS server/__tests__/calendar-model-control.test.js
+  ● Console
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/utils/token-tracker.js:7:12)
+      at Object.require (server/services/model-control.js:2:27)
+      at Object.require (server/routes/model-control.js:9:5)
+      at Object.require (server/__tests__/calendar-model-control.test.js:113:42)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-calendar-model-ADKuQA/test.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-calendar-model-ADKuQA/test.db
+
+      at Object.log (db/index.js:297:13)
+
+PASS server/__tests__/model-control-resolver.test.js
+  ● Console
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/utils/token-tracker.js:7:12)
+      at Object.require (server/services/model-control.js:2:27)
+      at Object.require (server/__tests__/model-control-resolver.test.js:96:44)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-umi6z5/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-umi6z5/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-umi6z5/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-umi6z5/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-umi6z5/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-umi6z5/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-umi6z5/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-umi6z5/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+PASS server/__tests__/model-control-route.test.js
+  ● Console
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/utils/token-tracker.js:7:12)
+      at Object.require (server/services/model-control.js:2:27)
+      at Object.require (server/routes/model-control.js:9:5)
+      at Object.require (server/__tests__/model-control-route.test.js:62:42)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-MURuGn/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.warn
+      [Provider Credentials] evidence read failed: no such table: task_dispatches
+
+      393 |         `).all({ since, chars: EVIDENCE_TEXT_CHARS, limit: EVIDENCE_ROW_LIMIT });
+      394 |     } catch (err) {
+    > 395 |         console.warn('[Provider Credentials] evidence read failed:', err.message);
+          |                 ^
+      396 |         return null;
+      397 |     }
+      398 | }
+
+      at warn (server/services/provider-credentials.js:395:17)
+      at readEvidenceRows (server/services/provider-credentials.js:409:18)
+      at getRoutingState (server/routes/model-control.js:279:16)
+      at safeRoutingState (server/routes/model-control.js:356:30)
+
+PASS server/__tests__/retired-orchestration.test.js
+PASS server/__tests__/studio-ingestion.test.js
+  ● Console
+
+    console.log
+      [ContextWindow] Source "Synthetic": 40065 characters cut to 5809 for LM Studio gemma4 loaded context; the whole text is in /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-model-inputs-RWwPCO/source-synthetic-1a157ddb35fa6da7.txt
+
+      at log (server/services/context-window.js:160:13)
+
+PASS server/__tests__/maintenance-auth-mount.test.js
+  ● Console
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at log (server/services/operator-access.js:111:29)
+
+PASS server/__tests__/task-dispatch-auth-mount.test.js
+  ● Console
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at log (server/services/operator-access.js:111:29)
+
+PASS server/__tests__/mail-draft-auth-mount.test.js
+  ● Console
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at log (server/services/operator-access.js:111:29)
+
+PASS server/__tests__/provenance-trust-boundaries.test.js
+  ● Console
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/utils/token-tracker.js:7:12)
+      at Object.require (server/services/model-control.js:2:27)
+      at Object.require (server/routes/tasks.js:9:66)
+      at require (server/__tests__/provenance-trust-boundaries.test.js:56:29)
+      at Object.buildApp (server/__tests__/provenance-trust-boundaries.test.js:194:27)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-TnJATf/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.warn
+      [Provenance] Refused operator-authorship claim "user" on task create; recorded as "nexus-api"
+
+      262 |             const claim = normalizeSourceClaim(source);
+      263 |             if (claim.downgradedFrom) {
+    > 264 |                 console.warn(`[Provenance] Refused operator-authorship claim "${claim.downgradedFrom}" on task create; recorded as "${claim.source}"`);
+          |                         ^
+      265 |             }
+      266 |             const result = await db.createTask({
+      267 |                 ...(linkedTaskId ? { id: linkedTaskId } : {}),
+
+      at warn (server/routes/tasks.js:264:25)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at next (server/lib/write-leases.js:38:62)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.warn
+      [Provenance] Refused operator-authorship claim "user" on task create; recorded as "nexus-api"
+
+      262 |             const claim = normalizeSourceClaim(source);
+      263 |             if (claim.downgradedFrom) {
+    > 264 |                 console.warn(`[Provenance] Refused operator-authorship claim "${claim.downgradedFrom}" on task create; recorded as "${claim.source}"`);
+          |                         ^
+      265 |             }
+      266 |             const result = await db.createTask({
+      267 |                 ...(linkedTaskId ? { id: linkedTaskId } : {}),
+
+      at warn (server/routes/tasks.js:264:25)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at next (server/lib/write-leases.js:38:62)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.warn
+      [Provenance] Refused operator-authorship claim "operator" on batch task "Imported work"; recorded as "nexus-api"
+
+      528 |                 const claim = normalizeSourceClaim(task.source);
+      529 |                 if (claim.downgradedFrom && !attestedSource) {
+    > 530 |                     console.warn(`[Provenance] Refused operator-authorship claim "${claim.downgradedFrom}" on batch task "${task.name}"; recorded as "${claim.source}"`);
+          |                             ^
+      531 |                 }
+      532 |                 const recordedSource = attestedSource || claim.source;
+      533 |                 return {
+
+      at warn (server/routes/tasks.js:530:29)
+          at Array.map (<anonymous>)
+      at map (server/routes/tasks.js:522:41)
+
+    console.warn
+      [Provenance] Refused provenance promotion "coding-agents-claude" -> "user" on task task-1
+
+      447 |                 const guarded = guardSourceUpdate(existing.source, source);
+      448 |                 if (guarded.refused) {
+    > 449 |                     console.warn(`[Provenance] Refused provenance promotion "${existing.source}" -> "${source}" on task ${taskId}`);
+          |                             ^
+      450 |                 } else {
+      451 |                     nextSource = guarded.source;
+      452 |                 }
+
+      at warn (server/routes/tasks.js:449:29)
+
+    console.log
+      [Task Sync] Updating task task-1:  (origin unverified)
+
+      at log (server/routes/tasks.js:472:21)
+
+    console.warn
+      [Provenance] Payload replaced on task task-1 — capping provenance "user" -> "nexus-api"
+
+      456 |             const payloadDowngrade = guardPayloadUpdate(existing.source, hasNewPayload);
+      457 |             if (payloadDowngrade !== undefined && (nextSource === undefined || tierOf(nextSource) > tierOf(payloadDowngrade))) {
+    > 458 |                 console.warn(`[Provenance] Payload replaced on task ${taskId} — capping provenance "${nextSource || existing.source}" -> "${payloadDowngrade}"`);
+          |                         ^
+      459 |                 nextSource = payloadDowngrade;
+      460 |             }
+      461 |             if (nextSource !== undefined) updates.source = nextSource;
+
+      at warn (server/routes/tasks.js:458:25)
+
+    console.log
+      [Task Sync] Updating task task-1: antigravity_payload, source, last_activity_at (origin unverified)
+
+      at log (server/routes/tasks.js:472:21)
+
+    console.log
+      [Task Sync] Updating task task-1: priority, last_activity_at (origin unverified)
+
+      at log (server/routes/tasks.js:472:21)
+
+PASS server/__tests__/cortex-role-seeds.test.js
+  ● Console
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at require (server/__tests__/cortex-role-seeds.test.js:26:12)
+      at Object.loadDb (server/__tests__/cortex-role-seeds.test.js:50:20)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-cortex-roles-Uvozw1/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at require (server/__tests__/cortex-role-seeds.test.js:26:12)
+      at Object.loadDb (server/__tests__/cortex-role-seeds.test.js:60:20)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-cortex-roles-P6goT1/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at require (server/__tests__/cortex-role-seeds.test.js:26:12)
+      at Object.loadDb (server/__tests__/cortex-role-seeds.test.js:73:9)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-cortex-roles-iyNgho/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-cortex-roles-iyNgho/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-cortex-roles-iyNgho/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at require (server/__tests__/cortex-role-seeds.test.js:26:12)
+      at Object.loadDb (server/__tests__/cortex-role-seeds.test.js:82:9)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-cortex-roles-v0O9UM/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-cortex-roles-v0O9UM/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at require (server/__tests__/cortex-role-seeds.test.js:26:12)
+      at Object.loadDb (server/__tests__/cortex-role-seeds.test.js:99:20)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-cortex-roles-LMOr5s/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+PASS server/__tests__/tasks-model-control.test.js
+  ● Console
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/utils/token-tracker.js:7:12)
+      at Object.require (server/services/model-control.js:2:27)
+      at Object.require (server/routes/tasks.js:9:66)
+      at require (server/__tests__/tasks-model-control.test.js:59:31)
+      at Object.mount (server/__tests__/tasks-model-control.test.js:91:24)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-Gun8D4/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Task Sync] Updating task task-1: model_assignment (origin unverified)
+
+      at log (server/routes/tasks.js:472:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-Gun8D4/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-Gun8D4/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Task Sync] Updating task task-1: status, metadata, last_activity_at (origin unverified)
+
+      at log (server/routes/tasks.js:472:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-Gun8D4/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Task Sync] Updating task task-1: status, metadata, last_activity_at (origin unverified)
+
+      at log (server/routes/tasks.js:472:21)
+
+    console.log
+      [Task Sync] Updating task task-1: metadata (origin unverified)
+
+      at log (server/routes/tasks.js:472:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-Gun8D4/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-Gun8D4/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+PASS server/__tests__/local-operator-flows.test.js
+  ● Console
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:106:22)
+      at Object.createOperatorAuthenticator (server/__tests__/local-operator-flows.test.js:65:65)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorizeDecision (server/routes/documents.js:1811:37)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/router/index.js:688:15
+      at next (../../../TheNexus/node_modules/router/index.js:276:14)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at next (server/routes/documents.js:330:9)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.log
+      [Documents] approve recorded for 815319f8-7c96-4f2e-8f2c-f48567ffef19 revision 7388921f-e235-40ae-bf82-1e5729e7933e (authority=operator_credential, operator confirmation ref=52914d8b)
+
+      at log (server/routes/documents.js:1963:21)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:106:22)
+      at Object.createOperatorAuthenticator (server/__tests__/local-operator-flows.test.js:65:65)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorizeDecision (server/routes/documents.js:1811:37)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/router/index.js:688:15
+      at next (../../../TheNexus/node_modules/router/index.js:276:14)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at next (server/routes/documents.js:330:9)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.log
+      [Documents] request_changes recorded for e231a6cd-f8a2-4f38-af3a-9ddbb4848338 revision 686068ec-7a29-41b3-aec5-ee9b8952bd94 (authority=operator_credential, operator confirmation ref=3173bde4)
+
+      at log (server/routes/documents.js:1963:21)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:106:22)
+      at Object.createOperatorAuthenticator (server/__tests__/local-operator-flows.test.js:65:65)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorize (server/routes/mail-draft-review.js:37:32)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:106:22)
+      at Object.createOperatorAuthenticator (server/__tests__/local-operator-flows.test.js:65:65)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorize (server/routes/mail-draft-review.js:37:32)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.log
+      [MailDraftReview] relaying approve_send for md_fixture version fixture after operator confirmation ref=cb17f74e
+
+      at log (server/routes/mail-draft-review.js:67:25)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:106:22)
+      at Object.createOperatorAuthenticator (server/__tests__/local-operator-flows.test.js:65:65)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorize (server/routes/mail-draft-review.js:37:32)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:106:22)
+      at Object.createOperatorAuthenticator (server/__tests__/local-operator-flows.test.js:65:65)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorizeDecision (server/routes/documents.js:1811:37)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/router/index.js:688:15
+      at next (../../../TheNexus/node_modules/router/index.js:276:14)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at next (server/routes/documents.js:330:9)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorize (server/routes/mail-draft-review.js:37:32)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:106:22)
+      at Object.createOperatorAuthenticator (server/__tests__/local-operator-flows.test.js:65:65)
+
+    console.log
+      [OperatorAccess] operator verified (identity=local)
+
+      at log (server/services/operator-access.js:222:21)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=local-session)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:96:13)
+      at reject (server/services/operator-access.js:225:16)
+      at server/__tests__/local-operator-flows.test.js:66:74
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:106:22)
+      at Object.createOperatorAuthenticator (server/__tests__/local-operator-flows.test.js:65:65)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorizeDecision (server/routes/documents.js:1811:37)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/router/index.js:688:15
+      at next (../../../TheNexus/node_modules/router/index.js:276:14)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at next (server/routes/documents.js:330:9)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorize (server/routes/mail-draft-review.js:37:32)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:106:22)
+      at Object.createOperatorAuthenticator (server/__tests__/local-operator-flows.test.js:65:65)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorizeDecision (server/routes/documents.js:1811:37)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/router/index.js:688:15
+      at next (../../../TheNexus/node_modules/router/index.js:276:14)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at next (server/routes/documents.js:330:9)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorize (server/routes/mail-draft-review.js:37:32)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:106:22)
+      at Object.createOperatorAuthenticator (server/__tests__/local-operator-flows.test.js:65:65)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorizeDecision (server/routes/documents.js:1811:37)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/router/index.js:688:15
+      at next (../../../TheNexus/node_modules/router/index.js:276:14)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at next (server/routes/documents.js:330:9)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorize (server/routes/mail-draft-review.js:37:32)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:106:22)
+      at Object.createOperatorAuthenticator (server/__tests__/local-operator-flows.test.js:65:65)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorizeDecision (server/routes/documents.js:1811:37)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/router/index.js:688:15
+      at next (../../../TheNexus/node_modules/router/index.js:276:14)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at next (server/routes/documents.js:330:9)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorize (server/routes/mail-draft-review.js:37:32)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:106:22)
+      at Object.createOperatorAuthenticator (server/__tests__/local-operator-flows.test.js:65:65)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:106:22)
+      at Object.createOperatorAuthenticator (server/__tests__/local-operator-flows.test.js:65:65)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at warn (server/services/operator-access.js:106:22)
+      at createOperatorAuthenticator (server/services/document-decision-authority.js:89:35)
+      at authorizeDecision (server/routes/documents.js:1811:37)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at next (../../../TheNexus/node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (../../../TheNexus/node_modules/router/lib/route.js:117:3)
+      at handle (../../../TheNexus/node_modules/router/index.js:435:11)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at ../../../TheNexus/node_modules/router/index.js:295:15
+      at param (../../../TheNexus/node_modules/router/index.js:600:14)
+      at param (../../../TheNexus/node_modules/router/index.js:610:14)
+      at processParams (../../../TheNexus/node_modules/router/index.js:664:3)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/router/index.js:688:15
+      at next (../../../TheNexus/node_modules/router/index.js:276:14)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at next (server/routes/documents.js:330:9)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at Function.handle (../../../TheNexus/node_modules/router/index.js:186:3)
+      at router (../../../TheNexus/node_modules/router/index.js:60:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at authenticate (evalmachine.<anonymous>:5:12)
+      at Layer.handleRequest (../../../TheNexus/node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (../../../TheNexus/node_modules/router/index.js:342:13)
+      at ../../../TheNexus/node_modules/router/index.js:297:9
+      at processParams (../../../TheNexus/node_modules/router/index.js:582:12)
+      at next (../../../TheNexus/node_modules/router/index.js:291:5)
+      at ../../../TheNexus/node_modules/body-parser/lib/read.js:172:5
+      at invokeCallback (../../../TheNexus/node_modules/raw-body/index.js:238:16)
+      at done (../../../TheNexus/node_modules/raw-body/index.js:227:7)
+      at IncomingMessage.onEnd (../../../TheNexus/node_modules/raw-body/index.js:287:7)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:106:22)
+      at Object.createOperatorAuthenticator (server/__tests__/local-operator-flows.test.js:65:65)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:111:29)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing, NEXUS_OPERATOR_ACCESS_AUD=missing, NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      85 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      86 |             : check ? ` (check=${check})` : '';
+    > 87 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      88 |     }
+      89 |     function reject(category, check) {
+      90 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:87:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:106:22)
+      at Object.createOperatorAuthenticator (server/__tests__/local-operator-flows.test.js:65:65)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:111:29)
+
+PASS server/__tests__/presentations.test.js
+PASS server/__tests__/studio-route.test.js
+  ● Console
+
+    console.log
+      [Studio] catalog for impossible-worlds-field-guide: 2 of 12 objects fit LM Studio llama3.2 loaded context; the whole text is in /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-model-inputs-HsJso4/studio-catalog-impossible-worlds-field-guide-8e36169bc16bad38.txt
+
+      at log (server/routes/studio.js:322:13)
+
+PASS server/__tests__/board-summary.test.js
+  ● Console
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/board-summary.test.js:17:10)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-summary-ri829l/test.db
+
+      at Object.log (db/index.js:297:13)
+
+PASS server/__tests__/local-model-selection.test.js
+  ● Console
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-uKPl1p/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-fI25yM/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-f38TRe/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-5hW6sM/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-WVhuoh/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-DrJzkK/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-Ny4J3j/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-Hwr0OD/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-KDaDCV/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-ZBGWYN/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-3IlqNC/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-ikNOGd/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-rjzoQe/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-vgOkS5/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-mD6NaL/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-X9hIBR/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:840:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:840:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      145 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      146 |     } catch (err) {
+    > 147 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      148 |     }
+      149 |
+      150 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:147:17)
+      at Object.require (server/__tests__/local-model-selection.test.js:203:14)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:162:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:171:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:218:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:238:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:257:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:271:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-local-model-oUsSL6/nexus.db
+
+      at Object.log (db/index.js:297:13)
+
+PASS server/__tests__/operator-confirmation.test.js
+  ● Console
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [Documents] request_changes recorded for cd998203-3fde-48f0-88fd-fe4f14bd48a5 revision 843024b2-9354-4ea9-9d1a-81d6349dfa63 (authority=operator_credential, operator confirmation ref=49e9f04a)
+
+      at log (server/routes/documents.js:1963:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [Documents] approve recorded for 6da8e686-1b8d-4b21-8b0b-2f95b486d933 revision 4e9a3f60-439d-434d-aa23-748d22ecfda4 (authority=operator_credential, operator confirmation ref=6cb17dc6)
+
+      at log (server/routes/documents.js:1963:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [Documents] approve recorded for f3a87b7e-4b91-476e-9d6c-4efb2d0a629c revision a49537d1-6d48-4eac-89a0-1f2c08bd1145 (authority=operator_credential, operator confirmation ref=9e0c40cb)
+
+      at log (server/routes/documents.js:1963:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [Documents] approve recorded for a13c1c48-900d-4568-8dfa-e61b2572aa4e revision 7cfd2621-e04e-4366-b151-43153a6a7170 (authority=operator_credential, operator confirmation ref=b9ca536d)
+
+      at log (server/routes/documents.js:1963:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [Documents] approve recorded for 83c5eb37-dd9c-4a65-a91b-0e4d12e44709 revision 6ff9028e-3b1a-4970-be29-58b06e679bd9 (authority=access_user)
+
+      at log (server/routes/documents.js:1963:21)
+
+    console.log
+      [Documents] request_changes recorded for 83c5eb37-dd9c-4a65-a91b-0e4d12e44709 revision 6ff9028e-3b1a-4970-be29-58b06e679bd9 (authority=operator_credential)
+
+      at log (server/routes/documents.js:1963:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [Documents] review 3d7720c9-0206-4c2b-9577-d18faa99bdf8 finished with approval of revision 2620bc0c-4c1b-45c3-a6e4-31f5a636ea63 recorded (authority=operator_credential, submission=84ac23d4-d730-4d3b-9588-dc5641ce1051, operator confirmation ref=d023d46b)
+
+      at log (server/routes/documents.js:2937:36)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [DocumentOutgoing] approve_send recorded for be4e644a-db10-46ce-af7e-c0518f5a2f7f revision 30a9a152-5178-413e-8649-ed98e5cb8919 after operator confirmation ref=2fe0422b
+
+      at log (server/routes/document-outgoing.js:137:48)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+    console.log
+      [MailDraftReview] relaying approve_send for md_fixture version v1 after operator confirmation ref=5834e9a3
+
+      at log (server/routes/mail-draft-review.js:67:25)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+
+Test Suites: 23 passed, 23 total
+Tests:       268 passed, 268 total
+Snapshots:   0 total
+Time:        4.446 s
+Ran all test suites matching server/__tests__/local-model-selection.test.js|server/__tests__/model-control-route.test.js|server/__tests__/model-rows-migration.test.js|server/__tests__/model-control-db.test.js|server/__tests__/model-control-resolver.test.js|server/__tests__/studio-route.test.js|server/__tests__/studio-ingestion.test.js|server/__tests__/astro-nightly.test.js|server/__tests__/astro-nightly-backfill.test.js|server/__tests__/calendar-model-control.test.js|server/__tests__/tasks-model-control.test.js|server/__tests__/model-roles.test.js|server/__tests__/cortex-role-seeds.test.js|server/__tests__/board-summary.test.js|server/__tests__/local-operator-flows.test.js|server/__tests__/mail-draft-auth-mount.test.js|server/__tests__/maintenance-auth-mount.test.js|server/__tests__/operator-confirmation.test.js|server/__tests__/presentations.test.js|server/__tests__/provenance-trust-boundaries.test.js|server/__tests__/retired-orchestration.test.js|server/__tests__/task-dispatch-auth-mount.test.js|server/__tests__/local-model-work.test.js.
+exit 0

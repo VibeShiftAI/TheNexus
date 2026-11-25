@@ -1,0 +1,52 @@
+# 2026-11-24 20:33:18 EST
+Praxis under test: 196a537506d8b9076753ee1143cd527c3ac6eb14 (scratch copy /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7)
+suites: tests/local_model_selection.test.ts tests/lmstudio_autoload.test.ts tests/local_model_demand_callers.test.ts
+== control: no mutation
+   result: ℹ tests 125 ℹ pass 125 ℹ fail 0 ℹ cancelled 0 exit 0 
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== k1: the slot claim matches a replaced model by its spelling (the bd19e926 lookup)
+   src/llm/lmstudio-autoload.ts @@ -1539,8 +1539,7 @@
+   src/llm/lmstudio-autoload.ts    // localModelKey, as the switch record is kept): after the call read the model,
+   src/llm/lmstudio-autoload.ts    // Nexus may have named it by another spelling before the switch replaced it.
+   src/llm/lmstudio-autoload.ts    if (requestedModel && requestedModel !== expectedLocalModel() && requestedModel !== waitingLocalModel()) {
+   src/llm/lmstudio-autoload.ts -    const key = localModelKey(requestedModel);
+   src/llm/lmstudio-autoload.ts -    const replaced = switchedAwayLocalModels().find((s) => localModelKey(s.model) === key && (s.seq ?? 0) > switchesBefore);
+   src/llm/lmstudio-autoload.ts +    const replaced = switchedAwayLocalModels().find((s) => s.model === requestedModel && (s.seq ?? 0) > switchesBefore);
+   src/llm/lmstudio-autoload.ts      if (replaced) {
+   src/llm/lmstudio-autoload.ts        return {
+   src/llm/lmstudio-autoload.ts          ok: false,
+   result: ℹ tests 125 ℹ pass 124 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ a call that read the model in effect is refused at the slot claim when a switch replaces that model under a spelling Nexus gave it after the read
+   assertion: AssertionError [ERR_ASSERTION]: the call that read Inkling is refused, though the record spells Inkling another way
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== k2: primaryForTest restores the provider and the cache epoch, not the model
+   tests/local_model_selection.test.ts @@ -1334,7 +1334,6 @@
+   tests/local_model_selection.test.ts    manager.activeProvider = name;
+   tests/local_model_selection.test.ts    t.after(() => {
+   tests/local_model_selection.test.ts      manager.activeProvider = before.provider;
+   tests/local_model_selection.test.ts -    manager.activeModel = before.model;
+   tests/local_model_selection.test.ts      manager.cacheEpoch = before.cacheEpoch;
+   tests/local_model_selection.test.ts    });
+   tests/local_model_selection.test.ts  }
+   result: ℹ tests 125 ℹ pass 124 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ primaryForTest puts back the primary chat()'s fallback moved, model and cache epoch included, whatever the environment sets
+   assertion: AssertionError [ERR_ASSERTION]: primaryForTest put the provider, the model and the cache epoch back
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== k3: primaryForTest restores the provider and the model, not the cache epoch
+   tests/local_model_selection.test.ts @@ -1335,7 +1335,6 @@
+   tests/local_model_selection.test.ts    t.after(() => {
+   tests/local_model_selection.test.ts      manager.activeProvider = before.provider;
+   tests/local_model_selection.test.ts      manager.activeModel = before.model;
+   tests/local_model_selection.test.ts -    manager.cacheEpoch = before.cacheEpoch;
+   tests/local_model_selection.test.ts    });
+   tests/local_model_selection.test.ts  }
+   tests/local_model_selection.test.ts  
+   result: ℹ tests 125 ℹ pass 124 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ primaryForTest puts back the primary chat()'s fallback moved, model and cache epoch included, whatever the environment sets
+   assertion: AssertionError [ERR_ASSERTION]: primaryForTest put the provider, the model and the cache epoch back
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== control-no-primary: no mutation, LLM_PRIMARY_PROVIDER and LLM_PRIMARY_MODEL unset
+   result: ℹ tests 125 ℹ pass 125 ℹ fail 0 ℹ cancelled 0 exit 0 
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+# 2026-11-24 20:33:41 EST
+== scratch copy left at /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r7 for inspection; deleted with the scratch folder

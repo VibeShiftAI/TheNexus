@@ -1,0 +1,126 @@
+# 2026-11-24 21:43:02 EST
+lines that differ between criterion-2-sites.sh and the copy run here: 2 (line 10 on each side)
+output: 391 lines (criterion-2-sites.txt: 394)
+== the diff, the 20:40:09 output (<) against the merge commits (>), after the first line (the time), with 15b19a5c written as 196a5375 and 1eca58eb as 892708c8:
+8,13c8,13
+<   196a5375 src/config.ts:299:export const localLlmModelFromEnv: string =
+<   196a5375 src/config.ts:300:  process.env.LOCAL_LLM_MODEL || process.env.LLM_PRIMARY_MODEL || "default";
+<   196a5375 src/config.ts:336:  get localLlmModel(): string {
+<   196a5375 src/config.ts:337:    return runtimeLocalModel() ?? localLlmModelFromEnv;
+<   196a5375 src/config.ts:339:  set localLlmModel(model: string) {
+<   196a5375 src/config.ts:340:    setRuntimeLocalModel(model);
+---
+>   196a5375 src/config.ts:295:export const localLlmModelFromEnv: string =
+>   196a5375 src/config.ts:296:  process.env.LOCAL_LLM_MODEL || process.env.LLM_PRIMARY_MODEL || "default";
+>   196a5375 src/config.ts:332:  get localLlmModel(): string {
+>   196a5375 src/config.ts:333:    return runtimeLocalModel() ?? localLlmModelFromEnv;
+>   196a5375 src/config.ts:335:  set localLlmModel(model: string) {
+>   196a5375 src/config.ts:336:    setRuntimeLocalModel(model);
+41c41
+<   196a5375 src/llm/context-window.ts:216:  const model = config.localLlmModel !== "default" ? config.localLlmModel : requested;
+---
+>   196a5375 src/llm/context-window.ts:229:  const claim = claimsLocalSlot && requested !== "default" && requested === config.localLlmModel;
+46,50c46,50
+<   196a5375 src/llm/lmstudio-autoload.ts:678:  return config.localLlmModel === "default" ? undefined : config.localLlmModel;
+<   196a5375 src/llm/lmstudio-autoload.ts:1092: * (config.localLlmModel) if the slot is empty. Resolves true when a model is
+<   196a5375 src/maintenance/fleet-preflight.ts:1416:  const expected = config.localLlmModel;
+<   196a5375 src/orchestrator/qa-lessons.ts:1838:      : { provider: "local", model: config.localLlmModel },
+<   196a5375 src/orchestrator/qa-lessons.ts:1972:    return config.localLlmModel || "local";
+---
+>   196a5375 src/llm/lmstudio-autoload.ts:687:  return config.localLlmModel === "default" ? undefined : config.localLlmModel;
+>   196a5375 src/llm/lmstudio-autoload.ts:1101: * (config.localLlmModel) if the slot is empty. Resolves true when a model is
+>   196a5375 src/maintenance/fleet-preflight.ts:1431:  const expected = config.localLlmModel;
+>   196a5375 src/orchestrator/qa-lessons.ts:1858:      : { provider: "local", model: config.localLlmModel },
+>   196a5375 src/orchestrator/qa-lessons.ts:1992:    return config.localLlmModel || "local";
+64,77c64,77
+<   196a5375 src/llm/manager.ts:87:   * local model in effect in Praxis at each call (config.localLlmModel), not
+<   196a5375 src/llm/manager.ts:338:        () => config.localLlmModel,
+<   196a5375 src/llm/manager.ts:381:   * local model chosen under Model Control (config.localLlmModel, which
+<   196a5375 src/llm/manager.ts:387:    return this.activeProvider === "local" ? config.localLlmModel : this.activeModel;
+<   196a5375 src/llm/manager.ts:774:      this.activeProvider === "local" && named !== config.localLlmModel
+<   196a5375 src/llm/manager.ts:775:        ? `; local calls run ${config.localLlmModel}, the local model chosen under Model Control, not ${named}`
+<   196a5375 src/llm/manager.ts:855:    return this.chatVia("local", config.localLlmModel, params, options);
+<   196a5375 src/llm/manager.ts:900:    if (role === LlmRole.MemorySynthesize) return { provider: "local", model: config.localLlmModel };
+<   196a5375 src/llm/manager.ts:1006:      return this.chatVia("local", config.localLlmModel, params, { ...options, caller: options.role });
+<   196a5375 src/llm/manager.ts:1199:        : { ...target, ...(target.followsLocalModel ? { model: config.localLlmModel } : {}), localModelSwitches: localModelSwitchCount() };
+<   196a5375 src/llm/manager.ts:1205:    const localFallback = (): RoleTarget => current({ provider: "local", model: config.localLlmModel });
+<   196a5375 src/llm/manager.ts:1278:      provider === "local" ? localModelCapabilities(model, config.localLlmModel) : undefined,
+<   196a5375 src/llm/manager.ts:1468:          const localModel = config.localLlmModel;
+<   196a5375 src/llm/manager.ts:1742:        const model = followsLocalModel ? config.localLlmModel : listedModel;
+---
+>   196a5375 src/llm/manager.ts:90:   * local model in effect in Praxis at each call (config.localLlmModel), not
+>   196a5375 src/llm/manager.ts:341:        () => config.localLlmModel,
+>   196a5375 src/llm/manager.ts:384:   * local model chosen under Model Control (config.localLlmModel, which
+>   196a5375 src/llm/manager.ts:390:    return this.activeProvider === "local" ? config.localLlmModel : this.activeModel;
+>   196a5375 src/llm/manager.ts:777:      this.activeProvider === "local" && named !== config.localLlmModel
+>   196a5375 src/llm/manager.ts:778:        ? `; local calls run ${config.localLlmModel}, the local model chosen under Model Control, not ${named}`
+>   196a5375 src/llm/manager.ts:858:    return this.chatVia("local", config.localLlmModel, params, options);
+>   196a5375 src/llm/manager.ts:905:    if (role === LlmRole.MemorySynthesize) return { provider: "local", model: config.localLlmModel };
+>   196a5375 src/llm/manager.ts:1014:      return this.chatVia("local", config.localLlmModel, params, { ...options, caller: options.role });
+>   196a5375 src/llm/manager.ts:1218:        : { ...target, ...(target.followsLocalModel ? { model: config.localLlmModel } : {}), localModelSwitches: localModelSwitchCount() };
+>   196a5375 src/llm/manager.ts:1224:    const localFallback = (): RoleTarget => current({ provider: "local", model: config.localLlmModel });
+>   196a5375 src/llm/manager.ts:1297:      provider === "local" ? localModelCapabilities(model, config.localLlmModel) : undefined,
+>   196a5375 src/llm/manager.ts:1490:          const localModel = config.localLlmModel;
+>   196a5375 src/llm/manager.ts:1764:        const model = followsLocalModel ? config.localLlmModel : listedModel;
+81,82c81,82
+<   196a5375 src/llm/manager.ts:353:      this.activeModel = config.llmPrimaryModel;
+<   196a5375 src/llm/manager.ts:386:  private primaryModel(): string {
+---
+>   196a5375 src/llm/manager.ts:356:      this.activeModel = config.llmPrimaryModel;
+>   196a5375 src/llm/manager.ts:389:  private primaryModel(): string {
+86,87c86,87
+<   196a5375 src/llm/manager.ts:775:        ? `; local calls run ${config.localLlmModel}, the local model chosen under Model Control, not ${named}`
+<   196a5375 src/llm/manager.ts:784:        this.activeModel = modelName;
+---
+>   196a5375 src/llm/manager.ts:778:        ? `; local calls run ${config.localLlmModel}, the local model chosen under Model Control, not ${named}`
+>   196a5375 src/llm/manager.ts:787:        this.activeModel = modelName;
+91,101c91,101
+<   196a5375 src/llm/manager.ts:90:  followsLocalModel?: boolean;
+<   196a5375 src/llm/manager.ts:1199:        : { ...target, ...(target.followsLocalModel ? { model: config.localLlmModel } : {}), localModelSwitches: localModelSwitchCount() };
+<   196a5375 src/llm/manager.ts:1222:          followsLocalModel?: boolean;
+<   196a5375 src/llm/manager.ts:1248:          const followsLocalModel = provider === "local" && r.followsLocalModel === true;
+<   196a5375 src/llm/manager.ts:1249:          const target: RoleTarget = { provider, model, minMaxTokens, ...(followsLocalModel ? { followsLocalModel } : {}) };
+<   196a5375 src/llm/manager.ts:1656:      // `followsLocalModel` marks the local primary, which runs the local model
+<   196a5375 src/llm/manager.ts:1659:      type StreamCandidate = { provider: string; model: string; followsLocalModel?: boolean; localModelSwitches?: number };
+<   196a5375 src/llm/manager.ts:1686:        list.push({ provider: this.activeProvider, model: this.currentModel, ...(this.activeProvider === "local" ? { followsLocalModel: true } : {}) });
+<   196a5375 src/llm/manager.ts:1733:        const { provider: pname, model: listedModel, followsLocalModel, localModelSwitches: resolvedSwitches } = candidates[i];
+<   196a5375 src/llm/manager.ts:1742:        const model = followsLocalModel ? config.localLlmModel : listedModel;
+<   196a5375 src/llm/manager.ts:1744:          pname !== "local" ? {} : { localModelSwitches: followsLocalModel || resolvedSwitches === undefined ? localModelSwitchCount() : resolvedSwitches };
+---
+>   196a5375 src/llm/manager.ts:93:  followsLocalModel?: boolean;
+>   196a5375 src/llm/manager.ts:1218:        : { ...target, ...(target.followsLocalModel ? { model: config.localLlmModel } : {}), localModelSwitches: localModelSwitchCount() };
+>   196a5375 src/llm/manager.ts:1241:          followsLocalModel?: boolean;
+>   196a5375 src/llm/manager.ts:1267:          const followsLocalModel = provider === "local" && r.followsLocalModel === true;
+>   196a5375 src/llm/manager.ts:1268:          const target: RoleTarget = { provider, model, minMaxTokens, ...(followsLocalModel ? { followsLocalModel } : {}) };
+>   196a5375 src/llm/manager.ts:1678:      // `followsLocalModel` marks the local primary, which runs the local model
+>   196a5375 src/llm/manager.ts:1681:      type StreamCandidate = { provider: string; model: string; followsLocalModel?: boolean; localModelSwitches?: number };
+>   196a5375 src/llm/manager.ts:1708:        list.push({ provider: this.activeProvider, model: this.currentModel, ...(this.activeProvider === "local" ? { followsLocalModel: true } : {}) });
+>   196a5375 src/llm/manager.ts:1755:        const { provider: pname, model: listedModel, followsLocalModel, localModelSwitches: resolvedSwitches } = candidates[i];
+>   196a5375 src/llm/manager.ts:1764:        const model = followsLocalModel ? config.localLlmModel : listedModel;
+>   196a5375 src/llm/manager.ts:1766:          pname !== "local" ? {} : { localModelSwitches: followsLocalModel || resolvedSwitches === undefined ? localModelSwitchCount() : resolvedSwitches };
+115,117d114
+<   196a5375 src/trading/council/personas.ts:74:  env: Partial<Record<"TRADING_COUNCIL_MODE" | "TRADING_LOCAL_MODEL" | "LOCAL_LLM_MODEL" | "LLM_PRIMARY_MODEL", string>> = process.env,
+<   196a5375 src/trading/reflections.ts:58:  env: Partial<Record<"REFLECTION_MODEL" | "TRADING_COUNCIL_MODE" | "TRADING_LOCAL_MODEL" | "LOCAL_LLM_MODEL" | "LLM_PRIMARY_MODEL", string>> = process.env,
+<   196a5375 src/trading/reflections.ts:65:    const localModel = (env.TRADING_LOCAL_MODEL ?? env.LOCAL_LLM_MODEL ?? env.LLM_PRIMARY_MODEL ?? "default").trim() || "default";
+121c118
+<   f8e444a2 under ed8d0442: yes; under its first parent: no; under the baseline 1fcf4b59: no; under the branch head 196a5375: no
+---
+>   f8e444a2 under ed8d0442: yes; under its first parent: no; under the baseline 1fcf4b59: no; under the branch head 196a5375: yes
+181,184c178,181
+<   892708c8 TheCortex/python/cortex/memory/client.py:113:        model, api_key = _graphiti_lmstudio_fallback()[0], "lm-studio"
+<   892708c8 TheCortex/python/cortex/memory/client.py:134:    if model_override is not None and provider != "lmstudio":
+<   892708c8 TheCortex/python/cortex/memory/client.py:155:def graphiti_local_model() -> str:
+<   892708c8 TheCortex/python/cortex/memory/client.py:182:        model = await asyncio.to_thread(graphiti_local_model)
+---
+>   892708c8 TheCortex/python/cortex/memory/client.py:114:        model, api_key = _graphiti_lmstudio_fallback()[0], "lm-studio"
+>   892708c8 TheCortex/python/cortex/memory/client.py:135:    if model_override is not None and provider != "lmstudio":
+>   892708c8 TheCortex/python/cortex/memory/client.py:156:def graphiti_local_model() -> str:
+>   892708c8 TheCortex/python/cortex/memory/client.py:183:        model = await asyncio.to_thread(graphiti_local_model)
+189,190c186,187
+<   892708c8 TheCortex/python/cortex/config.py:288:        default=None, alias="CORTEX_GRAPHITI_MODEL"
+<   892708c8 TheCortex/python/cortex/config.py:320:        default="google/gemma-4-31b-qat", alias="CORTEX_TEACHER_MODEL"
+---
+>   892708c8 TheCortex/python/cortex/config.py:295:        default=None, alias="CORTEX_GRAPHITI_MODEL"
+>   892708c8 TheCortex/python/cortex/config.py:327:        default="google/gemma-4-31b-qat", alias="CORTEX_TEACHER_MODEL"
+== diff exit 1 (0 = the same)
+# 2026-11-24 21:43:03 EST

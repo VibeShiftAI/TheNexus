@@ -1,0 +1,79 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/code_freshness_recovery.test.ts tests/webhook_routes_inventory.test.ts
+
+Running 2 of 889 suite(s): tests/code_freshness_recovery.test.ts tests/webhook_routes_inventory.test.ts
+
+✔ healthy activation: one restart, and only the replacement process records the activation (3.173333ms)
+✔ a replacement that loaded an uncommitted version does not claim the commit (2.259ms)
+✔ target content that cannot be read proves nothing, in either direction (1.298208ms)
+✔ every target path is read back, not the first twenty-five (1.253875ms)
+✔ an obligation written with a sample of its paths is dropped unclaimed (1.290084ms)
+✔ committed content that arrived after the replacement started takes one more restart (1.76325ms)
+✔ a target edited again before the restart is waited on, not dropped and not restarted for (1.336042ms)
+✔ uncommitted edits alone never start a recovery (0.256166ms)
+✔ a new commit moves an unresolved obligation on, and takes the unanswered path with it (2.393208ms)
+✔ failed boot check: backs off, opens the circuit at the bound, and never claims activation (3.513541ms)
+✔ a new commit gets a fresh failure budget (2.586125ms)
+✔ a restart that throws is a failure, not an activation (0.952041ms)
+✔ active author, then a sibling, then the gap before QA: deferred every time, then exactly one restart (1.754541ms)
+✔ the obligation outlives the process that found it: an unrelated restart settles it (0.436667ms)
+✔ a busy probe that cannot answer counts as busy (0.105834ms)
+✔ every kind of in-flight work holds the restart (0.856958ms)
+✔ CLI children are read off the process table, not off their arguments (0.077875ms)
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T17:34:27.153Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[Consolidator] LEG middleware ENABLED — tool outputs will be consolidated.
+[2026-11-24T17:34:27.180Z] [INFO] [Consolidator] LEG middleware ENABLED — tool outputs will be consolidated.
+✔ guarded restart, healthy: boot check, drain gate, one SIGTERM, all through doubles (1148.538959ms)
+✔ guarded restart, failed boot preflight: aborted, nothing scheduled, nothing signalled (1.399792ms)
+✔ guarded restart, sibling active: deferred even when the drain mode is wait, and never forced (0.35125ms)
+✔ work that starts between armed and exit cancels the exit and puts the obligation back (2.884875ms)
+✔ a test run cannot build a restart that reaches the real process (0.331542ms)
+✔ armed but the process never exits: a failure with backoff, not an activation (1.035958ms)
+✔ restart, then the boot guard rolls the tree back: failed, and it stays failed (1.576917ms)
+✔ a rollback after a restart nobody armed is still not an activation (0.46675ms)
+✔ an old rollback is not held against a new obligation (0.728833ms)
+✔ a replacement whose revision cannot be read claims nothing until it can (1.176166ms)
+✔ a replacement that booted from a revision without the target drops the obligation unclaimed (0.800583ms)
+✔ the replacement has to be the listener before the target counts as served (2.592916ms)
+✔ listener identity comes from lsof, and this process wins when it is among the listeners (0.168041ms)
+✔ a process that has just booted does not restart itself (0.768542ms)
+✔ restarts are capped per day across targets (2.519791ms)
+✔ overlapping ticks share one step (1.967417ms)
+✔ the attempt is on disk before the boot check runs (0.733167ms)
+✔ observe records the obligation and never restarts; off does nothing (1.1405ms)
+✔ an unreadable tree attempts nothing and claims nothing (0.14125ms)
+✔ a corrupt state file reads as no obligation and is rebuilt from the tree (0.637333ms)
+[RepoState] Runtime evidence read failed for /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/freshness-workspace-JqHheT: state unreadable
+[2026-11-24T17:34:28.771Z] [WARN] [RepoState] Runtime evidence read failed for /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/freshness-workspace-JqHheT: state unreadable
+✔ a loaded mismatched deletion stays owed after its untracked file disappears (460.502875ms)
+✔ drift is what was committed AND changed on disk after the process started (327.210792ms)
+✔ an edit made after the commit is not committed content waiting to be loaded (707.874208ms)
+✔ only files the runtime loads count (0.071875ms)
+✔ pending, armed, activated and failed are distinct states on the status surface (1.497917ms)
+✔ drift the service has not recorded yet already reads pending (0.108875ms)
+✔ the brief carries the running daemon's identity, as context and only when registered (44.210584ms)
+✔ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only (314.081667ms)
+[CronRegistry] Job "freshness-test-broken" threw: handler failed
+[2026-11-24T17:34:29.096Z] [ERROR] [CronRegistry] Job "freshness-test-broken" threw: handler failed
+✔ a scheduled job is in flight from the moment its handler starts until it settles (5.351167ms)
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T17:34:27.551Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[Webhook] Ingestion control API mounted at /ingestion/*
+[2026-11-24T17:34:28.202Z] [INFO] [Webhook] Ingestion control API mounted at /ingestion/*
+[Webhook] Ingestion control API mounted at /ingestion/*
+[2026-11-24T17:34:28.210Z] [INFO] [Webhook] Ingestion control API mounted at /ingestion/*
+✔ the split routers register exactly the pre-split route surface plus the inventoried additions (2238.273458ms)
+✔ each inventoried addition is registered by the module the inventory names (1.822042ms)
+✔ no two routers register the same (method, path) (0.749834ms)
+✔ no route is registered twice on the app as a whole (0.483959ms)
+ℹ tests 50
+ℹ suites 0
+ℹ pass 50
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3597.945291
+exit 0

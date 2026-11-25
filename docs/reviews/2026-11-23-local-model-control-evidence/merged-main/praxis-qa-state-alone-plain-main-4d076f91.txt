@@ -1,0 +1,352 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/qa_state_persistence.test.ts
+
+Running 1 of 899 suite(s): tests/qa_state_persistence.test.ts
+
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-24T20:51:30.744Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[DetachedRun] Migrated legacy timeout for qa--p112-adopted: disabled (0ms); prior sidecar did not record operator intent
+[2026-11-24T20:51:30.882Z] [INFO] [DetachedRun] Migrated legacy timeout for qa--p112-adopted: disabled (0ms); prior sidecar did not record operator intent
+[QA-Dispatch] Live second executor asserted for p112-roundtrip: codex (test readiness) is distinct from author claude-code
+[2026-11-24T20:51:31.081Z] [INFO] [QA-Dispatch] Live second executor asserted for p112-roundtrip: codex (test readiness) is distinct from author claude-code
+[QA-Dispatch] 🧾 p112-roundtrip evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+[2026-11-24T20:51:31.084Z] [INFO] [QA-Dispatch] 🧾 p112-roundtrip evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+✔ 4: CriteriaHistory survives the JSON round-trip with its Sets and Map intact (0.708292ms)
+✔ a pending review keeps its text whole across a restart (0.283958ms)
+✔ an adopted reviewer's run record carries qaReviewId all the way onto its callback payload (3.81575ms)
+[QA-Dispatch:p112-roundtrip] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ c8528e5
+[2026-11-24T20:51:31.141Z] [INFO] [QA-Dispatch:p112-roundtrip] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ c8528e5
+[QA-Dispatch] 🔍 QA of p112-roundtrip dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[2026-11-24T20:51:31.176Z] [INFO] [QA-Dispatch] 🔍 QA of p112-roundtrip dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[QA-State] Rehydrated 1 task(s); retained 1 live reviewer(s); re-opened 0 review(s); dropped 0.
+[2026-11-24T20:51:31.180Z] [INFO] [QA-State] Rehydrated 1 task(s); retained 1 live reviewer(s); re-opened 0 review(s); dropped 0.
+[QA-Dispatch] QA callback for p112-roundtrip (primary lane): verdict=pass failed=false
+[2026-11-24T20:51:31.181Z] [INFO] [QA-Dispatch] QA callback for p112-roundtrip (primary lane): verdict=pass failed=false
+[QA-Dispatch] 🔁 Correction attempt 1/2 for p112-counters (qa-review) — no open session, fresh run — ⚠️ no round-1 baseline to carry; this round will snapshot the tree afresh
+[2026-11-24T20:51:31.246Z] [INFO] [QA-Dispatch] 🔁 Correction attempt 1/2 for p112-counters (qa-review) — no open session, fresh run — ⚠️ no round-1 baseline to carry; this round will snapshot the tree afresh
+✔ 1: a pending review survives a restart and the reviewer's pass still finalizes the original task (307.886792ms)
+[QA-State] Rehydrated 1 task(s); retained 0 live reviewer(s); re-opened 0 review(s); dropped 0.
+[2026-11-24T20:51:31.264Z] [INFO] [QA-State] Rehydrated 1 task(s); retained 0 live reviewer(s); re-opened 0 review(s); dropped 0.
+[QA-Dispatch] p112-counters: APPROACH CHANGE → constraint-ledger: 2 consecutive rounds failed for unknown/unscored-qa-review — the failure has no resolved layer (unknown), so no executor-side route applies. The BRIEF changes instead: the findings are compiled into a binding constraint ledger for this round
+[2026-11-24T20:51:31.265Z] [WARN] [QA-Dispatch] p112-counters: APPROACH CHANGE → constraint-ledger: 2 consecutive rounds failed for unknown/unscored-qa-review — the failure has no resolved layer (unknown), so no executor-side route applies. The BRIEF changes instead: the findings are compiled into a binding constraint ledger for this round
+[QA-Dispatch] 🔁 Correction attempt 2/2 for p112-counters (qa-review) — no open session, fresh run — ⚠️ no round-1 baseline to carry; this round will snapshot the tree afresh
+[2026-11-24T20:51:31.266Z] [INFO] [QA-Dispatch] 🔁 Correction attempt 2/2 for p112-counters (qa-review) — no open session, fresh run — ⚠️ no round-1 baseline to carry; this round will snapshot the tree afresh
+[QA-Dispatch] p112-counters: round 3 did not spend a strike (2/2 used) — criterion 2 is new
+[2026-11-24T20:51:31.268Z] [INFO] [QA-Dispatch] p112-counters: round 3 did not spend a strike (2/2 used) — criterion 2 is new
+[QA-Dispatch] 🔁 Correction attempt 2/2 for p112-counters (qa-review) — no open session, fresh run — ⚠️ no round-1 baseline to carry; this round will snapshot the tree afresh
+[2026-11-24T20:51:31.269Z] [INFO] [QA-Dispatch] 🔁 Correction attempt 2/2 for p112-counters (qa-review) — no open session, fresh run — ⚠️ no round-1 baseline to carry; this round will snapshot the tree afresh
+[QA-Dispatch] Live second executor asserted for p112-completed: codex (test readiness) is distinct from author claude-code
+[2026-11-24T20:51:31.452Z] [INFO] [QA-Dispatch] Live second executor asserted for p112-completed: codex (test readiness) is distinct from author claude-code
+[QA-Dispatch] 🧾 p112-completed evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+[2026-11-24T20:51:31.452Z] [INFO] [QA-Dispatch] 🧾 p112-completed evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+✔ 2: strikes, findings and the criterion history survive a restart; a repeat failure still spends a strike (82.282959ms)
+[QA-Dispatch:p112-completed] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ e8b0c6e
+[2026-11-24T20:51:31.477Z] [INFO] [QA-Dispatch:p112-completed] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ e8b0c6e
+[QA-Dispatch] 🔍 QA of p112-completed dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[2026-11-24T20:51:31.511Z] [INFO] [QA-Dispatch] 🔍 QA of p112-completed dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[QA-State] Rehydrated 0 task(s); retained 0 live reviewer(s); re-opened 0 review(s); dropped 1.
+[2026-11-24T20:51:31.516Z] [INFO] [QA-State] Rehydrated 0 task(s); retained 0 live reviewer(s); re-opened 0 review(s); dropped 1.
+[QA-Dispatch] Live second executor asserted for p112-stale: codex (test readiness) is distinct from author claude-code
+[2026-11-24T20:51:32.014Z] [INFO] [QA-Dispatch] Live second executor asserted for p112-stale: codex (test readiness) is distinct from author claude-code
+[QA-Dispatch] 🧾 p112-stale evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+[2026-11-24T20:51:32.014Z] [INFO] [QA-Dispatch] 🧾 p112-stale evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+✔ 3a: a document Nexus reports completed is dropped at rehydrate (247.712125ms)
+[QA-Dispatch:p112-stale] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ e8b0c6e
+[2026-11-24T20:51:32.074Z] [INFO] [QA-Dispatch:p112-stale] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ e8b0c6e
+[QA-Dispatch] 🔍 QA of p112-stale dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[2026-11-24T20:51:32.112Z] [INFO] [QA-Dispatch] 🔍 QA of p112-stale dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[QA-State] Rehydrated 1 task(s); retained 1 live reviewer(s); re-opened 0 review(s); dropped 0.
+[2026-11-24T20:51:32.116Z] [INFO] [QA-State] Rehydrated 1 task(s); retained 1 live reviewer(s); re-opened 0 review(s); dropped 0.
+[QA-Dispatch] Live second executor asserted for p112-retry: codex (test readiness) is distinct from author antigravity
+[2026-11-24T20:51:32.514Z] [INFO] [QA-Dispatch] Live second executor asserted for p112-retry: codex (test readiness) is distinct from author antigravity
+[QA-Dispatch] 🧾 p112-retry evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+[2026-11-24T20:51:32.514Z] [INFO] [QA-Dispatch] 🧾 p112-retry evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+✔ 3b: an old review survives boot while its reviewer remains adopted (623.873709ms)
+[QA-Dispatch:p112-retry] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ bbfe527
+[2026-11-24T20:51:32.544Z] [INFO] [QA-Dispatch:p112-retry] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ bbfe527
+[QA-Dispatch] 🔍 QA of p112-retry dispatched to codex (author: antigravity) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[2026-11-24T20:51:32.574Z] [INFO] [QA-Dispatch] 🔍 QA of p112-retry dispatched to codex (author: antigravity) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[QA-Dispatch] QA silence recovery for p112-retry — its reviewer did not survive the restart
+[2026-11-24T20:51:32.577Z] [WARN] [QA-Dispatch] QA silence recovery for p112-retry — its reviewer did not survive the restart
+[QA-Dispatch] Retrying silent QA of p112-retry on claude-code
+[2026-11-24T20:51:32.579Z] [WARN] [QA-Dispatch] Retrying silent QA of p112-retry on claude-code
+[QA-State] Rehydrated 1 task(s); retained 0 live reviewer(s); re-opened 1 review(s); dropped 0.
+[2026-11-24T20:51:32.714Z] [INFO] [QA-State] Rehydrated 1 task(s); retained 0 live reviewer(s); re-opened 1 review(s); dropped 0.
+[QA-Dispatch] Live second executor asserted for p112-retry: claude-code (test readiness) is distinct from author antigravity
+[2026-11-24T20:51:32.714Z] [INFO] [QA-Dispatch] Live second executor asserted for p112-retry: claude-code (test readiness) is distinct from author antigravity
+[QA-Dispatch] 🧾 p112-retry evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+[2026-11-24T20:51:32.715Z] [INFO] [QA-Dispatch] 🧾 p112-retry evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+[QA-Dispatch:p112-retry] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ bbfe527
+[2026-11-24T20:51:32.740Z] [INFO] [QA-Dispatch:p112-retry] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ bbfe527
+[QA-Dispatch] 🔍 QA of p112-retry dispatched to claude-code (author: antigravity) — standard QA (complexity unknown) → claude-code/claude-opus-5-5 @ high
+[2026-11-24T20:51:32.757Z] [INFO] [QA-Dispatch] 🔍 QA of p112-retry dispatched to claude-code (author: antigravity) — standard QA (complexity unknown) → claude-code/claude-opus-5-5 @ high
+✔ 3c: a reviewer that died with the daemon is retried on a different executor with NO strike (625.256166ms)
+[Webhook] Ingestion control API mounted at /ingestion/*
+[2026-11-24T20:51:34.066Z] [INFO] [Webhook] Ingestion control API mounted at /ingestion/*
+[RollbackCache] Cached pre-state for p112-code-task (retry 0/2)
+[2026-11-24T20:51:34.136Z] [INFO] [RollbackCache] Cached pre-state for p112-code-task (retry 0/2)
+[Webhook] ── Received callback ──
+[2026-11-24T20:51:34.148Z] [INFO] [Webhook] ── Received callback ──
+[Webhook] Task ID: p112-code-task
+[2026-11-24T20:51:34.149Z] [INFO] [Webhook] Task ID: p112-code-task
+[Webhook] Nexus IDs: project=p112-proj, task=p112-code-task
+[2026-11-24T20:51:34.149Z] [INFO] [Webhook] Nexus IDs: project=p112-proj, task=p112-code-task
+[Webhook] Convo ID: (none)
+[2026-11-24T20:51:34.149Z] [INFO] [Webhook] Convo ID: (none)
+[Webhook] Result: Implemented parse() in src/parser.ts; splits on commas. PRAXIS_CLAUDE_STATUS: complete
+[2026-11-24T20:51:34.149Z] [INFO] [Webhook] Result: Implemented parse() in src/parser.ts; splits on commas. PRAXIS_CLAUDE_STATUS: complete
+[Webhook] Failed: false
+[2026-11-24T20:51:34.149Z] [INFO] [Webhook] Failed: false
+[2026-11-24T20:51:34.149Z] [DEBUG] [Webhook] Full body: {"taskId":"p112-code-task","nexusTaskId":"p112-code-task","nexusProjectId":"p112-proj","executor":"claude-code","result":"Implemented parse() in src/parser.ts; splits on commas. PRAXIS_CLAUDE_STATUS: complete","workspace":"/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-qastate-route-ok-T7TAkz"}
+[StateValidator] ✅ PASS (0ms)
+[2026-11-24T20:51:34.172Z] [INFO] [StateValidator] ✅ PASS (0ms)
+[Webhook] ⏸️ Nexus task p112-code-task → 'ready_for_review': success
+[2026-11-24T20:51:34.173Z] [INFO] [Webhook] ⏸️ Nexus task p112-code-task → 'ready_for_review': success
+[Webhook] Walkthrough logged for p112-code-task (86 chars)
+[2026-11-24T20:51:34.174Z] [INFO] [Webhook] Walkthrough logged for p112-code-task (86 chars)
+[Webhook] Pushed results to calendar for task p112-code-task
+[2026-11-24T20:51:34.174Z] [INFO] [Webhook] Pushed results to calendar for task p112-code-task
+[Webhook] Syncing 0 artifact(s) to Nexus...
+[2026-11-24T20:51:34.175Z] [INFO] [Webhook] Syncing 0 artifact(s) to Nexus...
+[Webhook] QA baseline for p112-code-task resolved from the cache (snapshot none, head 0fdf24d02374)
+[2026-11-24T20:51:34.185Z] [INFO] [Webhook] QA baseline for p112-code-task resolved from the cache (snapshot none, head 0fdf24d02374)
+[Webhook] 📋 Nexus task returned — dispatching cross-executor QA review
+[2026-11-24T20:51:34.185Z] [INFO] [Webhook] 📋 Nexus task returned — dispatching cross-executor QA review
+[QA-Dispatch] Live second executor asserted for p112-code-task: codex (test readiness) is distinct from author claude-code
+[2026-11-24T20:51:34.347Z] [INFO] [QA-Dispatch] Live second executor asserted for p112-code-task: codex (test readiness) is distinct from author claude-code
+[QA-Dispatch] 🧾 p112-code-task evidence ledger: 3 claim(s), 1 cited — 0 supported, 0 contradicted, 3 unsupported (2 of those citing nothing), 0 mixed
+[2026-11-24T20:51:34.366Z] [INFO] [QA-Dispatch] 🧾 p112-code-task evidence ledger: 3 claim(s), 1 cited — 0 supported, 0 contradicted, 3 unsupported (2 of those citing nothing), 0 mixed
+[QA-Dispatch:p112-code-task] Repo-state evidence: 1 claim(s): 1 confirmed, 0 refuted, 0 unverified, 0 target(s) @ 0fdf24d
+[2026-11-24T20:51:34.397Z] [INFO] [QA-Dispatch:p112-code-task] Repo-state evidence: 1 claim(s): 1 confirmed, 0 refuted, 0 unverified, 0 target(s) @ 0fdf24d
+[QA-Dispatch] 🔍 QA of p112-code-task dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[2026-11-24T20:51:34.427Z] [INFO] [QA-Dispatch] 🔍 QA of p112-code-task dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[Webhook] ── Callback processing complete ──
+[2026-11-24T20:51:34.428Z] [INFO] [Webhook] ── Callback processing complete ──
+[QA-State] Rehydrated 1 task(s); retained 1 live reviewer(s); re-opened 0 review(s); dropped 0.
+[2026-11-24T20:51:34.430Z] [INFO] [QA-State] Rehydrated 1 task(s); retained 1 live reviewer(s); re-opened 0 review(s); dropped 0.
+[Webhook] ── Received callback ──
+[2026-11-24T20:51:34.434Z] [INFO] [Webhook] ── Received callback ──
+[Webhook] Task ID: qa--p112-code-task
+[2026-11-24T20:51:34.434Z] [INFO] [Webhook] Task ID: qa--p112-code-task
+[Webhook] Nexus IDs: project=(none), task=qa--p112-code-task
+[2026-11-24T20:51:34.434Z] [INFO] [Webhook] Nexus IDs: project=(none), task=qa--p112-code-task
+[Webhook] Convo ID: (none)
+[2026-11-24T20:51:34.434Z] [INFO] [Webhook] Convo ID: (none)
+[Webhook] Result: PRAXIS_QA_VERDICT: pass
+PRAXIS_QA_NOTES:
+Q1: yes — parse() splits on commas and the diff matches the walkthrough.
+Q2: nothing missing.
+[2026-11-24T20:51:34.434Z] [INFO] [Webhook] Result: PRAXIS_QA_VERDICT: pass
+PRAXIS_QA_NOTES:
+Q1: yes — parse() splits on commas and the diff matches the walkthrough.
+Q2: nothing missing.
+[Webhook] Failed: false
+[2026-11-24T20:51:34.434Z] [INFO] [Webhook] Failed: false
+[2026-11-24T20:51:34.434Z] [DEBUG] [Webhook] Full body: {"taskId":"qa--p112-code-task","nexusTaskId":"qa--p112-code-task","executor":"codex","qaReviewId":"mwv66v1l-6","result":"PRAXIS_QA_VERDICT: pass\nPRAXIS_QA_NOTES:\nQ1: yes — parse() splits on commas and the diff matches the walkthrough.\nQ2: nothing missing."}
+[QA-Dispatch] QA callback for p112-code-task (primary lane): verdict=pass failed=false
+[2026-11-24T20:51:34.435Z] [INFO] [QA-Dispatch] QA callback for p112-code-task (primary lane): verdict=pass failed=false
+[Webhook] ── QA callback processing complete ──
+[2026-11-24T20:51:34.440Z] [INFO] [Webhook] ── QA callback processing complete ──
+✔ B′: after a restart, the reviewer's callback with the RIGHT qaReviewId is 200 and finalizes (1675.613792ms)
+[RollbackCache] Cached pre-state for p112-wrong-task (retry 0/2)
+[2026-11-24T20:51:34.533Z] [INFO] [RollbackCache] Cached pre-state for p112-wrong-task (retry 0/2)
+[Webhook] ── Received callback ──
+[2026-11-24T20:51:34.536Z] [INFO] [Webhook] ── Received callback ──
+[Webhook] Task ID: p112-wrong-task
+[2026-11-24T20:51:34.536Z] [INFO] [Webhook] Task ID: p112-wrong-task
+[Webhook] Nexus IDs: project=p112-proj, task=p112-wrong-task
+[2026-11-24T20:51:34.536Z] [INFO] [Webhook] Nexus IDs: project=p112-proj, task=p112-wrong-task
+[Webhook] Convo ID: (none)
+[2026-11-24T20:51:34.536Z] [INFO] [Webhook] Convo ID: (none)
+[Webhook] Result: Implemented parse() in src/parser.ts; splits on commas. PRAXIS_CLAUDE_STATUS: complete
+[2026-11-24T20:51:34.536Z] [INFO] [Webhook] Result: Implemented parse() in src/parser.ts; splits on commas. PRAXIS_CLAUDE_STATUS: complete
+[Webhook] Failed: false
+[2026-11-24T20:51:34.536Z] [INFO] [Webhook] Failed: false
+[2026-11-24T20:51:34.536Z] [DEBUG] [Webhook] Full body: {"taskId":"p112-wrong-task","nexusTaskId":"p112-wrong-task","nexusProjectId":"p112-proj","executor":"claude-code","result":"Implemented parse() in src/parser.ts; splits on commas. PRAXIS_CLAUDE_STATUS: complete","workspace":"/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-qastate-route-wrong-lXXALU"}
+[StateValidator] ✅ PASS (0ms)
+[2026-11-24T20:51:34.550Z] [INFO] [StateValidator] ✅ PASS (0ms)
+[Webhook] ⏸️ Nexus task p112-wrong-task → 'ready_for_review': success
+[2026-11-24T20:51:34.550Z] [INFO] [Webhook] ⏸️ Nexus task p112-wrong-task → 'ready_for_review': success
+[Webhook] Walkthrough logged for p112-wrong-task (86 chars)
+[2026-11-24T20:51:34.551Z] [INFO] [Webhook] Walkthrough logged for p112-wrong-task (86 chars)
+[Webhook] Pushed results to calendar for task p112-wrong-task
+[2026-11-24T20:51:34.551Z] [INFO] [Webhook] Pushed results to calendar for task p112-wrong-task
+[Webhook] Syncing 0 artifact(s) to Nexus...
+[2026-11-24T20:51:34.552Z] [INFO] [Webhook] Syncing 0 artifact(s) to Nexus...
+[Webhook] QA baseline for p112-wrong-task resolved from the cache (snapshot none, head 0fdf24d02374)
+[2026-11-24T20:51:34.565Z] [INFO] [Webhook] QA baseline for p112-wrong-task resolved from the cache (snapshot none, head 0fdf24d02374)
+[Webhook] 📋 Nexus task returned — dispatching cross-executor QA review
+[2026-11-24T20:51:34.565Z] [INFO] [Webhook] 📋 Nexus task returned — dispatching cross-executor QA review
+[QA-Dispatch] Live second executor asserted for p112-wrong-task: codex (test readiness) is distinct from author claude-code
+[2026-11-24T20:51:34.867Z] [INFO] [QA-Dispatch] Live second executor asserted for p112-wrong-task: codex (test readiness) is distinct from author claude-code
+[QA-Dispatch] 🧾 p112-wrong-task evidence ledger: 3 claim(s), 1 cited — 0 supported, 0 contradicted, 3 unsupported (2 of those citing nothing), 0 mixed
+[2026-11-24T20:51:34.895Z] [INFO] [QA-Dispatch] 🧾 p112-wrong-task evidence ledger: 3 claim(s), 1 cited — 0 supported, 0 contradicted, 3 unsupported (2 of those citing nothing), 0 mixed
+[QA-Dispatch:p112-wrong-task] Repo-state evidence: 1 claim(s): 1 confirmed, 0 refuted, 0 unverified, 0 target(s) @ 0fdf24d
+[2026-11-24T20:51:34.927Z] [INFO] [QA-Dispatch:p112-wrong-task] Repo-state evidence: 1 claim(s): 1 confirmed, 0 refuted, 0 unverified, 0 target(s) @ 0fdf24d
+[QA-Dispatch] 🔍 QA of p112-wrong-task dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[2026-11-24T20:51:34.955Z] [INFO] [QA-Dispatch] 🔍 QA of p112-wrong-task dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[Webhook] ── Callback processing complete ──
+[2026-11-24T20:51:34.958Z] [INFO] [Webhook] ── Callback processing complete ──
+[QA-State] Rehydrated 1 task(s); retained 1 live reviewer(s); re-opened 0 review(s); dropped 0.
+[2026-11-24T20:51:34.963Z] [INFO] [QA-State] Rehydrated 1 task(s); retained 1 live reviewer(s); re-opened 0 review(s); dropped 0.
+[Webhook] ── Received callback ──
+[2026-11-24T20:51:34.964Z] [INFO] [Webhook] ── Received callback ──
+[Webhook] Task ID: qa--p112-wrong-task
+[2026-11-24T20:51:34.964Z] [INFO] [Webhook] Task ID: qa--p112-wrong-task
+[Webhook] Nexus IDs: project=(none), task=(none)
+[2026-11-24T20:51:34.964Z] [INFO] [Webhook] Nexus IDs: project=(none), task=(none)
+[Webhook] Convo ID: (none)
+[2026-11-24T20:51:34.965Z] [INFO] [Webhook] Convo ID: (none)
+[Webhook] Result: PRAXIS_QA_VERDICT: pass
+[2026-11-24T20:51:34.965Z] [INFO] [Webhook] Result: PRAXIS_QA_VERDICT: pass
+[Webhook] Failed: false
+[2026-11-24T20:51:34.965Z] [INFO] [Webhook] Failed: false
+[2026-11-24T20:51:34.965Z] [DEBUG] [Webhook] Full body: {"taskId":"qa--p112-wrong-task","executor":"codex","qaReviewId":"mwv66vc5-7-stale","result":"PRAXIS_QA_VERDICT: pass"}
+[Webhook] Rejected stale or unauthenticated QA callback for qa--p112-wrong-task
+[2026-11-24T20:51:34.965Z] [WARN] [Webhook] Rejected stale or unauthenticated QA callback for qa--p112-wrong-task
+[Webhook] ── Received callback ──
+[2026-11-24T20:51:34.968Z] [INFO] [Webhook] ── Received callback ──
+[Webhook] Task ID: qa--p112-wrong-task
+[2026-11-24T20:51:34.968Z] [INFO] [Webhook] Task ID: qa--p112-wrong-task
+[Webhook] Nexus IDs: project=(none), task=(none)
+[2026-11-24T20:51:34.969Z] [INFO] [Webhook] Nexus IDs: project=(none), task=(none)
+[Webhook] Convo ID: (none)
+[2026-11-24T20:51:34.969Z] [INFO] [Webhook] Convo ID: (none)
+[Webhook] Result: PRAXIS_QA_VERDICT: pass
+[2026-11-24T20:51:34.969Z] [INFO] [Webhook] Result: PRAXIS_QA_VERDICT: pass
+[Webhook] Failed: false
+[2026-11-24T20:51:34.969Z] [INFO] [Webhook] Failed: false
+[2026-11-24T20:51:34.969Z] [DEBUG] [Webhook] Full body: {"taskId":"qa--p112-wrong-task","executor":"codex","result":"PRAXIS_QA_VERDICT: pass"}
+[Webhook] Rejected stale or unauthenticated QA callback for qa--p112-wrong-task
+[2026-11-24T20:51:34.969Z] [WARN] [Webhook] Rejected stale or unauthenticated QA callback for qa--p112-wrong-task
+[Webhook] ── Received callback ──
+[2026-11-24T20:51:34.972Z] [INFO] [Webhook] ── Received callback ──
+[Webhook] Task ID: qa--p112-wrong-task
+[2026-11-24T20:51:34.972Z] [INFO] [Webhook] Task ID: qa--p112-wrong-task
+[Webhook] Nexus IDs: project=(none), task=(none)
+[2026-11-24T20:51:34.972Z] [INFO] [Webhook] Nexus IDs: project=(none), task=(none)
+[Webhook] Convo ID: (none)
+[2026-11-24T20:51:34.972Z] [INFO] [Webhook] Convo ID: (none)
+[Webhook] Result: PRAXIS_QA_VERDICT: pass
+[2026-11-24T20:51:34.972Z] [INFO] [Webhook] Result: PRAXIS_QA_VERDICT: pass
+[Webhook] Failed: false
+[2026-11-24T20:51:34.973Z] [INFO] [Webhook] Failed: false
+[2026-11-24T20:51:34.973Z] [DEBUG] [Webhook] Full body: {"taskId":"qa--p112-wrong-task","executor":"claude-code","qaReviewId":"mwv66vc5-7","result":"PRAXIS_QA_VERDICT: pass"}
+[Webhook] Rejected stale or unauthenticated QA callback for qa--p112-wrong-task
+[2026-11-24T20:51:34.973Z] [WARN] [Webhook] Rejected stale or unauthenticated QA callback for qa--p112-wrong-task
+✔ B″: after a restart, the WRONG qaReviewId is still a 409 — the gate does not weaken (706.200458ms)
+[RollbackCache] Cached pre-state for p112-gone-task (retry 0/2)
+[2026-11-24T20:51:35.233Z] [INFO] [RollbackCache] Cached pre-state for p112-gone-task (retry 0/2)
+[Webhook] ── Received callback ──
+[2026-11-24T20:51:35.235Z] [INFO] [Webhook] ── Received callback ──
+[Webhook] Task ID: p112-gone-task
+[2026-11-24T20:51:35.235Z] [INFO] [Webhook] Task ID: p112-gone-task
+[Webhook] Nexus IDs: project=p112-proj, task=p112-gone-task
+[2026-11-24T20:51:35.235Z] [INFO] [Webhook] Nexus IDs: project=p112-proj, task=p112-gone-task
+[Webhook] Convo ID: (none)
+[2026-11-24T20:51:35.235Z] [INFO] [Webhook] Convo ID: (none)
+[Webhook] Result: Implemented parse() in src/parser.ts; splits on commas. PRAXIS_CLAUDE_STATUS: complete
+[2026-11-24T20:51:35.235Z] [INFO] [Webhook] Result: Implemented parse() in src/parser.ts; splits on commas. PRAXIS_CLAUDE_STATUS: complete
+[Webhook] Failed: false
+[2026-11-24T20:51:35.235Z] [INFO] [Webhook] Failed: false
+[2026-11-24T20:51:35.235Z] [DEBUG] [Webhook] Full body: {"taskId":"p112-gone-task","nexusTaskId":"p112-gone-task","nexusProjectId":"p112-proj","executor":"claude-code","result":"Implemented parse() in src/parser.ts; splits on commas. PRAXIS_CLAUDE_STATUS: complete","workspace":"/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/praxis-qastate-route-completed-MuhkOM"}
+[StateValidator] ✅ PASS (0ms)
+[2026-11-24T20:51:35.245Z] [INFO] [StateValidator] ✅ PASS (0ms)
+[Webhook] ⏸️ Nexus task p112-gone-task → 'ready_for_review': success
+[2026-11-24T20:51:35.245Z] [INFO] [Webhook] ⏸️ Nexus task p112-gone-task → 'ready_for_review': success
+[Webhook] Walkthrough logged for p112-gone-task (86 chars)
+[2026-11-24T20:51:35.246Z] [INFO] [Webhook] Walkthrough logged for p112-gone-task (86 chars)
+[Webhook] Pushed results to calendar for task p112-gone-task
+[2026-11-24T20:51:35.246Z] [INFO] [Webhook] Pushed results to calendar for task p112-gone-task
+[Webhook] Syncing 0 artifact(s) to Nexus...
+[2026-11-24T20:51:35.247Z] [INFO] [Webhook] Syncing 0 artifact(s) to Nexus...
+[Webhook] QA baseline for p112-gone-task resolved from the cache (snapshot none, head 99a6249f9f09)
+[2026-11-24T20:51:35.255Z] [INFO] [Webhook] QA baseline for p112-gone-task resolved from the cache (snapshot none, head 99a6249f9f09)
+[Webhook] 📋 Nexus task returned — dispatching cross-executor QA review
+[2026-11-24T20:51:35.256Z] [INFO] [Webhook] 📋 Nexus task returned — dispatching cross-executor QA review
+[QA-Dispatch] Live second executor asserted for p112-gone-task: codex (test readiness) is distinct from author claude-code
+[2026-11-24T20:51:35.405Z] [INFO] [QA-Dispatch] Live second executor asserted for p112-gone-task: codex (test readiness) is distinct from author claude-code
+[QA-Dispatch] 🧾 p112-gone-task evidence ledger: 3 claim(s), 1 cited — 0 supported, 0 contradicted, 3 unsupported (2 of those citing nothing), 0 mixed
+[2026-11-24T20:51:35.423Z] [INFO] [QA-Dispatch] 🧾 p112-gone-task evidence ledger: 3 claim(s), 1 cited — 0 supported, 0 contradicted, 3 unsupported (2 of those citing nothing), 0 mixed
+[QA-Dispatch:p112-gone-task] Repo-state evidence: 1 claim(s): 1 confirmed, 0 refuted, 0 unverified, 0 target(s) @ 99a6249
+[2026-11-24T20:51:35.452Z] [INFO] [QA-Dispatch:p112-gone-task] Repo-state evidence: 1 claim(s): 1 confirmed, 0 refuted, 0 unverified, 0 target(s) @ 99a6249
+[QA-Dispatch] 🔍 QA of p112-gone-task dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[2026-11-24T20:51:35.481Z] [INFO] [QA-Dispatch] 🔍 QA of p112-gone-task dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[Webhook] ── Callback processing complete ──
+[2026-11-24T20:51:35.482Z] [INFO] [Webhook] ── Callback processing complete ──
+[QA-State] Rehydrated 0 task(s); retained 0 live reviewer(s); re-opened 0 review(s); dropped 1.
+[2026-11-24T20:51:35.485Z] [INFO] [QA-State] Rehydrated 0 task(s); retained 0 live reviewer(s); re-opened 0 review(s); dropped 1.
+[Webhook] ── Received callback ──
+[2026-11-24T20:51:35.486Z] [INFO] [Webhook] ── Received callback ──
+[Webhook] Task ID: qa--p112-gone-task
+[2026-11-24T20:51:35.486Z] [INFO] [Webhook] Task ID: qa--p112-gone-task
+[Webhook] Nexus IDs: project=(none), task=(none)
+[2026-11-24T20:51:35.486Z] [INFO] [Webhook] Nexus IDs: project=(none), task=(none)
+[Webhook] Convo ID: (none)
+[2026-11-24T20:51:35.486Z] [INFO] [Webhook] Convo ID: (none)
+[Webhook] Result: PRAXIS_QA_VERDICT: pass
+[2026-11-24T20:51:35.486Z] [INFO] [Webhook] Result: PRAXIS_QA_VERDICT: pass
+[Webhook] Failed: false
+[2026-11-24T20:51:35.486Z] [INFO] [Webhook] Failed: false
+[2026-11-24T20:51:35.486Z] [DEBUG] [Webhook] Full body: {"taskId":"qa--p112-gone-task","executor":"codex","qaReviewId":"mwv66vvc-8","result":"PRAXIS_QA_VERDICT: pass"}
+[Webhook] Rejected stale or unauthenticated QA callback for qa--p112-gone-task
+[2026-11-24T20:51:35.487Z] [WARN] [Webhook] Rejected stale or unauthenticated QA callback for qa--p112-gone-task
+[QA-Dispatch] Live second executor asserted for accepted-finalization: codex (test readiness) is distinct from author claude-code
+[2026-11-24T20:51:35.823Z] [INFO] [QA-Dispatch] Live second executor asserted for accepted-finalization: codex (test readiness) is distinct from author claude-code
+[QA-Dispatch] 🧾 accepted-finalization evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+[2026-11-24T20:51:35.823Z] [INFO] [QA-Dispatch] 🧾 accepted-finalization evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+✔ B‴: a rehydrated review whose task Nexus reports completed is dropped → 409 (491.965041ms)
+[QA-Dispatch:accepted-finalization] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ 99a6249
+[2026-11-24T20:51:35.846Z] [INFO] [QA-Dispatch:accepted-finalization] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ 99a6249
+[QA-Dispatch] 🔍 QA of accepted-finalization dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[2026-11-24T20:51:35.861Z] [INFO] [QA-Dispatch] 🔍 QA of accepted-finalization dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[QA-Dispatch] QA callback for accepted-finalization (primary lane): verdict=pass failed=false
+[2026-11-24T20:51:35.863Z] [INFO] [QA-Dispatch] QA callback for accepted-finalization (primary lane): verdict=pass failed=false
+[QA-Dispatch] QA callback for accepted-finalization (primary lane): verdict=pass failed=false
+[2026-11-24T20:51:35.866Z] [INFO] [QA-Dispatch] QA callback for accepted-finalization (primary lane): verdict=pass failed=false
+[QA-Dispatch] Live second executor asserted for terminal-retry: codex (test readiness) is distinct from author claude-code
+[2026-11-24T20:51:36.034Z] [INFO] [QA-Dispatch] Live second executor asserted for terminal-retry: codex (test readiness) is distinct from author claude-code
+[QA-Dispatch] 🧾 terminal-retry evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+[2026-11-24T20:51:36.035Z] [INFO] [QA-Dispatch] 🧾 terminal-retry evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+✔ accepted pass survives a failed finalization and periodic recovery retries completion only (227.932042ms)
+[QA-Dispatch:terminal-retry] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ 99a6249
+[2026-11-24T20:51:36.057Z] [INFO] [QA-Dispatch:terminal-retry] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ 99a6249
+[QA-Dispatch] 🔍 QA of terminal-retry dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[2026-11-24T20:51:36.071Z] [INFO] [QA-Dispatch] 🔍 QA of terminal-retry dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[QA-Dispatch] Live second executor asserted for pending-owner-false: codex (test readiness) is distinct from author claude-code
+[2026-11-24T20:51:36.241Z] [INFO] [QA-Dispatch] Live second executor asserted for pending-owner-false: codex (test readiness) is distinct from author claude-code
+[QA-Dispatch] 🧾 pending-owner-false evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+[2026-11-24T20:51:36.241Z] [INFO] [QA-Dispatch] 🧾 pending-owner-false evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+✔ pre-journal retry reuses completed terminal decisions instead of running another critic (205.769416ms)
+[QA-Dispatch:pending-owner-false] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ 17d2440
+[2026-11-24T20:51:36.263Z] [INFO] [QA-Dispatch:pending-owner-false] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ 17d2440
+[QA-Dispatch] 🔍 QA of pending-owner-false dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[2026-11-24T20:51:36.291Z] [INFO] [QA-Dispatch] 🔍 QA of pending-owner-false dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[QA-State] Rehydrated 1 task(s); retained 0 live reviewer(s); re-opened 0 review(s); dropped 0.
+[2026-11-24T20:51:36.294Z] [INFO] [QA-State] Rehydrated 1 task(s); retained 0 live reviewer(s); re-opened 0 review(s); dropped 0.
+[QA-Dispatch] Live second executor asserted for pending-owner-true: codex (test readiness) is distinct from author claude-code
+[2026-11-24T20:51:36.460Z] [INFO] [QA-Dispatch] Live second executor asserted for pending-owner-true: codex (test readiness) is distinct from author claude-code
+[QA-Dispatch] 🧾 pending-owner-true evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+[2026-11-24T20:51:36.460Z] [INFO] [QA-Dispatch] 🧾 pending-owner-true evidence ledger: 1 claim(s), 0 cited — 0 supported, 0 contradicted, 1 unsupported (1 of those citing nothing), 0 mixed
+✔ boot retains a pending reviewer with unknown callback ownership (219.975417ms)
+[QA-Dispatch:pending-owner-true] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ 17d2440
+[2026-11-24T20:51:36.482Z] [INFO] [QA-Dispatch:pending-owner-true] Repo-state evidence: 0 claim(s): 0 confirmed, 0 refuted, 0 unverified, 0 target(s) @ 17d2440
+[QA-Dispatch] 🔍 QA of pending-owner-true dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[2026-11-24T20:51:36.496Z] [INFO] [QA-Dispatch] 🔍 QA of pending-owner-true dispatched to codex (author: claude-code) — standard QA (complexity unknown) → codex/gpt-6-astra @ high
+[CLIGate] Queued qa--pending-owner-true (codex) behind the active CLI run — position 1.
+[2026-11-24T20:51:36.499Z] [INFO] [CLIGate] Queued qa--pending-owner-true (codex) behind the active CLI run — position 1.
+[CLIGate] No dispatcher registered: cannot drain the CLI queue.
+[2026-11-24T20:51:36.499Z] [WARN] [CLIGate] No dispatcher registered: cannot drain the CLI queue.
+[QA-State] Rehydrated 1 task(s); retained 0 live reviewer(s); re-opened 0 review(s); dropped 0.
+[2026-11-24T20:51:36.500Z] [INFO] [QA-State] Rehydrated 1 task(s); retained 0 live reviewer(s); re-opened 0 review(s); dropped 0.
+✔ boot retains a pending reviewer with a durable queue claim (206.078ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6910.425667
+exit 0

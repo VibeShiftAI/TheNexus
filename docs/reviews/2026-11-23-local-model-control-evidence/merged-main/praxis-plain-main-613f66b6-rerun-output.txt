@@ -1,0 +1,8 @@
+== plain copy of 613f66b68b7395dbc58105d88d2eedee8fb27c5b
+tracked files compared: 2227, differ: 0, extra: 0
+== plain6-failing in /Volumes/Projects/.scratch-fa032fc0/plain-praxis-main6: code_freshness_recovery webhook_routes_inventory
+ℹ tests 50 ℹ pass 48 ℹ fail 2 ℹ cancelled 0 exit 1 
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== done

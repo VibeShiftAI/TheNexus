@@ -1,0 +1,30 @@
+# 2026-11-24 20:34:33 EST
+Praxis head: 196a537506d8b9076753ee1143cd527c3ac6eb14
+== selection-r7 in /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis: local_model_selection local_model_demand_callers local_lane_policy
+ℹ tests 71 ℹ pass 71 ℹ fail 0 ℹ cancelled 0 exit 0 
+guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== related-r7 in /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis: cli_concurrency_local_lane local_lane_manager_reroute local_lane_policy lmstudio_autoload local_model_capabilities member_profile_updates swarm_local_provider local_llm_worker local_llm_spillover critic_deadline_routes groundrules_runner llm_output_room local_inference_safety session_synthesis_worker voice_prose_deadline autonomy_api_routes code_freshness_recovery nexus_runtime_traffic skill_amendment_review skill_candidate_screen_refusal token_report webhook_routes_inventory arbitrary_limits_runtime trading_reflection_local_model trading_reflections local_model_demand_callers classifier_inputs_whole context_pruning_ceiling llm_gateway_output_budget per_pass_window_fit eval_model_policy ingestion_retrieval_details llm_context_window spoken_prose local_model_selection local_model_primary llm_cli_lane_complete knowledge_arbitrary_limits standing_fact_sweep state_doc
+ℹ tests 544 ℹ pass 544 ℹ fail 0 ℹ cancelled 0 exit 0 
+guards: lmstudio=1 net=0 live-port=0 cli-shims=3
+== more-related-r7 in /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis: cli_concurrency cli_dispatch_gate_wakeup cli_run_footprint dispatch_routing_preparation eval_judge_comparability executor_routing_preparation run_worktree_dispatch system_map_dispatch_yield task_saved_model_dispatch lane_credit
+ℹ tests 130 ℹ pass 130 ℹ fail 0 ℹ cancelled 0 exit 0 
+guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+live ports at start: 62
+self-test: own server -> own; live :4000 -> refused ECONNREFUSED; off-machine -> refused ECONNREFUSED
+self-test guard log lines: 2
+files: 40
+ℹ tests 473
+ℹ suites 0
+ℹ pass 473
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+exit 0
+guards: lmstudio=0 fake-lms=0 net=6 live-port=0 cli-shims=6
+== tsc
+# npx tsc --noEmit in /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis
+# started 2026-11-24 20:35:08 EST, head 196a5375, working tree: 0 changed files
+exit 0
+# finished 20:35:15 EST
+Praxis head after: 196a537506d8b9076753ee1143cd527c3ac6eb14; working tree: 0 changed files
+# 2026-11-24 20:35:15 EST

@@ -1,0 +1,34 @@
+suites: 895 of 901
+ℹ tests 1 ℹ pass 0 ℹ fail 1 ℹ cancelled 0 ℹ tests 10649 ℹ pass 10586 ℹ fail 47 ℹ cancelled 0 exit 1 
+✖ /Volumes/Projects/.scratch-fa032fc0/merged-praxis5/tests/fixtures/report-intake-slot-failure.test.mts
+✖ 3: callback records execution-scoped usage already captured from the native CLI stream
+✖ 5: real registry recovery reads full completed findings instead of the truncated preview
+✖ A: a non-loopback caller is rejected with 403 before anything else runs
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ QA redirects attribute exhaustion to the failed executor rather than the healthy replacement
+✖ a CLI counts as busy only while its own binary runs
+✖ a MAP call whose session was cut is given the directory with the whole text
+✖ a quota hold lacking reviewer identity does not infer exhaustion from the author
+✖ a session larger than the window is read around its hit, with the counts and the whole session in a file
+✖ a settled boot clears the counter and records the running revision as good
+✖ a token event creates a persisted acknowledgment-only yellow card and owns its notification
+✖ antigravity piped run survives simulated elapsed time beyond three hours until process exit
+✖ approved global sections stay inline and complete source is readable within workspace
+✖ claude-code piped run survives simulated elapsed time beyond three hours until process exit
+✖ claude-code reports a piped run finished only once its whole log is on disk (process exit)
+✖ claude-code reports a piped run finished only once its whole log is on disk (spawn error)
+✖ cli:claude-code/claude-opus-5-5 zero timeout survives the actual one-shot/lane/seat path without inactivity termination
+✖ cli:codex/gpt-6-astra zero timeout survives the actual one-shot/lane/seat path without inactivity termination
+✖ codex piped run survives simulated elapsed time beyond three hours until process exit
+✖ connection falls back before authentication when IPv6 is unreachable
+✖ context assembly changes only the approved expanded audit and preserves the full project section
+✖ delivery survives lost acknowledgment and restart without duplicating real ledger evidence
+✖ every registered tool declares every argument its handler reads
+✖ few-shot demonstrations are shown whole and the block says how many more matched
+✖ finalization keeps full JSON detail and regenerates the header on every save
+✖ header stays bounded for escaping, unicode and huge suggestion text without losing report detail
+✖ interactive Claude tool remains alive beyond its old five-minute run ceiling
+✖ local deadline covers both waiting for headers and stalled response bodies
+✖ model-only preload refuses fleet, external, TLS, and non-model fetch before loading application code
+guards: lmstudio=2 net=9 live-port=3 cli-shims=13
+took 505s

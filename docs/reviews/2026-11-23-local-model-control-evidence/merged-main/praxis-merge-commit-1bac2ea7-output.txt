@@ -1,0 +1,139 @@
+# 2026-11-24 21:33:33 EST
+Praxis worktree: branch praxis/run/fa032fc0-7472-4406-b6cb-d4671b72a28a, HEAD 196a5375, merge in progress with 1bac2ea7; main now 1bac2ea7
+HEAD's tree is the merged tree: no; the index matches it: yes; the working files match the index: yes; untracked files: 0
+pinned: main 1bac2ea7, branch 196a5375, their merge-base 1fcf4b59, merged tree c8824b3e
+TheNexus files changed after 6e14bc87 outside docs/reviews: 0
+
+== 1. the merged tree against git merge-tree of main 1bac2ea7 and the branch 196a5375
+merge-tree exit 1 (0 = merges without conflict, 1 = conflicts); its tree e2dd5bbbcc56738f5ae8b095e1ba6739896a7f9a (conflicted files written with markers)
+CONFLICT (content): Merge conflict in src/llm/local-lane-policy.ts
+CONFLICT (content): Merge conflict in src/llm/manager.ts
+paths that differ between that tree and the merged tree: src/llm/local-lane-policy.ts src/llm/manager.ts 
+-- src/llm/local-lane-policy.ts: 1 conflict hunk(s), as git merge-file --diff3 shows them:
+   (line 875)
+   <<<<<<< main
+     operatorGrantsOpen = 0;
+     operatorGrantListeners.clear();
+     admissions.clear();
+     graphHoldReading = null;
+   ||||||| base
+   =======
+     runningJobs.clear();
+   >>>>>>> branch
+   against the marked file the merged tree's file drops 4 line(s), 0 of them not a marker line, and adds 0
+   the resolution as a unified diff from the marked file (lines starting with - are dropped):
+   --- src/llm/local-lane-policy.ts with conflict markers
+   +++ src/llm/local-lane-policy.ts in the merged tree
+   @@ -872,15 +872,11 @@
+      rerouteTotal = 0;
+      standingUses.clear();
+      inFlight = 0;
+   -<<<<<<< main
+      operatorGrantsOpen = 0;
+      operatorGrantListeners.clear();
+      admissions.clear();
+      graphHoldReading = null;
+   -||||||| base
+   -=======
+      runningJobs.clear();
+   ->>>>>>> branch
+      warnedInvalidWindow = null;
+      warnedInvalidMode = null;
+      notedTestRunDefault = false;
+   byte-identical to git merge-file --union (main first), the resolution tested at 20:36 EST: yes
+   lines: merge-base 548, main 859, branch 646, merged 957
+-- src/llm/manager.ts: 1 conflict hunk(s), as git merge-file --diff3 shows them:
+   (line 40)
+   <<<<<<< main
+     runHeldLocalLaneCall,
+   ||||||| base
+   =======
+     trackLocalCall,
+   >>>>>>> branch
+   against the marked file the merged tree's file drops 4 line(s), 0 of them not a marker line, and adds 0
+   the resolution as a unified diff from the marked file (lines starting with - are dropped):
+   --- src/llm/manager.ts with conflict markers
+   +++ src/llm/manager.ts in the merged tree
+   @@ -37,12 +37,8 @@
+      localLaneSonnetChainSpec,
+      localLaneSonnetSeatSpec,
+      noteLocalLaneReroute,
+   -<<<<<<< main
+      runHeldLocalLaneCall,
+   -||||||| base
+   -=======
+      trackLocalCall,
+   ->>>>>>> branch
+      trackedLocalProvider,
+      withLocalLaneGrant,
+      withStandingLocalLaneGrant,
+   byte-identical to git merge-file --union (main first), the resolution tested at 20:36 EST: yes
+   lines: merge-base 1908, main 1930, branch 2077, merged 2099
+
+== 2. both sides kept
+paths in any of the four trees: 6858; changed by main only: 509; by the branch only: 12; the same change on both: 0; by neither: 6328
+of those, paths whose merged entry (mode and blob, or absence) is not the expected one: 0
+paths changed differently by both sides, merged line by line: 9
+-- src/config.ts: main changed 37 lines, the merged tree changes 37 against the branch, the same lines: yes; the branch changed 20 lines, the merged tree changes 20 against main, the same lines: yes
+-- src/index.ts: main changed 28 lines, the merged tree changes 28 against the branch, the same lines: yes; the branch changed 12 lines, the merged tree changes 12 against main, the same lines: yes
+-- src/llm/lmstudio-autoload.ts: main changed 19 lines, the merged tree changes 19 against the branch, the same lines: yes; the branch changed 185 lines, the merged tree changes 185 against main, the same lines: yes
+-- src/llm/local-lane-policy.ts: main changed 335 lines, the merged tree changes 335 against the branch, the same lines: yes; the branch changed 100 lines, the merged tree changes 100 against main, the same lines: yes
+-- src/llm/manager.ts: main changed 32 lines, the merged tree changes 32 against the branch, the same lines: yes; the branch changed 323 lines, the merged tree changes 323 against main, the same lines: yes
+-- src/local-llm/worker.ts: main changed 1 lines, the merged tree changes 1 against the branch, the same lines: yes; the branch changed 52 lines, the merged tree changes 52 against main, the same lines: yes
+-- src/nexus/client.ts: main changed 98 lines, the merged tree changes 98 against the branch, the same lines: yes; the branch changed 10 lines, the merged tree changes 10 against main, the same lines: yes
+-- src/routes/ops.ts: main changed 4 lines, the merged tree changes 4 against the branch, the same lines: yes; the branch changed 17 lines, the merged tree changes 17 against main, the same lines: yes
+-- tests/webhook_routes_inventory.test.ts: main changed 8 lines, the merged tree changes 8 against the branch, the same lines: yes; the branch changed 3 lines, the merged tree changes 3 against main, the same lines: yes
+the merged tree against main:  21 files changed, 3448 insertions(+), 121 deletions(-); the branch against the merge-base:  21 files changed, 3448 insertions(+), 121 deletions(-)
+
+== 3. npx tsc --noEmit in the Praxis worktree /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis
+tsc: exit 0 (0 errors); git status the same before and after: yes
+
+== 4. the suites, under every guard, on a scratch copy of the merged tree
+merge-commit-praxis against c8824b3e: 6773 files compared; differing: ; extra files in the copy: 0
+suites that make their data folder under /Volumes, left out: maintenance_batches maintenance_intake maintenance_policy maintenance_policy_router maintenance_reports maintenance_review_regressions 
+suites on the merged tree: 179 (not on the merged tree: trading_reflection_local_model trading_reflections; selected but left out for their /Volumes data folder: maintenance_review_regressions); the same list as the round-7 merged check (praxis-suites179-merged-196a5375.txt): yes
+nexus-for-merge-commit: TheNexus 2a7952fc plus the branch diff bd02642..6e14bc87, 3936 files, nexus.db files: 0
+ℹ tests 2591 ℹ pass 2572 ℹ fail 10 ℹ cancelled 0 exit 1 
+✖ 3: callback records execution-scoped usage already captured from the native CLI stream
+✖ 3c: a reviewer that died with the daemon is retried on a different executor with NO strike
+✖ 5: real registry recovery reads full completed findings instead of the truncated preview
+✖ B′: after a restart, the reviewer's callback with the RIGHT qaReviewId is 200 and finalizes
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ a fresh task run and QA review run on claude-code and codex report their model in dispatch state
+✖ accepted pass survives a failed finalization and periodic recovery retries completion only
+✖ real Antigravity completion reaches the shared audit and retains findings with explicit unsupported evidence
+✖ the page connection refuses mixed public/private DNS answers and literal private addresses
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+guards: lmstudio=2 net=6 live-port=1 cli-shims=9
+fake lms calls in its fixed log during the run: 1 ( 1 90761 ls --json :: ;)
+files written under nexus-for-merge-commit during the run (node_modules left out): 0
+nexus.db files there: 0
+suites with failures on the merged tree: alert_investigation code_freshness_recovery qa_state_persistence research_web_retrieval run_model_dispatch_state webhook_routes_inventory 
+plain-praxis-main-merge-commit against 1bac2ea7: 6769 files compared; differing: ; extra files in the copy: 0
+nexus-for-plain-praxis-merge-commit: TheNexus 2a7952fc, 3824 files, nexus.db files: 0
+== the same suites on plain main 1bac2ea7
+ℹ tests 212 ℹ pass 202 ℹ fail 10 ℹ cancelled 0 exit 1 
+✖ 3: callback records execution-scoped usage already captured from the native CLI stream
+✖ 3c: a reviewer that died with the daemon is retried on a different executor with NO strike
+✖ 5: real registry recovery reads full completed findings instead of the truncated preview
+✖ B′: after a restart, the reviewer's callback with the RIGHT qaReviewId is 200 and finalizes
+✖ GET /api/runtime/freshness serves pending, armed, failed and activated, to local callers only
+✖ a fresh task run and QA review run on claude-code and codex report their model in dispatch state
+✖ accepted pass survives a failed finalization and periodic recovery retries completion only
+✖ real Antigravity completion reaches the shared audit and retains findings with explicit unsupported evidence
+✖ the page connection refuses mixed public/private DNS answers and literal private addresses
+✖ the split routers register exactly the pre-split route surface plus the inventoried additions
+guards: lmstudio=1 net=0 live-port=1 cli-shims=0
+fake lms calls in its fixed log during the run: 0 ()
+files written under nexus-for-plain-praxis-merge-commit during the run (node_modules left out): 0
+nexus.db files there: 0
+
+== 5. npm run check:encoding in the Praxis worktree, on every file the branch changed
+files: 21 (the two resolved files among them: 2)
+Encoding scan passed: 21 text files checked; 0 binary files skipped.
+exit 0
+
+entries in /Volumes/Projects/maintenance-mode-worktrees changed since this script started: 0
+Praxis worktree after the run: HEAD 196a5375, the index matches the merged tree: yes, the working files match the index: yes, untracked files: 0
+# 2026-11-24 21:35:52 EST
+== done

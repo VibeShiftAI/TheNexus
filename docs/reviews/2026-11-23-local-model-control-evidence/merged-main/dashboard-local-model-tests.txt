@@ -1,0 +1,32 @@
+✔ the header shows which model is answering as Praxis without a click (23.675125ms)
+✔ picking a model saves through the shared chat-config helpers and repaints both surfaces (31.403375ms)
+✔ a change made in the settings modal repaints the header control (18.883209ms)
+✔ a backend switch is confirmed first; a model switch inside the backend is not (38.715792ms)
+✔ cancelling a backend switch leaves the executor alone (25.899458ms)
+✔ a failed save shows an error and never presents the un-saved model as active (16.830334ms)
+✔ a rejected free-text save restores the settings field to the confirmed model (16.069208ms)
+✔ the picker stops taking clicks while a save is in flight (24.708042ms)
+✔ clicking the trigger after a failed load actually retries, as its tooltip promises (12.77725ms)
+✔ the picker is keyboard-dismissable with Escape (8.997041ms)
+✔ the model choices are the registry's current models plus the configured slug (10.905333ms)
+✔ without a registry the picker keeps the configured slug and says the list is missing (9.981417ms)
+✔ each downloaded chat model is offered with its name, size on disk, saved context and handling; the embedding model is not offered (41.317125ms)
+✔ a new download appears on the next read, with no code change: Nexus's event refreshes the list (16.544083ms)
+✔ a model with no saved load context cannot be picked, and its row says what is missing (7.71025ms)
+✔ choosing during a local job sends one request, loads nothing, and shows the switch waiting until Nexus reports it applied (23.884208ms)
+✔ each switch is listed with what changed, when and from where, and the previous choice restores in one action (12.441542ms)
+✔ a restore that cannot be made says why, and a choice made elsewhere in between is refused, not overwritten (12.973708ms)
+✔ with Praxis out of reach a waiting switch says how Praxis will pick it up (5.691292ms)
+✔ the alias editor shows Nexus's sentence when it refuses a local_default target, and reads the panel again after one it records (16.023792ms)
+✔ every module the root layout imports is a Fast Refresh boundary, except the ones already listed (1.521708ms)
+✔ the voice dock storage key is read from the lib module, not exported by the component (0.110167ms)
+✔ the export reader distinguishes components from values (0.330917ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5924.314708
+exit 0

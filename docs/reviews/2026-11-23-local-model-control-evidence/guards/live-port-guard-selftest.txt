@@ -1,0 +1,10 @@
+# live-port-guard.mjs self-test, 2026-11-24 14:15:46 EST: a server this process starts after the port snapshot, the live Nexus API port 4000 and a host off this machine
+# ports listening at the snapshot: 63 (1234 3000 3777 4000 4001 4400 4500 4780 5000 5037 5250 7000 7474 7679 7687 7878 8100 8123 8181 8741 8765 9150 11434 18554 18555 20241 32222 41343 49210 49221 49286 49647 49853 49855 51196 54322 54323 59885 59893 59894 59895 59896 59898 60559 60562 60563 60564 60565 60566 61088 61090 61093 61097 61098 61099 61364 61366 61367 61371 61372 61373 61787 61788 )
+own server (fetch) -> own
+live :4000 (fetch) -> refused ECONNREFUSED
+live :4000 (http.get) -> refused ECONNREFUSED
+off-machine example.com (fetch) -> refused ECONNREFUSED
+# guard log:
+35462 connect 127.0.0.1:4000 (port 4000 was listening before the run) :
+35462 connect example.com:443 (host off this machine (example.com)) :
+35462 connect 127.0.0.1:4000 (port 4000 was listening before the run) :

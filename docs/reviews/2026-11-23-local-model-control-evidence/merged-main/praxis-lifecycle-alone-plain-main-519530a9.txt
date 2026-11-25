@@ -1,0 +1,281 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/document_revision_lifecycle.test.ts
+
+Running 1 of 905 suite(s): tests/document_revision_lifecycle.test.ts
+
+[Database] Migration: added project_contacts.decision_maker
+[Database] Migration: added projects.comms_settings
+[Database] Migration: added projects.report_template
+[Database] Migration: added calendar_events.series_id
+[Database] Migration: added calendar_events.recurrence
+[Database] Migration: added calendar_events.attendees
+[Database] Canonical-status sweep skipped: no such column: pre_archive_status
+[Database] Migration: added archived_at column to projects
+[Database] Migration: added archived_at column to tasks
+[Database] Migration: added pre_archive_status column to tasks
+[Database] Migration: added upgrade_posture column to projects
+[Database] Migration: added needs column to projects
+[Database] Migration: added end_state_updated_at column to projects
+[Database] Migration: added end_state_criteria column to projects
+[Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+[Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+[Database] Migration: added successor_id column to tasks
+[Database] Connected to SQLite: /private/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/document-revision-cfkQhP/nexus.db
+[Documents] request_changes recorded for cfb592e5-76db-45b4-9520-911f51aad6bc revision b1654336-69dc-455f-baa4-cd9c8a811394 (authority=operator_credential)
+[Documents] replacement 457e03de-5312-4079-aec3-d6b787ae8fdf accepted for cfb592e5-76db-45b4-9520-911f51aad6bc (base b1654336-69dc-455f-baa4-cd9c8a811394, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 457e03de-5312-4079-aec3-d6b787ae8fdf of cfb592e5-76db-45b4-9520-911f51aad6bc: accepted → queued, task 7ca1c01e-f6cc-4a6e-a998-68dced823b86
+[Documents] replacement 457e03de-5312-4079-aec3-d6b787ae8fdf of cfb592e5-76db-45b4-9520-911f51aad6bc: queued → running
+▶ document change requests travel the shipped Nexus version lifecycle end to end
+  ✔ a request left half-way is resumed by a fresh process from the ledger alone (restart) (614.151125ms)
+[Documents] request_changes recorded for 492a80e2-2ff2-42e1-a038-54e28757061c revision cfd32150-b17d-4655-907d-9f9e12b62a52 (authority=operator_credential)
+[Documents] replacement c34c97dc-d210-4e5d-97b4-3d98542173ca accepted for 492a80e2-2ff2-42e1-a038-54e28757061c (base cfd32150-b17d-4655-907d-9f9e12b62a52, task pending, attempt 1); superseded drafts: 27dd745d-d9c4-4dcc-bbab-8830f00ffb70
+[Documents] replacement c34c97dc-d210-4e5d-97b4-3d98542173ca of 492a80e2-2ff2-42e1-a038-54e28757061c: accepted → queued, task 3e53926c-a00a-4a61-8c52-d8fc2284892f
+[Documents] replacement c34c97dc-d210-4e5d-97b4-3d98542173ca of 492a80e2-2ff2-42e1-a038-54e28757061c: queued → running
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Documents] replacement c34c97dc-d210-4e5d-97b4-3d98542173ca of 492a80e2-2ff2-42e1-a038-54e28757061c qa_passed → ready: QA passed and the registered revision is the current ready version
+[Documents] replacement c34c97dc-d210-4e5d-97b4-3d98542173ca of 492a80e2-2ff2-42e1-a038-54e28757061c: implemented → ready
+  ✔ the 2026-10-23 incident, repaired: changes requested on a completed report become one linked, dispatched revision; old reviews close; only the new version is reviewable; the exact current link is delivered (84.88ms)
+[Documents] request_changes recorded for 64207d47-2d45-4406-95a7-be41586d6db5 revision 3fc98bfc-320d-428d-a880-9ab46c545529 (authority=operator_credential)
+[Documents] replacement d99525ae-1f27-4642-9ae7-7eb4de2e178b accepted for 64207d47-2d45-4406-95a7-be41586d6db5 (base 3fc98bfc-320d-428d-a880-9ab46c545529, task pending, attempt 1); superseded drafts: none
+[Documents] replacement d99525ae-1f27-4642-9ae7-7eb4de2e178b of 64207d47-2d45-4406-95a7-be41586d6db5: accepted → queued, task 0f22b775-5011-4045-b42e-9eeb976e75cb
+[Documents] replacement d99525ae-1f27-4642-9ae7-7eb4de2e178b of 64207d47-2d45-4406-95a7-be41586d6db5: queued → running
+  ✔ a document registered under an explicit deliverable key is revised under that same key and kind (31.291167ms)
+  ✔ feedback pinned to a version the document has left is closed as superseded, not worked (16.308833ms)
+[Documents] approve recorded for a778ccda-6c61-4a98-be72-8f3e4cf926cb revision 652da850-ef70-499c-961f-cd91083fd96d (authority=operator_credential)
+  ✔ praise, read-only questions and approvals without edits create no work; a cited approval is refused as authority (17.718333ms)
+[Documents] request_changes recorded for a565c228-2ed1-46e7-9bfd-9f1ecd5cc443 revision 18da6348-9ae9-40b6-a3a8-9bd9e10aa921 (authority=operator_credential)
+[Documents] replacement f13f9f20-ec74-49c3-9246-a5b62d1abefb accepted for a565c228-2ed1-46e7-9bfd-9f1ecd5cc443 (base 18da6348-9ae9-40b6-a3a8-9bd9e10aa921, task pending, attempt 1); superseded drafts: none
+[Documents] replacement f13f9f20-ec74-49c3-9246-a5b62d1abefb of a565c228-2ed1-46e7-9bfd-9f1ecd5cc443: held → held, task 58783b49-152f-427b-81af-8d0ad956c9bf
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Documents] replacement f13f9f20-ec74-49c3-9246-a5b62d1abefb of a565c228-2ed1-46e7-9bfd-9f1ecd5cc443: held → running
+  ✔ an explicit hold creates and links the task but never dispatches until released (26.279542ms)
+[Documents] request_changes recorded for 622acc7c-7cf1-4bd7-8c40-2be9632075f0 revision 3ef4bfc8-8d49-4af9-8e68-92fd0bb71bb0 (authority=operator_credential)
+[Documents] replacement d7de410b-a80c-493b-a43a-785645f0f0f3 accepted for 622acc7c-7cf1-4bd7-8c40-2be9632075f0 (base 3ef4bfc8-8d49-4af9-8e68-92fd0bb71bb0, task pending, attempt 1); superseded drafts: none
+[Documents] replacement d7de410b-a80c-493b-a43a-785645f0f0f3 of 622acc7c-7cf1-4bd7-8c40-2be9632075f0: accepted → queued, task 889f166b-f167-4ced-8657-c5e0821512e6
+[Documents] replacement d7de410b-a80c-493b-a43a-785645f0f0f3 of 622acc7c-7cf1-4bd7-8c40-2be9632075f0: queued → running
+[Documents] request_changes recorded for cc66e783-e526-48d6-931e-edd1f7de2c24 revision e73c4a51-2ea5-4833-819f-1b2cdbabe26b (authority=operator_credential)
+[Documents] replacement 7a3a0331-0324-4eb1-a0bb-11242bdfd000 accepted for cc66e783-e526-48d6-931e-edd1f7de2c24 (base e73c4a51-2ea5-4833-819f-1b2cdbabe26b, task pending, attempt 1); superseded drafts: none
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Documents] replacement 7a3a0331-0324-4eb1-a0bb-11242bdfd000 of cc66e783-e526-48d6-931e-edd1f7de2c24: accepted → queued, task 82ea7792-38ed-4f27-ab52-3857a528c2db
+[Documents] replacement 7a3a0331-0324-4eb1-a0bb-11242bdfd000 of cc66e783-e526-48d6-931e-edd1f7de2c24: queued → running
+  ✔ a lost task-create response and a board write lock recover without a second task; the lock escalates once after bounded retries (76.819167ms)
+[Documents] request_changes recorded for 2fc37b42-bad9-4547-acb6-b98b0d8f1ac0 revision dfeddb6f-cbe5-4434-82c1-7ecde9fb8ce2 (authority=operator_credential)
+[Documents] replacement 67cef7a6-1605-44f8-b4b8-1ca406b56fd3 accepted for 2fc37b42-bad9-4547-acb6-b98b0d8f1ac0 (base dfeddb6f-cbe5-4434-82c1-7ecde9fb8ce2, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 67cef7a6-1605-44f8-b4b8-1ca406b56fd3 of 2fc37b42-bad9-4547-acb6-b98b0d8f1ac0: accepted → queued, task ae498800-8a1b-4101-9a08-4cbeb37b8506
+[Documents] replacement 67cef7a6-1605-44f8-b4b8-1ca406b56fd3 of 2fc37b42-bad9-4547-acb6-b98b0d8f1ac0: queued → held
+[Documents] replacement 67cef7a6-1605-44f8-b4b8-1ca406b56fd3 of 2fc37b42-bad9-4547-acb6-b98b0d8f1ac0: held → held
+[Documents] replacement 67cef7a6-1605-44f8-b4b8-1ca406b56fd3 of 2fc37b42-bad9-4547-acb6-b98b0d8f1ac0: held → held
+[Documents] replacement 67cef7a6-1605-44f8-b4b8-1ca406b56fd3 of 2fc37b42-bad9-4547-acb6-b98b0d8f1ac0: held → held
+[Documents] replacement 67cef7a6-1605-44f8-b4b8-1ca406b56fd3 of 2fc37b42-bad9-4547-acb6-b98b0d8f1ac0: held → held
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Documents] replacement 67cef7a6-1605-44f8-b4b8-1ca406b56fd3 of 2fc37b42-bad9-4547-acb6-b98b0d8f1ac0: held → held
+[Documents] replacement 67cef7a6-1605-44f8-b4b8-1ca406b56fd3 of 2fc37b42-bad9-4547-acb6-b98b0d8f1ac0: held → queued
+[Documents] replacement 67cef7a6-1605-44f8-b4b8-1ca406b56fd3 of 2fc37b42-bad9-4547-acb6-b98b0d8f1ac0: queued → running
+[Documents] request_changes recorded for 9e43579b-e477-4ac0-a08b-cb30e0eefb58 revision 0773c8cb-4b65-4dcd-bb6e-f2de7e7164e8 (authority=operator_credential)
+[Documents] replacement 6724793e-9e85-4e4f-8e54-39335895e8fc accepted for 9e43579b-e477-4ac0-a08b-cb30e0eefb58 (base 0773c8cb-4b65-4dcd-bb6e-f2de7e7164e8, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 6724793e-9e85-4e4f-8e54-39335895e8fc of 9e43579b-e477-4ac0-a08b-cb30e0eefb58: accepted → queued, task 5a8c2fe7-1437-4ea6-90ab-eaea51dab71c
+[Documents] replacement 6724793e-9e85-4e4f-8e54-39335895e8fc of 9e43579b-e477-4ac0-a08b-cb30e0eefb58: queued → held
+[Documents] replacement 6724793e-9e85-4e4f-8e54-39335895e8fc of 9e43579b-e477-4ac0-a08b-cb30e0eefb58: held → running
+  ✔ held, queued, failed and uncertain dispatch receipts are reported as such; a held dispatch escalates once and resumes (74.010875ms)
+[Documents] request_changes recorded for 2082157a-4ae9-409d-a354-25ca740f0bcd revision 95bdd1fb-5b47-49cc-9f2c-73fbee72702e (authority=operator_credential)
+[Documents] replacement ba24eac0-9a56-4304-a292-e6c740b55e77 accepted for 2082157a-4ae9-409d-a354-25ca740f0bcd (base 95bdd1fb-5b47-49cc-9f2c-73fbee72702e, task pending, attempt 1); superseded drafts: none
+[Documents] replacement ba24eac0-9a56-4304-a292-e6c740b55e77 of 2082157a-4ae9-409d-a354-25ca740f0bcd: accepted → queued, task 03bcdb9b-c04a-4b8a-a3ae-bc79b3728938
+[Documents] replacement ba24eac0-9a56-4304-a292-e6c740b55e77 of 2082157a-4ae9-409d-a354-25ca740f0bcd: queued → running
+[Documents] replacement ba24eac0-9a56-4304-a292-e6c740b55e77 of 2082157a-4ae9-409d-a354-25ca740f0bcd running → failed: Task 03bcdb9b-c04a-4b8a-a3ae-bc79b3728938 completed without registering a new revision of this document
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Documents] replacement 15be0b67-fa43-4830-9d90-659380ed46a3 accepted for 2082157a-4ae9-409d-a354-25ca740f0bcd (base 95bdd1fb-5b47-49cc-9f2c-73fbee72702e, task pending, attempt 2); superseded drafts: none
+[Documents] replacement 15be0b67-fa43-4830-9d90-659380ed46a3 of 2082157a-4ae9-409d-a354-25ca740f0bcd: accepted → queued, task 155ecec5-b007-4624-9a88-940dd081f910
+[Documents] replacement 15be0b67-fa43-4830-9d90-659380ed46a3 of 2082157a-4ae9-409d-a354-25ca740f0bcd: queued → running
+[Documents] replacement 15be0b67-fa43-4830-9d90-659380ed46a3 of 2082157a-4ae9-409d-a354-25ca740f0bcd implemented → ready: Task 155ecec5-b007-4624-9a88-940dd081f910 completed; its registered revision is the current ready version
+[Documents] request_changes recorded for 41c79b25-fa7e-40e8-9120-fd9754c405a1 revision 509a2578-6914-4047-9163-0b9fb2ba2595 (authority=operator_credential)
+[Documents] replacement 7ea61d9e-4abe-4c9d-b7a3-2bba4ea35f7d accepted for 41c79b25-fa7e-40e8-9120-fd9754c405a1 (base 509a2578-6914-4047-9163-0b9fb2ba2595, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 7ea61d9e-4abe-4c9d-b7a3-2bba4ea35f7d of 41c79b25-fa7e-40e8-9120-fd9754c405a1: accepted → queued, task 37a6326d-f417-48fe-b1d9-1ae3395d59ef
+[Documents] replacement 7ea61d9e-4abe-4c9d-b7a3-2bba4ea35f7d of 41c79b25-fa7e-40e8-9120-fd9754c405a1: queued → running
+[Documents] request_changes recorded for 4e36d609-cfd3-413d-8496-e460c48d205a revision 81a0e97a-98cf-4e96-9d19-8ee3d50f4c74 (authority=operator_credential)
+[Documents] replacement 7985170e-96e1-4c67-98af-467136b6b020 accepted for 4e36d609-cfd3-413d-8496-e460c48d205a (base 81a0e97a-98cf-4e96-9d19-8ee3d50f4c74, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 7985170e-96e1-4c67-98af-467136b6b020 of 4e36d609-cfd3-413d-8496-e460c48d205a: accepted → queued, task eb00a524-7c6b-40a8-8027-26f0abaa6121
+[Documents] replacement 7985170e-96e1-4c67-98af-467136b6b020 of 4e36d609-cfd3-413d-8496-e460c48d205a: queued → running
+[Documents] replacement 7985170e-96e1-4c67-98af-467136b6b020 of 4e36d609-cfd3-413d-8496-e460c48d205a: running → cancelled
+  ✔ a worker that completes without registering fails the attempt explicitly; recovery is a new explicit request; cancellation is explicit too (121.052916ms)
+[Documents] request_changes recorded for 06b5c542-a5d6-4d53-9191-599f6a7fe137 revision 7f70b67e-d0af-488e-8593-ff9c77cb92c8 (authority=operator_credential)
+[Documents] replacement cb87a7b4-1ff9-457b-be09-fe677bd36484 accepted for 06b5c542-a5d6-4d53-9191-599f6a7fe137 (base 7f70b67e-d0af-488e-8593-ff9c77cb92c8, task pending, attempt 1); superseded drafts: none
+[Documents] replacement cb87a7b4-1ff9-457b-be09-fe677bd36484 of 06b5c542-a5d6-4d53-9191-599f6a7fe137: accepted → queued, task 60e50360-b024-4a70-9a6d-930e35550ee2
+[Documents] replacement cb87a7b4-1ff9-457b-be09-fe677bd36484 of 06b5c542-a5d6-4d53-9191-599f6a7fe137: queued → running
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Documents] replacement cb87a7b4-1ff9-457b-be09-fe677bd36484 of 06b5c542-a5d6-4d53-9191-599f6a7fe137 qa_passed → ready: QA passed and the registered revision is the current ready version
+[Documents] replacement cb87a7b4-1ff9-457b-be09-fe677bd36484 of 06b5c542-a5d6-4d53-9191-599f6a7fe137: implemented → ready
+  ✔ a second change request waits behind open replacement work, escalates once, and closes as superseded when the new version makes it obsolete (57.301375ms)
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Documents] replacement bcbb9caf-2cf8-45e6-8340-3455858628ff accepted for b06009a7-cfc3-4eb8-8dae-4a138ddf5fd1 (base 4e661827-9648-4e8f-b800-b81cd3ce9c2b, task pending, attempt 1); superseded drafts: none
+[Documents] replacement bcbb9caf-2cf8-45e6-8340-3455858628ff of b06009a7-cfc3-4eb8-8dae-4a138ddf5fd1: accepted → queued, task 0be01c80-c8de-41b2-b6ab-23d9c3a3018b
+[Documents] replacement bcbb9caf-2cf8-45e6-8340-3455858628ff of b06009a7-cfc3-4eb8-8dae-4a138ddf5fd1: queued → running
+  ✔ a live Nexus without the lifecycle contract is reported as the activation blocker, retried, escalated once (25.398458ms)
+[Documents] request_changes recorded for 9bf2de8e-7c99-4f95-b19e-d617ae54d266 revision db453246-4aa6-40ef-95c6-a6b02309681d (authority=operator_credential)
+[Documents] replacement 5d8fd7f2-c5a1-442f-b88c-6670e0380a14 accepted for 9bf2de8e-7c99-4f95-b19e-d617ae54d266 (base db453246-4aa6-40ef-95c6-a6b02309681d, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 5d8fd7f2-c5a1-442f-b88c-6670e0380a14 of 9bf2de8e-7c99-4f95-b19e-d617ae54d266: accepted → queued, task 56c26102-a552-4a9b-85c7-155f70c17982
+[Documents] replacement 5d8fd7f2-c5a1-442f-b88c-6670e0380a14 of 9bf2de8e-7c99-4f95-b19e-d617ae54d266: queued → running
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ✔ an explicit read-only instruction, in the summary or a comment, outranks a current request_changes decision and creates no work (33.225ms)
+[Documents] replacement 1456e862-dd8c-4cfd-b80d-6f1ab40c784e accepted for 4bc151db-a35d-41c2-8a15-f9ca8192f04b (base cf7bda45-e0e9-4f30-956e-e317301c5bbf, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 1456e862-dd8c-4cfd-b80d-6f1ab40c784e of 4bc151db-a35d-41c2-8a15-f9ca8192f04b: accepted → queued, task eba6c959-4690-410a-b11e-82422b2fbb40
+[Documents] replacement 1456e862-dd8c-4cfd-b80d-6f1ab40c784e of 4bc151db-a35d-41c2-8a15-f9ca8192f04b: queued → running
+[Documents] replacement 1456e862-dd8c-4cfd-b80d-6f1ab40c784e of 4bc151db-a35d-41c2-8a15-f9ca8192f04b qa_passed → ready: QA passed and the registered revision is the current ready version
+[Documents] replacement 1456e862-dd8c-4cfd-b80d-6f1ab40c784e of 4bc151db-a35d-41c2-8a15-f9ca8192f04b: implemented → ready
+  ✔ two concurrent aliases of one submission are ordered per document: one replacement, one task, one dispatch, one announcement (79.760542ms)
+[Documents] replacement 6e9deed6-92a0-4b58-84a6-f023b8c759a0 accepted for a5b89d7a-0f78-4448-9468-71dd5183ad32 (base 78b8b871-dbf2-4414-9ac7-bfa5f2594361, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 6e9deed6-92a0-4b58-84a6-f023b8c759a0 of a5b89d7a-0f78-4448-9468-71dd5183ad32: accepted → queued, task 0fced176-67eb-4efb-bab4-eb5bb9e45e75
+[Documents] replacement 6e9deed6-92a0-4b58-84a6-f023b8c759a0 of a5b89d7a-0f78-4448-9468-71dd5183ad32: queued → running
+[Documents] replacement 6e9deed6-92a0-4b58-84a6-f023b8c759a0 of a5b89d7a-0f78-4448-9468-71dd5183ad32 running → failed: Task 0fced176-67eb-4efb-bab4-eb5bb9e45e75 completed without registering a new revision of this document
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Documents] replacement 3f441911-b9a5-40b7-8cf5-00d57996bc1a accepted for a5b89d7a-0f78-4448-9468-71dd5183ad32 (base 78b8b871-dbf2-4414-9ac7-bfa5f2594361, task pending, attempt 2); superseded drafts: none
+[Documents] replacement 3f441911-b9a5-40b7-8cf5-00d57996bc1a of a5b89d7a-0f78-4448-9468-71dd5183ad32: accepted → queued, task e1cc6f38-0a71-4e30-804d-62845a486b76
+[Documents] replacement 3f441911-b9a5-40b7-8cf5-00d57996bc1a of a5b89d7a-0f78-4448-9468-71dd5183ad32: queued → running
+[Documents] replacement 3f441911-b9a5-40b7-8cf5-00d57996bc1a of a5b89d7a-0f78-4448-9468-71dd5183ad32 running → failed: Task e1cc6f38-0a71-4e30-804d-62845a486b76 completed without registering a new revision of this document
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Documents] replacement 735457f4-3f66-47f8-be80-306daaa547a2 accepted for a5b89d7a-0f78-4448-9468-71dd5183ad32 (base 78b8b871-dbf2-4414-9ac7-bfa5f2594361, task pending, attempt 3); superseded drafts: none
+[Documents] replacement 735457f4-3f66-47f8-be80-306daaa547a2 of a5b89d7a-0f78-4448-9468-71dd5183ad32: accepted → queued, task 4d7158ee-0ee0-41ea-86b7-08afaf16c0f6
+[Documents] replacement 735457f4-3f66-47f8-be80-306daaa547a2 of a5b89d7a-0f78-4448-9468-71dd5183ad32: queued → running
+  ✔ recovery permission is bound to the attempt it reopens and spent there: a second failure needs a new explicit recovery (55.959583ms)
+[Documents] request_changes recorded for 46568709-c7d2-4c4f-ad47-86c1e93e4e7c revision a1150982-0fd9-4ecb-bd87-ca3eb57a3329 (authority=operator_credential)
+[Documents] replacement 4d47f7a8-6d03-4456-a219-3adbd7930919 accepted for 46568709-c7d2-4c4f-ad47-86c1e93e4e7c (base a1150982-0fd9-4ecb-bd87-ca3eb57a3329, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 4d47f7a8-6d03-4456-a219-3adbd7930919 of 46568709-c7d2-4c4f-ad47-86c1e93e4e7c: accepted → queued, task d42490ee-5d7d-40e3-8e60-04790069229e
+[Documents] replacement 4d47f7a8-6d03-4456-a219-3adbd7930919 of 46568709-c7d2-4c4f-ad47-86c1e93e4e7c: queued → running
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ✔ the intake reply describes the document after its own acceptance, not the pre-acceptance snapshot (24.736542ms)
+[Documents] request_changes recorded for 29549c00-efe1-40c5-8c61-6e6218dc5dcf revision 18c5daac-658b-4227-9328-2886d1fa97f7 (authority=operator_credential)
+[Documents] replacement 4a8392e8-6465-4302-9c2d-d86194b13895 accepted for 29549c00-efe1-40c5-8c61-6e6218dc5dcf (base 18c5daac-658b-4227-9328-2886d1fa97f7, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 4a8392e8-6465-4302-9c2d-d86194b13895 of 29549c00-efe1-40c5-8c61-6e6218dc5dcf: held → held, task 4faf4823-a5e1-40e5-83d2-a524cd82a4f9
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Documents] request_changes recorded for c99febb7-7642-401c-b860-8bc4c8fbefb0 revision 8adc255d-2bb1-442a-811f-269525f66124 (authority=operator_credential)
+[Documents] replacement 9c716382-c576-42cc-b4f5-80ad8c265fae accepted for c99febb7-7642-401c-b860-8bc4c8fbefb0 (base 8adc255d-2bb1-442a-811f-269525f66124, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 9c716382-c576-42cc-b4f5-80ad8c265fae of c99febb7-7642-401c-b860-8bc4c8fbefb0: accepted → queued, task b5bd854e-058b-435d-9c3b-b4c5b6753a43
+[Documents] replacement 9c716382-c576-42cc-b4f5-80ad8c265fae of c99febb7-7642-401c-b860-8bc4c8fbefb0: queued → running
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ✔ a constraint on one element is still a change request: the read-only and hold readers stop at the whole document or the work (50.020667ms)
+[Documents] replacement 031d3de9-c98c-4aea-8e1d-02501e334c56 accepted for 0001930c-68f9-4427-affb-fed3993c6e9c (base 8e831ce9-04ea-4ec6-a6b7-9cc9b02258e4, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 031d3de9-c98c-4aea-8e1d-02501e334c56 of 0001930c-68f9-4427-affb-fed3993c6e9c: accepted → queued, task 4a12b080-cd0e-4c94-a4f2-dbd9c0a5f5c4
+[Documents] replacement 031d3de9-c98c-4aea-8e1d-02501e334c56 of 0001930c-68f9-4427-affb-fed3993c6e9c: queued → running
+[Documents] replacement 031d3de9-c98c-4aea-8e1d-02501e334c56 of 0001930c-68f9-4427-affb-fed3993c6e9c running → failed: Task 4a12b080-cd0e-4c94-a4f2-dbd9c0a5f5c4 completed without registering a new revision of this document
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[Documents] replacement 0310816f-f59e-46a5-9c36-8c169d38fece accepted for 0001930c-68f9-4427-affb-fed3993c6e9c (base 8e831ce9-04ea-4ec6-a6b7-9cc9b02258e4, task pending, attempt 2); superseded drafts: none
+[Documents] replacement 0310816f-f59e-46a5-9c36-8c169d38fece of 0001930c-68f9-4427-affb-fed3993c6e9c: accepted → queued, task c1967e21-dc92-40c2-9c6b-6e672b00cfab
+[Documents] replacement 0310816f-f59e-46a5-9c36-8c169d38fece of 0001930c-68f9-4427-affb-fed3993c6e9c: queued → running
+[Documents] replacement 0310816f-f59e-46a5-9c36-8c169d38fece of 0001930c-68f9-4427-affb-fed3993c6e9c running → failed: Task c1967e21-dc92-40c2-9c6b-6e672b00cfab completed without registering a new revision of this document
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ✔ a request Nexus closed as recovery_required is recovered by recover=true: exactly one new attempt, and the permission is spent (49.373125ms)
+[Documents] replacement 7743b898-3041-4f3a-99d2-282358da946a accepted for ee89d443-3e0d-4978-89cf-0f96d67550a1 (base d355da15-7cca-4b9a-bb49-29c5bad02295, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 7743b898-3041-4f3a-99d2-282358da946a of ee89d443-3e0d-4978-89cf-0f96d67550a1: held → held, task 1e68847c-62bb-417d-a286-676dfb191943
+[Documents] replacement 7743b898-3041-4f3a-99d2-282358da946a of ee89d443-3e0d-4978-89cf-0f96d67550a1: held → cancelled
+  ✔ an alias waiting on the request that owns its task is never dispatched after that work is cancelled (33.225875ms)
+[Documents] replacement 5e4c285c-5d14-49cc-a492-2fb70f7270fb accepted for 984659ba-a572-4f0c-aee6-f88d27ea4128 (base 18bcfeca-e5c0-4e61-afc8-81cef77faa0c, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 5e4c285c-5d14-49cc-a492-2fb70f7270fb of 984659ba-a572-4f0c-aee6-f88d27ea4128: accepted → held, task 014223fd-751f-49e1-816c-65a8b1b52fb8
+[Documents] replacement 5e4c285c-5d14-49cc-a492-2fb70f7270fb of 984659ba-a572-4f0c-aee6-f88d27ea4128: held → running
+  ✔ a hold arriving during task creation survives advancement and prevents dispatch (46.223917ms)
+[Documents] replacement b35bc865-b0bd-40fd-95ae-fd2d53f0c834 accepted for db814c76-085b-43b1-bea9-58f11f7db408 (base 27098813-9680-44ce-890b-8074d376e1a2, task pending, attempt 1); superseded drafts: none
+[Documents] replacement b35bc865-b0bd-40fd-95ae-fd2d53f0c834 of db814c76-085b-43b1-bea9-58f11f7db408: accepted → queued, task 3151708a-9ba3-4ce2-84cc-50a7cebf0f22
+[Documents] replacement b35bc865-b0bd-40fd-95ae-fd2d53f0c834 of db814c76-085b-43b1-bea9-58f11f7db408: queued → held
+[Documents] replacement b35bc865-b0bd-40fd-95ae-fd2d53f0c834 of db814c76-085b-43b1-bea9-58f11f7db408: held → running
+  ✔ a hold arriving during final replacement read survives advancement and prevents dispatch (53.858583ms)
+[Documents] replacement 9c9a9ddd-1d55-48a7-85e2-99d573f3c0d1 accepted for 364a6480-10e9-4587-901a-965c1a24e02b (base 0443e939-08bf-4f83-a853-31a7b66989a9, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 9c9a9ddd-1d55-48a7-85e2-99d573f3c0d1 of 364a6480-10e9-4587-901a-965c1a24e02b: held → queued, task f6de4b15-9040-486f-b836-8614596d7716
+[Documents] replacement 9c9a9ddd-1d55-48a7-85e2-99d573f3c0d1 of 364a6480-10e9-4587-901a-965c1a24e02b: queued → running
+  ✔ a hold released during task creation is not restored by the older advancing record (42.908ms)
+[Documents] request_changes recorded for 05c8aa76-1293-421f-96b5-94602e6fd38d revision 9f83f179-e18b-4c76-af7c-ff3b8d0002df (authority=operator_credential)
+[Documents] replacement 9596105e-c939-4a6c-92c0-a04316ad479d accepted for 05c8aa76-1293-421f-96b5-94602e6fd38d (base 9f83f179-e18b-4c76-af7c-ff3b8d0002df, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 9596105e-c939-4a6c-92c0-a04316ad479d of 05c8aa76-1293-421f-96b5-94602e6fd38d: held → held, task 858c9cc8-71c7-4ff7-a950-48c279a2de40
+[Documents] replacement 9596105e-c939-4a6c-92c0-a04316ad479d of 05c8aa76-1293-421f-96b5-94602e6fd38d: held → queued
+[Documents] replacement 9596105e-c939-4a6c-92c0-a04316ad479d of 05c8aa76-1293-421f-96b5-94602e6fd38d: queued → held
+[Documents] replacement 9596105e-c939-4a6c-92c0-a04316ad479d of 05c8aa76-1293-421f-96b5-94602e6fd38d qa_passed → ready: QA passed and the registered revision is the current ready version
+[Documents] replacement 9596105e-c939-4a6c-92c0-a04316ad479d of 05c8aa76-1293-421f-96b5-94602e6fd38d: implemented → ready
+  ✔ long feedback, a long hold, a long dispatch receipt and long QA reasons survive whole: ledger, task prompt and the live Nexus replacement (51.388333ms)
+[Documents] review d2148e61-2693-4c55-b968-80f0858033d3 finished with approval of revision a4d99949-7f72-4dd6-aa86-07f87b2cc43c recorded (authority=operator_credential, submission=939a8009-beaa-435e-bfd2-00f1c2929ac8)
+  ✔ the approve checkbox approves the version he read, keeps the note on every read path and starts no revision (20.782959ms)
+[Documents] review 11a6b26d-a2c6-4b81-8805-18e3513d5a60 finished with approval of revision 01ad5eee-e2cf-4d48-9d1e-1a0e3a0a15f1 recorded (authority=operator_credential, submission=faf86ae1-79e6-4e54-944e-2e2231ab2b66)
+  ✔ an approval with no note records the approval and asks for nothing (11.5945ms)
+[Documents] review 6a40c28f-0c84-409d-a0ad-90b79864703b finished with approval of revision 293943b5-ee90-4c5d-bdc6-ff219f48a1e9 recorded (authority=operator_credential, submission=bd94f2d8-9af9-4827-a71a-5bb265b079f0)
+  ✔ a tool request that races the inbox on an approved review opens nothing, and the receipt still names the approval (18.019917ms)
+[Documents] review a94cb455-a9ea-4a4a-be5e-33adfdc68376 finished with approval of revision 82e98624-aaa6-47ef-a8c6-041588fde2ae recorded (authority=operator_credential, submission=6f346a95-b915-4f24-824d-7ecb19f358af)
+[Documents] request_changes recorded for 152062e3-160f-48e6-8951-16542b57d152 revision 82e98624-aaa6-47ef-a8c6-041588fde2ae (authority=operator_credential)
+[Documents] replacement 0411ed05-3320-45e8-8cce-3f3911a19e0f accepted for 152062e3-160f-48e6-8951-16542b57d152 (base 82e98624-aaa6-47ef-a8c6-041588fde2ae, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 0411ed05-3320-45e8-8cce-3f3911a19e0f of 152062e3-160f-48e6-8951-16542b57d152: accepted → queued, task 41f79026-6ec7-4b6f-80ad-808cac08e2b2
+[Documents] replacement 0411ed05-3320-45e8-8cce-3f3911a19e0f of 152062e3-160f-48e6-8951-16542b57d152: queued → running
+  ✔ after an approved finish, a request_changes decision carried by the next finished review opens exactly one revision (27.816917ms)
+[Documents] review 10623ed9-e120-41d1-a798-6f8640a85784 finished with approval of revision 5f64897c-f58a-4a4d-b2be-9fba72153bac recorded (authority=operator_credential, submission=a8872213-d0c9-48c4-b6af-6891507c3f93)
+[Documents] request_changes recorded for 022eca6f-01f9-4317-9eda-b50fb0657366 revision 5f64897c-f58a-4a4d-b2be-9fba72153bac (authority=operator_credential)
+[Documents] replacement ab8913ca-81aa-4c23-973d-fd4a9fcf3e67 accepted for 022eca6f-01f9-4317-9eda-b50fb0657366 (base 5f64897c-f58a-4a4d-b2be-9fba72153bac, task pending, attempt 1); superseded drafts: none
+[Documents] replacement ab8913ca-81aa-4c23-973d-fd4a9fcf3e67 of 022eca6f-01f9-4317-9eda-b50fb0657366: accepted → queued, task 51b41f1a-a447-4f19-9c76-83bf75cb6caf
+[Documents] replacement ab8913ca-81aa-4c23-973d-fd4a9fcf3e67 of 022eca6f-01f9-4317-9eda-b50fb0657366: queued → running
+[tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ⚠️ Nexus GET /api/projects: [tests/bootstrap] refused live fleet request GET http://127.0.0.1:4000/api/projects — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+  ✔ a relay of an approved finish under a later request_changes opens one revision and quotes only his words (26.273042ms)
+  ✔ empty approve-after-changes replay records no change, preserves review and approval, and tells Robert once (18.893209ms)
+[Documents] replacement 61bdeb3f-283b-4464-b361-119f5c45973b accepted for d25be0a4-f06d-4a75-9d3e-e4cb195c2905 (base d4490eed-a308-4a7c-96aa-c364f55217bd, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 61bdeb3f-283b-4464-b361-119f5c45973b of d25be0a4-f06d-4a75-9d3e-e4cb195c2905: accepted → queued, task eb1075d0-4642-4536-8dae-f7a9c73e7e0e
+[Documents] replacement 61bdeb3f-283b-4464-b361-119f5c45973b of d25be0a4-f06d-4a75-9d3e-e4cb195c2905: queued → running
+  ✔ approve-after-changes with one comment creates exactly one revision task on replay (26.389917ms)
+[Documents] replacement 42ed527b-dddc-4325-81c6-1db6c79b996d accepted for eabd1a4c-bfae-4fea-8223-98e529b6da6c (base 407e06eb-11fe-48c9-840b-d96d7da06713, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 42ed527b-dddc-4325-81c6-1db6c79b996d of eabd1a4c-bfae-4fea-8223-98e529b6da6c: accepted → queued, task 0fcff2b3-03ae-4201-a03e-2ed29e1d52ad
+[Documents] replacement 42ed527b-dddc-4325-81c6-1db6c79b996d of eabd1a4c-bfae-4fea-8223-98e529b6da6c: queued → running
+  ✔ approve-after-changes with feedback text creates exactly one revision task on replay (22.80825ms)
+[Documents] replacement 61848570-08bf-4108-9012-ff62ee1ce33b accepted for d440ea17-875a-4ed2-8a3d-b3d274a26ba5 (base 229e6586-e901-47b9-b2cb-1c9873379d81, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 61848570-08bf-4108-9012-ff62ee1ce33b of d440ea17-875a-4ed2-8a3d-b3d274a26ba5: accepted → queued, task 07158b26-6b84-4f41-afdf-f4be0ae80e11
+[Documents] replacement 61848570-08bf-4108-9012-ff62ee1ce33b of d440ea17-875a-4ed2-8a3d-b3d274a26ba5: queued → running
+[Documents] replacement 61848570-08bf-4108-9012-ff62ee1ce33b of d440ea17-875a-4ed2-8a3d-b3d274a26ba5: running → cancelled
+  ✔ a revision executor can finish no change needed without promising or failing delivery (53.441375ms)
+  ✔ an empty historical review relay and a tool replay use the same submission receipt (14.52775ms)
+[Documents] replacement 54860574-6b88-4cfd-8b02-4cb05e338f0a accepted for e21e8516-c1d4-483d-ad52-68961884aaa9 (base 9df9589a-9552-4a17-b957-2a00358f6d5b, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 54860574-6b88-4cfd-8b02-4cb05e338f0a of e21e8516-c1d4-483d-ad52-68961884aaa9: accepted → queued, task d6f29408-e38b-4147-ab48-f33acd2f0933
+[Documents] replacement 54860574-6b88-4cfd-8b02-4cb05e338f0a of e21e8516-c1d4-483d-ad52-68961884aaa9: queued → running
+  ✔ no-change output cannot waive another task or an explicit promise of review output (35.1615ms)
+[Documents] replacement 442c2101-70a0-4bb3-a0f5-a91c5b17fa63 accepted for 4ed407d2-d235-4fe9-a289-a7dec6bbfd42 (base 674c6047-4a8b-4785-b87c-bada80ddad85, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 442c2101-70a0-4bb3-a0f5-a91c5b17fa63 of 4ed407d2-d235-4fe9-a289-a7dec6bbfd42: accepted → queued, task f06b6cbd-9c3b-4468-b045-5d94db9cfea9
+[Documents] replacement 442c2101-70a0-4bb3-a0f5-a91c5b17fa63 of 4ed407d2-d235-4fe9-a289-a7dec6bbfd42: queued → running
+[Documents] replacement 442c2101-70a0-4bb3-a0f5-a91c5b17fa63 of 4ed407d2-d235-4fe9-a289-a7dec6bbfd42: running → cancelled
+  ✔ a malformed no-change marker is corrected once in the same session and finishes the revision (353.996833ms)
+  ✔ a tool request racing the review inbox checks the submission behind the relay text (17.134417ms)
+[Documents] replacement 7b46e197-bd30-4a20-9dbc-13c11dd9c506 accepted for 56dd1dd3-ca67-4ec8-ad5e-df463dd19a53 (base 3597122f-9c86-48f3-88a0-0f5443a97961, task pending, attempt 1); superseded drafts: none
+[Documents] replacement 7b46e197-bd30-4a20-9dbc-13c11dd9c506 of 56dd1dd3-ca67-4ec8-ad5e-df463dd19a53: accepted → queued, task 8802b726-179f-495e-937a-ffde030e27c6
+[Documents] replacement 7b46e197-bd30-4a20-9dbc-13c11dd9c506 of 56dd1dd3-ca67-4ec8-ad5e-df463dd19a53: queued → running
+  ✔ direct operator feedback before empty review intake creates one revision without reading the package (38.345417ms)
+[Documents] replacement a0882b30-a59d-49f3-8eec-ad9efc150336 accepted for 57d19bce-5952-44eb-8cec-bd7d0c292483 (base 9d96884e-d78c-463b-a4bc-dd44abd54b0a, task pending, attempt 1); superseded drafts: none
+[Documents] replacement a0882b30-a59d-49f3-8eec-ad9efc150336 of 57d19bce-5952-44eb-8cec-bd7d0c292483: accepted → queued, task e8b1dcaa-612e-485c-932e-09a380bf7f88
+[Documents] replacement a0882b30-a59d-49f3-8eec-ad9efc150336 of 57d19bce-5952-44eb-8cec-bd7d0c292483: queued → running
+  ✔ direct operator feedback after empty review intake creates one revision without reading the package (42.764583ms)
+[Documents] 481703d4-121d-4e5b-a1cd-82389922ed62 reopened from retirement 032c565f-f2e6-4689-b552-a529c0f12c2c (replaced by null) by synthetic-operator
+  ✔ the November 14 chat ruling retires the checkpoint review only after both commands are settled (29.817833ms)
+  ✔ rewriting the Bowery Princes preview purpose withdraws its review in the same handoff (29.437125ms)
+  ✔ the saved whole-scope reply retires the three prose decisions in the podcast scope (17.012167ms)
+[Documents] replacement b931aa07-1795-4432-95f1-941a47e528d7 accepted for 332074ab-6f94-476e-984b-fff3e3050c4e (base 5d3eb512-6ff5-488d-8fdc-4da16d7daac7, task pending, attempt 1); superseded drafts: none
+[Documents] replacement b931aa07-1795-4432-95f1-941a47e528d7 of 332074ab-6f94-476e-984b-fff3e3050c4e: accepted → queued, task c618b420-9c7d-440b-b2de-9181b50f0a20
+[Documents] replacement b931aa07-1795-4432-95f1-941a47e528d7 of 332074ab-6f94-476e-984b-fff3e3050c4e: queued → running
+  ✔ cancelling the only task to revise an obsolete preview retires the review (36.656ms)
+✔ document change requests travel the shipped Nexus version lifecycle end to end (2627.355209ms)
+ℹ tests 42
+ℹ suites 0
+ℹ pass 42
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3330.579625
+exit 0

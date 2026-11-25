@@ -1,0 +1,29 @@
+# guard logs under /Volumes/Projects/.scratch-fa032fc0, scanned 2026-11-24 21:58:38 EST
+# columns: lines in the log, lines naming port 1234, path relative to the scratch folder
+     9    0  cli-shims-merge-commit.log
+     0    0  cli-shims-more-related-mh.log
+     0    0  cli-shims-plain-merge-commit-failing.log
+     3    0  cli-shims-related-mh.log
+     0    0  cli-shims-selection-mh.log
+     6    0  cli-shims-wider-mh.log
+     6    0  cli-shims.log
+     0    0  live-port-guard-dashboard-merged7.log
+     1    0  live-port-guard-merge-commit.log
+     0    0  live-port-guard-more-related-mh.log
+     0    0  live-port-guard-nexus-merged7.log
+     1    0  live-port-guard-plain-merge-commit-failing.log
+     0    0  live-port-guard-related-mh.log
+     0    0  live-port-guard-selection-mh.log
+     2    0  live-port-guard-selftest.log
+     0    0  live-port-guard-wider-mh.log
+     0    0  lmstudio-guard-dashboard-merged7.log
+     2    0  lmstudio-guard-merge-commit.log
+     0    0  lmstudio-guard-more-related-mh.log
+     0    0  lmstudio-guard-nexus-merged7.log
+     1    0  lmstudio-guard-plain-merge-commit-failing.log
+     1    0  lmstudio-guard-related-mh.log
+     0    0  lmstudio-guard-selection-mh.log
+     0    0  lmstudio-guard-wider-mh.log
+     6    0  net-guard-merge-commit.log
+     6    0  net-guard-wider-mh.log
+# 26 guard logs, 0 lines naming port 1234

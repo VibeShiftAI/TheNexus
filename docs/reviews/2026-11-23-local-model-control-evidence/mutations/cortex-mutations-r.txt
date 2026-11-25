@@ -1,0 +1,64 @@
+TheCortex under test: 892708c8df06133e9b545962ac82575ec7eea9c0 (scratch copy /Volumes/Projects/.scratch-fa032fc0/cortex-mut-r)
+== control: no mutation
+   result: ======================== 26 passed, 1 warning in 0.08s ========================= exit=0 
+== R1: a caller sends its read while another is in flight
+   local_model.py @@ -115,11 +115,6 @@
+   local_model.py      global _reads_started, _read_in_flight, _read_returned, _returned, _last_answer
+   local_model.py      with _lock:
+   local_model.py          asked_after = _reads_started
+   local_model.py -        while _read_in_flight:
+   local_model.py -            _lock.wait()
+   local_model.py -            if _read_returned > asked_after:
+   local_model.py -                # A read that started after this call asked has come back.
+   local_model.py -                return _returned
+   local_model.py          _reads_started += 1
+   local_model.py          this_read = _reads_started
+   local_model.py          _read_in_flight = True
+   result: =================== 4 failed, 22 passed, 1 warning in 15.61s =================== exit=1 
+   FAILED tests/test_local_model_setting.py::test_a_read_asked_while_another_is_in_flight_is_sent_after_it_so_the_newest_answer_is_kept
+   FAILED tests/test_local_model_setting.py::test_callers_that_ask_while_a_read_is_in_flight_share_the_next_read
+   FAILED tests/test_local_model_setting.py::test_when_the_shared_read_gets_no_answer_every_waiting_caller_keeps_the_last_model
+   FAILED tests/test_local_model_setting.py::test_a_read_that_raises_lets_a_waiting_caller_send_the_next_one
+== R2: a waiting caller takes the answer of a read that started before it asked
+   local_model.py @@ -117,7 +117,7 @@
+   local_model.py          asked_after = _reads_started
+   local_model.py          while _read_in_flight:
+   local_model.py              _lock.wait()
+   local_model.py -            if _read_returned > asked_after:
+   local_model.py +            if _read_returned >= asked_after:
+   local_model.py                  # A read that started after this call asked has come back.
+   local_model.py                  return _returned
+   local_model.py          _reads_started += 1
+   result: =================== 3 failed, 23 passed, 1 warning in 0.11s ==================== exit=1 
+   FAILED tests/test_local_model_setting.py::test_a_read_asked_while_another_is_in_flight_is_sent_after_it_so_the_newest_answer_is_kept
+   FAILED tests/test_local_model_setting.py::test_callers_that_ask_while_a_read_is_in_flight_share_the_next_read
+   FAILED tests/test_local_model_setting.py::test_when_the_shared_read_gets_no_answer_every_waiting_caller_keeps_the_last_model
+== R3: a read that raises leaves the in-flight mark set and wakes no one
+   local_model.py @@ -124,9 +124,9 @@
+   local_model.py          this_read = _reads_started
+   local_model.py          _read_in_flight = True
+   local_model.py      result: Optional[Tuple[Optional[str], Optional[str]]] = None
+   local_model.py -    try:
+   local_model.py +    if True:
+   local_model.py          result = local_model_in_effect()
+   local_model.py -    finally:
+   local_model.py +    if True:
+   local_model.py          with _lock:
+   local_model.py              # A read that raised returned nothing; a caller still waiting
+   local_model.py              # sends the next one.
+   result: =================== 1 failed, 25 passed, 1 warning in 5.31s ==================== exit=1 
+   FAILED tests/test_local_model_setting.py::test_a_read_that_raises_lets_a_waiting_caller_send_the_next_one
+== R4: a waiting caller sends its own read even when one it can share came back
+   local_model.py @@ -119,7 +119,7 @@
+   local_model.py              _lock.wait()
+   local_model.py              if _read_returned > asked_after:
+   local_model.py                  # A read that started after this call asked has come back.
+   local_model.py -                return _returned
+   local_model.py +                pass
+   local_model.py          _reads_started += 1
+   local_model.py          this_read = _reads_started
+   local_model.py          _read_in_flight = True
+   result: =================== 2 failed, 24 passed, 1 warning in 0.11s ==================== exit=1 
+   FAILED tests/test_local_model_setting.py::test_callers_that_ask_while_a_read_is_in_flight_share_the_next_read
+   FAILED tests/test_local_model_setting.py::test_when_the_shared_read_gets_no_answer_every_waiting_caller_keeps_the_last_model
+== scratch copy left at /Volumes/Projects/.scratch-fa032fc0/cortex-mut-r for inspection; deleted with the scratch folder

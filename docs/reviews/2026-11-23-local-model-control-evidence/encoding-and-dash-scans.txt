@@ -1,0 +1,120 @@
+# Final encoding and em-dash scans, 2026-11-24 22:18 EST, read-only (made by final-scans.sh)
+
+## TheNexus 7c63bd21 plus working tree, every file changed against bd02642895fe6a914fe04e45af35bee773f3453e, and untracked files
+files: 449 (8 PNG skipped)
+scanned 441 files, problems 0
+
+## TheCortex 1eca58e, every file changed against 17ee69cebb5c1403dbef27929d19963134e8bec8
+files: 12; working tree status: 0 changed files
+scanned 12 files, problems 0
+
+## Praxis: its own check:encoding output is in praxis-encoding-scan.txt; the same UTF-8 scan as above
+scanned 21 files, problems 0
+
+## Em dashes (U+2014) in added lines
+Praxis (1bac2ea7901c8203a1ba271b555fbc3c2a1d8d7d..HEAD, 21 files): 0
+TheCortex (17ee69cebb5c1403dbef27929d19963134e8bec8..HEAD): 0
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/criterion-2-sites.txt 5
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/criterion-9-attribution.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/criterion-9-final-readback.txt 8
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/criterion-9-live-readback.txt 1
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/dashboard-baseline-failing-tests.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/dashboard-full-suite.txt 7
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/nexus-server-tests-first-run.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/nexus-server-tests-main-2a7952fc.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/nexus-server-tests-main-a2870083.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/nexus-server-tests.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-chat-turn-steps-and-quantized-plain-main.txt 42
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-merged-519530a9.txt 326
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-merged.txt 440
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-plain-main-1bac2ea7-196a5375.txt 292
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-plain-main-1bac2ea7-a8caeb09.txt 294
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-plain-main-1bac2ea7-bd19e926.txt 292
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-plain-main-1bac2ea7.txt 294
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-plain-main-519530a9.txt 324
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-plain-main-59cacac6.txt 288
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-plain-main.txt 440
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-tests-full-run.txt 1
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-tests-merged.txt 1
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-tests-plain-main.txt 1
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-full-suite-summary-and-failures.txt 4
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-git-reading-tests-branch.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-git-reading-tests-plain-main-4d076f91.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-git-reading-tests-plain-main-613f66b6.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-git-reading-tests-plain-main-fbce5c26.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-git-reading-tests-plain-main.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-lifecycle-alone-merged-519530a9.txt 36
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-lifecycle-alone-plain-main-519530a9.txt 36
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-network-hazard-suites-plain-main.txt 428
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-nexus-root-five-round4-run.txt 38
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-nexus-root-five-today-run.txt 38
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-nexus-root-round4-run.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-nexus-root-today-run.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-qa-state-alone-merged-519530a9.txt 49
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-qa-state-alone-plain-main-4d076f91.txt 72
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-qa-state-alone-plain-main-519530a9.txt 49
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-related-tests-main-4d076f91.txt 312
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-related-tests.txt 312
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-tests-merged-613f66b6.txt 839
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-tests-merged-fbce5c26.txt 841
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-tts-provider-alone-merged.txt 14
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/merged-main/suite-hazard-scan-1bac2ea7.txt 3
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-e.txt 4
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-f.txt 4
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-g.txt 4
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-g2.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-j.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-k.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-l.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-l2.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-m.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-n.txt 8
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-o.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-p.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-q.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-r.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-r2.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-r7-k1.txt 71
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-r7-k2.txt 71
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-r7-k3.txt 71
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-s1.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-s2.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-s3.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-s4.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-s5.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-s6.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-s7.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-t.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-u.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-z-restored.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/nexus-related-server-tests.txt 2
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/praxis-credit-preflight-tests.txt 4
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/praxis-local-model-selection-tests.txt 8
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/praxis-more-related-tests.txt 114
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/praxis-related-tests-earlier-run.txt 291
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/praxis-related-tests.txt 315
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/praxis-round7-precommit-selection-run.txt 6
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/praxis-voice-deadline-rerun.txt 3
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/praxis-wider-tests-before-fixture-fix.txt 417
+  verbatim output: docs/reviews/2026-11-23-local-model-control-evidence/praxis-wider-tests.txt 419
+  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/criterion-9-load-2204.txt 2
+  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/criterion-9-readback-2145.txt 7
+  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/criterion-2-sites-merge-commits.txt 5
+  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/nexus-server-tests-main-2a7952fc-merge-round.txt 2
+  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-failing-suites-plain-main-1bac2ea7-merge-commit.txt 292
+  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-more-related-tests-merge-head.txt 114
+  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-related-tests-merge-head.txt 310
+  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-selection-tests-merge-head.txt 25
+  verbatim output (untracked): docs/reviews/2026-11-23-local-model-control-evidence/merged-main/praxis-wider-tests-merge-head.txt 425
+TheNexus code, docs and scripts this task wrote: 0
+TheNexus verbatim outputs in the evidence folder (products' own wording): 9273
+
+## The dashboard since the round-1 evidence commit e1bfcc97 (working tree included)
+dashboard files changed: 0
+
+## The registered review package (docs/reviews/2026-11-23-local-model-control/)
+c7199413194f657647e0966e6570363e56cc1a8a2116816a4ea3dcb9c574b4ed  docs/reviews/2026-11-23-local-model-control/desktop-model-in-effect-and-list.png
+38e7da1a943ac3d89e1b529c22cc0a67f43efe24e444afd7c76078dd9b5830bf  docs/reviews/2026-11-23-local-model-control/desktop-switch-waiting-behind-local-job.png
+78dc7042156d7516d6701e94d1a06a276f43150c43a4053e5cfd66e503f98beb  docs/reviews/2026-11-23-local-model-control/phone-model-in-effect-and-list.png
+uncommitted changes in the package folder: 0
+files in the package folder: desktop-model-in-effect-and-list.png desktop-switch-waiting-behind-local-job.png local-model-control.design.json phone-model-in-effect-and-list.png 

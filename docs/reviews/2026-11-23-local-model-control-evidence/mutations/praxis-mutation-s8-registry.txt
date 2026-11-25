@@ -1,0 +1,31 @@
+Praxis under test: bd19e926a16509bd213f49c20f4c95bed95a43e9 (scratch copy /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r6-registry)
+registry fixture: {"schemaVersion":1,"generatedAt":"2026-11-24T00:00:00Z","executors":{"antigravity":{"executor":"antigravity","source":"test","models":[{"id":"gemini-3.1-pro-preview","label":"Gemini 3.1 Pro (fixture)","listed":true}]}}}
+== control-registry: as committed, whole suite
+   result: ℹ tests 49 ℹ pass 49 ℹ fail 0 ℹ cancelled 0 exit 0 
+   passed: 49
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== pair-control-registry: as committed, the two tests only
+   result: ℹ tests 2 ℹ pass 2 ℹ fail 0 ℹ cancelled 0 exit 0 
+   passed: 2
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== pair-s8-registry: the round-5 helper, the two tests only
+   tests/local_model_selection.test.ts: removed the line restoring manager.activeModel in primaryForTest
+   result: ℹ tests 3 ℹ pass 1 ℹ fail 2 ℹ cancelled 0 exit 1 
+   passed: 1
+   ✖ /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r6-registry/tests/local_model_selection.test.ts
+   ✖ complete() for a role resolved through local_default that read Gemma before a switch took effect during its admission is refused at the slot claim and escalated, not answered by Gemma
+   detail:   AssertionError [ERR_ASSERTION]: answered
+   detail:       at TestContext.<anonymous> (/Volumes/Projects/.scratch-fa032fc0/praxis-mut-r6-registry/tests/local_model_selection.test.ts:1452:10)
+   detail:     actual: false,
+   detail:     expected: true,
+   detail: ✖ /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r6-registry/tests/local_model_selection.test.ts (0.341583ms)
+   hook: AssertionError [ERR_ASSERTION]: the manager's primary is as it was before the suite
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== s8-registry: the round-5 helper, whole suite
+/Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/TheNexus/docs/reviews/2026-11-23-local-model-control-evidence/mutations/praxis-mutation-s8-registry.sh: line 32: 51830 Alarm clock: 14         perl -e 'alarm 270; exec @ARGV' env -u NODE_TEST_CONTEXT -u GOOGLE_API_KEY -u YOUTUBE_API_KEY -u LLM_PRIMARY_PROVIDER -u LLM_PRIMARY_MODEL PRAXIS_DATA_DIR="$data" LOCAL_LLM_URL=http://127.0.0.1:1/v1 PATH="$S/cli-shims:$PATH" CLAUDE_CODE_BIN=$S/cli-shims/claude CODEX_BIN=$S/cli-shims/codex AGY_BIN=$S/cli-shims/agy PRAXIS_LMS_BIN=$S/fake-lms LMSTUDIO_GUARD_LOG=$S/lmstudio-guard-mut.log NET_GUARD_LOG=$S/net-guard-mut.log LIVE_PORTS_FILE=$S/live-ports-mut.txt LIVE_PORT_GUARD_LOG=$S/live-port-guard-mut.log NODE_OPTIONS="--import=file://$S/lmstudio-guard.mjs --import=file://$S/net-guard.mjs --import=file://$S/live-port-guard.mjs" npm test -- ${flag:+"$flag"} tests/local_model_selection.test.ts > $S/praxis-mutation-r6-$name.txt 2>&1
+   result: exit 142 
+   passed: 40
+   ✖ complete() for a role resolved through local_default that read Gemma before a switch took effect during its admission is refused at the slot claim and escalated, not answered by Gemma
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+   left running after the alarm, stopped: 51841 51842 51843 51845 51848
+== scratch copy left at /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r6-registry for inspection; deleted with the scratch folder

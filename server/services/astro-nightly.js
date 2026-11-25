@@ -272,7 +272,15 @@ function createAstroNightly({ sql, uuid, now, ingestion, getChannel, callAI, dep
 
   // ---- orchestration -----------------------------------------------------
 
-  async function run({ channelId = IMPOSSIBLE_WORLDS, existingRunId } = {}) {
+  // Each run is one piece of Studio local work (its extractions call the local
+  // model), so a switch of local model chosen under Model Control waits for it.
+  const asLocalWork = (label, fn) => (typeof ingestion.withLocalWork === 'function' ? ingestion.withLocalWork(label, fn) : fn());
+
+  function run(args = {}) {
+    return asLocalWork('Studio astrophysics nightly run', () => runNightly(args));
+  }
+
+  async function runNightly({ channelId = IMPOSSIBLE_WORLDS, existingRunId } = {}) {
     const channel = getChannel(channelId);
     if (!channel) throw new Error(`Channel not found: ${channelId}`);
     const runId = existingRunId || ingestion.createRun(channelId, 'nightly');
@@ -312,7 +320,11 @@ function createAstroNightly({ sql, uuid, now, ingestion, getChannel, callAI, dep
 
   // Standalone enrichment drain — used by the "Enrich catalog" button to deepen
   // existing objects (parameters + related videos) without re-pulling NASA/ArXiv.
-  async function runEnrichment({ channelId = IMPOSSIBLE_WORLDS, existingRunId, batch } = {}) {
+  function runEnrichment(args = {}) {
+    return asLocalWork('Studio catalog enrichment', () => runEnrichmentNow(args));
+  }
+
+  async function runEnrichmentNow({ channelId = IMPOSSIBLE_WORLDS, existingRunId, batch } = {}) {
     const channel = getChannel(channelId);
     if (!channel) throw new Error(`Channel not found: ${channelId}`);
     const runId = existingRunId || ingestion.createRun(channelId, 'enrich');

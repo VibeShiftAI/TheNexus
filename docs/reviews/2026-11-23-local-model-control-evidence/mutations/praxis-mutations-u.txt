@@ -1,0 +1,9 @@
+== mutation u (src/llm/manager.ts): applied; insideCountedLocalCall lines: 1232 
+ℹ tests 33 ℹ pass 32 ℹ fail 1 exit 1 
+✖ a local call the closed daytime lane sends elsewhere is not local work: a switch chosen while it runs applies at once, and the count of local calls stays at zero
+guards: lmstudio=0 net=0
+== mutation l2 (src/llm/manager.ts): applied; insideCountedLocalCall lines: 
+ℹ tests 33 ℹ pass 31 ℹ fail 2 exit 1 
+✖ a pinned local call is local work from the moment it is made: a switch chosen while it waits for a slot waits for it, and the call is counted once
+✖ a pinned local call that finds LM Studio's slot empty stays local work through the reload and its retry, so a switch chosen meanwhile waits for it
+guards: lmstudio=0 net=0

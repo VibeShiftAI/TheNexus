@@ -13,6 +13,13 @@ const {
     CONSERVATIVE_THINKING_TIERS
 } = require('../services/model-discovery');
 const { getRoutingState } = require('../services/provider-credentials');
+const { createLocalModelSelection, LOCAL_ALIAS } = require('../services/local-model-selection');
+
+/** The loopback rule routes/praxis-stream.js uses for Praxis-only endpoints. */
+function isLoopbackRequest(req) {
+    const remote = (req.socket?.remoteAddress || '').replace(/^::ffff:/, '');
+    return remote === '127.0.0.1' || remote === '::1';
+}
 
 function normalizePolicyInput(body = {}) {
     const budget = body.budget && typeof body.budget === 'object' ? body.budget : {};
@@ -276,8 +283,11 @@ function safeRoutingState() {
     }
 }
 
-function createModelControlRouter({ db, syncModelSources, callAI, io }) {
+function createModelControlRouter({ db, syncModelSources, callAI, io, localModels: injectedLocalModels }) {
     const router = express.Router();
+    // The local model chosen under Model Control (task fa032fc0). server.js
+    // passes the instance Studio also uses, so a switch waits for its jobs.
+    const localModels = injectedLocalModels || createLocalModelSelection({ db, io });
 
     // ─── STATE.md trigger ─────────────────────────────────────────────────
     // Every setting below is a fact in the vault's living STATE.md (Praxis
@@ -772,11 +782,117 @@ function createModelControlRouter({ db, syncModelSources, callAI, io }) {
         }
     });
 
+    // ─── The local model (task fa032fc0) ──────────────────────────────────
+    // The panel's list comes from LM Studio's own listing; a choice is
+    // recorded and waits until no local work runs (services/local-model-selection.js).
+    const sendOutcome = (res, outcome) => res.status(outcome.status || 200).json(outcome.body);
+
+    router.get('/local-model', async (_req, res) => {
+        try {
+            res.json(await localModels.panel());
+        } catch (error) {
+            console.error('[Model Control] Failed to load the local model panel:', error);
+            res.status(500).json({ error: 'Failed to load the local model panel: ' + error.message });
+        }
+    });
+
+    // What Praxis and TheCortex read: the model in effect and a waiting choice.
+    router.get('/local-model/current', async (_req, res) => {
+        try {
+            res.json(await localModels.current());
+        } catch (error) {
+            console.error('[Model Control] Failed to read the local model setting:', error);
+            res.status(500).json({ error: 'Failed to read the local model setting: ' + error.message });
+        }
+    });
+
+    router.put('/local-model', async (req, res) => {
+        try {
+            const body = req.body || {};
+            const outcome = await localModels.select({
+                model: body.model,
+                surface: body.surface,
+                ...(body.selectionId !== undefined ? { expectSelectionId: body.selectionId } : {}),
+            });
+            if (!outcome.ok) return sendOutcome(res, outcome);
+            res.json({ ...outcome.body, panel: await localModels.panel() });
+        } catch (error) {
+            console.error('[Model Control] Failed to choose the local model:', error);
+            res.status(500).json({ error: 'Failed to choose the local model: ' + error.message });
+        }
+    });
+
+    router.post('/local-model/restore', async (req, res) => {
+        try {
+            const body = req.body || {};
+            const outcome = await localModels.restore({
+                surface: body.surface,
+                ...(body.selectionId !== undefined ? { selectionId: body.selectionId } : {}),
+            });
+            if (!outcome.ok) return sendOutcome(res, outcome);
+            res.json({ ...outcome.body, panel: await localModels.panel() });
+        } catch (error) {
+            console.error('[Model Control] Failed to restore the local model:', error);
+            res.status(500).json({ error: 'Failed to restore the local model: ' + error.message });
+        }
+    });
+
+    // Praxis, when no local work runs there: put the waiting choice into effect.
+    router.post('/local-model/apply', async (req, res) => {
+        try {
+            if (!isLoopbackRequest(req)) {
+                return res.status(403).json({ error: 'local_only', message: 'Only Praxis on this machine puts a switch into effect.' });
+            }
+            const body = req.body || {};
+            if (typeof body.selectionId !== 'string' || typeof body.model !== 'string') {
+                return res.status(400).json({ error: 'selection_required', message: 'Send the selectionId and model of the waiting choice.' });
+            }
+            sendOutcome(res, await localModels.apply({ selectionId: body.selectionId, model: body.model }));
+        } catch (error) {
+            console.error('[Model Control] Failed to apply the local model switch:', error);
+            res.status(500).json({ error: 'Failed to apply the local model switch: ' + error.message });
+        }
+    });
+
+    /**
+     * The alias editor and local_default: a new local target becomes a choice
+     * like the panel's (recorded, waits for local work); anything else would
+     * be a second way to set the local model, so it is refused, as is any
+     * edit that would leave it without a target or switched off. Returns null
+     * when the edit names the target it already has (a description edit).
+     */
+    async function localDefaultEdit(body) {
+        // true, 1 or no value keep the alias on; the store would take anything else ("0", "false") as off.
+        if (!(body.is_active === undefined || body.is_active === true || body.is_active === 1)) {
+            return { status: 400, body: { error: 'local_default_required', message: `${LOCAL_ALIAS} cannot be switched off: every role on the local model resolves through it. Choose the local model under Model Control.` } };
+        }
+        const target = typeof body.target === 'string' ? body.target.trim() : '';
+        if (!target) {
+            return { status: 400, body: { error: 'local_default_target', message: `${LOCAL_ALIAS} must name the local model, which is chosen under Model Control from LM Studio's list.` } };
+        }
+        const aliases = (await db.getModelAliases(false)) || [];
+        const existing = aliases.find(a => a.alias === LOCAL_ALIAS);
+        if (target === existing?.target) return null;
+        const row = target.startsWith('model:') ? await db.getModel(target.slice('model:'.length)) : null;
+        if (!row || String(row.provider || '').toLowerCase() !== 'local' || !row.api_model_id) {
+            return { status: 400, body: { error: 'local_default_target', message: `${LOCAL_ALIAS} names the local model, which is chosen under Model Control from LM Studio's list; it cannot point at ${target}.` } };
+        }
+        const outcome = await localModels.select({ model: row.api_model_id, surface: 'alias-editor' });
+        return { status: outcome.status, body: outcome.body };
+    }
+
     router.put('/aliases/:alias', async (req, res) => {
         try {
+            let target = req.body.target;
+            if (req.params.alias === LOCAL_ALIAS) {
+                const outcome = await localDefaultEdit(req.body || {});
+                if (outcome) return sendOutcome(res, outcome);
+                // The target it already has, as stored (localDefaultEdit compared it trimmed).
+                target = req.body.target.trim();
+            }
             res.json(await db.upsertModelAlias({
                 alias: req.params.alias,
-                target: req.body.target,
+                target,
                 description: req.body.description,
                 is_active: req.body.is_active
             }));
@@ -853,6 +969,11 @@ function createModelControlRouter({ db, syncModelSources, callAI, io }) {
 
     router.put('/projects/:id/aliases/:alias', async (req, res) => {
         try {
+            if (req.params.alias === LOCAL_ALIAS) {
+                // LM Studio holds one chat model for the whole machine, and only
+                // the model chosen under Model Control is loaded under its memory gate.
+                return res.status(400).json({ error: 'local_default_is_global', message: `The local model is one for the whole machine, so ${LOCAL_ALIAS} cannot be set per project. Choose it under Model Control.` });
+            }
             res.json(await db.upsertProjectModelAlias(req.params.id, {
                 alias: req.params.alias,
                 target: req.body.target,

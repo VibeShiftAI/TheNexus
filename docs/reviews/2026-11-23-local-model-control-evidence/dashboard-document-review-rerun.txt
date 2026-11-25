@@ -1,0 +1,29 @@
+✔ renders the report with its source task and anchors a tapped block comment to real lines (140.283834ms)
+✔ a failed save keeps the text and retries with the same client id; whole-document notes save too (113.217667ms)
+✔ Finish review submits once with the summary and shows queued then delivered with a receipt (178.836ms)
+✔ finishing with zero comments opens a draft and submits it (95.504667ms)
+✔ a changed document opens on the current file with honest anchor states; the reviewed revision is an explicit click and the only one annotated (77.481084ms)
+✔ a scheduled automatic retry keeps being observed until its outcome is known (152.013291ms)
+✔ a terminal delivery failure is shown as final and is not polled (135.054416ms)
+✔ a finish whose response was lost reconciles with the server instead of claiming nothing was sent (90.991916ms)
+✔ a finish rejected before it was processed says so and keeps the draft editable (27.032875ms)
+✔ on the phone, adding a whole-document note closes the review drawer so the composer is reachable, then returns to it (79.068208ms)
+✔ the checkbox says it approves this version and keeps the note, sends the flag with the finish, and the page shows the approval with its note (156.823ms)
+✔ an approval with no summary and no comments says approved and claims no note, while queued and once delivered (164.998209ms)
+✔ a plain finish carries no approve_after_changes field and shows no approval (93.279333ms)
+✔ a round finished under the old rule keeps an accurate card that promises no executor approval (65.307083ms)
+✔ where approving at finish could only be refused, the panel offers no checkbox and says why (218.092375ms)
+✔ a design package whose direction he already approved still offers the checkbox (16.753875ms)
+✔ the brief opens the stage, folded to the ask, and the sticky header holds only the slim bar (task 3f8d291a) (16.198333ms)
+✔ phone and tablet tap targets in the header, phone bar and drawers are at least 44px (task 3f8d291a) (16.9395ms)
+✔ every control in the review drawer, its expanded states, the navigator and the composer is a 44px target below lg (task 3f8d291a, QA round 1) (57.415834ms)
+✔ markdown: each block's 44px comment button fits its own block and keeps clear of the text below lg (12.778167ms)
+✔ a code file keeps its line rhythm: the line-number gutter is left out of the 44px floor, every other control is covered (11.723541ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2961.759667
