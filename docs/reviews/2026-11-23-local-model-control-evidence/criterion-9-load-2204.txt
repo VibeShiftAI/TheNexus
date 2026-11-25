@@ -1,0 +1,24 @@
+# Made 2026-11-24 22:06:23 EST by a read-only script; no service contacted.
+
+## LM Studio's server log: every model load and unload from 21:00 EST on
+[2026-11-24 22:04:03][INFO][LMSAuthenticator][Client=lms-cli][Endpoint=loadModel] Loading model: google/gemma-4-31b-qat
+[2026-11-24 22:04:03][DEBUG][LMSAuthenticator][Client=lms-cli][Endpoint=loadModel] Found 1 model(s) for key: google/gemma-4-31b-qat
+
+## The live Praxis log from 03:00:00Z to 03:04:45Z (22:00:00 to 22:04:45 EST):
+## the nightly scheduler, the intake sweep, the local calls, the autoload and
+## the gateway calls that followed (executor report echoes, 'Full body', left out)
+[2026-11-25T03:00:00.214Z] [INFO] 🔬 Nightly ingestion scheduler fired — enqueueing local queue sweep job
+[2026-11-25T03:00:00.650Z] [INFO] 🔬 Nightly ingestion sweep queued as local LLM job 817d4e74-fc6d-49ec-8848-232d551e803a
+[2026-11-25T03:00:00.667Z] [INFO] [LmAutoload] (service-restore) no LLM resident; idle TTL mode leaves it unloaded until a local call needs it
+[2026-11-25T03:00:53.951Z] [INFO] Knowledge intake sweep run_20261125_030053 started (ingestion_cron)
+[2026-11-25T03:04:02.588Z] [INFO] Knowledge intake sweep run_20261125_030053: 396/1059 items enqueued
+[2026-11-25T03:04:02.600Z] [INFO] [EvidencePreparation] run_20261125_030053: preparing 382 sources with 4 workers; 3 mirrored copy/copies of an already-listed source collapsed
+[2026-11-25T03:04:02.640Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T03:04:02.938Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T03:04:02.965Z] [INFO] [LmAutoload] lms load google/gemma-4-31b-qat -y --ttl 600 (unloads after 600 s idle)
+[2026-11-25T03:04:36.940Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 34s
+[2026-11-25T03:04:42.305Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T03:04:44.507Z] [INFO] [Webhook] /v1/llm gateway ok route=role:cortex.entity_extract depth=1 model=google/gemma-4-31b-qat tokens=82 caller=gateway.cortex.entity_extractor
+
+## The local-lane window
+22:04 ET is inside the 22:00-06:00 ET local-lane window, the window the read-back's LocalLane lines name.

@@ -8,7 +8,9 @@ echo "# Criterion 1 precondition check, $(date '+%Y-%m-%d %H:%M:%S %Z'), read-on
 for r in TheNexus Praxis TheCortex; do
   G="git -C $W/$r"
   echo
-  echo "== $r: main $($G rev-parse --short=8 main), branch head $($G rev-parse --short=8 HEAD), QA baseline $($G merge-base main HEAD | cut -c1-8)"
+  # The merge-base was the QA baseline until the merge-conflict repair merged
+  # main into the Praxis and TheCortex branches; since then it is main itself.
+  echo "== $r: main $($G rev-parse --short=8 main), branch head $($G rev-parse --short=8 HEAD), merge-base with main $($G merge-base main HEAD | cut -c1-8)"
   n=0
   while read -r full; do
     n=$((n + 1))

@@ -6,7 +6,17 @@ W=/Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a
 N=$W/TheNexus; P=$W/Praxis; C=$W/TheCortex
 E=$N/docs/reviews/2026-11-23-local-model-control-evidence
 EV=docs/reviews/2026-11-23-local-model-control-evidence
-NB=bd02642895fe6a914fe04e45af35bee773f3453e; PB=1fcf4b59; CB=5fdb76a
+NB=bd02642895fe6a914fe04e45af35bee773f3453e
+# The Praxis and TheCortex branches merged main in the merge-conflict repair
+# (Praxis 15b19a5c merged main 1bac2ea7, TheCortex 1eca58eb merged main
+# 17ee69ce), so a diff from the QA baselines (1fcf4b59, 5fdb76a) to the heads now
+# holds every other task's changes on main too. The task's own changes are the
+# diff from the main each branch merged to its head:
+# merged-main/praxis-merge-commit-1bac2ea7-output.txt and
+# merged-main/cortex-merge-commit-17ee69ce-output.txt (section 2) show it holds
+# the branch's own changed lines (TheCortex less the `import pytest` line and
+# blank line main added too).
+PB=1bac2ea7901c8203a1ba271b555fbc3c2a1d8d7d; CB=17ee69cebb5c1403dbef27929d19963134e8bec8
 
 # UTF-8 scan: fatal TextDecoder, plus BOM and U+FFFD, per file; PNGs are skipped.
 utf8_scan() { # <repo dir> <files...>

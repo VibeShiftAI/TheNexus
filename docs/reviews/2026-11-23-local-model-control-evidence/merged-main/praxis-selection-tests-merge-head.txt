@@ -1,0 +1,347 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/local_model_selection.test.ts tests/local_model_demand_callers.test.ts tests/local_lane_policy.test.ts
+
+Running 3 of 910 suite(s): tests/local_lane_policy.test.ts tests/local_model_demand_callers.test.ts tests/local_model_selection.test.ts
+
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_lane_policy.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T02:54:58.944Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_lane_policy.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE="sometimes" is not overnight|always; using overnight
+[2026-11-25T02:54:58.945Z] [WARN] [LocalLane] PRAXIS_LOCAL_LANE_MODE="sometimes" is not overnight|always; using overnight
+[LocalLane] PRAXIS_LOCAL_LANE_WINDOW="nonsense" is not HH:MM-HH:MM; using 22:00-06:00
+[2026-11-25T02:54:58.946Z] [WARN] [LocalLane] PRAXIS_LOCAL_LANE_WINDOW="nonsense" is not HH:MM-HH:MM; using 22:00-06:00
+✔ the window spec parses as HH:MM-HH:MM and refuses an empty or out-of-range window (0.802125ms)
+✔ mode defaults to overnight for the daemon and always under node:test unless set explicitly (5.298042ms)
+✔ the window is evaluated in Eastern time across the DST change and wraps midnight (0.206916ms)
+✔ a closed verdict names the window and the ET time; always mode and the operator grant open the lane (0.294625ms)
+[LocalLane] ingestion.graphiti asked for the local model at 14:00 ET, outside the 22:00-06:00 ET window; rerouted to deferred until the window opens. Further reroutes for this caller today are counted, not logged.
+[2026-11-25T02:54:58.955Z] [INFO] [LocalLane] ingestion.graphiti asked for the local model at 14:00 ET, outside the 22:00-06:00 ET window; rerouted to deferred until the window opens. Further reroutes for this caller today are counted, not logged.
+[LocalLane] ingestion.graphiti asked for the local model at 14:00 ET, outside the 22:00-06:00 ET window; rerouted to deferred until the window opens. Further reroutes for this caller today are counted, not logged.
+[2026-11-25T02:54:58.956Z] [INFO] [LocalLane] ingestion.graphiti asked for the local model at 14:00 ET, outside the 22:00-06:00 ET window; rerouted to deferred until the window opens. Further reroutes for this caller today are counted, not logged.
+[LocalLane] ingestion.graphiti asked for the local model at 14:00 ET, outside the 22:00-06:00 ET window; rerouted to deferred until the window opens. Further reroutes for this caller today are counted, not logged.
+[2026-11-25T02:54:58.956Z] [INFO] [LocalLane] ingestion.graphiti asked for the local model at 14:00 ET, outside the 22:00-06:00 ET window; rerouted to deferred until the window opens. Further reroutes for this caller today are counted, not logged.
+[LocalLane] ingestion.graphiti asked for the local model at 06:00 ET, outside the 22:00-06:00 ET window; rerouted to deferred until the window opens. Further reroutes for this caller today are counted, not logged.
+[2026-11-25T02:54:58.957Z] [INFO] [LocalLane] ingestion.graphiti asked for the local model at 06:00 ET, outside the 22:00-06:00 ET window; rerouted to deferred until the window opens. Further reroutes for this caller today are counted, not logged.
+✔ the grant follows the async scope it was opened in and no other (5.431041ms)
+✔ a reroute is logged once per caller per ET day and every reroute is counted (0.44475ms)
+✔ the next opening is the window start on the ET wall clock, across the DST change (0.340791ms)
+✔ in-flight local calls are counted while pending, including through a throw and a stream (0.475875ms)
+✔ the fallback chain is the free lane's default model and the spillover CLI chain; people-facing roles ride the CLI first (0.284917ms)
+✔ judge and gardener are the Sonnet-only callers: the claude-code seat on the newest Sonnet, then Codex, and no seat after it (0.603958ms)
+✔ Robert withdrew Graphiti's standing grant on 2026-11-24: no caller holds one, Graphiti is a held caller, and by day the lane stays closed for it (0.188375ms)
+✔ a held caller's call is refused by day before it runs, with the opening and the wait; other callers and the window run as is (0.675208ms)
+✔ Robert's operator grant is counted process-wide while it runs: a held call elsewhere runs under an episode grant, the listener fires once, and the count returns to zero (0.672041ms)
+✔ an episode admitted before 06:00 finishes after the window closes, a new one is refused with the opening, and a released or expired admission admits nothing (0.751208ms)
+✔ the last completed window is the one a held episode had to wait through, on the ET wall clock and across the DST change (0.122917ms)
+✔ a daytime backlog is healthy, a backlog older than one full overnight window is a fault, and an unread hold is unknown; the snapshot carries it (0.369625ms)
+✔ the snapshot reports the policy, the clock and the fallback for the dispatch state (0.16275ms)
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-25T02:54:59.299Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_demand_callers.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T02:54:59.304Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_demand_callers.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T02:54:59.305Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T02:54:59.306Z] [INFO] [LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T02:54:59.306Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T02:54:59.307Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[LLM] Token reporting failed: [tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[2026-11-25T02:54:59.313Z] [WARN] [LLM] Token reporting failed: [tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[LmAutoload] (chat) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T02:54:59.314Z] [INFO] [LmAutoload] (chat) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chat) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T02:54:59.314Z] [INFO] [LmAutoload] (chat) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T02:54:59.315Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[LLM] local model reloaded; retrying the primary call once
+[2026-11-25T02:54:59.315Z] [INFO] [LLM] local model reloaded; retrying the primary call once
+[tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[LLM] Token reporting failed: [tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[2026-11-25T02:54:59.315Z] [WARN] [LLM] Token reporting failed: [tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T02:54:59.316Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T02:54:59.316Z] [INFO] [LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chatVia) not loading a model: pressure
+[2026-11-25T02:54:59.316Z] [WARN] [LmAutoload] (chatVia) not loading a model: pressure
+[LmAutoload] (chat) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T02:54:59.317Z] [INFO] [LmAutoload] (chat) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chat) not loading a model: pressure
+[2026-11-25T02:54:59.317Z] [WARN] [LmAutoload] (chat) not loading a model: pressure
+[LLM] ⚠️ local provider has no model loaded and the reload was skipped; escalating to online cascade
+[2026-11-25T02:54:59.317Z] [WARN] [LLM] ⚠️ local provider has no model loaded and the reload was skipped; escalating to online cascade
+[LLM] ⚠️ local/google/gemma-4-31b-qat exhausted; starting fallback cascade
+[2026-11-25T02:54:59.317Z] [WARN] [LLM] ⚠️ local/google/gemma-4-31b-qat exhausted; starting fallback cascade
+[LLM] 🔄 Trying fallback: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+[2026-11-25T02:54:59.317Z] [INFO] [LLM] 🔄 Trying fallback: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+[tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[LLM] ✅ Fallback succeeded — switching to openrouter/nvidia/nemotron-3-ultra-550b-a55b:free for this session
+[2026-11-25T02:54:59.318Z] [INFO] [LLM] ✅ Fallback succeeded — switching to openrouter/nvidia/nemotron-3-ultra-550b-a55b:free for this session
+[LLM] Token reporting failed: [tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[2026-11-25T02:54:59.318Z] [WARN] [LLM] Token reporting failed: [tests/bootstrap] refused live fleet request POST http://127.0.0.1:4000/api/ai/usage — tests must stub cortexClient (taskTransition / nexusSuspendTask / nexusPatchTask / …) or globalThis.fetch; set PRAXIS_TEST_ALLOW_NEXUS=1 to opt a suite in deliberately
+[LmAutoload] (swarm) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T02:54:59.319Z] [INFO] [LmAutoload] (swarm) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (swarm) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T02:54:59.319Z] [INFO] [LmAutoload] (swarm) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T02:54:59.319Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[LmAutoload] (member-profile) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T02:54:59.321Z] [INFO] [LmAutoload] (member-profile) catalog lists 1 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (member-profile) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T02:54:59.321Z] [INFO] [LmAutoload] (member-profile) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T02:54:59.321Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+✔ criterion 2: chatVia on an unloaded local model reloads it once and the pinned call succeeds (11.428709ms)
+✔ criterion 2: chat() with a local primary reloads once and retries the primary instead of cascading (1.973375ms)
+✔ criterion 4: under the pressure veto the reload is skipped; chatVia surfaces the original error and chat() cascades as before (2.916875ms)
+✔ criterion 2: the swarm's local seat (a direct LM Studio client) reloads once and answers; the seat's signal is passed through (1.134375ms)
+✔ criterion 2: the member-profile extractor wakes the model on LM Studio's empty slot and leaves the retry to its backoff (1.984875ms)
+✔ the member-profile extractor claims the chat slot inside its own deadline and sends nothing when the claim is refused (1.073542ms)
+✔ the member-profile extractor reads the model at each extraction: one made before a switch of local model claims the slot for, and asks, the model in effect (0.719667ms)
+[LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[2026-11-25T02:54:59.288Z] [INFO] [LLM] ✅ Primary set explicitly to google/antigravity-default (LLM_PRIMARY_PROVIDER)
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.293Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.294Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-3) to finish.
+[2026-11-25T02:54:59.294Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-3) to finish.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was gemini-3.1-pro-preview): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.295Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was gemini-3.1-pro-preview): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.295Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-1) to finish.
+[2026-11-25T02:54:59.295Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-1) to finish.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.295Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T02:54:59.296Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T02:54:59.297Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds google/gemma-4-31b-qat, unused for at least 600 s; unloading it to load thinkingmachines/inkling-2-mini
+[2026-11-25T02:54:59.297Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds google/gemma-4-31b-qat, unused for at least 600 s; unloading it to load thinkingmachines/inkling-2-mini
+[LmAutoload] swapped google/gemma-4-31b-qat for thinkingmachines/inkling-2-mini in 0s
+[2026-11-25T02:54:59.298Z] [INFO] [LmAutoload] swapped google/gemma-4-31b-qat for thinkingmachines/inkling-2-mini in 0s
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.299Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[2026-11-25T02:54:59.299Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.299Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.300Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ad_hoc_local_prompt (e9a9fb26-c998-448b-8fdd-87bd52995028) to finish.
+[2026-11-25T02:54:59.302Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ad_hoc_local_prompt (e9a9fb26-c998-448b-8fdd-87bd52995028) to finish.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.302Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.303Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job nightly_synthesis (job-2) to finish.
+[2026-11-25T02:54:59.303Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job nightly_synthesis (job-2) to finish.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.303Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Nexus holds the switch to thinkingmachines/inkling-2-mini until Write script (writer + critic) finishes.
+[2026-11-25T02:54:59.305Z] [INFO] [LocalModel] Nexus holds the switch to thinkingmachines/inkling-2-mini until Write script (writer + critic) finishes.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.305Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.305Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T02:54:59.306Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.306Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.307Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T02:54:59.307Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T02:54:59.308Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.312Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LLM] Pinned call → local/thinkingmachines/inkling-2-mini
+[2026-11-25T02:54:59.312Z] [INFO] [LLM] Pinned call → local/thinkingmachines/inkling-2-mini
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.313Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T02:54:59.313Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LmAutoload] (no-model-loaded) catalog lists 1 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T02:54:59.313Z] [INFO] [LmAutoload] (no-model-loaded) catalog lists 1 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (no-model-loaded) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T02:54:59.313Z] [INFO] [LmAutoload] (no-model-loaded) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T02:54:59.313Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.314Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LmAutoload] (no-model-loaded) LM Studio has no model loaded — loading thinkingmachines/inkling-2-mini via lms
+[2026-11-25T02:54:59.314Z] [INFO] [LmAutoload] (no-model-loaded) LM Studio has no model loaded — loading thinkingmachines/inkling-2-mini via lms
+[LmAutoload] thinkingmachines/inkling-2-mini loaded in 0s
+[2026-11-25T02:54:59.314Z] [INFO] [LmAutoload] thinkingmachines/inkling-2-mini loaded in 0s
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.314Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+✔ start-up with Nexus unreachable: the environment's model is used, the log and the snapshot report it, and Nexus's setting wins once it answers (3.328ms)
+✔ start-up with Nexus reachable: the setting applies at once and the environment is not used (0.369375ms)
+✔ Nexus answering without a local model is reported as well, and the environment's model stays in use (0.148833ms)
+✔ with no model in effect, a choice Nexus holds as waiting is put into effect through Nexus, never adopted by Praxis alone (0.792041ms)
+✔ a switch chosen during a local queue job waits for the job, the snapshot shows it waiting, and choosing loads nothing; the next local call loads it (3.073584ms)
+✔ right after a switch the next local call replaces the previous model, though the job the switch waited for used it a second before (0.450375ms)
+✔ a previous model something used after the switch keeps the idle period: the call is deferred and nothing is unloaded (0.343959ms)
+✔ the model a switch replaced may go without the idle period only when LM Studio says nothing ran, waits or was sent to it since the switch (0.126ms)
+✔ a local call in flight holds the switch too; it applies when the call returns (0.727042ms)
+✔ the local worker never changes model inside a job: the job that was running ends on Gemma and the next one starts on Inkling (3.047958ms)
+✔ a newer choice replaces a waiting one, and choosing the model in effect again cancels the switch (0.423834ms)
+✔ Nexus holds the switch while one of its Studio local jobs runs, and Praxis applies when Nexus asks again (1.652667ms)
+✔ roles resolved through local_default use the model in effect at each call, even from the role cache; a role pinned to one model keeps it (1.880833ms)
+✔ TheCortex's gateway calls (complete with a role, routes/chat.ts) reach LM Studio with the chosen model after a switch (5.760083ms)
+✔ the autoload pass follows the setting: with the chat slot empty it loads the model in effect, before and after a switch (1.508917ms)
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.317Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T02:54:59.317Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T02:54:59.318Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds google/gemma-4-31b-qat, unused for at least 600 s; unloading it to load thinkingmachines/inkling-2-mini
+[2026-11-25T02:54:59.318Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds google/gemma-4-31b-qat, unused for at least 600 s; unloading it to load thinkingmachines/inkling-2-mini
+[LmAutoload] swapped google/gemma-4-31b-qat for thinkingmachines/inkling-2-mini in 0s
+[2026-11-25T02:54:59.318Z] [INFO] [LmAutoload] swapped google/gemma-4-31b-qat for thinkingmachines/inkling-2-mini in 0s
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.318Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.319Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.319Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T02:54:59.319Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LmAutoload] (local-call) catalog lists 2 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[2026-11-25T02:54:59.320Z] [INFO] [LmAutoload] (local-call) catalog lists 2 resident model(s); merged 1 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (local-call) LM Studio's chat slot holds google/gemma-4-31b-qat, unused for at least 600 s; unloading it to load thinkingmachines/inkling-2-mini
+[2026-11-25T02:54:59.320Z] [INFO] [LmAutoload] (local-call) LM Studio's chat slot holds google/gemma-4-31b-qat, unused for at least 600 s; unloading it to load thinkingmachines/inkling-2-mini
+[LmAutoload] swapped google/gemma-4-31b-qat for thinkingmachines/inkling-2-mini in 0s
+[2026-11-25T02:54:59.320Z] [INFO] [LmAutoload] swapped google/gemma-4-31b-qat for thinkingmachines/inkling-2-mini in 0s
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.320Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-3) to finish.
+[2026-11-25T02:54:59.320Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-3) to finish.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.320Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.321Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.321Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ad_hoc_local_prompt (28bb7310-15cf-4a2a-8e29-9baced8970db) to finish.
+[2026-11-25T02:54:59.322Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ad_hoc_local_prompt (28bb7310-15cf-4a2a-8e29-9baced8970db) to finish.
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.322Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.323Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T02:54:59.323Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[2026-11-25T02:54:59.323Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T02:54:59.323Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.323Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.324Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.325Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T02:54:59.325Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T02:54:59.325Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[2026-11-25T02:54:59.325Z] [INFO] [LmAutoload] (chatVia) catalog lists 1 resident model(s); merged 2 downloaded, unloaded model(s) from lms ls
+[LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[2026-11-25T02:54:59.325Z] [INFO] [LmAutoload] (chatVia) LM Studio has no model loaded — loading google/gemma-4-31b-qat via lms
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[2026-11-25T02:54:59.325Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[2026-11-25T02:54:59.326Z] [INFO] [LmAutoload] google/gemma-4-31b-qat loaded in 0s
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.326Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.326Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-4) to finish.
+[2026-11-25T02:54:59.326Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for local job ingest_item (job-4) to finish.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T02:54:59.326Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LLM] Pinned call → local/thinkingmachines/inkling-2-mini
+[2026-11-25T02:54:59.327Z] [INFO] [LLM] Pinned call → local/thinkingmachines/inkling-2-mini
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.327Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.327Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+✔ a local call that arrives while Nexus records a switch waits for the answer, then is claimed for the chosen model, never beside the old one (4.272208ms)
+✔ a switch Nexus recorded whose answer was lost is settled by reading the setting again within the same apply (0.357875ms)
+✔ while Praxis cannot confirm a switch Nexus recorded, a call naming the new model is deferred, not loaded beside the old one, and the next settled local work brings Praxis level (1.311333ms)
+✔ while a switch waits for a local job, a call naming the chosen model is deferred instead of loading beside the job's model, and its claim loads nothing (0.571417ms)
+✔ Praxis reads the setting again every 60 s on its own, and reports a Nexus outage once until a read succeeds (0.582084ms)
+✔ a job the local worker claims holds the switch from the claim: one chosen while the job's calendar entry is written waits, and the job runs on Gemma (1.392083ms)
+✔ a pinned local call is local work from the moment it is made: a switch chosen while it waits for a slot waits for it, and the call is counted once (1.02225ms)
+✔ a local call the closed daytime lane sends elsewhere is not local work: a switch chosen while it runs applies at once, and the count of local calls stays at zero (0.864709ms)
+✔ a pinned local call that finds LM Studio's slot empty stays local work through the reload and its retry, so a switch chosen meanwhile waits for it (1.499167ms)
+✔ while a switch waits, a pinned call naming the chosen model that finds the slot empty loads nothing and is deferred (0.967458ms)
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.330Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.330Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.330Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+✔ a call naming the previous model that waited while Nexus recorded the switch is deferred once the switch is in effect, and nothing is loaded or unloaded (2.838334ms)
+✔ while Nexus holds a switch for its Studio jobs, Praxis says so once for each set of jobs, however often it asks (0.4325ms)
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.331Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.331Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+✔ an answer from Nexus that was on its way while a newer read was acted on is not acted on: Praxis never goes back to the model the switch replaced (0.495625ms)
+✔ Praxis goes by Nexus's own waiting flag: an answer that says nothing waits asks Nexus for nothing, whatever names it carries (0.230042ms)
+✔ when the answer to a recorded switch is lost, Praxis takes the model in effect in Nexus's own spelling, and the next read finds nothing to do (0.262ms)
+✔ a call that waited through a switch that took nothing into effect is not refused, though an earlier switch replaced the model it names (0.487791ms)
+✔ after switches made one after another with no local call between them, the next call replaces the model still loaded without waiting out its idle period (0.473167ms)
+✔ a new spelling of the model in effect replaces no model: the model the switch replaced stays recorded and may still go without the idle period (0.140916ms)
+✔ a replaced model chosen again, under another spelling, is no longer recorded as replaced (0.09175ms)
+✔ a call that read the model in effect is refused at the slot claim when a switch replaces that model under a spelling Nexus gave it after the read (0.115791ms)
+✔ each model a switch replaced may go without the idle period, judged by the latest switch away from it (0.06575ms)
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.334Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+✔ the local provider as the manager registers it counts a call and its retry after a stop for length as one local call: a switch chosen during the call waits for both (0.740042ms)
+✔ chat() on a local primary that finds LM Studio's slot empty is one local call through the reload and its retry: a switch chosen meanwhile waits, and the retry goes to the model the reload loaded (0.962125ms)
+✔ a call that read its model before a switch is refused at the slot claim even when the switch took effect before the claim began; one that read it after the switch is not (0.138083ms)
+✔ a pinned local call that read Gemma before a switch took effect during its admission is deferred at the slot claim: Gemma does not answer and nothing is loaded (3.040166ms)
+✔ chat() on a local primary that read Gemma before a switch took effect during its admission is refused at the slot claim and answered by the cascade, not by Gemma (1.698958ms)
+▶ primaryForTest puts back the primary chat()'s fallback moved, model and cache epoch included, whatever the environment sets
+  ✔ chat() on a local primary, refused at the slot claim and answered by the cascade (0.698875ms)
+✔ primaryForTest puts back the primary chat()'s fallback moved, model and cache epoch included, whatever the environment sets (0.884083ms)
+✔ complete() for a role resolved through local_default that read Gemma before a switch took effect during its admission is refused at the slot claim and escalated, not answered by Gemma (0.938667ms)
+✔ a streamed call for a role resolved through local_default that read Gemma before a switch took effect during its admission is refused at the slot claim and streamed by the next candidate, not by Gemma (1.00475ms)
+[LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.343Z] [INFO] [LocalModel] Local calls now use google/gemma-4-31b-qat (was gemini-3.1-pro-preview): Nexus already has it in effect. Nothing was loaded; the next local call loads it.
+[LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[2026-11-25T02:54:59.344Z] [INFO] [LocalLane] PRAXIS_LOCAL_LANE_MODE unset and this process reads as a test run (PRAXIS_TEST, NODE_TEST_CONTEXT, NODE_ENV=test, entry script /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis/tests/local_model_selection.test.ts); mode "always". A daemon must set PRAXIS_LOCAL_LANE_MODE=overnight explicitly if this is not a test.
+[LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T02:54:59.344Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[2026-11-25T02:54:59.344Z] [INFO] [LocalModel] The switch to thinkingmachines/inkling-2-mini waits for 1 local call to finish.
+[LLM] Pinned call → local/google/gemma-4-31b-qat
+[2026-11-25T02:54:59.344Z] [INFO] [LLM] Pinned call → local/google/gemma-4-31b-qat
+[LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+[2026-11-25T02:54:59.344Z] [INFO] [LocalModel] Local calls now use thinkingmachines/inkling-2-mini (was google/gemma-4-31b-qat): chosen under Model Control (dashboard). Nothing was loaded; the next local call loads it.
+✔ a switch that takes effect after a role's model is read and before complete() makes the call refuses the call: the count of switches is read with the role's model (0.816583ms)
+✔ local work a counted call starts and leaves running stays counted until it ends: joined while that call is open, counted on its own once it has ended (0.117875ms)
+✔ a local call that work inside a counted call starts and leaves running holds a switch until it ends, though the call that started it has returned, and is counted once (1.169625ms)
+✔ a call that read Gemma before the switch to Inkling took effect, and reaches the slot claim while a second switch to Qwen is being recorded, is refused for the switch that replaced Gemma: the refusal names Inkling and says the switch came before the claim (0.494875ms)
+✔ spoken prose reads the local model and the count of switches in one step: a switch that takes effect before its call reaches the manager refuses the call at the slot claim, Gemma does not answer and nothing is loaded (0.9855ms)
+✔ a switch that takes effect after a role's model is read and before chatStream tries it refuses the call: the stream's role candidate keeps the count of switches read with the role's model (0.829542ms)
+✔ a hosted pin rerouted to the local model when its credits ran out, whose local call read Gemma before a switch took effect during its admission, is refused at the slot claim: Gemma does not answer, nothing is loaded, and the hosted failure stands (1.500667ms)
+ℹ tests 76
+ℹ suites 0
+ℹ pass 76
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1262.89025
+exit 0

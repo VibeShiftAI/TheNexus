@@ -1,0 +1,28 @@
+# 2026-11-24 21:54:57 EST
+Praxis head: 15b19a5c147523c436b4f2783ca68c5e9e1c7843, parents 196a537506d8b9076753ee1143cd527c3ac6eb14 1bac2ea7901c8203a1ba271b555fbc3c2a1d8d7d
+== selection-mh in /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis: local_model_selection local_model_demand_callers local_lane_policy
+ℹ tests 76 ℹ pass 76 ℹ fail 0 ℹ cancelled 0 exit 0 
+guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== related-mh in /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis: cli_concurrency_local_lane local_lane_manager_reroute local_lane_policy lmstudio_autoload local_model_capabilities member_profile_updates swarm_local_provider local_llm_worker local_llm_spillover critic_deadline_routes groundrules_runner llm_output_room local_inference_safety session_synthesis_worker voice_prose_deadline autonomy_api_routes code_freshness_recovery nexus_runtime_traffic skill_amendment_review skill_candidate_screen_refusal token_report webhook_routes_inventory arbitrary_limits_runtime trading_reflection_local_model trading_reflections local_model_demand_callers classifier_inputs_whole context_pruning_ceiling llm_gateway_output_budget per_pass_window_fit eval_model_policy ingestion_retrieval_details llm_context_window spoken_prose local_model_selection local_model_primary llm_cli_lane_complete knowledge_arbitrary_limits standing_fact_sweep state_doc
+ℹ tests 542 ℹ pass 542 ℹ fail 0 ℹ cancelled 0 exit 0 
+guards: lmstudio=1 net=0 live-port=0 cli-shims=3
+== more-related-mh in /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis: cli_concurrency cli_dispatch_gate_wakeup cli_run_footprint dispatch_routing_preparation eval_judge_comparability executor_routing_preparation run_worktree_dispatch system_map_dispatch_yield task_saved_model_dispatch lane_credit
+ℹ tests 130 ℹ pass 130 ℹ fail 0 ℹ cancelled 0 exit 0 
+guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+fake lms calls in its fixed log during the first three sets: 1 (9308 ls --json :: ;)
+calls the run logs show failing at the fake lms (the console form, one line per call):
+  [LmAutoload] (test) downloaded-model inventory failed: Command failed: /Volumes/Projects/.scratch-fa032fc0/fake-lms ls --json
+live ports at start: 60
+self-test: own server -> own; live :4000 -> refused ECONNREFUSED; off-machine -> refused ECONNREFUSED
+self-test guard log lines: 2
+files: 40
+ℹ tests 472
+ℹ suites 0
+ℹ pass 472
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+exit 0
+guards: lmstudio=0 fake-lms=0 net=6 live-port=0 cli-shims=6
+Praxis head after: 15b19a5c147523c436b4f2783ca68c5e9e1c7843; working tree: 0 changed files
+# 2026-11-24 21:55:32 EST

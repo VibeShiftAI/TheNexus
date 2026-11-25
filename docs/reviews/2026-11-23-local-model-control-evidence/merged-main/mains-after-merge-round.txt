@@ -1,0 +1,29 @@
+# 2026-11-24 22:17:05 EST, read-only
+
+== TheNexus: main 5b14540064c4201a83d5344432b478ad6c375983 (main@{2026-11-24 22:08:26 -0500}: commit: chore: EOD auto-commit 2026-11-25 (1 files, +0 −0))
+commits since 2a7952fc:
+  5b145400 2026-11-24 22:08:26 chore: EOD auto-commit 2026-11-25 (1 files, +0 −0)
+files they change, by folder (status, first two path parts):
+    1 A data/chat-files/...
+files main changed: 1; files the branch changes (bd026428..HEAD plus the working tree): 449; in both: 0
+merge-tree --write-tree main HEAD in the task worktree: exit 0
+task worktree head: 7c63bd21716308c6fe8e9da769af351887868f8e; changed paths: 56, outside docs/reviews/2026-11-23-local-model-control-evidence/: 0
+
+== Praxis: main f1c8135c70d58bd0fd3a86b684fec96b1bb4977f (main@{2026-11-24 22:08:07 -0500}: commit: chore: EOD auto-commit 2026-11-25 (41 files, +739 −0))
+commits since 1bac2ea7:
+  f1c8135c 2026-11-24 22:08:07 chore: EOD auto-commit 2026-11-25 (41 files, +739 −0)
+files they change, by folder (status, first two path parts):
+   40 A evals/cases/...
+    1 M data/ingestion/...
+files main changed: 41; files the branch changes (1bac2ea7..HEAD plus the working tree): 21; in both: 0
+merge-tree --write-tree main HEAD in the task worktree: exit 0
+task worktree head: 15b19a5c147523c436b4f2783ca68c5e9e1c7843; changed paths: 0, outside docs/reviews/2026-11-23-local-model-control-evidence/: 0
+
+== TheCortex: main 9404979103b7f71e08cfd4caab03271081210f2c (main@{2026-11-24 22:08:10 -0500}: commit: chore: EOD auto-commit 2026-11-25 (40 files, +2197968 −0))
+commits since 17ee69ce:
+  9404979 2026-11-24 22:08:10 chore: EOD auto-commit 2026-11-25 (40 files, +2197968 −0)
+files they change, by folder (status, first two path parts):
+   40 A data/cull-manifests/...
+files main changed: 40; files the branch changes (17ee69ce..HEAD plus the working tree): 12; in both: 0
+merge-tree --write-tree main HEAD in the task worktree: exit 0
+task worktree head: 1eca58eb856e2e94cb45cb054c49f5fb507ee4d6; changed paths: 0, outside docs/reviews/2026-11-23-local-model-control-evidence/: 0

@@ -1,12 +1,12 @@
-# Criterion 1 precondition check, 2026-11-24 20:54:01 EST, read-only
+# Criterion 1 precondition check, 2026-11-24 21:44:32 EST, read-only
 
-== TheNexus: main 2a7952fc, branch head c5b44405, QA baseline bd026428
+== TheNexus: main 2a7952fc, branch head 7c63bd21, merge-base with main bd026428
   9de7bed6 2026-11-23 22:47:28 -0500 on main: yes; under the branch head: no; Merge praxis/run/9227d9b6-6215-4914-a760-b922e88a602b into main: Get the system ready for Inkling 2 Mini as th
   1104ec89 2026-11-23 22:47:26 -0500 on main: yes; under the branch head: no; Get the system ready for Inkling 2 Mini as the local model, without loading it or switching yet
   22d86d03 2026-11-23 19:46:41 -0500 on main: yes; under the branch head: no; List Inkling 2 Mini as a local model that no role selects
   commits with the 9227d9b6 trailer on main: 3
 
-== Praxis: main 1bac2ea7, branch head 196a5375, QA baseline 1fcf4b59
+== Praxis: main 1bac2ea7, branch head 15b19a5c, merge-base with main 1bac2ea7
   1fcf4b59 2026-11-23 22:48:04 -0500 on main: yes; under the branch head: yes; Merge praxis/run/9227d9b6-6215-4914-a760-b922e88a602b into main: Get the system ready for Inkling 2 Mini as th
   de1c5916 2026-11-23 22:48:02 -0500 on main: yes; under the branch head: yes; Get the system ready for Inkling 2 Mini as the local model, without loading it or switching yet
   884135de 2026-11-23 22:07:59 -0500 on main: yes; under the branch head: yes; Record that Gemma's overnight batch now runs on engine 2.82.0
@@ -15,7 +15,7 @@
   0bc2c8fb 2026-11-23 19:46:40 -0500 on main: yes; under the branch head: yes; Select local request handling by model capability, not the Gemma name
   commits with the 9227d9b6 trailer on main: 6
 
-== TheCortex: main 17ee69ce, branch head 892708c8, QA baseline 5fdb76a2
+== TheCortex: main 17ee69ce, branch head 1eca58eb, merge-base with main 17ee69ce
   5fdb76a 2026-11-23 22:47:35 -0500 on main: yes; under the branch head: yes; Get the system ready for Inkling 2 Mini as the local model, without loading it or switching yet
   2d7c015 2026-11-23 19:46:41 -0500 on main: yes; under the branch head: yes; Add Inkling 2 Mini to the Cortex model registry beside Gemma
   commits with the 9227d9b6 trailer on main: 2

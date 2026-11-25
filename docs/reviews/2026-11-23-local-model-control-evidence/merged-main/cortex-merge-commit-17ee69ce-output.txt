@@ -1,0 +1,109 @@
+# 2026-11-24 21:40:12 EST
+TheCortex worktree: branch praxis/run/fa032fc0-7472-4406-b6cb-d4671b72a28a, HEAD 892708c8, merge in progress with 17ee69ce; main now 17ee69ce
+HEAD's tree is the merged tree: no; the index matches it: yes; the working files match the index: yes; untracked files: 0
+pinned: main 17ee69ce, branch 892708c8, their merge-base 5fdb76a2, merged tree 588b1ca4
+
+== 1. the merged tree against git merge-tree of main 17ee69ce and the branch 892708c8
+merge-tree exit 1 (0 = merges without conflict, 1 = conflicts); its tree bcad7ccb5f387ec92926d0aad99e62df8fe8c99d (conflicted files written with markers)
+CONFLICT (content): Merge conflict in TheCortex/conftest.py
+paths that differ between that tree and the merged tree: TheCortex/conftest.py 
+-- TheCortex/conftest.py: 1 conflict hunk(s), as git merge-file --diff3 shows them:
+   (line 18)
+   <<<<<<< main
+   import pytest
+   
+   ||||||| base
+   =======
+   import pytest
+   
+   
+   def _nexus_not_read_in_unit_tests(url, timeout):
+       raise ConnectionError("unit tests do not read the live Nexus local-model setting")
+   
+   
+   @pytest.fixture(autouse=True)
+   def local_model_setting_offline(monkeypatch):
+       """Keep every test off the live Nexus local-model setting.
+   
+       cortex.local_model asks Nexus which local model is in effect; a test that
+       reached the live API would depend on whatever Robert chose. With this, the
+       callers take their fallback; tests of the setting itself swap in their own
+       fake reader. cortex is imported only when a test runs, by which time the
+       package root below is on sys.path.
+       """
+       import cortex.local_model as local_model
+   
+       monkeypatch.setattr(local_model, "_fetch", _nexus_not_read_in_unit_tests)
+       monkeypatch.setattr(local_model, "_last_answer", None)
+       local_model._fallback_reported.clear()
+       yield
+       local_model._fallback_reported.clear()
+   
+   
+   >>>>>>> branch
+   against the marked file the merged tree's file drops 6 line(s), 2 of them not a marker line, and adds 0
+   the resolution as a unified diff from the marked file (lines starting with - are dropped):
+   --- TheCortex/conftest.py with conflict markers
+   +++ TheCortex/conftest.py in the merged tree
+   @@ -15,14 +15,9 @@
+    import sys
+    from pathlib import Path
+    
+   -<<<<<<< main
+    import pytest
+    
+   -||||||| base
+   -=======
+   -import pytest
+    
+   -
+    def _nexus_not_read_in_unit_tests(url, timeout):
+        raise ConnectionError("unit tests do not read the live Nexus local-model setting")
+    
+   @@ -46,7 +41,6 @@
+        local_model._fallback_reported.clear()
+    
+    
+   ->>>>>>> branch
+    _PACKAGE_ROOT = Path(__file__).resolve().parent / "python"
+    if str(_PACKAGE_ROOT) not in sys.path:
+        sys.path.insert(0, str(_PACKAGE_ROOT))
+   byte-identical to git merge-file --union (main first), the resolution tested at 18:46 EST: yes
+   lines: merge-base 12, main 75, branch 38, merged 99; lines reading 'import pytest': 1
+
+== 2. both sides kept
+paths in any of the four trees: 2987; changed by main only: 38; by the branch only: 9; the same change on both: 0; by neither: 2937
+of those, paths whose merged entry (mode and blob, or absence) is not the expected one: 0
+paths changed differently by both sides, merged line by line: 3
+-- TheCortex/conftest.py: main changed 63 lines, the merged tree changes 61 against the branch, the same lines: NO; the branch changed 26 lines, the merged tree changes 24 against main, the same lines: NO
+     main vs merged-against-branch: 19d18
+     main vs merged-against-branch: < +
+     main vs merged-against-branch: 62d60
+     main vs merged-against-branch: < +import pytest
+     branch vs merged-against-main: 8d7
+     branch vs merged-against-main: < +
+     branch vs merged-against-main: 26d24
+     branch vs merged-against-main: < +import pytest
+-- TheCortex/python/cortex/config.py: main changed 7 lines, the merged tree changes 7 against the branch, the same lines: yes; the branch changed 7 lines, the merged tree changes 7 against main, the same lines: yes
+-- TheCortex/python/cortex/memory/client.py: main changed 9 lines, the merged tree changes 9 against the branch, the same lines: yes; the branch changed 85 lines, the merged tree changes 85 against main, the same lines: yes
+the merged tree against main:  12 files changed, 985 insertions(+), 31 deletions(-); the branch against the merge-base:  12 files changed, 987 insertions(+), 31 deletions(-)
+
+== 3. the TheCortex tests on a scratch copy of the merged tree
+cortex-merge-commit against 588b1ca4: 2987 files compared; differing: ; extra files in the copy: 0
+the 12 files (quiet, so pytest prints no header):
+328 passed, 1 warning in 3.65s
+exit=0
+test_local_model_setting.py, verbose: ======================== 26 passed, 1 warning in 0.08s ========================= exit=0 
+its header line from the store guard: cortex_test_guard: active, no isolated graph declared, graph tests refuse to run
+TheCortex files with failures on the merged tree:  
+files written in the merged copy since its test runs started: 0
+
+== 4. npm run check:encoding (Praxis's scanner) on every file the TheCortex branch changed
+files: 12 (conftest.py among them: 1)
+Encoding scan passed: 12 text files checked; 0 binary files skipped.
+exit 0
+
+entries in /Volumes/Projects/maintenance-mode-worktrees changed since this script started: 0
+TheCortex worktree after the run: HEAD 892708c8, the index matches the merged tree: yes, the working files match the index: yes, untracked files: 0
+# 2026-11-24 21:40:24 EST
+== done
