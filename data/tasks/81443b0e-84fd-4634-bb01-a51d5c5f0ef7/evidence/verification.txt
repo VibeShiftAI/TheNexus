@@ -1,0 +1,96 @@
+Browser replay
+NODE_PATH=/private/tmp/bao54research/node_modules node data/tasks/81443b0e-84fd-4634-bb01-a51d5c5f0ef7/evidence/replay.cjs
+Chromium 158.0.8127.37
+active: 98 of 396 finished; 1 running, 298 queued; bridge, detail and one Current Focus run row passed.
+between: 99 of 396 finished; 0 running, 298 queued; bridge, detail and one Current Focus run row passed.
+
+Dashboard
+cd dashboard && npm test
+ℹ tests 1492
+ℹ pass 1492
+ℹ fail 0
+cd dashboard && NEXT_DIST_DIR=.next-verify NEXUS_API_URL=http://127.0.0.1:9 NEXT_PUBLIC_API_URL=http://127.0.0.1:9 NEXT_TELEMETRY_DISABLED=1 npm run build -- --webpack
+✓ Compiled successfully in 12.4s
+✓ Generating static pages using 15 workers (31/31) in 376.7ms
+Build exit 0.
+
+Nexus API
+./node_modules/.bin/jest --runInBand server/__tests__/local-model-work.test.js
+Test Suites: 1 passed, 1 total
+Tests:       8 passed, 8 total
+
+Praxis
+npm test -- --test-concurrency=2 local_llm_work_snapshot.test.ts local_llm_worker.test.ts local_llm_spillover.test.ts local_llm_calendar.test.ts local_lane_policy.test.ts local_model_selection.test.ts member_profile_updates.test.ts swarm_local_provider.test.ts chatstream_role_guard.test.ts lmstudio_autoload.test.ts
+ℹ tests 194
+ℹ pass 194
+ℹ fail 0
+node_modules/.bin/tsc --noEmit --pretty false exited 0.
+
+Isolated handler registry, producer and dashboard check
+knowledge_intake_read → Knowledge intake
+knowledge_intake_sweep → Knowledge intake
+ingest_item → Knowledge ingestion
+ingestion_finalize_run → Finalize knowledge ingestion
+docs_sync → Documentation review
+qa_lessons_layer_backfill → Classify QA lessons
+knowledge_journal → Knowledge journal
+nightly_synthesis → Nightly synthesis
+lars_analysis → LARS analysis
+youtube_story_batch → YouTube story writing
+conversation_evolve_sweep → Conversation review
+conversation_evolve_item → Conversation review
+nightly_synthesis_item → Nightly synthesis
+lars_analysis_item → LARS analysis
+upload_report_item → Upload report
+ingestion_recommendations → Ingestion recommendations
+knowledge_community_summaries → Knowledge topic summaries
+17 registered handlers verified through Praxis and both dashboard descriptions
+
+Files touched:
+TheNexus (baseline 9d3ba79e8500)
+- dashboard/src/app/globals.css
+- dashboard/src/components/__tests__/bridge-local-activity.test.mjs
+- dashboard/src/components/__tests__/ops-local-queue.test.mjs
+- dashboard/src/components/bridge/crew-flow.tsx
+- dashboard/src/components/bridge/current-focus.tsx
+- dashboard/src/components/bridge/dispatch-map.tsx
+- dashboard/src/components/bridge/dispatch-station.tsx
+- dashboard/src/components/bridge/executor-detail.tsx
+- dashboard/src/components/ops-local-queue.tsx
+- dashboard/src/hooks/use-crew-activity.ts
+- dashboard/src/hooks/use-current-focus.ts
+- dashboard/src/hooks/use-dispatch-state.ts
+- dashboard/src/lib/__tests__/local-activity.test.ts
+- dashboard/src/lib/current-focus.ts
+- dashboard/src/lib/local-activity.ts
+- dashboard/src/lib/local-model.ts
+- dashboard/src/lib/nexus/local-llm.ts
+- data/tasks/81443b0e-84fd-4634-bb01-a51d5c5f0ef7/evidence/active-bridge.png
+- data/tasks/81443b0e-84fd-4634-bb01-a51d5c5f0ef7/evidence/active-detail.png
+- data/tasks/81443b0e-84fd-4634-bb01-a51d5c5f0ef7/evidence/active-focus.png
+- data/tasks/81443b0e-84fd-4634-bb01-a51d5c5f0ef7/evidence/active.json
+- data/tasks/81443b0e-84fd-4634-bb01-a51d5c5f0ef7/evidence/between-bridge.png
+- data/tasks/81443b0e-84fd-4634-bb01-a51d5c5f0ef7/evidence/between-detail.png
+- data/tasks/81443b0e-84fd-4634-bb01-a51d5c5f0ef7/evidence/between-focus.png
+- data/tasks/81443b0e-84fd-4634-bb01-a51d5c5f0ef7/evidence/between.json
+- data/tasks/81443b0e-84fd-4634-bb01-a51d5c5f0ef7/evidence/replay.cjs
+- data/tasks/81443b0e-84fd-4634-bb01-a51d5c5f0ef7/evidence/verification.txt
+- server/__tests__/local-model-work.test.js
+- server/services/local-model-work.js
+
+Praxis (baseline 598e52220be6)
+- src/council/member-profile-updates.ts
+- src/llm/local-lane-policy.ts
+- src/llm/manager.ts
+- src/llm/providers.ts
+- src/local-llm/calendar.ts
+- src/local-llm/queue.ts
+- src/local-llm/work-snapshot.ts
+- src/local-llm/worker.ts
+- src/routes/dispatch.ts
+- src/routes/ops.ts
+- src/swarm/engine.ts
+- src/telemetry/host-telemetry.ts
+- tests/bootstrap.ts
+- tests/local_llm_work_snapshot.test.ts
+- tests/local_model_selection.test.ts
