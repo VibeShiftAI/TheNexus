@@ -227,6 +227,9 @@ test('exact document revision and hash are mandatory; unsupported media and miss
     expect((await attempt(html.view)).data.code).toBe('unsupported_media');
     const video = registerDocument({ id: 'missing', revisionId: 'missing-rev', mediaType: 'video', mimeType: 'video/mp4', assets: false });
     expect((await attempt(video.view)).data.code).toBe('asset_unavailable');
+    const disk = registerDocument({ id: 'disk', revisionId: 'disk-rev', mediaType: 'video', mimeType: 'video/mp4' });
+    fs.writeFileSync(disk.file, 'other bytes', 'utf8');
+    expect((await attempt(disk.view)).data.code).toBe('asset_unavailable');
 });
 
 test('document text stays pinned when the current document changes and signals a newer revision', async () => {
