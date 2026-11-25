@@ -12,6 +12,7 @@ const vm = require('node:vm');
 const express = require('express');
 const Database = require('better-sqlite3');
 const { initializeDocumentReviews, createDocumentReviewStore } = require('../../db/document-reviews');
+const { stubbedAsk } = require('./helpers/review-ground');
 const KEY = 'synthetic-operator-'.repeat(4);
 const RELAY_KEY = 'synthetic-relay-'.repeat(4);
 const ORIGIN = 'http://localhost:3000';
@@ -38,7 +39,9 @@ beforeEach(async () => {
     raw = new Database(':memory:'); initializeDocumentReviews(raw); store = createDocumentReviewStore(raw);
     const project = { id: 'project-1', name: 'Synthetic', path: root };
     const task = { id: 'task-1', project_id: project.id, name: 'Synthetic review' };
-    const db = { documentReviews: store, getProjects: async () => [project], getProject: async id => id === project.id ? project : null, getTask: async id => id === task.id ? task : null };
+    // Robert's saved request to see it is the review ground the registration names (contract §15).
+    const ask = stubbedAsk();
+    const db = { documentReviews: store, getProjects: async () => [project], getProject: async id => id === project.id ? project : null, getTask: async id => id === task.id ? task : null, getChatMessageById: ask.getChatMessageById };
     const app = express(); app.use(express.json());
     // The real production stub/mount list; no synthetic operator user.
     const source = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
@@ -66,7 +69,7 @@ beforeEach(async () => {
     app.post('/chat-authority', async (req, res) => res.json({ operator: await authenticate(req) }));
     server = http.createServer(app); await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     base = `http://127.0.0.1:${server.address().port}`;
-    const registration = await api('POST', '/api/documents', { path: file, title: 'Synthetic', project_id: project.id, task_id: task.id, deliverable: { key: 'fixture', requires_review: true, intended_action: 'none' } });
+    const registration = await api('POST', '/api/documents', { path: file, title: 'Synthetic', project_id: project.id, task_id: task.id, deliverable: { key: 'fixture', requires_review: true, intended_action: 'none', review_ground: ask.ground } });
     expect(registration.status).toBe(201); doc = registration.json.document; revision = registration.json.revision;
 });
 afterEach(async () => {

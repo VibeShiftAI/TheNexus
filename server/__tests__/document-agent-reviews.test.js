@@ -4,6 +4,7 @@ const {
   validateFindings,
   composeSuggestions,
 } = require("../services/document-agent-reviews");
+const { robertAsks } = require("./helpers/review-ground");
 test("durable assignment capability is private and stable across retries", () => {
   const db = new Database(":memory:");
   const store = createAgentReviewStore(db);
@@ -162,6 +163,8 @@ describe("HTTP workflow with isolated database and source", () => {
         purpose: "Review fixture",
         requires_review: true,
         intended_action: "none",
+        // Robert's own request is what waits on it (contract §15).
+        review_ground: await robertAsks(db, `Show me ${name}.`),
       },
     });
     if (registered.status !== 201) throw new Error(JSON.stringify(registered));

@@ -63,11 +63,22 @@ const WAITING_BUCKETS = new Set(['needs_review', 'changes_requested', 'in_progre
 const sqlList = values => values.map(value => `'${value}'`).join(', ');
 
 const SUPERSESSION_TRIGGERS = ['registration', 'review_requested', 'ready'];
+/**
+ * Each verified event and the field that cites it. Review grounds (contract §15, task dcc2a7be) added two:
+ *   no_review_ground  a registration asked for Robert's review without a ground in force (nothing waiting on the
+ *                     document), so it was registered as reference; cites that registration
+ *   review_resort     the one-time re-sort of the documents waiting on 2026-11-25 found nothing waiting on the
+ *                     document; cites Robert's ruling ("go with C") by its saved chat message
+ */
 const GROUND_CITATIONS = {
     chat_ruling: 'message_ref',
     purpose_changed: 'registration_id',
     revision_task_cancelled: 'replacement_id',
+    no_review_ground: 'registration_id',
+    review_resort: 'message_ref',
 };
+const NO_GROUND_CODES = new Set(['no_review_ground', 'invalid_review_ground']);
+const MESSAGE_REF = /^nexus:\/\/conversation\/[^/]+\/message\/[^/]+$/;
 const GROUND_TYPES = Object.keys(GROUND_CITATIONS);
 const GROUND_CITATION_SQL = `CASE trigger ${Object.entries(GROUND_CITATIONS)
     .map(([type, field]) => `WHEN '${type}' THEN json_extract(ground, '$.${field}')`).join(' ')} END`;
@@ -125,9 +136,15 @@ function initializeDocumentRetirements(db) {
             END)
     )`;
     db.transaction(() => {
-        // SQLite cannot relax the predecessor-only NOT NULL and trigger CHECK in place.
+        // SQLite cannot relax the predecessor-only NOT NULL and trigger CHECK in place. A table created before a
+        // trigger type existed names only the types it was created with in its CHECK, so it is rebuilt the same way;
+        // its indexes and triggers go with it and are created again below with the current citations.
         const columns = db.pragma('table_info(review_document_retirements)').map(column => column.name);
-        if (columns.length && !columns.includes('ground')) {
+        const tableSql = columns.length
+            ? db.prepare("SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = 'review_document_retirements'").get()?.sql || ''
+            : '';
+        const missingType = [...SUPERSESSION_TRIGGERS, ...GROUND_TYPES].some(type => !tableSql.includes(`'${type}'`));
+        if (columns.length && (!columns.includes('ground') || missingType)) {
             const legacyColumns = columns.map(name => `"${name.replace(/"/g, '""')}"`).join(', ');
             db.exec(`CREATE TABLE review_document_retirements_v2 ${retirementColumns};
                 INSERT INTO review_document_retirements_v2 (rowid, ${legacyColumns})
@@ -189,6 +206,16 @@ function citedGround(ground) {
     const text = value => typeof value === 'string' && value.trim().length > 0;
     if (!ground || !Object.hasOwn(GROUND_CITATIONS, ground.type) || !text(ground[GROUND_CITATIONS[ground.type]])) return false;
     if (ground.type === 'revision_task_cancelled') return text(ground.task_id);
+    if (ground.type === 'no_review_ground') {
+        // `rejected` lists each named ground that did not hold, with its reason; empty when nothing was named.
+        return NO_GROUND_CODES.has(ground.code) && Array.isArray(ground.rejected)
+            && ground.rejected.every(entry => text(entry?.reason))
+            && (ground.code === 'no_review_ground' ? ground.rejected.length === 0 : ground.rejected.length > 0);
+    }
+    if (ground.type === 'review_resort') {
+        // Robert's ruling, the task that carried out the re-sort, and what reading this document found.
+        return MESSAGE_REF.test(ground.message_ref) && text(ground.task_id) && text(ground.finding);
+    }
     if (ground.type === 'purpose_changed') {
         return (ground.previous_purpose === null || typeof ground.previous_purpose === 'string')
             && text(ground.purpose) && ground.purpose !== ground.previous_purpose;
@@ -204,6 +231,10 @@ function retirementGroundReason(ground) {
         case 'chat_ruling': return `Robert answered all the recorded questions in chat (${ground.message_ref}).`;
         case 'purpose_changed': return `Registration ${ground.registration_id} changed the stated purpose to “${ground.purpose}”.`;
         case 'revision_task_cancelled': return `The task to produce its revised version was cancelled (task ${ground.task_id}, replacement ${ground.replacement_id}).`;
+        case 'no_review_ground': return ground.code === 'invalid_review_ground'
+            ? `Registered as reference: registration ${ground.registration_id} asked for your review, but the ground it named does not hold (${ground.rejected.map(entry => entry.reason).join('; ')}).`
+            : `Registered as reference: registration ${ground.registration_id} asked for your review without naming anything waiting on it (a task, a decision, a send or publish, or your own request).`;
+        case 'review_resort': return `Re-sorted to Reference under your ruling (${ground.message_ref}): nothing was waiting on it. ${ground.finding}`;
     }
 }
 
