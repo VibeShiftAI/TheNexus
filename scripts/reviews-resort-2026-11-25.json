@@ -33,9 +33,8 @@
       "id": "9b88f69f-0c50-4590-b86a-d67ac5eb0ac8",
       "title": "Can a paused task still finish?",
       "revision_id": "0329f20b-e921-44fd-9d7a-3b934894b255",
-      "outcome": "stay",
-      "unsure": "Its answer (yes) is disputed by a QA follow-up you approved on November 25 (slate e231ce616cca, item 49af36dad0e3), which is not yet a task, and Praxis advised you not to approve it yet. Whether it still needs you depends on that follow-up, so it was left waiting.",
-      "finding": "A walkthrough for merged work whose answer is disputed by a QA follow-up you approved; left waiting until that follow-up settles it."
+      "outcome": "move",
+      "finding": "A verification walkthrough for merged work: its task (86fe9997) is complete and merged into Praxis main (48f80ab0), with new tests and no production change. It answers its own question (yes) and asks you nothing; the only ask on its card was to approve it as ready, which is not a ground. The QA follow-up you approved on November 25 (slate e231ce616cca, item 49af36dad0e3, not yet a task) is to fix that path or prove with a test that it finishes, so that work settles the dispute over its answer, not your review of this document. Moving it records no approval, in line with Praxis's advice not to approve it yet."
     },
     {
       "id": "3373f198-83a4-4a95-b623-e1fa4234dc63",

@@ -13,7 +13,7 @@
  *           written, so Robert's request-review puts it back.
  *   record  decisions in its own text are waiting for Robert: they are recorded as review_resort decisions on its
  *           current version, a ground in force until his next decision on it. Nothing else changes.
- *   stay    a ground is already in force, or the reading was unsure: nothing is written.
+ *   stay    a ground is already in force: nothing is written.
  *
  * With --execute it first runs the review store's additive migrations (the review_ground column and the two new
  * retirement trigger types; the same migrations the Nexus API runs when it starts), then applies each document
@@ -187,7 +187,7 @@ function recordedUnderRuling(doc, ruling, revisionId) {
 function apply(store, plan, entry, { execute, snapshotAt, actorId }) {
     const doc = store.getDocument(entry.id);
     if (!doc) return { result: 'missing' };
-    if (entry.outcome === 'stay') return { result: 'stayed', reason: entry.unsure ? { code: 'unsure', message: entry.unsure } : { code: 'ground_in_force', message: entry.finding } };
+    if (entry.outcome === 'stay') return { result: 'stayed', reason: { code: 'ground_in_force', message: entry.finding } };
 
     if (entry.outcome === 'move') {
         const earlier = movedUnderRuling(store, doc.id, plan.ruling);

@@ -1596,8 +1596,7 @@ the same rule (`scripts/reviews-resort.js`, report
 - None applies: the document moves to Reference with the `review_resort`
   retirement ground and no decision row.
 - A guard holds (unsent mail, draft comments, waiting tasks, open replacement
-  work, a waiting agent review), or the reading was not sure: it stays, and
-  the report says why.
+  work, a waiting agent review): it stays, and the report says why.
 
 The script takes the outcomes from a plan
 (`scripts/reviews-resort-2026-11-25.json`: the ruling, the snapshot time and,
@@ -1623,8 +1622,14 @@ The run on 2026-11-25 (live at 16:56:51Z, after a backup at
 `/Volumes/Projects/TheNexus/backups/nexus-2026-11-25-before-reviews-resort.db`)
 covered the 28 documents waiting at the snapshot (15:05:11Z): 18 moved to
 Reference (one, the open-task audit, under the exception), decisions were
-recorded on 7, and 3 stayed (two with a ground already in force, one the
-reading was unsure about). The decision rows were 31 before and after.
+recorded on 7, and 3 stayed. Two of those have a ground in force. The third,
+a verification walkthrough for merged work (9b88f69f), had been left waiting
+because the reading was not sure; QA review asked for a firm call, and a
+second run the same day (live at 18:10:42Z, after a backup at
+`/Volumes/Projects/TheNexus/backups/nexus-2026-11-25-before-reviews-resort-repair.db`)
+moved it after a fuller reading found nothing waiting on it. In all, 19
+moved, 7 were recorded and 2 stayed. The decision rows were 31 before and
+after each run.
 
 ### 15.7 Consumer guidance for Praxis
 
