@@ -1,0 +1,366 @@
+{
+  "about": "The one-time re-sort of the 28 documents in Robert's Needs your review list at the start of task dcc2a7be (snapshot 2026-11-25T15:05:11Z), under his ruling of 2026-11-25 (contract docs/contracts/document-review-deliverables.md section 15.6). Each document was read in full with its tasks, reviews, decisions and Robert's chat messages; every outcome below cites what that reading found. Applied by scripts/reviews-resort.js; reported in docs/reports/2026-11-25-reviews-resort.md.",
+  "ruling": "nexus://conversation/a821fe1e-4d76-4a3f-82e1-8872be4ac289/message/8f6068f1-bbe7-4200-b59c-9d9bebf27469",
+  "task_id": "dcc2a7be-9fe4-4687-9e77-e97d80debce3",
+  "snapshot_at": "2026-11-25T15:05:11Z",
+  "documents": [
+    {
+      "id": "deededaf-3d2d-474a-a13c-f77570696aa3",
+      "title": "Inkling 2 Mini live test, run by day",
+      "revision_id": "17ac1ec1-1184-4dae-975d-70880d7b72d5",
+      "outcome": "move",
+      "finding": "The live test kept Gemma as the primary model and changed nothing; its task (7222ac5c) passed QA and merged, and the result reached you in chat on November 25 after you asked how the test went."
+    },
+    {
+      "id": "34fb831e-97f8-4ad0-825e-df75f0aee598",
+      "title": "Bao business blueprint (interactive page)",
+      "revision_id": "e11ef97e-84df-4f75-821c-d6727f3ea0ae",
+      "outcome": "record",
+      "finding": "You approved an earlier version; this version carries the reframing and the wording fixes you asked for, and it should not go to Cat until you have read it.",
+      "decisions": [
+        {
+          "id": "bao-send-to-cat",
+          "question": "Is the updated bao blueprint page ready to send to Cat?",
+          "recommendation": "The page makes no recommendation of its own. In chat on November 25 (12:12) Praxis recommended taking the reviewer's three wording fixes and then sending it; those fixes are in this version.",
+          "options": [
+            { "id": "approve", "label": "Approve it", "action": "Record your approval of this version; it is cleared to go to Cat" },
+            { "id": "request-changes", "label": "Request changes", "action": "Request changes with your notes; a revision is made and nothing goes to Cat" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "9b88f69f-0c50-4590-b86a-d67ac5eb0ac8",
+      "title": "Can a paused task still finish?",
+      "revision_id": "0329f20b-e921-44fd-9d7a-3b934894b255",
+      "outcome": "move",
+      "finding": "A verification walkthrough for merged work: its task (86fe9997) is complete and merged into Praxis main (48f80ab0), with new tests and no production change. It answers its own question (yes) and asks you nothing; the only ask on its card was to approve it as ready, which is not a ground. The QA follow-up you approved on November 25 (slate e231ce616cca, item 49af36dad0e3, not yet a task) is to fix that path or prove with a test that it finishes, so that work settles the dispute over its answer, not your review of this document. Moving it records no approval, in line with Praxis's advice not to approve it yet."
+    },
+    {
+      "id": "3373f198-83a4-4a95-b623-e1fa4234dc63",
+      "title": "Ops panel, compact: before and after",
+      "revision_id": "52bbb326-6b64-4d51-bb94-ed721faa430b",
+      "outcome": "move",
+      "finding": "It shows before-and-after screenshots of a change you asked for, which is merged and live (task 52b5db3d)."
+    },
+    {
+      "id": "ea231651-4e6c-4e0d-98d9-7245730c7359",
+      "title": "Test store guard: design, inventory and verification",
+      "revision_id": "658cc98f-f9cc-4c0e-bd28-3c803c9ee875",
+      "outcome": "move",
+      "finding": "It reports on a test guard that is merged (task 033719fe) and asks you nothing."
+    },
+    {
+      "id": "2a7317ac-868d-4621-a77f-c9d44c95ac49",
+      "title": "Test suites on main: what failed, why, and what changed",
+      "revision_id": "5b0cdf2e-9402-416e-8e7e-45dc9df044f7",
+      "outcome": "move",
+      "finding": "Its one question, a free model seat on the trading council, lapsed when you had the council retired and its failing tests removed (task aa32a9dc)."
+    },
+    {
+      "id": "31c7c4e3-e5ec-42ee-a4b1-29fbd01fc484",
+      "title": "Inkling 2 Mini readiness report",
+      "revision_id": "3deeb077-59ac-4a75-8bd8-e399d2cec082",
+      "outcome": "move",
+      "finding": "You approved the graph repair, and the live test it prepared has run and answered its questions (document deededaf). One side note says removing twelve older live_test episodes from the graph is your call; it has no recommendation and nothing waits on it."
+    },
+    {
+      "id": "deb69249-77a2-4f2b-b95f-438e5e1b700c",
+      "title": "Mise: sending feedback from the app",
+      "revision_id": "2c5bc2e7-1b7d-4a69-a214-1e106d35ce86",
+      "outcome": "record",
+      "finding": "One placement question is open for you; the feature itself is merged.",
+      "decisions": [
+        {
+          "id": "mise-feedback-placement",
+          "question": "In the two cooking screenshots, is Feedback where you would reach for it with a timer running?",
+          "recommendation": "Approve the current placement: the timer and step controls stayed reachable on both devices.",
+          "options": [
+            { "id": "approve-placement", "label": "Approve the current placement", "action": "Feedback stays at the top right on iPhone and at the foot of the navigation rail on iPad; no new work" },
+            { "id": "move-button", "label": "Request a different position", "action": "A Mise task moves Feedback to the position you name" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "e061d1e8-8925-40a0-82aa-a9de8d01dba9",
+      "title": "QA test answer key: control set and why good work is rejected",
+      "revision_id": "f5791c16-d27f-4c09-b929-7a10da0043a9",
+      "outcome": "record",
+      "finding": "You have not said whether to approve one measurement run of the new answer key; nothing is filed or switched until you do.",
+      "decisions": [
+        {
+          "id": "e2-answer-key-run",
+          "question": "Should the nightly QA test switch to a new answer key?",
+          "recommendation": "Not today. Approve one measurement run of the proposed key, then switch.",
+          "options": [
+            { "id": "approve-run", "label": "Approve one measurement run", "action": "One follow-up task records the 8 verified defects as fail cases in a candidate store, runs the judge once on the 24 nightly cases and brings you the score before anything becomes the nightly key" },
+            { "id": "keep-current", "label": "Keep the current key", "action": "Nothing changes; the nightly score keeps resting on labels known to be wrong" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "9fccff0a-0d47-407c-8d49-d6a5be316928",
+      "title": "Ops graphic: every running agent, real logos",
+      "revision_id": "d5b13309-97ae-4c2d-8225-41d4e2c15622",
+      "outcome": "move",
+      "finding": "The expanded Ops graphic is live, you have seen it, and the follow-up change you asked for has shipped (task 52b5db3d)."
+    },
+    {
+      "id": "092e3210-e5f1-4760-a5d8-13c40a27ff63",
+      "title": "Second-critic objections: what resolving them would have cost and caught",
+      "revision_id": "0518897c-6759-4226-849f-13c0ca0cf281",
+      "outcome": "move",
+      "finding": "You acted on its result in chat on November 23, and the log-only trial it proposed is built (task ed1827bc)."
+    },
+    {
+      "id": "4da2602c-1703-478e-9c32-a8bfaab2bc85",
+      "title": "Failed document deliveries: what Robert never received",
+      "revision_id": "b1388373-8314-464e-8329-ea4e720c1a4f",
+      "outcome": "stay",
+      "ground": "decision",
+      "finding": "Sixteen recover-or-skip choices declared on this version are unanswered, and none of those files is registered until you make them."
+    },
+    {
+      "id": "0d86bfd7-5208-42d5-bb28-1a871694fbcb",
+      "title": "Catalog live: did the test inquiry arrive?",
+      "revision_id": "9108bb40-8017-4784-a313-e4be8fa17e04",
+      "outcome": "move",
+      "finding": "You confirmed in chat on November 23 that the test inquiry arrived; only the project checkpoint still lacks that evidence, and recording it needs nothing more from you."
+    },
+    {
+      "id": "cf0e2947-d90e-4d88-ad9e-02f5de4eb04e",
+      "title": "Catalog live: your copy edits on the live pages",
+      "revision_id": "d1498782-a9b5-4fd2-a673-65669c2050d4",
+      "outcome": "move",
+      "finding": "You reviewed the live pages and emailed your edits on November 23; what is open now is Praxis's two chat questions about those edits, not this document."
+    },
+    {
+      "id": "11cb8b59-547c-4261-8431-ce1663269e3b",
+      "title": "e2 QA judge: input completeness and rerun noise (2026-11-21), with re-minted fixtures",
+      "revision_id": "5d4fff44-0b10-402f-943d-7333f1f2be32",
+      "outcome": "move",
+      "finding": "A finished measurement report that later e2 work has built on (tasks b33cc320 and fb6f4c0b); it asks only for approval as ready."
+    },
+    {
+      "id": "d7c7a259-9eca-46b3-aa65-94625e2b9c19",
+      "title": "Planted-error check of the batch judge (task 3.6, 21 November 2026)",
+      "revision_id": "543a85e7-c833-4992-9563-7cdf1cbf2e32",
+      "outcome": "move",
+      "finding": "It confirms a repair rule you had already ruled on, which is built and has since been revised; it asks only for sign-off."
+    },
+    {
+      "id": "6238f7a5-efc1-41d8-97f5-8de4b6f5d98a",
+      "title": "Open task audit: which of the 65 waiting tasks are still valid",
+      "revision_id": "1e1c174d-9815-43a7-96db-27cb726c2e1b",
+      "outcome": "move",
+      "finding": "Every call in this audit was made in chat on November 20 and in your review on November 21, and all of them have been carried out: Praxis's decision record shows all 65 choices answered from that review and acted on.",
+      "declared_decisions_answered": {
+        "record": "/Volumes/Projects/Praxis/data/document-decisions/8f182d44315b00ca4f8c156469f312543f0ffc7f47fc568fb043a6b78bd3eb52.json",
+        "why": "Its 65 declared choices were answered in free text in your November 21 review (submission ffc0b328), and Praxis recorded and acted on all 65. The Nexus copy holds no structured answers, so the review-ground rule alone reads them as open."
+      }
+    },
+    {
+      "id": "1839506f-a2a3-4e3d-8283-15dff2e1ed1f",
+      "title": "Frozen e2 QA adjudication audit, 17 November 2026",
+      "revision_id": "b047cb5b-3916-43db-9cee-6a5fe58e1f54",
+      "outcome": "move",
+      "finding": "A finished audit whose recommended follow-up work later e2 tasks have done (08e95982, f35f65e4, b33cc320, fb6f4c0b); it asks only for approval as ready."
+    },
+    {
+      "id": "d8930325-9210-43c6-aedf-9853040525d1",
+      "title": "Full-record and inherited correction handoffs on retained Praxis tasks",
+      "revision_id": "96489809-88df-47b6-a0b5-55c7f2dbbede",
+      "outcome": "move",
+      "finding": "An experiment report whose own recommendation is to adopt neither candidate yet; it asks only for approval as ready."
+    },
+    {
+      "id": "10f0cc76-feb9-4366-9d66-3e5da9bd570d",
+      "title": "Status report: one modular template with About this report",
+      "revision_id": "99bb01af-4a59-4f42-931d-25fabed69679",
+      "outcome": "move",
+      "finding": "Your November 21 review approved it with no changes, and the template is merged and deployed. The approval itself was never recorded, and this re-sort records no approvals."
+    },
+    {
+      "id": "0c7881be-7ce1-43b3-ad25-dbd0a1d7fd6f",
+      "title": "Bowery Princes: Clay intake questions (wording review)",
+      "revision_id": "ac647fb8-287f-4396-909c-afaaf6ff2c21",
+      "outcome": "move",
+      "finding": "You reviewed it and asked for it to be closed; your rewording went into the intake, and Clay has answered."
+    },
+    {
+      "id": "b4d626f1-f7cd-4db5-b9ee-15677b4bcc32",
+      "title": "Projects catalog: the words on the pages",
+      "revision_id": "0a3db85a-d0f1-4c4d-8fcf-3f3b3f725b57",
+      "outcome": "move",
+      "finding": "You said you would not review this text again and would judge the live site, which launched with your 30 edits."
+    },
+    {
+      "id": "b01d6a2f-76e3-4bc0-b162-495958a2d01b",
+      "title": "Git cleanup report and revival review (2026-11-14)",
+      "revision_id": "2a8ce034-470f-43d3-a576-e0069d1a03f1",
+      "outcome": "record",
+      "finding": "Two revival choices from the git cleanup are still open, and only you can make them.",
+      "decisions": [
+        {
+          "id": "revive-praxis-qa-digest",
+          "question": "Cherry-pick Praxis candidate 91e176d3 from archive/candidate/e6-c7, whose two QA brief lines require running the digest command before claiming a match?",
+          "recommendation": "Cherry-pick it (Revival shortlist, item 1).",
+          "options": [
+            { "id": "revive", "label": "Cherry-pick", "action": "A Praxis task cherry-picks 91e176d3 onto main" },
+            { "id": "leave-archived", "label": "Leave archived", "action": "No change; the archived ref stays as it is" }
+          ]
+        },
+        {
+          "id": "revive-cortex-prompt-receipts",
+          "question": "Revive TheCortex archive/feat/prompt-receipt-fixtures (commits 1ca3671a, fd27b490 and 001d0299: offline voter-request capture and its tests)?",
+          "recommendation": "Revive it in a separate task, revalidating adapter compatibility and explicit UTF-8 writes before adopting it (Revival shortlist, item 2).",
+          "options": [
+            { "id": "revive", "label": "Revive in a separate task", "action": "A TheCortex task revives the branch after revalidating adapter compatibility and UTF-8 writes" },
+            { "id": "leave-archived", "label": "Leave archived", "action": "No change; the archived ref stays as it is" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "baf089b5-9b36-4977-9099-5c293995ab91",
+      "title": "Client status report system: review and recommendations",
+      "revision_id": "5bd2696e-8823-4255-bbee-8a13c68df5c7",
+      "outcome": "record",
+      "finding": "Three of its six recommendations (row ownership, failure reporting and the Meeple item) still need your yes or no; the other three were overtaken.",
+      "decisions": [
+        {
+          "id": "row-ownership",
+          "question": "Who owns the accuracy of each row?",
+          "recommendation": "Require a recorded next action and an explicit audience and decision owner for each open client item; keep the prohibition on model-written Next Steps; replace the generic Client review substitution with evidence-based status; omit operator-only work (Decisions for Robert).",
+          "options": [
+            { "id": "approve", "label": "Approve", "action": "The fix work for this recommendation is filed against the report policy and row model" },
+            { "id": "decline", "label": "Decline", "action": "No change; rows keep the current Client review substitution" }
+          ]
+        },
+        {
+          "id": "failure-visibility",
+          "question": "What must an operator be told when something goes wrong?",
+          "recommendation": "Show failed reads, failed generation and unpublished hosted revisions as unresolved work, with a reason and a retained retry; reserve Sent for a transport receipt; repair the stale project send time from the recorded receipt, with a reviewable reconciliation (Decisions for Robert).",
+          "options": [
+            { "id": "approve", "label": "Approve", "action": "The fix work for this recommendation is filed" },
+            { "id": "decline", "label": "Decline", "action": "No change" }
+          ]
+        },
+        {
+          "id": "meeple-report-item",
+          "question": "For Meeple, does the revenue-share and case-study item belong in a client report?",
+          "recommendation": "The report leaves this call to you and recommends, either way, recording the actual next action and preparing a first reviewed Meeple report only when it is useful (Decisions for Robert).",
+          "options": [
+            { "id": "belongs", "label": "It belongs in the client report", "action": "Record the actual next action and include the item when a first reviewed Meeple report is useful" },
+            { "id": "keep-out", "label": "Keep it out of client reports", "action": "Record the actual next action and leave the item out of Meeple's client reports" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dadd93dd-b588-4da6-bbe7-53bdc0e23da2",
+      "title": "Retire proposal: scheduled jobs and skills (Subtraction Audit 4/4)",
+      "revision_id": "9ce14d0c-2710-4a2c-9314-54b3912149ca",
+      "outcome": "record",
+      "finding": "Most of the retire list still waits for your approval by line or by block; only the memory pair and the three trading jobs have been dealt with.",
+      "decisions": [
+        {
+          "id": "pause-jobs-j1-j10",
+          "question": "Pause the ten running scheduled jobs J1 to J10 (J11 and J12 are already paused)?",
+          "recommendation": "Pause them; pausing disables a job, never deletes it, and is one call to undo (What approving a line does).",
+          "options": [
+            { "id": "approve-block", "label": "Approve the block", "action": "Each job is paused through POST /api/cron/<key>/pause and recorded in data/scheduler/paused-jobs.json" },
+            { "id": "line-by-line", "label": "Approve or strike line by line", "action": "Only the approved lines are paused; struck jobs keep running" }
+          ]
+        },
+        {
+          "id": "confirm-retired-o",
+          "question": "Confirm the already-off jobs O1, O2, O3, O6 and O7 as retired (O4, O5 and O8 were removed with the trading council)?",
+          "recommendation": "Confirm them: approving changes nothing today, records that nobody should re-enable a job without a new decision, and makes it a candidate for code removal (Jobs already off).",
+          "options": [
+            { "id": "approve-block", "label": "Approve the block", "action": "Each job is recorded as retired and a candidate for later code removal" },
+            { "id": "line-by-line", "label": "Approve or strike line by line", "action": "Only the approved lines are recorded as retired" }
+          ]
+        },
+        {
+          "id": "weak-keeps-w1-w13",
+          "question": "Pause any of the 13 weak keeps W1 to W13?",
+          "recommendation": "They stay kept under the proposal's rule, but each is a reasonable line to add to the pause list (Weak keeps).",
+          "options": [
+            { "id": "keep", "label": "Keep all", "action": "No change" },
+            { "id": "line-by-line", "label": "Approve chosen lines for pausing", "action": "Only the approved lines are paused through the cron pause call" }
+          ]
+        },
+        {
+          "id": "archive-duplicates-d1-d10",
+          "question": "Archive the ten duplicate skills D1 to D10 and keep their survivors?",
+          "recommendation": "Archive them, first copying any line the loss column names into the surviving skill (Skills that duplicate a surviving skill).",
+          "options": [
+            { "id": "approve-block", "label": "Approve the block", "action": "The named lines are copied into each survivor, then each skill is archived with skill_manage archive (restoreSkill undoes it)" },
+            { "id": "line-by-line", "label": "Approve or strike line by line", "action": "Only the approved lines are archived, copying named lines first" }
+          ]
+        },
+        {
+          "id": "archive-unused-ops-u1-u7",
+          "question": "Archive the seven operational skills never selected in 60 days, U1 to U7?",
+          "recommendation": "Archive them (Operational skills never selected).",
+          "options": [
+            { "id": "approve-block", "label": "Approve the block", "action": "Each skill is archived with skill_manage archive" },
+            { "id": "line-by-line", "label": "Approve or strike line by line", "action": "Only the approved lines are archived" }
+          ]
+        },
+        {
+          "id": "archive-research-r1-r52",
+          "question": "Archive the 52 research recipes never selected, R1 to R52?",
+          "recommendation": "Archive them; the proposal says this block can be approved whole (Research recipes never selected).",
+          "options": [
+            { "id": "approve-block", "label": "Approve the block", "action": "Each recipe is archived with skill_manage archive" },
+            { "id": "line-by-line", "label": "Approve or strike line by line", "action": "Only the approved lines are archived" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b80faa43-dacb-4fd7-b385-fb7d9148c294",
+      "title": "Praxis story for X (thread draft)",
+      "revision_id": "ee5a0900-5e59-4278-95ea-35fc706a1f8a",
+      "outcome": "move",
+      "finding": "A Claude Code session registered this X thread draft on its own; you asked for an X version but not to review it here, and its own text holds posting until stages ship."
+    },
+    {
+      "id": "de213f39-cdba-467d-a026-78f741b6ba3c",
+      "title": "Praxis story for r/SideProject (first draft)",
+      "revision_id": "b68503eb-57cf-4235-bb3f-b9050ac3acf6",
+      "outcome": "stay",
+      "ground": "operator_request",
+      "finding": "You asked for changes; this version carries the three edits your November 11 review said would make it approved. Only you can record that approval, so it stays."
+    },
+    {
+      "id": "660b14bc-6924-4f53-8bf7-e244f2636598",
+      "title": "Invented limits audit: keep or remove",
+      "revision_id": "7dd4cb21-fff4-4a76-b1c0-b25ab17435d9",
+      "outcome": "record",
+      "finding": "You have not said which invented limits to remove; most of the 44 blocking items are still in the code, and nothing changes until you decide.",
+      "decisions": [
+        {
+          "id": "blocking-44",
+          "question": "What should happen to the 44 limits listed as most plausibly blocking your work today?",
+          "recommendation": "Start with these 44 before the other rows; each row carries a keep, remove or name-a-source recommendation, and removals become separate tasks batched by theme: board writes, QA lifecycle, executor gates, evidence truncation, phone inputs (Summary for Robert).",
+          "options": [
+            { "id": "follow-recommendations", "label": "Follow each row's recommendation", "action": "Follow-up tasks are filed by theme for the rows marked remove or name-a-source" },
+            { "id": "row-by-row", "label": "Mark each row keep, remove or name-a-source", "action": "Your mark is recorded per row, and follow-up tasks are filed only for rows you mark remove or name-a-source" },
+            { "id": "keep-all", "label": "Keep them as they are", "action": "No change; every limit stays as it is" }
+          ]
+        },
+        {
+          "id": "name-a-source-989",
+          "question": "For the 989 name-a-source rows, mark each one keep, remove, or let the sender assign a reason?",
+          "recommendation": "Take these after the 44.",
+          "action": "Your mark is recorded for each row; removal tasks are filed for rows marked remove, and the sender is asked to name a source for rows left to the sender"
+        }
+      ]
+    }
+  ]
+}

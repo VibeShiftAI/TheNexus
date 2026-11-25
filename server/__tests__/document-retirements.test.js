@@ -22,6 +22,8 @@ const path = require('path');
 const http = require('http');
 const express = require('express');
 const Database = require('better-sqlite3');
+// Robert's saved request to see a document: the review ground these registrations name (contract §15).
+const { robertAsks } = require('./helpers/review-ground');
 
 const nativeFetch = global.fetch;
 const OPERATOR_KEY = 'operator-test-credential-retirements-0123456789';
@@ -68,13 +70,20 @@ function writeFile(name, content, root = projectRoot) {
     return file;
 }
 
-/** A declared deliverable (the producer's registration, with its receipt). */
-function register(file, { key, task_id = OLD_TASK, project_id = PROJECT_ID, title = 'Launch brief', requires_review = true, intended_action = 'none', blocking_task_ids, replaces } = {}) {
+/** Robert's chat request to see the launch brief (saved per test): the review ground a request for review names (contract §15). */
+let askGround;
+
+/**
+ * A declared deliverable (the producer's registration, with its receipt). A request for review names Robert's own
+ * request as its ground unless the test says otherwise (`review_ground: null` names none).
+ */
+function register(file, { key, task_id = OLD_TASK, project_id = PROJECT_ID, title = 'Launch brief', requires_review = true, intended_action = 'none', blocking_task_ids, replaces, review_ground } = {}) {
+    const ground = review_ground !== undefined ? review_ground : requires_review ? askGround : null;
     return api('POST', '/api/documents', {
         path: file, title, project_id, task_id, kind: 'document',
         deliverable: {
             purpose: 'Decide whether the launch plan is ready', requires_review, intended_action,
-            ...(key ? { key } : {}), ...(blocking_task_ids ? { blocking_task_ids } : {}),
+            ...(key ? { key } : {}), ...(blocking_task_ids ? { blocking_task_ids } : {}), ...(ground ? { review_ground: ground } : {}),
         },
         ...(replaces !== undefined ? { replaces } : {}),
     });
@@ -138,6 +147,7 @@ beforeEach(async () => {
     await db.createTask({ id: WAITER_TASK, project_id: PROJECT_ID, name: 'Ship the launch', status: 'in_progress' });
     await db.createTask({ id: DONE_TASK, project_id: PROJECT_ID, name: 'Book the venue', status: 'completed' });
     await db.createTask({ id: OTHER_TASK, project_id: OTHER_PROJECT_ID, name: 'Build the modular template', status: 'completed' });
+    askGround = await robertAsks(db, 'Show me the launch brief when it is ready.');
     delivery = { deliver: jest.fn(async () => null) };
     const createDocumentsRouter = require('../routes/documents');
     const app = express();
@@ -609,8 +619,9 @@ describe('the rule: exact names only, and only once the replacement waits for re
         expect((await read(old.document.id)).named_as_replaced).toEqual([expect.objectContaining({ outcome: 'pending' })]);
         expect(store().getDocument(old.document.id).requires_review).toBe(true);
         expect(decisionRows(old.document.id)).toEqual([]);
-        // New bytes registered for review put it back in the queue, and the name applies in that registration.
-        const v3 = await replacement(undefined, { content: '# Launch brief\n\nThird draft.\n' });
+        // New bytes registered for review put it back in the queue, and the name applies in that registration. His approval
+        // answered the earlier request, so the new version names a request of his made since (contract §15).
+        const v3 = await replacement(undefined, { content: '# Launch brief\n\nThird draft.\n', review_ground: await robertAsks(db, 'Show me the third draft.') });
         expect(v3.replaces[0]).toMatchObject({ outcome: 'retired', target: { document_id: old.document.id } });
         expect(await counts()).toMatchObject({ needs_review: 1, approved: 0, reference: 1 });
     });

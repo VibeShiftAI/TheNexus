@@ -4,11 +4,15 @@
  * The bridge's way into document review: the header's Reviews button with
  * the pending count, and the compact "Ready for your review" section with
  * the newest documents waiting on Robert. Both read one request to the
- * registry (status=needs_review), whose `total` is the server's own count of
- * review-required documents with no decision on their current revision, so
- * the number is the same one the Reviews queue shows. Reference documents
- * never count. Links are relative routes into the app (/documents...), so the
- * Windows and Mac apps stay in their own authenticated session.
+ * registry (status=needs_review, ground=in_force), whose `total` is the
+ * server's own count of review-required documents with no decision on their
+ * current revision and something waiting on them (contract §15), so the
+ * number is the same one the Reviews queue's Needs your review shows.
+ * Reference documents never count, nor do documents still tagged for review
+ * with nothing waiting (an API that predates review grounds ignores the split
+ * and counts them, as before). Links are relative routes into the app
+ * (/documents...), so the Windows and Mac apps stay in their own
+ * authenticated session.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -38,7 +42,7 @@ export function useReviewQueue(limit = HOME_ITEMS): ReviewQueue {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            setPage(await listDocumentsPage({ status: "needs_review", limit }));
+            setPage(await listDocumentsPage({ status: "needs_review", ground: "in_force", limit }));
             setError(null);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to load reviews");

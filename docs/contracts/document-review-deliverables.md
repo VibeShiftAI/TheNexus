@@ -229,6 +229,9 @@ read transaction as the page. Each document row is the legacy list row plus
 filters }` for the same filters. `counts[s]` always equals `total` from the
 list with `status=s`, and `all` is the sum of the four statuses.
 
+Needs your review is split by review ground (`ground=in_force|none`, and
+`grounds.needs_review` in the counts): see §15.4.
+
 ## 5. Reading one document
 
 - `GET /api/documents/:id` adds `review_status`, `current_decision` (the
@@ -1448,3 +1451,227 @@ store's refusals, request validation (each refusal with its code,
 
 Activation: the table is created additively at API startup; the live :4000
 serves the route only after the Nexus API restarts on the new code.
+
+## 15. Review grounds: only what holds something up (2026-11-25, task dcc2a7be)
+
+Why: on 2026-11-25 Robert wrote that the system "generates a LOT of
+documents that are tagged for my review, many of them unnecessarily" and
+asked to reduce Needs your review "to only documents that are holding up next
+steps" (`nexus://conversation/a821fe1e-4d76-4a3f-82e1-8872be4ac289/message/24cc8155-1d4a-44f3-a7b6-a42093976536`).
+Offered a filter only (A), a rule at the source only (B) or both plus a
+one-time re-sort of the documents then waiting (C), he chose "go with C"
+(`nexus://conversation/a821fe1e-4d76-4a3f-82e1-8872be4ac289/message/8f6068f1-bbe7-4200-b59c-9d9bebf27469`).
+A finished report with no decision in it no longer reaches Reviews: it is
+registered as reference, and he still gets its chat link. Approvals stay his
+alone; nothing in this section records a decision.
+
+### 15.1 The four grounds
+
+A document is in Needs your review only while something is waiting on it:
+
+| Ground (`type`) | Holds when |
+|---|---|
+| `task` | an active task (not completed or archived) is on its waiting-task list (`blocking_task_ids`, §9) |
+| `decision` | decision items bound to its current version, at least one without an answer Robert has sent; an agent's suggested edits to its current version waiting for his choices; or a decision recorded by the re-sort (15.6) for its current version, until he records a decision after it |
+| `gated_action` | its `intended_action` is `send`, `publish` or `implement`, so his approval is what allows it |
+| `operator_request` | Robert asked to see it: a message of his cited by its saved reference, his own Move to review queue (request-review), or changes he requested on an earlier version; each counts until he records a decision after it. A Move to review queue on a retired document also counts through the retirement it reopened (`reopened_via: "request_review"`), since the API from before this section recorded that put-back only there |
+
+"Approve this as ready" on a finished report, a walkthrough, an evidence file
+or a sign-off on something already merged or live is not a ground. Whether a
+ground is in force is computed in SQL from the document's state (one
+expression shared by the list filter, the counts and every read), so a ground
+holds whether or not a caller named it: declared open decision items, an
+active waiting task or a gated intended action keep a document waiting on
+their own. Robert's chat request is the one ground a caller has to name,
+because only the caller knows it.
+
+### 15.2 Naming a ground at registration
+
+The declared form (§1) accepts `deliverable.review_ground`: one object or a
+list of them, only with `requires_review: true` (otherwise 400
+`invalid_deliverable`).
+
+| Entry | Holds when |
+|---|---|
+| `{ "type": "task", "task_ids"?: [...] }` | an active task on the waiting-task list as declared (`deliverable.blocking_task_ids`); with `task_ids`, one of those |
+| `{ "type": "decision", "decision_ids"?: [...] }` | a decision item declared on this version is unanswered; named ids must be declared on it |
+| `{ "type": "gated_action", "intended_action"?: "send" \| "publish" \| "implement" }` | the document's intended action is one of those (and the named one) |
+| `{ "type": "operator_request", "message_ref": "nexus://conversation/<id>/message/<id>" }` | Nexus reads the saved message: it is in that conversation, its role is `user` (Robert's own) and it was sent after the latest decision on the document |
+
+Content is never refused: an entry with an unknown type or field, a malformed
+reference or a ground that does not hold is reported in `rejected` with its
+reason, and the registration goes on to the outcome below. Each named ground
+that holds is recorded with the registration
+(`review_documents.review_ground`: `{ grounds, rejected, registration_id,
+revision_id, recorded_at, recorded_by }`); a caller that names nothing leaves
+the record as it was. The receipt carries `review_ground: { named, rejected }`
+only when one was named, so receipts and duplicate detection for callers that
+name nothing are unchanged, and a byte-identical retry returns its first
+receipt.
+
+### 15.3 Outcomes
+
+The registration response adds top-level `review_ground` (null when the
+registration did not ask for review): `{ outcome, message, in_force, named,
+held, rejected, reasons? }`, where `in_force` lists each ground in force in
+words (15.4).
+
+| `outcome` | When |
+|---|---|
+| `waiting` | a ground is in force: it is in Needs your review |
+| `kept_waiting` | none is in force now, but the document was already waiting under a ground in force or one recorded since it last left the queue: this revision keeps it there (the existing behaviour for revisions), listed under Tagged, nothing waiting |
+| `reference` | not waiting: registered as reference through the retirement record (ground `no_review_ground`, 15.5), or `requires_review` was already false |
+| `approved` | this version is already approved |
+| `left_waiting` | nothing is waiting, but a §13.4 guard keeps it waiting (`reasons` lists each), or this registration already moved it to Reference once and Robert put it back since (`already_recorded`) |
+
+A registration that asks for review without a ground in force is never
+refused and never silently accepted: it is registered as reference, the
+response carries the retirement (`retirement.action: "retired"`) and
+`message` says why and what to name. A later registration of the same bytes
+under which a ground holds puts it back (`retirement.action:
+"reopened_by_ground"`): a ground it names (unless it is the registration that
+moved it), or one that holds without being named, such as the send it now
+declares, an active task added to its waiting-task list or decision items it
+declares. A retry that changes nothing returns its first receipt and leaves
+the document in Reference (§13: a replay never undoes a retirement), even when
+a read has captured newer bytes since. Decision items are metadata, outside the
+fingerprint that makes a registration a retry, so a retry that declares them
+on these bytes for the first time puts it back. Request-review puts it back
+too (§13.5).
+
+### 15.4 Lists, counts and reads
+
+- `GET /api/documents?status=needs_review&ground=in_force|none` splits the
+  bucket; `ground` with any other status, or another value, is
+  `400 invalid_query`. The response echoes `ground` (null when not given).
+- Every row adds `review_grounds` (each ground in force, with the facts behind
+  it and a plain `summary`, such as `Task “Ship the launch” is waiting on your
+  review.` or `A decision is waiting for your answer: …`) and
+  `ground_in_force`. Only rows waiting for review (§13.2's queue rule) have
+  grounds in force.
+- `GET /api/documents/counts` adds `grounds: { needs_review: { in_force, none } }`
+  for the same filters; the two add up to `counts.needs_review`.
+- `GET /api/documents/:id` adds the same two fields; `document.review_ground`
+  is the stored record.
+- A ground lapses with its facts (the task completes, the decisions are
+  answered, Robert decides). The document keeps its status and is listed under
+  Tagged, nothing waiting until something waits on it again; nothing moves it
+  to Reference by itself.
+
+### 15.5 Retirement grounds
+
+Two grounds join §13.9. Both record no decision, keep the waiting-task list,
+drafts, comments and declaration, and are put back by request-review:
+
+- `no_review_ground`: `{ type, registration_id, revision_id, task_id, code,
+  rejected }`, `code` `no_review_ground` (nothing named, `rejected` empty) or
+  `invalid_review_ground` (each named ground that did not hold, with its
+  reason). Reason: "Registered as reference: registration … asked for your
+  review without naming anything waiting on it …".
+- `review_resort`: `{ type, message_ref, task_id, finding }`, citing Robert's
+  ruling, the task that carried out the re-sort and what reading the document
+  found. Reason: "Re-sorted to Reference under your ruling (…): nothing was
+  waiting on it. <finding>".
+
+The §13.4 guards apply to both, checked in the same immediate transaction as
+the move. A table created before these types existed is rebuilt at startup
+with its rows, indexes and triggers.
+
+### 15.6 The one-time re-sort
+
+The documents waiting when the task ran were each read and sorted once under
+the same rule (`scripts/reviews-resort.js`, report
+`docs/reports/2026-11-25-reviews-resort.md`):
+
+- A ground applies: it is recorded. Where the document's own brief poses a
+  decision, it is recorded on the current version in the ground record as
+  `{ type: "decision", source: "review_resort", id, question, recommendation,
+  options | action, revision_id, ruling, task_id, recorded_at }` (checked with
+  the registration rules for decision items first); it holds on that version
+  until any later decision on the document (Approve document, or Request
+  changes with his answer in the comment). It is deliberately not declared as
+  `metadata.decision_items`: Praxis carries out decision answers only for items
+  it declared itself, so answers to items the re-sort declared would never be
+  acted on.
+- None applies: the document moves to Reference with the `review_resort`
+  retirement ground and no decision row.
+- A guard holds (unsent mail, draft comments, waiting tasks, open replacement
+  work, a waiting agent review): it stays, and the report says why.
+
+The script takes the outcomes from a plan
+(`scripts/reviews-resort-2026-11-25.json`: the ruling, the snapshot time and,
+per document, the version read, the outcome and what the reading found). It
+first runs the additive migrations of 15.5, then applies each document in its
+own immediate transaction after re-checking it there: a document that is no
+longer waiting, is on another version than the one read, or was decided by
+Robert after the snapshot is skipped; a move also needs no ground in force at
+that moment and every §13.4 guard clear. A second run reports what the first
+did and writes nothing. Without `--execute` it is a read-only preview.
+
+One exception is named per document in the plan
+(`declared_decisions_answered`): decision items Robert answered in the free
+text of a review, which Nexus holds no structured answer for, so 15.1 alone
+reads them as open. Such a document moves only when that is its sole ground in
+force and the Praxis decision record the plan names, read at run time, is for
+that document and its current version and holds an answer to every declared
+item. The Nexus still reads those items as open, so a new registration of
+such a document's bytes asking for review brings it back (15.3); a retry of
+its earlier registration does not.
+
+The run on 2026-11-25 (live at 16:56:51Z, after a backup at
+`/Volumes/Projects/TheNexus/backups/nexus-2026-11-25-before-reviews-resort.db`)
+covered the 28 documents waiting at the snapshot (15:05:11Z): 18 moved to
+Reference (one, the open-task audit, under the exception), decisions were
+recorded on 7, and 3 stayed. Two of those have a ground in force. The third,
+a verification walkthrough for merged work (9b88f69f), had been left waiting
+because the reading was not sure; QA review asked for a firm call, and a
+second run the same day (live at 18:10:42Z, after a backup at
+`/Volumes/Projects/TheNexus/backups/nexus-2026-11-25-before-reviews-resort-repair.db`)
+moved it after a fuller reading found nothing waiting on it. In all, 19
+moved, 7 were recorded and 2 stayed. The decision rows were 31 before and
+after each run.
+
+### 15.7 Consumer guidance for Praxis
+
+Name `deliverable.review_ground` on every declaration that asks for review:
+the waiting task (with `blocking_task_ids`), the decision items, the gated
+action, or Robert's chat message by its saved reference. Read the outcome from
+the response's `review_ground`, not the receipt. Until Praxis names grounds,
+its registrations keep working: one with nothing in force is registered as
+reference, and its receipt (`review_status: "reference"` with the retirement
+in force, previous state waiting on this revision) is accepted by Praxis's
+receipt check. Announcing reference-only documents in chat is Praxis's side.
+
+### 15.8 Verification and activation
+
+`server/__tests__/document-review-grounds.test.js` covers each of the four
+grounds stored and returned by the read, a registration with no ground field
+and each kind of invalid ground (registered as reference with the reason, no
+decision row), a revision kept waiting, a same-bytes reopening by a ground,
+named or not (a send declared, an active task added to the waiting-task list,
+decision items declared), a retry and a caller naming nothing, a retry of a
+moved document's earlier registration that leaves it in Reference (also after
+a read captured newer bytes) while a new declaration brings it back, the
+cutoff of grounds recorded before the
+document last left the queue, the guards, the list split and counts (with the
+400s), the `review_resort` move and its way back through request-review (also
+as the earlier API made it, recorded only on the reopened retirement), a
+re-sort decision (in force on its version; a new version naming nothing kept
+waiting under the separate filter; lapsing after a decision), the migration
+of a previous-release retirement table, and the re-sort script itself (plan
+checks, preview, a move applied once with no decision row and put back, the
+re-checks that keep a document waiting, a recorded decision, and the
+declared-decisions exception against a Praxis decision record). The dashboard suites
+`documents-index.test.mjs` and `ready-for-review.test.mjs` cover the default
+view, the grounds in each row, the Tagged, nothing waiting view and its
+address, the empty-state link between them, the bridge count and an API that
+predates grounds.
+
+Activation: the `review_ground` column and the wider retirement table are
+created additively at API startup; the re-sort created them on the live
+database on 2026-11-25. The live :4000 serves the split, the outcomes and the
+new reasons only after the Nexus API restarts on the new code; until then it
+ignores `ground` (the page says so) and shows a moved document's retirement
+without its reason. A document the re-sort moved to Reference is out of the
+queue at once, on any code, and one Robert puts back before the restart is
+in the default view after it, as his own request.

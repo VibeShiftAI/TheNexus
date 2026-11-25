@@ -76,6 +76,10 @@ export function DeliverableRow({ entry, projectNames, showTask = true, showProje
     // one (what the reader decides), else the declared purpose.
     const brief = briefFromMetadata(entry.metadata);
     const blurb = brief ? [brief.kind === 'update' ? brief.situation : '', brief.problem, brief.ask].filter(Boolean).join(' ') : entry.purpose;
+    // What is waiting on it (contract §15), in the server's words. A waiting task is already listed by BlockingTasks below.
+    const grounds = (entry.review_grounds ?? []).filter((g) => g.summary && !(g.type === "task" && entry.blocking_tasks?.length));
+    // Still tagged for review with nothing waiting: said plainly rather than left looking like it holds something up.
+    const nothingWaiting = entry.ground_in_force === false && entry.review_status === "needs_review" && !entry.replacement && !entry.agent_review_ready;
 
     return (
         <li className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2.5" data-document-id={entry.id} data-media-type={mediaType}>
@@ -128,6 +132,14 @@ export function DeliverableRow({ entry, projectNames, showTask = true, showProje
                     )}
                     {!compact && <span className={`rounded-full border px-2 py-0.5 ${feedback.tone}`} data-feedback-state="">{feedback.text}</span>}
                 </div>
+                {grounds.length > 0 && (
+                    <ul className="mt-1.5 space-y-0.5 text-[11px] leading-snug text-amber-100/90" data-review-grounds="" aria-label="What is waiting on this document">
+                        {grounds.map((g, i) => <li key={`${g.type}-${i}`} data-review-ground={g.type}>{g.summary}</li>)}
+                    </ul>
+                )}
+                {nothingWaiting && (
+                    <p className="mt-1.5 text-[11px] text-slate-500" data-review-ground-none="">Tagged for review; nothing is waiting on it now.</p>
+                )}
                 <BlockingTasks tasks={entry.blocking_tasks} />
             </div>
             <Link

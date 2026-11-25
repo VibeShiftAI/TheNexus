@@ -43,6 +43,7 @@ const { initializeDocumentOutgoing, createDocumentOutgoingStore } = require('./d
 const { initializeDocumentRetirements, createDocumentRetirementStore } = require('./document-retirements');
 const { initializeDocumentRelocations, createDocumentRelocationStore } = require('./document-relocations');
 const { hasOutstandingRequest } = require('../server/services/document-retirement-purpose');
+const { REVISION_KEY: DECISION_ITEMS_REVISION_KEY } = require('../server/services/document-decision-items');
 
 function now() { return new Date().toISOString(); }
 
@@ -56,6 +57,12 @@ const DELIVERABLE_COLUMNS = [
     // Media model (2026-10-16, docs/contracts/review-media-and-design-packages.md). Legacy rows are Markdown.
     ['media_type', "TEXT NOT NULL DEFAULT 'markdown'"],
     ['mime_type', "TEXT NOT NULL DEFAULT 'text/markdown'"],
+    // Review grounds (2026-11-25, task dcc2a7be, contract §15): JSON record of the grounds named at registration that
+    // held, the re-sort's recorded decisions and Robert's own requests ({ grounds, rejected, registration_id,
+    // revision_id, recorded_at, recorded_by }, server/services/document-review-grounds.js writeGroundRecord). NULL on
+    // documents nothing was recorded for. Whether a ground is in force now is computed by documentQuery, never read
+    // from this record alone.
+    ['review_ground', 'TEXT'],
 ];
 
 /**
@@ -156,6 +163,60 @@ const GOVERNING_REPLACEMENT_JOIN = `LEFT JOIN review_document_replacements rp ON
          ORDER BY z.created_at DESC, z.rowid DESC LIMIT 1))`;
 /** The bucket a list row falls in, over the columns documentQuery selects: a governing replacement takes it out of the decision buckets. */
 const LIST_BUCKET_SQL = `CASE WHEN replacement_id IS NOT NULL THEN 'in_progress' WHEN agent_review_ready = 1 THEN 'needs_review' ELSE review_status END`;
+/** An agent's submitted review of the current revision, waiting for Robert's choices, on document row `d`. */
+const AGENT_REVIEW_READY_SQL = `EXISTS (SELECT 1 FROM document_agent_reviews ar WHERE ar.document_id = d.id AND json_extract(ar.data, '$.status') = 'submitted' AND json_extract(ar.data, '$.base_revision_id') = d.current_revision_id)`;
+
+// Review grounds in force (2026-11-25, task dcc2a7be, contract §15), per document row `d` and its latest decision
+// `ld`. A document is waiting on Robert only when one holds; the waiting-task ground needs the tasks table, so the
+// store supplies it (queryDocuments). Each CASE checks validity before reading JSON, so a malformed value reads as
+// no ground instead of failing the list.
+/** Decision items bound to the current revision with at least one item no submitted review on that revision answered. */
+const OPEN_DECISION_ITEMS_SQL = `CASE
+        WHEN d.current_revision_id IS NULL OR NOT COALESCE(json_valid(d.metadata), 0) THEN 0
+        WHEN json_extract(d.metadata, '$.${DECISION_ITEMS_REVISION_KEY}') IS NOT d.current_revision_id THEN 0
+        WHEN json_type(d.metadata, '$.decision_items') IS NOT 'array' THEN 0
+        ELSE EXISTS (SELECT 1 FROM json_each(d.metadata, '$.decision_items') item
+            WHERE json_type(item.value, '$.id') = 'text'
+            AND NOT EXISTS (SELECT 1 FROM document_reviews sent,
+                json_each(CASE WHEN COALESCE(json_valid(sent.decision_answers), 0) THEN sent.decision_answers ELSE '[]' END) answer
+                WHERE sent.document_id = d.id AND sent.status = 'submitted' AND sent.revision_id = d.current_revision_id
+                AND json_type(answer.value, '$.answer') = 'text'
+                AND json_extract(answer.value, '$.decision_id') = json_extract(item.value, '$.id')))
+    END`;
+/**
+ * A decision the one-time re-sort (task dcc2a7be) recorded from the document's own brief, with its question and
+ * recommendation: in force on the version it was recorded for, until Robert records a decision after it. Kept in the
+ * ground record rather than as decision_items, which Praxis acts on only when it handed them off itself.
+ */
+const RECORDED_DECISION_SQL = `CASE
+        WHEN d.current_revision_id IS NULL OR NOT COALESCE(json_valid(d.review_ground), 0) THEN 0
+        ELSE EXISTS (SELECT 1 FROM json_each(d.review_ground, '$.grounds') g
+            WHERE json_extract(g.value, '$.type') = 'decision'
+            AND json_extract(g.value, '$.source') = 'review_resort'
+            AND json_extract(g.value, '$.revision_id') = d.current_revision_id
+            AND json_type(g.value, '$.recorded_at') = 'text'
+            AND json_extract(g.value, '$.recorded_at') > COALESCE(ld.created_at, ''))
+    END`;
+/** Intended actions only Robert's approval allows. */
+const GATED_ACTION_SQL = `CASE WHEN d.intended_action IN ('send', 'publish', 'implement') THEN 1 ELSE 0 END`;
+/**
+ * Robert asked to see it: changes he requested on an earlier version, or a request of his made after the latest
+ * decision. A request is recorded in the ground record, or it is a retirement he reopened with request-review
+ * (code from before recorded requests marks a put-back only there).
+ */
+const OPERATOR_REQUEST_SQL = `CASE
+        WHEN ld.decision = 'request_changes' THEN 1
+        WHEN EXISTS (SELECT 1 FROM review_document_retirements rr
+            WHERE rr.document_id = d.id AND rr.reopened_via = 'request_review'
+            AND rr.reopened_at > COALESCE(ld.created_at, '')) THEN 1
+        WHEN NOT COALESCE(json_valid(d.review_ground), 0) THEN 0
+        ELSE EXISTS (SELECT 1 FROM json_each(d.review_ground, '$.grounds') g
+            WHERE json_extract(g.value, '$.type') = 'operator_request'
+            AND json_type(g.value, '$.requested_at') = 'text'
+            AND json_extract(g.value, '$.requested_at') > COALESCE(ld.created_at, ''))
+    END`;
+/** Values of the list `ground` filter: a ground in force, or none (still tagged for review with nothing waiting). */
+const GROUND_FILTERS = ['in_force', 'none'];
 
 /**
  * Columns added to review_document_decisions after the 2026-10-02 contract.
@@ -531,10 +592,11 @@ function initializeDocumentReviews(db) {
     initializeDocumentRelocations(db);
 }
 
-const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration', 'provenance', 'blocking_task_ids', 'anchor', 'selection_json', 'manifest', 'superseded_review_ids', 'author', 'suggestion', 'decision_answers']);
+const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration', 'provenance', 'blocking_task_ids', 'anchor', 'selection_json', 'manifest', 'superseded_review_ids', 'author', 'suggestion', 'decision_answers', 'review_ground']);
 /** JSON columns whose absence reads as null rather than an empty object. */
-const NULLABLE_JSON_COLUMNS = new Set(['receipt', 'provenance', 'anchor', 'selection_json', 'manifest', 'author', 'suggestion', 'decision_answers']);
-const BOOLEAN_COLUMNS = new Set(['requires_review', 'document_created', 'revision_created', 'approval_delegated', 'reviewable']);
+const NULLABLE_JSON_COLUMNS = new Set(['receipt', 'provenance', 'anchor', 'selection_json', 'manifest', 'author', 'suggestion', 'decision_answers', 'review_ground']);
+const BOOLEAN_COLUMNS = new Set(['requires_review', 'document_created', 'revision_created', 'approval_delegated', 'reviewable',
+    'ground_task', 'ground_decision', 'ground_action', 'ground_request', 'ground_in_force']);
 
 function parseJson(value, fallback) {
     if (value === null || value === undefined || value === '') return fallback;
@@ -555,8 +617,12 @@ function rowOut(row) {
     return out;
 }
 
-/** Shared FROM/WHERE for the document list, its total and the per-status counts, so all three agree. */
-function documentQuery({ id, task_id, project_id, kind, q, include_mail } = {}, blockingCountSql = '0') {
+/**
+ * Shared FROM/WHERE for the document list, its total and the per-status counts, so all three agree. Each row also
+ * carries the review grounds in force (contract §15): ground_task, ground_decision, ground_action, ground_request
+ * and ground_in_force (any of them). `taskGroundSql` is the waiting-task test, '0' without a tasks table.
+ */
+function documentQuery({ id, task_id, project_id, kind, q, include_mail } = {}, blockingCountSql = '0', taskGroundSql = '0') {
     const where = [];
     const params = [];
     if (id) { where.push('d.id = ?'); params.push(id); }
@@ -581,11 +647,17 @@ function documentQuery({ id, task_id, project_id, kind, q, include_mail } = {}, 
         where.push("(d.title LIKE ? ESCAPE '\\' OR COALESCE(d.purpose, '') LIKE ? ESCAPE '\\' OR d.path LIKE ? ESCAPE '\\')");
         params.push(like, like, like);
     }
-    // Alongside the decision-derived review_status: the governing replacement (if any) and whether the row takes review actions now.
-    const sql = `SELECT d.*, EXISTS (SELECT 1 FROM document_agent_reviews ar WHERE ar.document_id = d.id AND json_extract(ar.data, '$.status') = 'submitted' AND json_extract(ar.data, '$.base_revision_id') = d.current_revision_id) AS agent_review_ready, ${REVIEW_STATUS_SQL} AS review_status, ${blockingCountSql} AS blocking_task_count,
+    // Alongside the decision-derived review_status: the governing replacement (if any), whether the row takes review
+    // actions now, and the review grounds in force.
+    const sql = `SELECT q.*, CASE WHEN q.ground_task = 1 OR q.ground_decision = 1 OR q.ground_action = 1 OR q.ground_request = 1 THEN 1 ELSE 0 END AS ground_in_force
+        FROM (SELECT d.*, ${AGENT_REVIEW_READY_SQL} AS agent_review_ready, ${REVIEW_STATUS_SQL} AS review_status, ${blockingCountSql} AS blocking_task_count,
         rp.id AS replacement_id, rp.state AS replacement_state, rp.task_id AS replacement_task_id, rp.attempt AS replacement_attempt,
-        CASE WHEN rp.id IS NULL THEN 1 ELSE 0 END AS reviewable
-        FROM review_documents d ${LATEST_DECISION_JOIN} ${GOVERNING_REPLACEMENT_JOIN}${where.length ? ` WHERE ${where.join(' AND ')}` : ''}`;
+        CASE WHEN rp.id IS NULL THEN 1 ELSE 0 END AS reviewable,
+        CASE WHEN ${taskGroundSql} THEN 1 ELSE 0 END AS ground_task,
+        CASE WHEN ${AGENT_REVIEW_READY_SQL} THEN 1 WHEN (${OPEN_DECISION_ITEMS_SQL}) = 1 THEN 1 ELSE ${RECORDED_DECISION_SQL} END AS ground_decision,
+        ${GATED_ACTION_SQL} AS ground_action,
+        ${OPERATOR_REQUEST_SQL} AS ground_request
+        FROM review_documents d ${LATEST_DECISION_JOIN} ${GOVERNING_REPLACEMENT_JOIN}${where.length ? ` WHERE ${where.join(' AND ')}` : ''}) q`;
     return { sql, params };
 }
 
@@ -603,10 +675,10 @@ function createDocumentReviewStore(db) {
     const retirements = createDocumentRetirementStore(db);
     const relocations = createDocumentRelocationStore(db);
     const hasTasks = () => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'tasks'").get());
-    const queryDocuments = (filters) => documentQuery(filters, hasTasks()
-        ? `CASE WHEN (${REVIEW_STATUS_SQL}) IN ('needs_review', 'changes_requested')
-            THEN (SELECT COUNT(DISTINCT t.id) FROM ${WAITING_TASKS_FROM_SQL}) ELSE 0 END`
-        : '0');
+    const queryDocuments = (filters) => (hasTasks()
+        ? documentQuery(filters, `CASE WHEN (${REVIEW_STATUS_SQL}) IN ('needs_review', 'changes_requested')
+            THEN (SELECT COUNT(DISTINCT t.id) FROM ${WAITING_TASKS_FROM_SQL}) ELSE 0 END`, `EXISTS (SELECT 1 FROM ${WAITING_TASKS_FROM_SQL})`)
+        : documentQuery(filters));
     function insert(table, row) {
         const keys = Object.keys(row);
         db.prepare(`INSERT INTO ${table} (${keys.map(k => `"${k}"`).join(', ')}) VALUES (${keys.map(() => '?').join(', ')})`)
@@ -646,11 +718,19 @@ function createDocumentReviewStore(db) {
          * `review_status`, plus the total matching the same filters. Both run
          * in one read transaction so the page and its total agree.
          */
-        listDocumentsPage({ status = 'all', limit = 100, offset = 0, ...filters } = {}) {
+        listDocumentsPage({ status = 'all', ground, limit = 100, offset = 0, ...filters } = {}) {
             const { sql, params } = queryDocuments(filters);
             // A status is a bucket: a document with open replacement work is `in_progress` and in no decision bucket.
-            const statusClause = status && status !== 'all' ? ` WHERE ${LIST_BUCKET_SQL} = ?` : '';
-            const all = statusClause ? [...params, status] : params;
+            // `ground` (contract §15) keeps the rows with a review ground in force (`in_force`) or without one (`none`).
+            const clauses = [];
+            const values = [];
+            if (status && status !== 'all') { clauses.push(`${LIST_BUCKET_SQL} = ?`); values.push(status); }
+            if (ground) {
+                if (!GROUND_FILTERS.includes(ground)) throw new Error(`unknown ground filter ${ground}`);
+                clauses.push('ground_in_force = ?'); values.push(ground === 'in_force' ? 1 : 0);
+            }
+            const statusClause = clauses.length ? ` WHERE ${clauses.join(' AND ')}` : '';
+            const all = [...params, ...values];
             return db.transaction(() => ({
                 total: db.prepare(`SELECT COUNT(*) AS n FROM (${sql})${statusClause}`).get(...all).n,
                 documents: many(`SELECT * FROM (${sql})${statusClause} ORDER BY blocking_task_count DESC, created_at DESC, id DESC LIMIT ? OFFSET ?`, ...all, limit, offset),
@@ -665,6 +745,16 @@ function createDocumentReviewStore(db) {
                 counts.all += row.n;
             }
             return counts;
+        },
+        /**
+         * The Needs your review bucket split by review ground (contract §15), for the same filters as
+         * countDocumentsByStatus: `in_force` has something waiting on it, `none` is still tagged for review with
+         * nothing waiting. The two add up to that bucket's count.
+         */
+        countNeedsReviewByGround(filters = {}) {
+            const { sql, params } = queryDocuments(filters);
+            const row = db.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(ground_in_force), 0) AS in_force FROM (${sql}) WHERE ${LIST_BUCKET_SQL} = 'needs_review'`).get(...params);
+            return { in_force: row.in_force, none: row.n - row.in_force };
         },
         /** The list row of one document (review_status, bucket fields, reviewable), or null. */
         getDocumentListRow(documentId) {
@@ -683,6 +773,11 @@ function createDocumentReviewStore(db) {
         },
         getBlockingTasks(documentId) {
             if (!hasTasks() || !['needs_review', 'changes_requested'].includes(this.getReviewStatus(documentId))) return [];
+            return this.listWaitingTasks(documentId);
+        },
+        /** Active tasks on a document's waiting-task list, whatever its review status: the task review ground (contract §15). */
+        listWaitingTasks(documentId) {
+            if (!hasTasks()) return [];
             return many(`SELECT DISTINCT t.id, t.name AS title, t.status, t.project_id
                 FROM review_documents d, ${WAITING_TASKS_FROM_SQL} AND d.id = ?
                 ORDER BY t.name COLLATE NOCASE, t.id`, documentId);
@@ -1000,5 +1095,5 @@ function createDocumentReviewStore(db) {
 
 module.exports = {
     initializeDocumentReviews, createDocumentReviewStore, REVIEW_STATUSES, LIST_STATUSES,
-    REPLACEMENT_STATES, REPLACEMENT_OPEN_STATES, REPLACEMENT_TERMINAL_STATES,
+    REPLACEMENT_STATES, REPLACEMENT_OPEN_STATES, REPLACEMENT_TERMINAL_STATES, GROUND_FILTERS,
 };

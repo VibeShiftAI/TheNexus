@@ -20,6 +20,7 @@ const express = require('express');
 const Database = require('better-sqlite3');
 const access = require('./helpers/operator-access');
 const { markFinishedUnderOldRule } = require('./helpers/legacy-approval-grant');
+const { robertAsks } = require('./helpers/review-ground');
 
 const nativeFetch = global.fetch;
 const OPERATOR_KEY = 'operator-test-credential-0123456789abcdef';
@@ -47,6 +48,8 @@ let workspace;
 let projectRoot;
 let delivery;
 let restoreAccess;
+/** Robert's chat request to see the design (saved per test): the review ground registrations name (contract §15). */
+let askGround;
 
 async function api(method, url, body, { user = 'local_user', headers = {} } = {}) {
     const response = await nativeFetch(base + url, {
@@ -72,10 +75,12 @@ function writeDoc(name, content = BODY) {
     return file;
 }
 
+/** A request for review names Robert's own request as its ground (contract §15) unless the deliverable names another. */
 function register(file, { task_id = SOURCE_TASK, deliverable = {}, ...extra } = {}) {
+    const declared = { purpose: 'Decide whether the design is right', requires_review: true, intended_action: 'none', ...deliverable };
     return api('POST', '/api/documents', {
         path: file, title: 'Chat working steps', project_id: PROJECT_ID, task_id, kind: 'design',
-        deliverable: { purpose: 'Decide whether the design is right', requires_review: true, intended_action: 'none', ...deliverable },
+        deliverable: declared.requires_review && declared.review_ground === undefined ? { ...declared, review_ground: askGround } : declared,
         ...extra,
     });
 }
@@ -194,6 +199,7 @@ beforeEach(async () => {
     await db.upsertProject({ id: PROJECT_ID, name: 'Praxis', path: projectRoot, description: 'Existing scope' });
     await db.createTask({ id: SOURCE_TASK, project_id: PROJECT_ID, name: 'Chat steps design', status: 'completed' });
     await db.createTask({ id: WORK_TASK, project_id: PROJECT_ID, name: 'Revise the design', status: 'in_progress' });
+    askGround = await robertAsks(db, 'Show me the chat working steps design.');
     delivery = { deliver: jest.fn(async () => null) };
     const createDocumentsRouter = require('../routes/documents');
     const { createAgentReviewsRouter } = require('../routes/document-agent-reviews');

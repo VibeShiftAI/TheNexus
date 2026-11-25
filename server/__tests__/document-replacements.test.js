@@ -20,6 +20,7 @@ const http = require('http');
 const express = require('express');
 const access = require('./helpers/operator-access');
 const { markFinishedUnderOldRule } = require('./helpers/legacy-approval-grant');
+const { robertAsks } = require('./helpers/review-ground');
 
 const nativeFetch = global.fetch;
 const OPERATOR_KEY = 'operator-test-credential-0123456789abcdef';
@@ -43,6 +44,8 @@ let workspace;
 let projectRoot;
 let delivery;
 let restoreAccess;
+/** Robert's chat request to see the report (saved per test): the review ground registrations name (contract §15). */
+let askGround;
 
 async function api(method, url, body, { user = 'local_user', headers = {} } = {}) {
     const response = await nativeFetch(base + url, {
@@ -65,11 +68,15 @@ function writeDoc(name, content) {
     return file;
 }
 
-/** A declared deliverable registered by a task (the producer's receipt). */
+/**
+ * A declared deliverable registered by a task (the producer's receipt). A request for review names Robert's own
+ * request as its ground (contract §15) unless the deliverable names another.
+ */
 function register(file, { task_id = SOURCE_TASK, deliverable = {}, ...extra } = {}) {
+    const declared = { purpose: 'Decide whether the install status is accurate', requires_review: true, intended_action: 'none', ...deliverable };
     return api('POST', '/api/documents', {
         path: file, title: 'Client install status', project_id: PROJECT_ID, task_id, kind: 'report',
-        deliverable: { purpose: 'Decide whether the install status is accurate', requires_review: true, intended_action: 'none', ...deliverable },
+        deliverable: declared.requires_review && declared.review_ground === undefined ? { ...declared, review_ground: askGround } : declared,
         ...extra,
     });
 }
@@ -152,6 +159,7 @@ beforeEach(async () => {
     await db.createTask({ id: WORK_TASK, project_id: PROJECT_ID, name: 'Revise the install status report', status: 'in_progress' });
     await db.createTask({ id: OTHER_TASK, project_id: PROJECT_ID, name: 'Another revision task', status: 'in_progress' });
     await db.createTask({ id: RECOVERY_TASK, project_id: PROJECT_ID, name: 'Retry the revision', status: 'in_progress' });
+    askGround = await robertAsks(db, 'Show me the client install status report.');
     delivery = { deliver: jest.fn(async () => null) };
     const createDocumentsRouter = require('../routes/documents');
     const app = express();

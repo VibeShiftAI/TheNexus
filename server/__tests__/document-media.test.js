@@ -14,6 +14,7 @@ const zlib = require('zlib');
 const { createHash } = require('crypto');
 const express = require('express');
 const access = require('./helpers/operator-access');
+const { robertAsks } = require('./helpers/review-ground');
 
 const nativeFetch = global.fetch;
 const OPERATOR_KEY = 'operator-test-credential-0123456789abcdef';
@@ -26,6 +27,8 @@ let server;
 let workspace;
 let projectRoot;
 let restoreAccess;
+/** Robert's chat request to see the deliverables (saved per test): the review ground registrations name (contract §15). */
+let askGround;
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 
@@ -77,10 +80,12 @@ function write(relative, content) {
     return file;
 }
 
+/** A request for review names Robert's own request as its ground (contract §15) unless the deliverable names another. */
 function declared(file, extra = {}, deliverable = {}) {
+    const declaration = { purpose: 'Review it', requires_review: true, intended_action: 'none', ...deliverable };
     return {
         path: file, title: extra.title || 'Deliverable', project_id: PROJECT_ID, task_id: TASK_A, kind: extra.kind || 'document',
-        deliverable: { purpose: 'Review it', requires_review: true, intended_action: 'none', ...deliverable },
+        deliverable: declaration.requires_review && declaration.review_ground === undefined ? { ...declaration, review_ground: askGround } : declaration,
         ...(extra.expected_content_hash ? { expected_content_hash: extra.expected_content_hash } : {}),
     };
 }
@@ -101,6 +106,7 @@ beforeEach(async () => {
     fs.mkdirSync(projectRoot, { recursive: true });
     await db.upsertProject({ id: PROJECT_ID, name: 'Joey', path: projectRoot });
     await db.createTask({ id: TASK_A, project_id: PROJECT_ID, name: 'Succession redesign', status: 'in_progress' });
+    askGround = await robertAsks(db, 'Show me the succession redesign deliverables.');
     const createDocumentsRouter = require('../routes/documents');
     const app = express();
     app.use(express.json({ strict: false, limit: '10mb' }));

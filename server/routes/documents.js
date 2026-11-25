@@ -6,15 +6,18 @@
  *                                                          with `deliverable` it is a declared deliverable: strictly
  *                                                          validated, identity-stable, answered with a receipt
  *                                                          bound to the exact file bytes
- *   GET    /api/documents?status=&task_id=&project_id=&kind=&q=&limit=&offset=
+ *   GET    /api/documents?status=&ground=&task_id=&project_id=&kind=&q=&limit=&offset=
  *                                                          one page of documents (newest first) with the caller's
- *                                                          review state, review_status and the matching total
+ *                                                          review state, review_status, the review grounds in force
+ *                                                          and the matching total; with status=needs_review,
+ *                                                          ground=in_force|none splits the bucket (contract §15)
  *   POST   /api/documents/relocations                      { from_root, to_root, source?, task_id?, reason? }: move every
  *                                                          registration inside a landed run's worktree to the same
  *                                                          relative path in the checkout it landed in, when that file
  *                                                          holds the exact bytes of the current revision; id, revisions,
  *                                                          decisions and review state kept (contract §14)
- *   GET    /api/documents/counts?task_id=&project_id=&kind=&q=   per-review-status totals for the same filters
+ *   GET    /api/documents/counts?task_id=&project_id=&kind=&q=   per-review-status totals for the same filters, and
+ *                                                          Needs your review split by review ground
  *   GET    /api/documents/:id                              document + current revision + content + the caller's review
  *   GET    /api/documents/:id/raw?revision=&download=1     Markdown source (current or pinned revision)
  *   GET    /api/documents/:id/revisions/:revisionId        a pinned snapshot
@@ -68,6 +71,18 @@
  * POST /:id/request-review reopens a retired document. Never by title, project
  * or age.
  *
+ * Review grounds (task dcc2a7be, contract §15, Robert's ruling of 2026-11-25):
+ * a document is in Needs your review only while something is waiting on it: an
+ * active task on its waiting-task list, an unanswered decision item on its
+ * current version (or an agent review waiting for his choices), an intended
+ * action of send, publish or implement, or his own request (a saved chat
+ * message cited in `deliverable.review_ground`, his Move to review queue, or
+ * changes he requested). A declared registration asking for review with no
+ * ground in force is never refused: it is registered as reference through the
+ * retirement record (ground `no_review_ground`) and `review_ground` in the
+ * response says why, unless it was already waiting under a recorded ground or a
+ * guard keeps it waiting. request-review puts it back.
+ *
  * Mounted behind the server's `authenticate` middleware; every review belongs
  * to the authenticated reviewer. The router never touches task status.
  *
@@ -94,7 +109,8 @@ const { validateChatRetirement } = require('../services/document-chat-retirement
 const { hasOutstandingRequest, mentionsWithdrawal, purposeWithdrawsReview } = require('../services/document-retirement-purpose');
 const { requireStakeholderAuthority } = require('../services/stakeholder-authority');
 const confirmation = require('../services/operator-confirmation');
-const { LIST_STATUSES, REPLACEMENT_STATES, REPLACEMENT_OPEN_STATES } = require('../../db/document-reviews');
+const grounds = require('../services/document-review-grounds');
+const { LIST_STATUSES, REPLACEMENT_STATES, REPLACEMENT_OPEN_STATES, GROUND_FILTERS } = require('../../db/document-reviews');
 const { NAME_FIELDS, retirementGroundReason } = require('../../db/document-retirements');
 
 const KINDS = new Set(['document', 'report', 'spec', 'plan', 'research', 'walkthrough', 'other', 'design', 'image', 'video', 'audio', 'prototype', 'pdf', 'data']);
@@ -102,7 +118,7 @@ const LIMITS = { title: 300, body: 20000, summary: 20000, selection: 2000, metad
 /** What the deliverable is for once approved. Approval records the decision; it never performs the action. */
 const INTENDED_ACTIONS = new Set(['none', 'implement', 'send', 'publish']);
 const { parseBlockingTaskIds } = require('../../db/document-review-blockers');
-const DELIVERABLE_FIELDS = new Set(['key', 'purpose', 'requires_review', 'intended_action', 'source', 'blocking_task_ids']);
+const DELIVERABLE_FIELDS = new Set(['key', 'purpose', 'requires_review', 'intended_action', 'source', 'blocking_task_ids', 'review_ground']);
 const SOURCE_TYPES = new Set(['task', 'chat', 'report']);
 const SOURCE_ID_FIELDS = ['conversation_id', 'message_id', 'execution_id'];
 const DECISIONS = new Set(['approve', 'request_changes']);
@@ -209,6 +225,14 @@ function parseDeclaration(body) {
         blockingTaskIds = parsed.value;
         if (blockingTaskIds.length && !declared.requires_review) return badRequest('Waiting tasks require a reviewable document');
     }
+    // What is waiting on the document (contract §15). Only its shape is read here and nothing in it is refused: a
+    // ground that does not hold is reported with its reason, and a review request with no ground in force lands in
+    // Reference (settleRegistrationGround).
+    let namedGrounds = null;
+    if (declared.review_ground != null) {
+        if (!declared.requires_review) return badRequest('deliverable.review_ground names what is waiting on a review request, so it needs requires_review true');
+        namedGrounds = grounds.parseNamedGrounds(declared.review_ground);
+    }
     let key = null;
     if (declared.key !== undefined) {
         key = text(declared.key, LIMITS.key);
@@ -263,7 +287,7 @@ function parseDeclaration(body) {
     return {
         ok: true,
         value: {
-            key, purpose, title, projectId, taskId, kind, source, expectedHash, blockingTaskIds, replaces: replaces.value,
+            key, purpose, title, projectId, taskId, kind, source, expectedHash, blockingTaskIds, replaces: replaces.value, namedGrounds,
             requiresReview: declared.requires_review, intendedAction: declared.intended_action,
             // The decision-items revision stamp is Nexus's own record, never taken from a producer.
             metadata: decisionItems.withoutRevisionStamp(body.metadata) || null,
@@ -280,7 +304,7 @@ function parseListQuery(query, { paging = true } = {}) {
         return { ok: true, value };
     };
     const read = {};
-    for (const name of ['status', 'limit', 'offset', 'task_id', 'project_id', 'kind', 'q', 'include_mail']) {
+    for (const name of ['status', 'ground', 'limit', 'offset', 'task_id', 'project_id', 'kind', 'q', 'include_mail']) {
         const result = single(name);
         if (!result.ok) return result;
         read[name] = result.value;
@@ -309,7 +333,14 @@ function parseListQuery(query, { paging = true } = {}) {
     if (!Number.isInteger(limit) || limit < 1 || limit > PAGE.max) return { ok: false, error: `limit must be an integer from 1 to ${PAGE.max}` };
     const offset = read.offset === undefined ? 0 : (/^\d+$/.test(read.offset) ? Number(read.offset) : NaN);
     if (!Number.isSafeInteger(offset) || offset < 0) return { ok: false, error: 'offset must be a non-negative integer' };
-    return { ok: true, value: { status, limit, offset, filters } };
+    // Review grounds (contract §15) split Needs your review: `in_force` (something is waiting on it) or `none`.
+    let ground = null;
+    if (read.ground !== undefined && read.ground !== '') {
+        if (!GROUND_FILTERS.includes(read.ground)) return { ok: false, error: `ground must be one of ${GROUND_FILTERS.join(', ')}` };
+        if (status !== 'needs_review') return { ok: false, error: 'ground splits Needs your review: use it with status=needs_review' };
+        ground = read.ground;
+    }
+    return { ok: true, value: { status, ground, limit, offset, filters } };
 }
 
 /** Resolve aliases for identity lookup even when a registered file is missing.
@@ -687,7 +718,9 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             ? 'This revision stays in Reference. Move to review queue (request-review) reopens it.'
             : action === 'reopened_by_registration'
                 ? 'This registration delivered new bytes for review. The document is back in the queue and the retirement is recorded as reopened.'
-                : 'The document is back in the queue and the retirement is recorded as reopened.';
+                : action === 'reopened_by_ground'
+                    ? 'Something is waiting on the document under this registration (contract §15), whether it named it or not. The document is back in the queue and the retirement is recorded as reopened.'
+                    : 'The document is back in the queue and the retirement is recorded as reopened.';
         return { action, message, ...retirementView(rt) };
     }
 
@@ -1038,14 +1071,21 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
 
     /** A list row: the document, its derived review_status, current revision and the caller's own feedback round. */
     function listEntry(row, userId) {
-        // The list row carries the open replacement's columns (documentQuery); they are shaped here, not spread raw.
-        const { replacement_id: rpId, replacement_state: rpState, replacement_task_id: rpTask, replacement_attempt: rpAttempt, reviewable, ...doc } = row;
+        // The list row carries the open replacement's columns and the review-ground flags (documentQuery); they are shaped
+        // here, not spread raw.
+        const {
+            replacement_id: rpId, replacement_state: rpState, replacement_task_id: rpTask, replacement_attempt: rpAttempt, reviewable,
+            ground_task: _task, ground_decision: _decision, ground_action: _action, ground_request: _request, ground_in_force: _inForce, ...doc
+        } = row;
         const review = store().findLatestReview(doc.id, userId);
         const submission = review ? store().getSubmissionForReview(review.id) : null;
         const currentMeta = doc.current_revision_id ? store().getRevisionMeta(doc.current_revision_id) : null;
         return {
             ...doc,
             ...mediaSummary(doc, currentMeta),
+            // What is waiting on it (contract §15): each review ground in force, in words. Empty when nothing is, or when
+            // it is not waiting for review.
+            ...groundFields(row),
             agent_review_ready: (db.agentReviews?.list(doc.id) || []).some(r => r.status === 'submitted' && r.base_revision_id === doc.current_revision_id),
             blocking_tasks: store().getBlockingTasks(doc.id),
             current_revision: revisionMeta(currentMeta),
@@ -1155,6 +1195,207 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         return { ...view, sent_answers: view.revision_id ? decisionItems.latestSentAnswers(store().listReviews(doc.id), view.revision_id) : [] };
     }
 
+    // ── Review grounds (contract §15, task dcc2a7be) ───────────────────────
+    // A document is in Needs your review only while something is waiting on it. Whether a ground is in force is
+    // computed in SQL from the document's state (documentQuery's ground_* flags), so the list filter, the counts and
+    // every read agree; these helpers put it into words. The stored record (review_documents.review_ground) holds what
+    // the latest registration named and Robert's own requests, which count until he records a decision after them.
+
+    /** The buckets in which a document can be waiting for review (queuePosition's rule). */
+    const WAITING_GROUND_BUCKETS = new Set(['needs_review', 'changes_requested', 'in_progress']);
+    /** Retirements that only said nothing was waiting: a registration under which a ground holds reopens them. */
+    const NOTHING_WAITING_TRIGGERS = new Set(['no_review_ground', 'review_resort']);
+
+    function listBucket(row) {
+        return row.replacement_id ? 'in_progress' : row.agent_review_ready ? 'needs_review' : row.review_status;
+    }
+
+    const { activeRequests, groundCutoff, currentNamedGrounds } = grounds;
+    const writeGroundRecord = (docId, options) => grounds.writeGroundRecord(store(), docId, options);
+
+    /**
+     * Each review ground that holds on a document list row (documentQuery), in words, whatever its review status:
+     * the facts behind its ground_* flags. Only groundsInForce decides whether they apply now.
+     */
+    function groundDetails(row) {
+        if (!row) return [];
+        const details = [];
+        const latest = row.ground_decision || row.ground_request ? store().latestDecision(row.id) : null;
+        if (row.ground_task) {
+            const tasks = store().listWaitingTasks(row.id);
+            if (tasks.length) {
+                details.push({ type: 'task', task_ids: tasks.map(t => t.id), tasks: tasks.map(t => ({ id: t.id, title: t.title || null, status: t.status, task_path: `/task/${encodeURIComponent(t.id)}` })) });
+            }
+        }
+        if (row.ground_decision) {
+            if (row.agent_review_ready) details.push({ type: 'decision', source: 'agent_review' });
+            const view = decisionItems.decisionItemsFor(row, row.current_revision_id);
+            if (view?.answerable) {
+                const sent = new Set(decisionItems.latestSentAnswers(store().listReviews(row.id), view.revision_id).map(answer => answer.decision_id));
+                const open = view.items.filter(item => !sent.has(item.id)).map(item => item.id);
+                if (open.length) details.push({ type: 'decision', source: 'declared', decision_ids: open, declared_count: view.items.length });
+            }
+            for (const g of grounds.recordedDecisions(row.review_ground, row.current_revision_id, latest)) {
+                details.push({
+                    type: 'decision', source: 'review_resort', ...(typeof g.id === 'string' ? { id: g.id } : {}),
+                    question: g.question, recommendation: g.recommendation,
+                    ...(Array.isArray(g.options) ? { options: g.options } : {}), ...(typeof g.action === 'string' ? { action: g.action } : {}),
+                    revision_id: g.revision_id, recorded_at: g.recorded_at, ...(g.ruling ? { ruling: g.ruling } : {}),
+                });
+            }
+            // The SQL reads the declared list leniently; a list the parser refuses is still named, without ids.
+            if (!details.some(g => g.type === 'decision')) details.push({ type: 'decision', source: 'declared' });
+        }
+        if (row.ground_action) details.push({ type: 'gated_action', intended_action: row.intended_action });
+        if (row.ground_request) {
+            if (latest?.decision === 'request_changes') {
+                details.push({ type: 'operator_request', via: 'changes_requested', decision_id: latest.id, requested_at: latest.created_at, on_current: latest.revision_id === row.current_revision_id });
+            }
+            const requests = activeRequests(row.review_ground, latest);
+            details.push(...requests);
+            // A put-back the older request-review marked only on the retirement it reopened. Like the ground record,
+            // which keeps one request-review request per document (the latest), name the newest such put-back.
+            const [putBack] = grounds.reopenedRequests(store().listRetirements(row.id), latest);
+            if (putBack && !requests.some(g => g.via === 'request_review')) details.push(putBack);
+        }
+        return details.map(g => ({ ...g, summary: grounds.groundSummary(g) }));
+    }
+
+    /** The review grounds in force on a list row: none unless it is waiting for review. */
+    function groundsInForce(row) {
+        if (!row || !(row.requires_review || row.agent_review_ready) || !WAITING_GROUND_BUCKETS.has(listBucket(row))) return [];
+        return groundDetails(row);
+    }
+
+    /** A list row's review fields: the ground flags stay internal, the grounds in force are returned in words. */
+    function groundFields(row) {
+        const reviewGrounds = groundsInForce(row);
+        return { review_grounds: reviewGrounds, ground_in_force: reviewGrounds.length > 0 };
+    }
+
+    /**
+     * Where a document stood before a registration or a review request changed it: waiting or not, with a ground in
+     * force, or placed in the queue under grounds recorded since it last left it (grounds a registration named that
+     * held, or one of Robert's requests that still counts).
+     */
+    function priorGroundState(docId) {
+        const row = store().getDocumentListRow(docId);
+        if (!row) return null;
+        const waiting = Boolean(row.requires_review || row.agent_review_ready) && WAITING_GROUND_BUCKETS.has(listBucket(row));
+        const recorded = currentNamedGrounds(row.review_ground, groundCutoff(store(), docId)).length > 0
+            || activeRequests(row.review_ground, store().latestDecision(docId)).length > 0;
+        return { waiting, in_force: waiting && Boolean(row.ground_in_force), recorded: waiting && recorded };
+    }
+
+    /** Robert's saved chat messages a registration cites as his request to see the document, read before its transaction. */
+    async function readOperatorMessages(named) {
+        const messages = new Map();
+        for (const entry of named?.entries || []) {
+            if (entry.type !== 'operator_request' || messages.has(entry.message_ref)) continue;
+            const ref = grounds.parseMessageRef(entry.message_ref);
+            try {
+                const row = ref && typeof db.getChatMessageById === 'function' ? await db.getChatMessageById(ref.message_id) : null;
+                messages.set(entry.message_ref, { row: row || null, error: null });
+            } catch (err) {
+                console.error(`[Documents] could not read cited message ${entry.message_ref}:`, err);
+                messages.set(entry.message_ref, { row: null, error: `The cited message ${entry.message_ref} could not be read` });
+            }
+        }
+        return messages;
+    }
+
+    const GROUND_OUTCOME_MESSAGES = {
+        waiting: 'Something is waiting on this document, so it is in Needs your review.',
+        kept_waiting: 'It was already waiting for your review with a ground recorded, so this revision keeps it there. Nothing named is waiting on this revision, so it is listed under Tagged, nothing waiting until something is.',
+        approved: 'This version is already approved, so it is not waiting for your review.',
+        reference: 'It is in Reference, not waiting for your review.',
+    };
+
+    /**
+     * Whether a registration that asks for Robert's review lands in Needs your review (contract §15). Runs inside
+     * writeDeclared's transaction once the revision, its decision items and the registration are recorded, and before the
+     * names it carries are applied (they apply only once it is waiting). A ground that does not hold is reported with its
+     * reason; with none in force the document is registered as reference through the retirement record (ground
+     * `no_review_ground`), unless it was already waiting under a recorded ground or a guard keeps it waiting. The
+     * same bytes of a document moved to Reference because nothing was waiting come back once a ground holds.
+     * Returns { view, retirement } (retirement only when this changed it).
+     */
+    function settleRegistrationGround({ docId, v, registration, revisionId, duplicate, firstDecisionItems, before, operatorMessages, actorId }) {
+        const named = v.namedGrounds || { entries: [], rejected: [] };
+        const latest = store().latestDecision(docId);
+        const current = store().getDocument(docId);
+        const declared = decisionItems.decisionItemsFor(current, current.current_revision_id);
+        const held = [];
+        const rejected = [...named.rejected];
+        for (const entry of named.entries.filter(e => e.type === 'operator_request')) {
+            const read = operatorMessages.get(entry.message_ref);
+            const check = read?.error ? { ok: false, reason: read.error } : grounds.checkOperatorMessage(entry.message_ref, read?.row || null, latest?.created_at || null);
+            if (check.ok) held.push({ type: 'operator_request', via: 'chat', message_ref: entry.message_ref, requested_at: check.requested_at });
+            else rejected.push({ type: 'operator_request', reason: check.reason });
+        }
+        // The grounds that hold on it under this registration, named or not, whatever its review status.
+        const holding = groundDetails(store().getDocumentListRow(docId));
+        const checked = grounds.checkNamedGrounds(
+            named.entries.filter(e => e.type !== 'operator_request'),
+            holding,
+            new Set(declared?.answerable ? declared.items.map(item => item.id) : []),
+        );
+        held.push(...checked.held);
+        rejected.push(...checked.rejected);
+        // What a registration named is recorded with it. A byte-identical retry returns its first receipt and leaves the
+        // record as that registration left it; a caller that names nothing leaves it too, so a revision from a caller
+        // that does not name grounds does not erase the ground the document is waiting under.
+        if (!duplicate && v.namedGrounds) writeGroundRecord(docId, { add: held, rejected, registrationId: registration.id, revisionId, actorId });
+
+        let retirement = null;
+        const open = store().findOpenRetirement(docId);
+        // The same bytes as a document moved to Reference because nothing was waiting, registered again with something
+        // waiting now. A ground this registration named that holds brings it back, unless this is the registration that
+        // moved it. So does one that holds unnamed (its intended send, publish or implement, an active task on its
+        // waiting-task list, open decision items, an agent review waiting for his choices) under a new registration,
+        // and so do decision items this registration declares on these bytes for the first time: they are metadata,
+        // outside the fingerprint that makes a registration a retry, so a retry can carry them. A retry that changes
+        // nothing returns its first receipt and must not undo the move (contract §13).
+        const namedHolds = held.length > 0 && open?.registration_id !== registration.id;
+        const unnamedHolds = !duplicate ? holding.length > 0 : firstDecisionItems && holding.some(g => g.type === 'decision');
+        if (!current.requires_review && open && NOTHING_WAITING_TRIGGERS.has(open.trigger) && (namedHolds || unnamedHolds)) {
+            store().updateDocument(docId, { requires_review: true });
+            retirement = retirementEffect('reopened_by_ground', store().reopenRetirement(docId, actorId, 'registration'));
+        }
+        const fresh = store().getDocument(docId);
+        const inForce = groundsInForce(store().getDocumentListRow(docId));
+        let outcome;
+        let reasons;
+        if (!fresh.requires_review) outcome = 'reference';
+        else if (!store().queuePosition(fresh).waiting) outcome = 'approved';
+        else if (inForce.length) outcome = 'waiting';
+        else if (before?.waiting && (before.in_force || before.recorded)) outcome = 'kept_waiting';
+        else {
+            const rt = store().retireOnGround({ target: fresh, ground: {
+                type: 'no_review_ground', registration_id: registration.id, revision_id: revisionId, task_id: v.taskId || null,
+                code: rejected.length ? 'invalid_review_ground' : 'no_review_ground', rejected,
+            } });
+            if (rt) {
+                outcome = 'reference';
+                retirement = retirementEffect('retired', rt);
+            } else {
+                const check = store().retirementCheck(store().getDocument(docId));
+                outcome = 'left_waiting';
+                reasons = check.outcome === 'left_waiting' ? check.reasons
+                    : [{ code: 'already_recorded', message: 'This registration already moved it to Reference once and it was put back since, so it stays' }];
+            }
+        }
+        const message = outcome === 'reference' && retirement?.action === 'retired'
+            ? `${retirement.reason} Name what is waiting on it in deliverable.review_ground (a task, a decision, a send or publish, or Robert’s own request), or Robert can use Move to review queue.`
+            : outcome === 'left_waiting'
+                ? `Nothing named is waiting on it, but it stays in Needs your review because ${reasons.map(r => r.message).join('; ')}. It is listed under Tagged, nothing waiting.`
+                : GROUND_OUTCOME_MESSAGES[outcome];
+        return {
+            view: { outcome, message, in_force: inForce, named: named.entries, held, rejected, ...(reasons ? { reasons } : {}) },
+            retirement,
+        };
+    }
+
     /**
      * Find or create the document for a validated declaration and record the
      * exact bytes that were read as its current revision, all in one
@@ -1169,7 +1410,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
      * project leaves the document's own pair intact and is linked through its
      * receipt, which the task and project filters both follow.
      */
-    function writeDeclared(v, resolved, read, actorId) {
+    function writeDeclared(v, resolved, read, actorId, operatorMessages = new Map()) {
         return store().transaction(() => {
             const key = v.key || `path:${resolved.canonicalPath}`;
             let doc = store().findDocumentByKey(key);
@@ -1180,6 +1421,9 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                     throw conflict('identity_conflict', 'This file is already registered for this task under a different deliverable key');
                 }
             }
+            // Where the document stood before this registration changed it (contract §15: a revision of a document already
+            // waiting under a recorded ground keeps it waiting).
+            const before = doc ? priorGroundState(doc.id) : null;
             const declared = {
                 title: v.title, purpose: v.purpose, requires_review: v.requiresReview, intended_action: v.intendedAction,
                 ...(!v.requiresReview ? { blocking_task_ids: [] } : v.blockingTaskIds !== undefined ? { blocking_task_ids: v.blockingTaskIds } : {}),
@@ -1235,6 +1479,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             }
             const { revision, created: revisionCreated } = recordRevision(doc, read, resolved.mtime);
             if (doc.current_revision_id !== revision.id) store().setCurrentRevision(doc.id, revision.id);
+            // Decision items declared on these bytes for the first time can bring back a document moved to Reference (§15).
+            const firstDecisionItems = decisionItems.declaresDecisionItems(v.metadata) && store().getDecisionDefinitions(revision.id) === undefined;
             bindDecisionItems(doc, v.metadata, revision.id);
             if (outgoing && store().getOutgoing(doc.id)?.invalidated_at !== outgoing.invalidated_at) {
                 throw conflict('outgoing_unsent', 'The withdrawal would invalidate an unsent outgoing message');
@@ -1245,6 +1491,9 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 title: v.title, purpose: v.purpose, kind: v.kind || doc.kind, requires_review: v.requiresReview,
                 intended_action: v.intendedAction, source: v.source,
                 blocking_task_ids: doc.blocking_task_ids || [],
+                // What the caller named as waiting on it (contract §15); absent for callers that name nothing, so their
+                // retries keep matching the receipts registered before grounds existed.
+                ...(v.namedGrounds ? { review_ground: { named: v.namedGrounds.entries, rejected: v.namedGrounds.rejected } } : {}),
             };
             // A byte-identical retry of the same declaration returns its first receipt.
             const fingerprint = sha256(JSON.stringify({
@@ -1271,12 +1520,20 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                     if (rt) retirement = retirementEffect('retired', rt);
                 }
             }
+            // A request for review lands in Needs your review only with a ground in force (contract §15). Settled before
+            // the names below, which retire what they name only once this document is itself waiting.
+            let reviewGround = null;
+            if (v.requiresReview) {
+                const settled = settleRegistrationGround({ docId: doc.id, v, registration, revisionId: revision.id, duplicate, firstDecisionItems, before, operatorMessages, actorId });
+                reviewGround = settled.view;
+                if (settled.retirement) retirement = settled.retirement;
+            }
             // The documents this registration names as replaced (contract §13), retired in this same transaction when it
             // is waiting for review and ready to view, else kept pending until it is.
             const named = settleReplacesGuarded(doc.id, {
                 trigger: 'registration', names: v.replaces || [], registrationId: registration.id, revisionId: revision.id, taskId: v.taskId, actorId,
             });
-            return { doc: store().getDocument(doc.id), revision, registration, documentCreated, duplicate, replaces: named.rows, replacesError: named.error, retirement };
+            return { doc: store().getDocument(doc.id), revision, registration, documentCreated, duplicate, replaces: named.rows, replacesError: named.error, retirement, reviewGround };
         });
     }
 
@@ -1304,15 +1561,16 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         if (v.expectedHash && v.expectedHash !== read.exactHash) {
             return res.status(409).json({ error: 'The file no longer holds the content the producer declared', code: 'content_mismatch', content_hash: read.exactHash });
         }
+        const operatorMessages = await readOperatorMessages(v.namedGrounds);
         let written;
         try {
-            written = writeDeclared(v, resolved, read, req.user.id);
+            written = writeDeclared(v, resolved, read, req.user.id, operatorMessages);
         } catch (err) {
             if (err.status === 409) return res.status(409).json({ error: err.message, code: err.code });
             if (/UNIQUE/i.test(err.message || '')) return res.status(409).json({ error: 'A concurrent registration claimed this identity; retry', code: 'registration_conflict' });
             throw err;
         }
-        const { doc, revision, registration, documentCreated, duplicate, replaces, replacesError, retirement } = written;
+        const { doc, revision, registration, documentCreated, duplicate, replaces, replacesError, retirement, reviewGround } = written;
         return res.status(documentCreated ? 201 : 200).json({
             document: doc,
             revision: revisionMeta(revision),
@@ -1324,8 +1582,13 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             // Every name this document's registrations declared, with its outcome and reasons (contract §13).
             replaces: replaces.map(supersessionView),
             replaces_error: replacesError,
-            // This document's own retirement, when the registration found it retired (kept, or reopened by new bytes).
+            // This document's own retirement, when the registration found it retired (kept, or reopened by new bytes or a
+            // ground), or moved it to Reference because nothing was waiting on it.
             retirement,
+            // Whether this request for review landed in Needs your review, and why (contract §15): the outcome, the grounds
+            // in force, what the caller named and the reason for each named ground that does not hold. Null when the
+            // registration did not ask for review.
+            review_ground: reviewGround,
         });
     }
 
@@ -1461,13 +1724,13 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         try {
             const parsed = parseListQuery(req.query);
             if (!parsed.ok) return res.status(400).json({ error: parsed.error, code: 'invalid_query' });
-            const { status, limit, offset, filters } = parsed.value;
+            const { status, ground, limit, offset, filters } = parsed.value;
             await reconcileOpenReplacements();
             reconcilePendingRetirements();
-            const page = store().listDocumentsPage({ status, limit, offset, ...filters });
+            const page = store().listDocumentsPage({ status, ground, limit, offset, ...filters });
             return res.json({
                 documents: page.documents.map(doc => listEntry(doc, req.user.id)),
-                total: page.total, limit, offset, has_more: offset + page.documents.length < page.total, status,
+                total: page.total, limit, offset, has_more: offset + page.documents.length < page.total, status, ground,
             });
         } catch (err) {
             console.error('[Documents] list failed:', err);
@@ -1499,7 +1762,12 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (!parsed.ok) return res.status(400).json({ error: parsed.error, code: 'invalid_query' });
             await reconcileOpenReplacements();
             reconcilePendingRetirements();
-            return res.json({ counts: store().countDocumentsByStatus(parsed.value.filters), filters: parsed.value.filters });
+            return res.json({
+                counts: store().countDocumentsByStatus(parsed.value.filters),
+                // Needs your review split by review ground (contract §15): `in_force` plus `none` equals counts.needs_review.
+                grounds: { needs_review: store().countNeedsReviewByGround(parsed.value.filters) },
+                filters: parsed.value.filters,
+            });
         } catch (err) {
             console.error('[Documents] counts failed:', err);
             return res.status(500).json({ error: 'Failed to count documents' });
@@ -1546,6 +1814,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 decision_items: decisionItemsView(fresh, captured.revision?.id),
                 inline_comments: captured.revision ? inlineComments(db, doc.id, captured.revision) : [],
                 review_status: store().getReviewStatus(doc.id),
+                // Review grounds (contract §15): each one in force, in words (document.review_ground is the stored record).
+                ...groundFields(store().getDocumentListRow(doc.id)),
                 current_decision: latest ? { ...latest, applies_to_current_revision: latest.revision_id === fresh.current_revision_id } : null,
                 // Version lifecycle (task 6b46dcc8): the open replacement (else the attempt whose unaccepted bytes are current, else
                 // the newest closed one, which explains a failed or cancelled attempt), and whether this version takes review actions now.
@@ -1647,15 +1917,25 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (captured.fileState !== 'ok') return res.status(409).json({ error: 'The document file must be available before requesting review', code: 'file_unavailable' });
             // One operation (contract §13): back into the queue, a retirement in force recorded as reopened (its waiting
             // tasks return with it unless new ones are given), and this document's own pending names applied now that it waits.
+            // When nothing else would hold it there (no waiting task, open decision, gated action or earlier request in
+            // force), the request itself is recorded as his own, a review ground until he records a decision after it
+            // (contract §15). A waiting task he names here is the ground instead, and lapses with the task.
             const { document, reopened, named } = store().transaction(() => {
                 const updated = store().updateDocument(doc.id, { requires_review: true, blocking_task_ids: parsed.value });
+                if (!groundsInForce(store().getDocumentListRow(doc.id)).length) {
+                    writeGroundRecord(doc.id, {
+                        add: [{ type: 'operator_request', via: 'request_review', requested_at: new Date().toISOString(), requested_by: req.user.id }],
+                        actorId: req.user.id,
+                    });
+                }
                 const reopenedRetirement = store().reopenRetirement(doc.id, req.user.id, 'request_review');
                 const replaces = settleReplacesGuarded(doc.id, { trigger: 'review_requested' });
                 return { document: store().getDocument(updated.id), reopened: reopenedRetirement, named: replaces };
             });
-            if (reopened) console.log(`[Documents] ${doc.id} reopened from retirement ${reopened.id} (replaced by ${reopened.replaced_by_document_id}) by ${req.user.id}`);
+            if (reopened) console.log(`[Documents] ${doc.id} reopened from retirement ${reopened.id} (replaced by ${reopened.replaced_by_document_id || 'none'}, ${reopened.trigger}) by ${req.user.id}`);
             return res.json({
                 document, review_status: store().getReviewStatus(doc.id), blocking_tasks: store().getBlockingTasks(doc.id),
+                ...groundFields(store().getDocumentListRow(doc.id)),
                 retirement: reopened ? retirementEffect('reopened', reopened) : null,
                 replaces: named.rows.map(supersessionView), replaces_error: named.error,
             });
