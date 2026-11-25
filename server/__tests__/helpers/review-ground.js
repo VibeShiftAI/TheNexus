@@ -5,10 +5,19 @@
  * message of his, cited by its Nexus message reference.
  */
 
+/**
+ * Resolve once the clock is past the millisecond this was called in. Timestamps are ISO strings to the millisecond
+ * (db/index.js now()), so anything saved after this is stamped strictly later than anything saved before it.
+ */
+async function nextMillisecond() {
+    const start = Date.now();
+    while (Date.now() <= start) await new Promise(resolve => setImmediate(resolve));
+}
+
 /** Save a chat message of Robert's asking to see a document and return the review ground that cites it. */
 async function robertAsks(db, content = 'Show me this when it is ready.') {
     // A request counts until his next decision, so it must be recorded strictly after any decision made before it.
-    await new Promise(resolve => setTimeout(resolve, 5));
+    await nextMillisecond();
     const conversation = await db.createConversation('praxis');
     const message = await db.saveChatMessage({ conversation_id: conversation.id, role: 'user', content });
     return { type: 'operator_request', message_ref: `nexus://conversation/${conversation.id}/message/${message.id}` };
