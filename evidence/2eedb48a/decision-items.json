@@ -1,0 +1,90 @@
+[
+  {
+    "id": "other-visibility",
+    "question": "Where should Other appear?",
+    "recommendation": "Show Other as the last choice on every question. You can see that a write-in is welcome before choosing.",
+    "options": [
+      {
+        "id": "visible",
+        "label": "Show Other alongside the listed choices",
+        "action": "Specify an always-visible final choice that opens a text box."
+      },
+      {
+        "id": "link",
+        "label": "Put it behind a Write my own answer link",
+        "action": "Specify a link beneath the options that opens the same text box."
+      },
+      {
+        "id": "other",
+        "label": "Other (describe the placement in a review comment)",
+        "action": "Use the placement in Robert's comment about Other for the build brief."
+      }
+    ]
+  },
+  {
+    "id": "note-placement",
+    "question": "Where should you add a note to a choice?",
+    "recommendation": "Put Add a note directly beneath the selected answer. The note opens beside the choice it qualifies, including an Other answer.",
+    "options": [
+      {
+        "id": "inline",
+        "label": "Open the note beneath my chosen answer",
+        "action": "Specify a collapsed note field immediately below each selected answer."
+      },
+      {
+        "id": "visible-field",
+        "label": "Show an empty note box as soon as I choose",
+        "action": "Specify an always-open optional field beneath the selected answer, removing a tap."
+      },
+      {
+        "id": "other",
+        "label": "Other (describe the note field in a review comment)",
+        "action": "Use Robert's comment about the note field for the build brief."
+      }
+    ]
+  },
+  {
+    "id": "partial-chat",
+    "question": "When should a set of chat answers go to Praxis?",
+    "recommendation": "Let you send the answers you have finished together. You can check a note first and come back to the open questions later.",
+    "options": [
+      {
+        "id": "send-subset",
+        "label": "Let me send any completed answers together",
+        "action": "Specify a Send button with the count of ready answers and keep the remaining questions open."
+      },
+      {
+        "id": "send-one",
+        "label": "Give each question its own Send button",
+        "action": "Specify a separate send step on each question, including its optional note."
+      },
+      {
+        "id": "other",
+        "label": "Other (describe when to send in a review comment)",
+        "action": "Use the timing in Robert's comment about sending for the build brief."
+      }
+    ]
+  },
+  {
+    "id": "plain-text",
+    "question": "How should a plain-text chat reply affect open questions?",
+    "recommendation": "Keep it as conversation. A remark like “maybe later” should leave Photos and screenshots open until you choose an answer.",
+    "options": [
+      {
+        "id": "conversation",
+        "label": "Keep typed replies as conversation",
+        "action": "Specify that a plain reply leaves all structured answers and counts untouched."
+      },
+      {
+        "id": "confirm-match",
+        "label": "Suggest a match for me to confirm",
+        "action": "Specify an inline preview of the question and proposed answer, recorded only after Robert confirms."
+      },
+      {
+        "id": "other",
+        "label": "Other (describe reply handling in a review comment)",
+        "action": "Use Robert's comment about typed replies for the build brief."
+      }
+    ]
+  }
+]

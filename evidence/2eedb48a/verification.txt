@@ -1,0 +1,12 @@
+decision-other-and-chat-design | bed3270e-9360-4823-915b-da1d642499f7 | ready=true (8/8) | raw manifest identical
+Original 110e234c-c84f-430a-b9b2-a753d0792d08 | 19 items | D8, D9, D10 match question, recommendation and all options
+screen:document-desktop-before | 1440x979 | identical PNG | d5b5121b7ab4802082a10060442964cc774dfe416181b70de867d9a3b5651599
+screen:document-desktop-after | 1440x900 | identical PNG | 9ac86e7efb499ff2f1986d30215a223ce1f7455d0f18ae3d39a2a0add525bf59
+screen:document-phone-before | 393x1047 | identical PNG | 1584cc623280c687f866cf245bdcdc5c5deebc9c8a0004a57a873f56069f12e5
+screen:document-phone-after | 393x852 | identical PNG | 6d5ad92dff4cd3474831cd19624917ef03f226ed1c113e319cf98245930182d0
+screen:chat-desktop-before | 1440x1012 | identical PNG | 80f7fc500820c3dfc0896a17832cd221df703834dc537d8b32ad2a2a28b839b3
+screen:chat-desktop-after | 1440x900 | identical PNG | 96565498c2536ec013a03aa160a1f7cad0cd19e514f737c23b16cc2450cd319b
+screen:chat-phone-before | 393x1025 | identical PNG | f0273f996f2747a1ef85796d8f0e014e774dc45ee77c06b4412ddb65f5a7ca25
+screen:chat-phone-after | 393x852 | identical PNG | b301391d03f3da41097fd79bf0717d68cffb17fbfd8db540adaf82c75be152de
+Answerable handoff items with recommendation and Other: other-visibility, note-placement, partial-chat, plain-text
+Exact-revision manifest and decision items: strict UTF-8, zero U+2014 or mojibake

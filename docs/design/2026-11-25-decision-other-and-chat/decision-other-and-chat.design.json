@@ -2,48 +2,6 @@
   "format": "nexus-design-package/1",
   "title": "Decision questions: an Other answer, a note on any choice, and the same questions in chat",
   "summary": "Choose where Other and Add a note appear, when to send a partly answered chat message, and how Praxis should treat a typed reply. I recommend showing Other last on every question, putting Add a note beneath the selected answer, letting you send any finished answers together, and keeping typed replies in the conversation. To give a different direction in this review, pick Other and name the question in a review comment.",
-  "decision_items": [
-    {
-      "id": "other-visibility",
-      "question": "Where should Other appear?",
-      "recommendation": "Show Other as the last choice on every question. You can see that a write-in is welcome before choosing.",
-      "options": [
-        {"id": "visible", "label": "Show Other alongside the listed choices", "action": "Specify an always-visible final choice that opens a text box."},
-        {"id": "link", "label": "Put it behind a Write my own answer link", "action": "Specify a link beneath the options that opens the same text box."},
-        {"id": "other", "label": "Other (describe the placement in a review comment)", "action": "Use the placement in Robert's comment about Other for the build brief."}
-      ]
-    },
-    {
-      "id": "note-placement",
-      "question": "Where should you add a note to a choice?",
-      "recommendation": "Put Add a note directly beneath the selected answer. The note opens beside the choice it qualifies, including an Other answer.",
-      "options": [
-        {"id": "inline", "label": "Open the note beneath my chosen answer", "action": "Specify a collapsed note field immediately below each selected answer."},
-        {"id": "visible-field", "label": "Show an empty note box as soon as I choose", "action": "Specify an always-open optional field beneath the selected answer, removing a tap."},
-        {"id": "other", "label": "Other (describe the note field in a review comment)", "action": "Use Robert's comment about the note field for the build brief."}
-      ]
-    },
-    {
-      "id": "partial-chat",
-      "question": "When should a set of chat answers go to Praxis?",
-      "recommendation": "Let you send the answers you have finished together. You can check a note first and come back to the open questions later.",
-      "options": [
-        {"id": "send-subset", "label": "Let me send any completed answers together", "action": "Specify a Send button with the count of ready answers and keep the remaining questions open."},
-        {"id": "send-one", "label": "Give each question its own Send button", "action": "Specify a separate send step on each question, including its optional note."},
-        {"id": "other", "label": "Other (describe when to send in a review comment)", "action": "Use the timing in Robert's comment about sending for the build brief."}
-      ]
-    },
-    {
-      "id": "plain-text",
-      "question": "How should a plain-text chat reply affect open questions?",
-      "recommendation": "Keep it as conversation. A remark like “maybe later” should leave Photos and screenshots open until you choose an answer.",
-      "options": [
-        {"id": "conversation", "label": "Keep typed replies as conversation", "action": "Specify that a plain reply leaves all structured answers and counts untouched."},
-        {"id": "confirm-match", "label": "Suggest a match for me to confirm", "action": "Specify an inline preview of the question and proposed answer, recorded only after Robert confirms."},
-        {"id": "other", "label": "Other (describe reply handling in a review comment)", "action": "Use Robert's comment about typed replies for the build brief."}
-      ]
-    }
-  ],
   "screens": [
     {
       "id": "document-desktop-before",
@@ -61,7 +19,6 @@
       "viewport": "Desktop · 1440 px",
       "state": "After answering",
       "file": "screens/document-desktop-after.png",
-      "before": "screens/document-desktop-before.png",
       "notes": "Robert's write-in occupies the selected answer row. On D9 the chosen action stays visible under Later. Add a note opens a small optional field directly beneath any selected answer. Save note keeps the choice intact. Both answers stay in the draft until Finish review sends them."
     },
     {
@@ -80,7 +37,6 @@
       "viewport": "Phone · 393 px",
       "state": "After answering",
       "file": "screens/document-phone-after.png",
-      "before": "screens/document-phone-before.png",
       "notes": "The checkmark identifies the answer. The indented Your note has its own label and speech icon. You can edit a note independently. Choosing a different answer starts a fresh note for that choice."
     },
     {
@@ -99,7 +55,6 @@
       "viewport": "Desktop · 1440 px",
       "state": "After answering",
       "file": "screens/chat-desktop-after.png",
-      "before": "screens/chat-desktop-before.png",
       "notes": "Send 2 answers delivers just D8 and D9. The message shows both submitted answers verbatim. D10 stays open in the original message. Answering it later sends only D10. A selection in progress stays a draft until sent."
     },
     {
@@ -118,27 +73,12 @@
       "viewport": "Phone · 393 px",
       "state": "After answering",
       "file": "screens/chat-phone-after.png",
-      "before": "screens/chat-phone-before.png",
-      "notes": "Send each submitted decision_id with its definition_hash, answered_at, authenticated answered_by and authority. For D8 send kind=other, answer=other and Robert's verbatim text. For D9 send kind=option, answer=later and his optional note. Bind both to the document revision and content hash or to the immutable chat message version. Ask again if the question or version changes."
+      "notes": "The agent receives Robert’s submitted answers with decision_id, definition_hash, answered_at, verified answered_by and authority. The review supplies document_id, revision_id and content_hash. Chat supplies conversation_id, message_id, an immutable message version and its hash. Recheck version and definition at send. If either changed, keep the draft and ask again. D8 carries {\"kind\": \"other\", \"answer\": \"other\", \"text\": \"Show a demo slot only when someone volunteers.\"}. Its text is Robert’s own direction. D9 carries {\"kind\": \"option\", \"answer\": \"later\", \"note\": \"Start with screenshots when uploads are ready.\"}. Resolve the listed action by ID. The optional note on either kind travels verbatim as Robert’s context."
     }
   ],
-  "proposed_answer_shape": {
-    "binding": "Each submitted set carries document_id, revision_id and content_hash from the review, or conversation_id, message_id, message_revision_id and content_hash from the chat question set. Resolve each decision_id against that version. Verify the version and definition_hash again at submission. If either changed, keep the draft and ask for a fresh choice.",
-    "per_answer": "Keep definition_hash, answered_at, answered_by and authority on each answer. Derive the last three on the server from the authenticated save. Carry them and the answer fields below through submission to the agent. Omit unanswered items.",
-    "examples": [
-      {"decision_id": "D8", "kind": "other", "answer": "other", "text": "Show a demo slot only when someone volunteers."},
-      {"decision_id": "D9", "kind": "option", "answer": "later", "note": "Start with screenshots when uploads are ready."}
-    ],
-    "agent": "Dispatch by kind. For option, resolve the named option's action in the pinned definition. For other, show Robert's text verbatim as his own direction for that question. A note is optional operator-authored context on either kind. Preserve the distinction even if an author uses other as a listed option ID. Read older records against their original definitions."
-  },
-  "source_document": {
-    "document_id": "110e234c-c84f-430a-b9b2-a753d0792d08",
-    "revision_id": "4350a061-d8bd-4ae9-8473-78d1a82cce3f",
-    "content_hash": "72dc9f2365fe321f43890d9ce76bb82c794d58e6e0e719c3caf7cb0bca8eaff7",
-    "decision_ids": ["D8", "D9", "D10"]
-  },
   "source": {
     "provider": "Local Chromium render of a static dashboard mock",
-    "stage": "design_review"
+    "stage": "design_review",
+    "project_url": "/documents/110e234c-c84f-430a-b9b2-a753d0792d08"
   }
 }
