@@ -401,6 +401,9 @@ export interface DocumentResponse {
     retirement_history?: DocumentRetirement[];
     replaces?: DocumentSupersession[];
     named_as_replaced?: DocumentSupersession[];
+    /** What is waiting on it (contract §15); absent on an API that predates review grounds. */
+    review_grounds?: DocumentReviewGround[];
+    ground_in_force?: boolean;
     links: { review_url: string; raw_url: string; review_path?: string };
 }
 
@@ -419,7 +422,7 @@ export interface DocumentRetirementRef {
 /** A document moved to Reference because a later one replaced it, or closed by hand; never a decision. */
 export interface DocumentRetirement {
     id: string | null;
-    source: 'replacement' | 'manual' | 'chat_ruling' | 'purpose_changed' | 'revision_task_cancelled';
+    source: 'replacement' | 'manual' | 'chat_ruling' | 'purpose_changed' | 'revision_task_cancelled' | 'no_review_ground' | 'review_resort';
     state: 'retired' | 'reopened';
     retired_at: string;
     retired_by: string | null;
@@ -429,7 +432,7 @@ export interface DocumentRetirement {
     registration_id: string | null;
     task_id: string | null;
     task_path: string | null;
-    trigger: 'registration' | 'review_requested' | 'ready' | 'manual' | 'chat_ruling' | 'purpose_changed' | 'revision_task_cancelled';
+    trigger: 'registration' | 'review_requested' | 'ready' | 'manual' | 'chat_ruling' | 'purpose_changed' | 'revision_task_cancelled' | 'no_review_ground' | 'review_resort';
     named_as: ReplacedName | null;
     previous: { requires_review?: boolean; review_status?: DocumentReviewStatus; list_bucket?: string; blocking_task_ids?: string[]; intended_action?: string } | null;
     reopened_at: string | null;
@@ -469,7 +472,36 @@ export interface DocumentSupersession {
     replacing?: DocumentRetirementRef | null;
 }
 
+/**
+ * Something waiting on a document that puts it in Needs your review (contract §15): an active task on its waiting-task
+ * list, an open decision, a send, publish or implement only Robert's approval allows, or his own request. `summary`
+ * says it in one sentence; the other fields are the facts behind it.
+ */
+export interface DocumentReviewGround {
+    type: 'task' | 'decision' | 'gated_action' | 'operator_request';
+    summary: string;
+    /** decision: declared decision items, an agent's suggested edits, or a decision the re-sort recorded from the brief. */
+    source?: 'declared' | 'agent_review' | 'review_resort';
+    task_ids?: string[];
+    tasks?: { id: string; title: string | null; status: string; task_path: string }[];
+    decision_ids?: string[];
+    declared_count?: number;
+    question?: string;
+    recommendation?: string;
+    intended_action?: IntendedAction;
+    /** operator_request: a cited chat message, his own Move to review queue, or changes he requested. */
+    via?: 'chat' | 'request_review' | 'changes_requested';
+    message_ref?: string;
+    requested_at?: string;
+}
+
+/** The two views of Needs your review: something waiting on the document, or tagged for review with nothing waiting. */
+export type DocumentGroundFilter = 'in_force' | 'none';
+
 export interface DocumentListEntry extends DocumentRecord {
+    /** What is waiting on it (contract §15); empty when nothing is, absent on an API that predates review grounds. */
+    review_grounds?: DocumentReviewGround[];
+    ground_in_force?: boolean;
     agent_review_ready?: boolean;
     blocking_tasks?: DocumentBlockingTask[];
     blocking_task_count?: number;
@@ -488,6 +520,8 @@ export interface DocumentListEntry extends DocumentRecord {
 
 export interface DocumentListFilters {
     status?: DocumentStatusFilter;
+    /** Splits Needs your review (status needs_review only): a ground in force, or none. */
+    ground?: DocumentGroundFilter;
     task_id?: string;
     project_id?: string;
     kind?: string;
@@ -503,6 +537,8 @@ export interface DocumentPage {
     offset: number;
     has_more: boolean;
     status: DocumentStatusFilter;
+    /** The ground split the server applied; null when none was asked for or the API predates review grounds (it ignored it). */
+    ground: DocumentGroundFilter | null;
     /**
      * The API predates the review contract: it ignored status, search and
      * paging and answered its first page unfiltered, so there is no
@@ -512,6 +548,9 @@ export interface DocumentPage {
 }
 
 export type DocumentCounts = Record<DocumentListBucket | 'all', number>;
+
+/** Needs your review split by ground (contract §15): something waiting, or tagged with nothing waiting. */
+export interface DocumentGroundCounts { in_force: number; none: number }
 
 export interface DocumentHistory {
     document_id: string;
@@ -614,6 +653,7 @@ export function documentHref(documentId: string): string {
 function filterParams(filters: DocumentListFilters): URLSearchParams {
     const params = new URLSearchParams();
     if (filters.status) params.set('status', filters.status);
+    if (filters.ground) params.set('ground', filters.ground);
     if (filters.task_id) params.set('task_id', filters.task_id);
     if (filters.project_id) params.set('project_id', filters.project_id);
     if (filters.kind) params.set('kind', filters.kind);
@@ -633,7 +673,7 @@ export async function listDocumentsPage(filters: DocumentListFilters = {}): Prom
     const data = await request<Partial<DocumentPage> & { documents?: DocumentListEntry[] }>(`${BASE}${query ? `?${query}` : ''}`, { cache: 'no-store' });
     const documents = data.documents || [];
     if (typeof data.total !== 'number') {
-        return { documents, total: documents.length, limit: documents.length, offset: 0, has_more: false, status: 'all', legacy: true };
+        return { documents, total: documents.length, limit: documents.length, offset: 0, has_more: false, status: 'all', ground: null, legacy: true };
     }
     return {
         documents,
@@ -642,6 +682,8 @@ export async function listDocumentsPage(filters: DocumentListFilters = {}): Prom
         offset: data.offset ?? 0,
         has_more: Boolean(data.has_more),
         status: data.status ?? filters.status ?? 'all',
+        // An API that predates review grounds neither echoes nor applies the split.
+        ground: data.ground === 'in_force' || data.ground === 'none' ? data.ground : null,
         legacy: false,
     };
 }
@@ -662,10 +704,22 @@ export function stepBackOffset(page: DocumentPage | null, pageSize: number): num
 
 /** Per-status counts for the same filters as the list (status itself is ignored); `all` is their sum. */
 export async function countDocuments(filters: Pick<DocumentListFilters, 'task_id' | 'project_id' | 'kind' | 'q'> = {}): Promise<DocumentCounts> {
+    return (await countReviewQueue(filters)).counts;
+}
+
+/**
+ * The per-status counts plus Needs your review split by ground (contract §15). `grounds` is null when the API
+ * predates review grounds: it cannot tell the two apart, so nothing is claimed about either.
+ */
+export async function countReviewQueue(filters: Pick<DocumentListFilters, 'task_id' | 'project_id' | 'kind' | 'q'> = {}): Promise<{ counts: DocumentCounts; grounds: DocumentGroundCounts | null }> {
     const query = filterParams({ task_id: filters.task_id, project_id: filters.project_id, kind: filters.kind, q: filters.q }).toString();
-    const data = await request<{ counts: DocumentCounts }>(`${BASE}/counts${query ? `?${query}` : ''}`, { cache: 'no-store' });
-    // An API that predates the version lifecycle has no `in_progress` bucket: nothing is being revised there.
-    return { ...data.counts, in_progress: typeof data.counts.in_progress === 'number' ? data.counts.in_progress : 0 };
+    const data = await request<{ counts: DocumentCounts; grounds?: { needs_review?: Partial<DocumentGroundCounts> } }>(`${BASE}/counts${query ? `?${query}` : ''}`, { cache: 'no-store' });
+    const split = data.grounds?.needs_review;
+    return {
+        // An API that predates the version lifecycle has no `in_progress` bucket: nothing is being revised there.
+        counts: { ...data.counts, in_progress: typeof data.counts.in_progress === 'number' ? data.counts.in_progress : 0 },
+        grounds: split && typeof split.in_force === 'number' && typeof split.none === 'number' ? { in_force: split.in_force, none: split.none } : null,
+    };
 }
 
 /** Replacement work on a document: the open item, every item newest first, and whether the current version takes review actions (contract §12). */

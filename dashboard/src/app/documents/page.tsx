@@ -16,6 +16,13 @@
  * same-origin Next route served through the Dashboard's session and /api
  * proxy, so no separate sign-in is ever involved (2026-09-10, task 762637e6;
  * queue 2026-10-02, task 75de5032).
+ *
+ * Needs your review shows only documents something is waiting on (an active
+ * task on the waiting-task list, an open decision, a send, publish or
+ * implement only Robert's approval allows, or his own request), each saying
+ * what; documents still tagged for review with nothing waiting are under
+ * their own view, "Tagged, nothing waiting" (contract §15; Robert's ruling of
+ * 2026-11-25, task dcc2a7be).
  */
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -23,10 +30,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ChevronLeft, ChevronRight, FileCheck2, Loader2, RefreshCw, Search, X } from "lucide-react";
 import {
     DOCUMENT_KINDS,
-    countDocuments,
+    countReviewQueue,
     listDocumentsPage,
     stepBackOffset,
     type DocumentCounts,
+    type DocumentGroundCounts,
+    type DocumentGroundFilter,
     type DocumentPage,
     type DocumentStatusFilter,
 } from "@/lib/document-review";
@@ -37,8 +46,13 @@ const POLL_MS = 30_000;
 const PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 300;
 
-const STATUS_TABS: { key: DocumentStatusFilter; label: string }[] = [
+/** A view of the queue: a review status, or Needs your review's documents with nothing waiting on them. */
+type QueueView = DocumentStatusFilter | "tagged";
+
+const STATUS_TABS: { key: QueueView; label: string }[] = [
     { key: "needs_review", label: "Needs your review" },
+    // Tagged for review, but nothing is waiting on them now (contract §15): kept apart so Needs your review shows only what holds up next steps.
+    { key: "tagged", label: "Tagged, nothing waiting" },
     { key: "changes_requested", label: "Changes requested" },
     // Documents with replacement work in progress (contract §12): a new version is being produced, so the current one takes no review actions.
     { key: "in_progress", label: "Being revised" },
@@ -48,8 +62,15 @@ const STATUS_TABS: { key: DocumentStatusFilter; label: string }[] = [
 ];
 const STATUS_KEYS = new Set<string>(STATUS_TABS.map((tab) => tab.key));
 
+/** What the server is asked for in a view: Needs your review is split by ground, the other views are plain statuses. */
+function viewQuery(view: QueueView): { status: DocumentStatusFilter; ground?: DocumentGroundFilter } {
+    if (view === "needs_review") return { status: "needs_review", ground: "in_force" };
+    if (view === "tagged") return { status: "needs_review", ground: "none" };
+    return { status: view };
+}
+
 interface QueueFilters {
-    status: DocumentStatusFilter;
+    status: QueueView;
     q: string;
     project_id: string;
     task_id: string;
@@ -63,10 +84,12 @@ const DEFAULT_FILTERS: QueueFilters = { status: "needs_review", q: "", project_i
 function filtersFromLocation(): QueueFilters {
     if (typeof window === "undefined") return DEFAULT_FILTERS;
     const params = new URLSearchParams(window.location.search);
-    const status = params.get("status") || "";
+    const requested = params.get("status") || "";
+    // The tagged view is addressed the way the API filters it: status=needs_review&ground=none.
+    const status = requested === "needs_review" && params.get("ground") === "none" ? "tagged" : requested;
     const offset = Number(params.get("offset") || 0);
     return {
-        status: STATUS_KEYS.has(status) ? (status as DocumentStatusFilter) : DEFAULT_FILTERS.status,
+        status: STATUS_KEYS.has(status) ? (status as QueueView) : DEFAULT_FILTERS.status,
         q: params.get("q") || "",
         project_id: params.get("project_id") || "",
         task_id: params.get("task_id") || "",
@@ -78,7 +101,10 @@ function filtersFromLocation(): QueueFilters {
 function writeLocation(filters: QueueFilters) {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams();
-    if (filters.status !== DEFAULT_FILTERS.status) params.set("status", filters.status);
+    if (filters.status === "tagged") {
+        params.set("status", "needs_review");
+        params.set("ground", "none");
+    } else if (filters.status !== DEFAULT_FILTERS.status) params.set("status", filters.status);
     if (filters.q) params.set("q", filters.q);
     if (filters.project_id) params.set("project_id", filters.project_id);
     if (filters.task_id) params.set("task_id", filters.task_id);
@@ -95,6 +121,7 @@ export default function DocumentsPage() {
     const [searchText, setSearchText] = useState("");
     const [page, setPage] = useState<DocumentPage | null>(null);
     const [counts, setCounts] = useState<DocumentCounts | null>(null);
+    const [groundCounts, setGroundCounts] = useState<DocumentGroundCounts | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
@@ -132,8 +159,8 @@ export default function DocumentsPage() {
         setLoading(true);
         const scope = { q: current.q, project_id: current.project_id, task_id: current.task_id, kind: current.kind };
         const [pageResult, countResult] = await Promise.allSettled([
-            listDocumentsPage({ ...scope, status: current.status, limit: PAGE_SIZE, offset: current.offset }),
-            countDocuments(scope),
+            listDocumentsPage({ ...scope, ...viewQuery(current.status), limit: PAGE_SIZE, offset: current.offset }),
+            countReviewQueue(scope),
         ]);
         if (seq !== requestSeq.current) return; // a newer filter change owns the screen
         if (pageResult.status === "fulfilled") {
@@ -145,7 +172,8 @@ export default function DocumentsPage() {
         }
         // Counts are shown only when the server actually computed them; a
         // failed count is left blank rather than shown as zero.
-        setCounts(countResult.status === "fulfilled" ? countResult.value : null);
+        setCounts(countResult.status === "fulfilled" ? countResult.value.counts : null);
+        setGroundCounts(countResult.status === "fulfilled" ? countResult.value.grounds : null);
         setLoading(false);
     }, []);
 
@@ -189,12 +217,26 @@ export default function DocumentsPage() {
     const pageNumber = Math.floor((page?.offset ?? 0) / PAGE_SIZE) + 1;
     const taskTitle = tasks.find((t) => t.id === filters.task_id)?.title;
     const statusLabel = STATUS_TABS.find((tab) => tab.key === filters.status)?.label ?? "All";
+    const groundView = viewQuery(filters.status).ground ?? null;
+    // An API that predates review grounds ignores the split and says so by not echoing it: the list is every document
+    // tagged for review, waiting or not, until it restarts.
+    const groundUnavailable = !legacy && page !== null && groundView !== null && page.ground !== groundView;
+
+    /** A tab's count: the two halves of Needs your review come from the ground split, when the server computed it. */
+    const tabCount = (key: QueueView): number | null => {
+        if (!counts || legacy) return null;
+        if (key === "needs_review") return groundCounts ? groundCounts.in_force : counts.needs_review;
+        if (key === "tagged") return groundCounts ? groundCounts.none : null;
+        return counts[key];
+    };
+    const taggedCount = groundCounts?.none ?? 0;
 
     const emptyMessage = (() => {
         if (legacy) return "No documents registered yet.";
         if (counts && counts.all === 0 && !narrowed) return "No documents registered yet. When Praxis delivers a document for you, it appears here, on its task and in your Praxis conversation.";
         if (narrowed) return "No documents match these filters.";
         if (filters.status === "needs_review") return "Nothing is waiting for your review.";
+        if (filters.status === "tagged") return "Every document tagged for your review has something waiting on it.";
         if (filters.status === "changes_requested") return "No documents are waiting on requested changes.";
         if (filters.status === "in_progress") return "No documents are being revised right now.";
         if (filters.status === "approved") return "No approved documents yet.";
@@ -237,7 +279,7 @@ export default function DocumentsPage() {
 
                 <div className="mb-3 flex flex-wrap items-center gap-2" role="group" aria-label="Review status">
                     {STATUS_TABS.map((tab) => {
-                        const count = counts && !legacy ? counts[tab.key] : null;
+                        const count = tabCount(tab.key);
                         const active = filters.status === tab.key;
                         return (
                             <button
@@ -255,6 +297,19 @@ export default function DocumentsPage() {
                         );
                     })}
                 </div>
+
+                {!legacy && (filters.status === "needs_review" || filters.status === "tagged") && (
+                    <p className="mb-3 text-[11px] text-slate-500" data-view-note={filters.status}>
+                        {filters.status === "needs_review"
+                            ? "Only documents something is waiting on: a task, an open decision, a send or publish that needs your approval, or your own request. Each one says what."
+                            : "Still tagged for your review, but nothing is waiting on them now (no waiting task, open decision, send or publish, or request of yours). Nothing is held up if you leave them."}
+                    </p>
+                )}
+                {groundUnavailable && (
+                    <div role="status" className="mb-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs text-amber-100" data-ground-unavailable="">
+                        The Nexus API has not restarted since review grounds were added, so it cannot yet tell which documents something is waiting on. This list shows every document tagged for your review.
+                    </div>
+                )}
 
                 <div className="mb-4 flex flex-wrap items-center gap-2" data-review-filters="">
                     <label className="relative block w-full sm:w-auto sm:min-w-[12rem] sm:flex-1">
@@ -348,6 +403,11 @@ export default function DocumentsPage() {
                         ) : documents.length === 0 ? (
                             <div className="rounded-lg border border-dashed border-slate-800 p-6 text-center text-sm text-slate-500" data-documents-empty="">
                                 <p>{emptyMessage}</p>
+                                {!legacy && filters.status === "needs_review" && !groundUnavailable && taggedCount > 0 && (
+                                    <button type="button" onClick={() => update({ status: "tagged" })} className="mt-2 block w-full text-xs text-cyan-300 hover:underline" data-show-tagged="">
+                                        {taggedCount === 1 ? "1 document is still tagged for review with nothing waiting on it: show it" : `${taggedCount} documents are still tagged for review with nothing waiting on them: show them`}
+                                    </button>
+                                )}
                                 {!legacy && filters.status !== "all" && counts && counts.all > 0 && !narrowed && (
                                     <button type="button" onClick={() => update({ status: "all" })} className="mt-2 text-xs text-cyan-300 hover:underline">
                                         Show all {counts.all} documents

@@ -58,6 +58,21 @@ test('reference documents never count, and an empty queue says nothing is waitin
   } finally { t.cleanup(); }
 });
 
+test('the bridge count leaves out documents still tagged for review with nothing waiting (contract §15)', async () => {
+  const tagged = { ground_in_force: false, review_grounds: [] };
+  const docs = [entry(1), entry(2), entry(3), entry(4, tagged), entry(5, tagged)];
+  const t = mount(createElement(Bridge), registryHandler(docs));
+  try {
+    await settle();
+    const q = t.calls.find(c => c.path === '/api/documents').query;
+    assert.equal(q.get('status'), 'needs_review');
+    assert.equal(q.get('ground'), 'in_force');
+    assert.equal(t.container.querySelector('[data-ready-count]').textContent, '3 pending');
+    assert.equal(t.container.querySelector('[data-reviews-nav]').getAttribute('aria-label'), 'Reviews: 3 documents need your review');
+    assert.deepEqual([...t.container.querySelectorAll('[data-ready-for-review] [data-document-id]')].map(li => li.dataset.documentId), ['doc-003', 'doc-002', 'doc-001']);
+  } finally { t.cleanup(); }
+});
+
 test('loading, error and a pre-contract API are not shown as a count', async () => {
   let release;
   const gate = new Promise(resolve => { release = resolve; });

@@ -1,8 +1,11 @@
 // Synthetic document registry for the Reviews / Deliverables / home tests:
 // answers GET /api/documents and /api/documents/counts with the contract's
 // filtering (status, q, project_id, task_id, kind), newest-first paging and
-// truthful totals (docs/contracts/document-review-deliverables.md §4). Every
-// document here is synthetic; nothing touches a real registry.
+// truthful totals (docs/contracts/document-review-deliverables.md §4), plus
+// the review-ground split of Needs your review (§15: ground=in_force|none,
+// echoed back, and counts.grounds.needs_review). An entry has a ground in
+// force unless it sets `ground_in_force: false`. Every document here is
+// synthetic; nothing touches a real registry.
 
 export const response = (data, status = 200) => ({ ok: status < 400, status, json: async () => data });
 
@@ -56,9 +59,15 @@ export function syntheticRegistry(count = 130) {
   });
 }
 
+/** Whether something is waiting on an entry (contract §15): in force unless the entry says otherwise. */
+const groundInForce = doc => doc.ground_in_force !== false;
+
 function matches(doc, q) {
   const status = q.get('status') || 'all';
   if (status !== 'all' && bucketOf(doc) !== status) return false;
+  const ground = q.get('ground');
+  if (ground === 'in_force' && !groundInForce(doc)) return false;
+  if (ground === 'none' && groundInForce(doc)) return false;
   if (q.get('project_id') && doc.project_id !== q.get('project_id')) return false;
   if (q.get('task_id') && doc.task_id !== q.get('task_id')) return false;
   if (q.get('kind') && doc.kind !== q.get('kind')) return false;
@@ -69,8 +78,10 @@ function matches(doc, q) {
 
 /**
  * A fetch handler over `docs`. Options: `legacy` answers like the
- * pre-contract API (no total, no counts route); `fail` / `failCounts` return
- * 500s; `extra(url, init)` handles any other route first.
+ * pre-contract API (no total, no counts route); `legacyGrounds` answers like
+ * an API with paging and counts that predates review grounds (it ignores
+ * `ground`, does not echo it and returns no ground counts); `fail` /
+ * `failCounts` return 500s; `extra(url, init)` handles any other route first.
  */
 export function registryHandler(docs, options = {}) {
   return async (url, init = {}) => {
@@ -86,17 +97,25 @@ export function registryHandler(docs, options = {}) {
       scope.delete('status');
       const scoped = docs.filter(d => matches(d, scope));
       const counts = Object.fromEntries(STATUSES.map(s => [s, scoped.filter(d => bucketOf(d) === s).length]));
-      return response({ counts: { ...counts, all: scoped.length } });
+      if (options.legacyGrounds) return response({ counts: { ...counts, all: scoped.length } });
+      const waiting = scoped.filter(d => bucketOf(d) === 'needs_review');
+      const inForce = waiting.filter(groundInForce).length;
+      return response({ counts: { ...counts, all: scoped.length }, grounds: { needs_review: { in_force: inForce, none: waiting.length - inForce } } });
     }
     if (p === '/api/documents') {
       if (options.fail) return response({ error: options.fail }, 500);
       const sorted = [...docs].sort((a, b) => b.created_at.localeCompare(a.created_at));
       if (options.legacy) return response({ documents: sorted.filter(d => !url.searchParams.get('task_id') || d.task_id === url.searchParams.get('task_id')) });
-      const filtered = sorted.filter(d => matches(d, url.searchParams));
+      const query = new URLSearchParams(url.searchParams);
+      if (options.legacyGrounds) query.delete('ground');
+      const ground = query.get('ground') || null;
+      if (ground && (query.get('status') || 'all') !== 'needs_review') return response({ error: 'ground splits Needs your review: use it with status=needs_review' }, 400);
+      const filtered = sorted.filter(d => matches(d, query));
       const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit') || 100)));
       const offset = Math.max(0, Number(url.searchParams.get('offset') || 0));
       const pageDocs = filtered.slice(offset, offset + limit);
-      return response({ documents: pageDocs, total: filtered.length, limit, offset, has_more: offset + pageDocs.length < filtered.length, status: url.searchParams.get('status') || 'all' });
+      const page = { documents: pageDocs, total: filtered.length, limit, offset, has_more: offset + pageDocs.length < filtered.length, status: url.searchParams.get('status') || 'all' };
+      return response(options.legacyGrounds ? page : { ...page, ground });
     }
     if (p === '/api/projects') return response([{ id: 'p1', name: 'Synthetic One' }, { id: 'p2', name: 'Synthetic Two' }]);
     const tasks = p.match(/^\/api\/projects\/([^/]+)\/tasks$/);

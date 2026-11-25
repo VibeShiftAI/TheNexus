@@ -275,3 +275,124 @@ test('the empty-response guard does not misreport a legitimately empty first pag
     assert.ok(t.container.querySelector('[data-documents-empty]'));
   } finally { t.cleanup(); }
 });
+
+// Review grounds (contract §15, task dcc2a7be): Needs your review shows only documents something is waiting on, each
+// saying what; documents still tagged for review with nothing waiting are under "Tagged, nothing waiting".
+const TAGGED = { ground_in_force: false, review_grounds: [] };
+const SHIP_TASK = { id: 'task-ship', title: 'Ship the launch', status: 'todo', project_id: 'p1' };
+function groundedRegistry() {
+  return syntheticRegistry().map(doc => {
+    const n = Number(doc.id.slice(4));
+    if (n >= 101 && n <= 104) return { ...doc, ...TAGGED };
+    if (n === 100) {
+      return { ...doc, ground_in_force: true, review_grounds: [
+        { type: 'decision', source: 'review_resort', question: 'Send it to Cat?', summary: 'A decision is waiting for your answer: Send it to Cat?' },
+      ] };
+    }
+    if (n === 99) {
+      return { ...doc, ground_in_force: true, blocking_tasks: [SHIP_TASK], blocking_task_count: 1, review_grounds: [
+        { type: 'task', task_ids: [SHIP_TASK.id], summary: 'Task “Ship the launch” is waiting on your review.' },
+        { type: 'gated_action', intended_action: 'send', summary: 'Your approval is what allows it to be sent.' },
+      ] };
+    }
+    return doc;
+  });
+}
+
+test('Needs your review asks only for documents with a ground in force and says what is waiting on each', async () => {
+  const t = setup(registryHandler(groundedRegistry()));
+  try {
+    await settle();
+    const q = lastList(t.calls);
+    assert.equal(q.get('status'), 'needs_review');
+    assert.equal(q.get('ground'), 'in_force', 'the default view asks only for documents something is waiting on');
+    assert.equal(tab(t.container, 'needs_review').getAttribute('aria-pressed'), 'true');
+    assert.equal(tabCount(t.container, 'needs_review'), '100');
+    assert.equal(tabCount(t.container, 'tagged'), '4');
+    assert.equal(tabCount(t.container, 'all'), '130');
+    assert.match(t.container.querySelector('[data-documents-summary]').textContent, /Showing 1–25 of 100 · Needs your review/);
+    assert.equal(ids(t.container)[0], 'doc-100', 'tagged documents are not in the default view');
+    assert.ok(!ids(t.container).some(id => ['doc-101', 'doc-102', 'doc-103', 'doc-104'].includes(id)));
+    assert.match(t.container.querySelector('[data-view-note="needs_review"]').textContent, /Only documents something is waiting on/);
+    assert.equal(t.container.querySelector('[data-ground-unavailable]'), null);
+
+    const decision = t.container.querySelector('[data-document-id="doc-100"]');
+    assert.equal(decision.querySelector('[data-review-ground="decision"]').textContent, 'A decision is waiting for your answer: Send it to Cat?');
+    assert.equal(decision.querySelector('[data-review-ground-none]'), null);
+
+    // A waiting task is listed once, by the blocking-task list; the other grounds are listed in words.
+    const blocked = t.container.querySelector('[data-document-id="doc-099"]');
+    assert.deepEqual([...blocked.querySelectorAll('[data-review-ground]')].map(li => li.dataset.reviewGround), ['gated_action']);
+    assert.equal(blocked.querySelector('[data-review-ground="gated_action"]').textContent, 'Your approval is what allows it to be sent.');
+    assert.equal(blocked.querySelector('[data-blocking-tasks] a[href="/task/task-ship"]').textContent, 'Ship the launch');
+  } finally { t.cleanup(); }
+});
+
+test('documents tagged for review with nothing waiting are under their own named view, which survives a reload', async () => {
+  const t = setup(registryHandler(groundedRegistry()));
+  try {
+    await settle();
+    assert.equal(tab(t.container, 'tagged').textContent.replace(/\d+$/, ''), 'Tagged, nothing waiting');
+    await click(tab(t.container, 'tagged'));
+    const q = lastList(t.calls);
+    assert.equal(q.get('status'), 'needs_review');
+    assert.equal(q.get('ground'), 'none');
+    assert.equal(tab(t.container, 'tagged').getAttribute('aria-pressed'), 'true');
+    assert.equal(tab(t.container, 'needs_review').getAttribute('aria-pressed'), 'false');
+    assert.deepEqual(ids(t.container), ['doc-104', 'doc-103', 'doc-102', 'doc-101']);
+    assert.match(t.container.querySelector('[data-documents-summary]').textContent, /Showing 1–4 of 4 · Tagged, nothing waiting/);
+    assert.doesNotMatch(t.container.querySelector('[data-documents-summary]').textContent, /Blocking reviews first/);
+    assert.match(t.container.querySelector('[data-view-note="tagged"]').textContent, /nothing is waiting on them now/);
+    for (const row of t.container.querySelectorAll('[data-document-id]')) {
+      assert.equal(row.querySelector('[data-review-ground-none]').textContent, 'Tagged for review; nothing is waiting on it now.');
+      assert.equal(row.querySelector('[data-review-grounds]'), null);
+    }
+    const params = new URLSearchParams(window.location.search);
+    assert.equal(params.get('status'), 'needs_review');
+    assert.equal(params.get('ground'), 'none');
+  } finally { t.cleanup(); }
+
+  const reloaded = setup(registryHandler(groundedRegistry()), '?status=needs_review&ground=none');
+  try {
+    await settle();
+    assert.equal(listCalls(reloaded.calls)[0].query.get('ground'), 'none');
+    assert.equal(tab(reloaded.container, 'tagged').getAttribute('aria-pressed'), 'true');
+    assert.deepEqual(ids(reloaded.container), ['doc-104', 'doc-103', 'doc-102', 'doc-101']);
+  } finally { reloaded.cleanup(); }
+});
+
+test('an empty Needs your review points to the documents still tagged with nothing waiting', async () => {
+  const docs = [entry(1, TAGGED), entry(2, TAGGED), entry(3, { review_status: 'approved' })];
+  const t = setup(registryHandler(docs));
+  try {
+    await settle();
+    assert.equal(tabCount(t.container, 'needs_review'), '0');
+    assert.equal(tabCount(t.container, 'tagged'), '2');
+    assert.match(t.container.querySelector('[data-documents-empty]').textContent, /Nothing is waiting for your review/);
+    const show = t.container.querySelector('[data-show-tagged]');
+    assert.equal(show.textContent, '2 documents are still tagged for review with nothing waiting on them: show them');
+    await click(show);
+    assert.equal(tab(t.container, 'tagged').getAttribute('aria-pressed'), 'true');
+    assert.deepEqual(ids(t.container), ['doc-002', 'doc-001']);
+  } finally { t.cleanup(); }
+
+  const none = setup(registryHandler([entry(1), entry(2, { review_status: 'approved' })]), '?status=needs_review&ground=none');
+  try {
+    await settle();
+    assert.match(none.container.querySelector('[data-documents-empty]').textContent, /Every document tagged for your review has something waiting on it/);
+  } finally { none.cleanup(); }
+});
+
+test('an API that predates review grounds says the split is unavailable instead of filtering silently', async () => {
+  const t = setup(registryHandler(groundedRegistry(), { legacyGrounds: true }));
+  try {
+    await settle();
+    assert.equal(lastList(t.calls).get('ground'), 'in_force', 'the split is asked for');
+    assert.match(t.container.querySelector('[data-ground-unavailable]').textContent, /has not restarted since review grounds were added/);
+    assert.equal(tabCount(t.container, 'needs_review'), '104', 'the count it can compute: every document tagged for review');
+    assert.equal(tabCount(t.container, 'tagged'), null, 'no count it cannot compute');
+    assert.equal(ids(t.container)[0], 'doc-104', 'it returned every document tagged for review, and the page shows them as they are');
+    await click(tab(t.container, 'tagged'));
+    assert.ok(t.container.querySelector('[data-ground-unavailable]'), 'the tagged view says the same');
+  } finally { t.cleanup(); }
+});
