@@ -630,3 +630,125 @@ describe('the one-time re-sort ground (criterion 4)', () => {
         expect(store().listRetirements(waiting.document.id).map(r => r.id)).toEqual([rt.id, 'old-chat']);
     });
 });
+
+describe('the re-sort script (scripts/reviews-resort.js) applies its plan once, re-checking each document (criterion 4)', () => {
+    const RULING = 'nexus://conversation/a821fe1e-4d76-4a3f-82e1-8872be4ac289/message/8f6068f1-bbe7-4200-b59c-9d9bebf27469';
+    const script = () => require('../../scripts/reviews-resort');
+    const planFor = documents => ({ ruling: RULING, task_id: RESORT_TASK, snapshot_at: new Date().toISOString(), documents });
+    const moveEntry = (registered, extra = {}) => ({ id: registered.document.id, revision_id: registered.revision.id, outcome: 'move', finding: 'Nothing waits on it.', ...extra });
+    // One document of the plan, applied the way the script applies it: in one transaction, as of the plan's snapshot.
+    const applyEntry = (plan, entry, execute = true) => store().transaction(() => script().apply(store(), plan, entry, {
+        execute, snapshotAt: new Date(plan.snapshot_at).toISOString(), actorId: `review_resort:${plan.task_id}`,
+    }));
+
+    test('a plan with a problem is refused, each problem named', () => {
+        const { planProblems } = script();
+        expect(planProblems(planFor([{ id: 'a', revision_id: 'r', outcome: 'move', finding: 'Nothing waits on it.' }]))).toEqual([]);
+        expect(planProblems({ ruling: 'chat says so', task_id: '', snapshot_at: 'yesterday', documents: [
+            { id: 'a', revision_id: 'r', outcome: 'move', finding: 'x', decisions: DECISION_ITEMS },
+            { id: 'a', revision_id: '', outcome: 'drop', finding: '' },
+            { id: 'b', revision_id: 'r', outcome: 'record', finding: 'x', decisions: [] },
+            { id: 'c', revision_id: 'r', outcome: 'stay', finding: 'x', declared_decisions_answered: { record: '/tmp/record.json', why: 'x' } },
+            { id: 'd', revision_id: 'r', outcome: 'move', finding: 'x', declared_decisions_answered: { record: 'relative.json', why: 'x' } },
+        ] })).toEqual([
+            'ruling must be a saved chat message reference (nexus://conversation/<id>/message/<id>)',
+            'task_id is required',
+            'snapshot_at must be a date',
+            'documents[0] (a): only a record outcome carries decisions',
+            'documents[1] (a): listed twice',
+            'documents[1] (a): revision_id is required (the version the reading was of)',
+            'documents[1] (a): outcome must be one of move, record, stay',
+            'documents[1] (a): finding is required (what the reading found)',
+            'documents[2] (b): record needs at least one decision',
+            'documents[3] (c): only a move names declared decisions answered elsewhere',
+            'documents[4] (d): declared_decisions_answered needs the absolute path of the Praxis decision record and why',
+        ]);
+        expect(planProblems({ ruling: RULING, task_id: RESORT_TASK, snapshot_at: new Date().toISOString(), documents: [] })).toEqual(['documents must be a non-empty list']);
+    });
+
+    test('a move is previewed, applied with no decision row, never repeated, and put back by request-review', async () => {
+        const waiting = await legacyWaiting();
+        const id = waiting.document.id;
+        const plan = planFor([moveEntry(waiting, { finding: 'A finished report that asks nothing.' })]);
+        expect(applyEntry(plan, plan.documents[0], false)).toEqual({ result: 'would_move' });
+        expect(store().listRetirements(id)).toEqual([]);
+        const moved = applyEntry(plan, plan.documents[0]);
+        expect(moved).toMatchObject({ result: 'moved', trigger: 'review_resort', previous: { requires_review: true, current_revision_id: waiting.revision.id } });
+        expect(store().listRetirements(id)).toEqual([expect.objectContaining({
+            id: moved.retirement_id, retired_by: 'praxis', task_id: RESORT_TASK,
+            ground: { type: 'review_resort', message_ref: RULING, task_id: RESORT_TASK, finding: 'A finished report that asks nothing.' },
+        })]);
+        expect(store().getReviewStatus(id)).toBe('reference');
+        expect(decisionRows(id)).toEqual([]);
+        expect(applyEntry(plan, plan.documents[0])).toMatchObject({ result: 'already_moved', retirement_id: moved.retirement_id });
+        expect((await api('POST', `/api/documents/${id}/request-review`, {})).status).toBe(200);
+        expect(applyEntry(plan, plan.documents[0])).toMatchObject({ result: 'left_waiting', reasons: [{ code: 'put_back', retirement_id: moved.retirement_id }] });
+        expect(store().getReviewStatus(id)).toBe('needs_review');
+        expect(store().listRetirements(id)).toHaveLength(1);
+        expect(decisionRows(id)).toEqual([]);
+    });
+
+    test('a move re-checks the document: a ground in force, a guard, another version or a later decision keeps it waiting', async () => {
+        const gated = await legacyWaiting('gated.md', 'gated');
+        store().updateDocument(gated.document.id, { intended_action: 'send' });
+        const guarded = await legacyWaiting('guarded.md', 'guarded');
+        await draftWithComment(guarded.document.id);
+        const revised = await legacyWaiting('revised.md', 'revised');
+        const decided = await legacyWaiting('decided.md', 'decided');
+        // Read a second before Robert's decision below, so the decision is after the snapshot.
+        const plan = { ...planFor([moveEntry(gated), moveEntry(guarded), moveEntry(revised, { revision_id: 'the-version-read' }), moveEntry(decided)]), snapshot_at: new Date(Date.now() - 1000).toISOString() };
+        expect((await api('POST', `/api/documents/${decided.document.id}/decisions`, { decision: 'request_changes', revision_id: decided.revision.id, note: 'Tighten the plan.' }, operator)).status).toBe(201);
+        expect(applyEntry(plan, plan.documents[0])).toEqual({ result: 'left_waiting', reasons: [{ code: 'ground_in_force', message: 'Something is waiting on it now (action), so it stays', grounds: ['action'] }] });
+        const guard = applyEntry(plan, plan.documents[1]);
+        expect(guard.result).toBe('left_waiting');
+        expect(guard.reasons.length).toBeGreaterThan(0);
+        expect(applyEntry(plan, plan.documents[2])).toMatchObject({ result: 'skipped_revision_changed', reasons: [{ code: 'revision_changed' }] });
+        expect(applyEntry(plan, plan.documents[3])).toMatchObject({ result: 'skipped_decided_since', reasons: [{ code: 'decided_since' }] });
+        for (const doc of [gated, guarded, revised, decided]) expect(store().listRetirements(doc.document.id)).toEqual([]);
+    });
+
+    test('a record writes the brief’s decision once on the version read, keeping the document in the default view', async () => {
+        const waiting = await legacyWaiting();
+        const id = waiting.document.id;
+        const decisions = [{ id: 'send-today', question: 'Is the page ready to send?', recommendation: 'Send it today.', action: 'The page is cleared to go out' }];
+        const plan = planFor([{ id, revision_id: waiting.revision.id, outcome: 'record', finding: 'Its brief asks whether to send it.', decisions }]);
+        expect(applyEntry(plan, plan.documents[0], false)).toEqual({ result: 'would_record', decision_ids: ['send-today'] });
+        expect(store().getDocument(id).review_ground).toBeNull();
+        expect(applyEntry(plan, plan.documents[0])).toMatchObject({ result: 'recorded', decision_ids: ['send-today'] });
+        expect(applyEntry(plan, plan.documents[0])).toEqual({ result: 'already_recorded', decision_ids: ['send-today'] });
+        expect(await listIds('status=needs_review&ground=in_force')).toEqual([id]);
+        expect((await read(id)).review_grounds).toEqual([expect.objectContaining({
+            type: 'decision', source: 'review_resort', id: 'send-today', ruling: RULING, summary: 'A decision is waiting for your answer: Is the page ready to send?',
+        })]);
+        expect(decisionRows(id)).toEqual([]);
+        expect(store().listRetirements(id)).toEqual([]);
+    });
+
+    test('the declared-decisions exception moves a document only when the Praxis record answers every declared item on its version', async () => {
+        const registered = await register(writeFile('audit.md', V1), { key: 'audit', requires_review: false, metadata: { decision_items: DECISION_ITEMS } });
+        expect(registered.status).toBe(201);
+        const id = registered.json.document.id;
+        store().updateDocument(id, { requires_review: true });
+        expect(store().getDocumentListRow(id)).toMatchObject({ ground_decision: true, ground_in_force: true });
+        const recordFile = path.join(workspace, 'praxis-decision-record.json');
+        const writeRecord = (revisionId, answers) => fs.writeFileSync(recordFile, JSON.stringify({
+            document_id: id, revision_id: revisionId, items: [{ definition: { id: 'launch-date' }, answers }],
+        }));
+        const why = 'Answered in the free text of his review; Nexus holds no structured answer.';
+        const plan = planFor([moveEntry(registered.json, { declared_decisions_answered: { record: recordFile, why } })]);
+        // Without the exception the declared decision keeps it waiting.
+        expect(applyEntry(plan, { ...plan.documents[0], declared_decisions_answered: undefined })).toMatchObject({ result: 'left_waiting', reasons: [{ code: 'ground_in_force', grounds: ['decision'] }] });
+        writeRecord(registered.json.revision.id, []);
+        expect(applyEntry(plan, plan.documents[0])).toMatchObject({ result: 'left_waiting', reasons: [{ code: 'ground_in_force' }, { code: 'declared_decisions_not_answered', message: '1 of 1 declared decisions have no answer in the Praxis decision record' }] });
+        writeRecord('another-version', [{ answer: 'March 3', status: 'applied' }]);
+        expect(applyEntry(plan, plan.documents[0])).toMatchObject({ result: 'left_waiting', reasons: [{ code: 'ground_in_force' }, { code: 'declared_decisions_not_answered', message: expect.stringMatching(/not this document's current version/) }] });
+        expect(store().listRetirements(id)).toEqual([]);
+        writeRecord(registered.json.revision.id, [{ answer: 'March 3', status: 'applied' }]);
+        expect(applyEntry(plan, plan.documents[0], false)).toMatchObject({ result: 'would_move', declared_decisions_answered: { ok: true, declared: 1, answered: 1 } });
+        expect(applyEntry(plan, plan.documents[0])).toMatchObject({
+            result: 'moved', declared_decisions_answered: { ok: true, record: recordFile, declared: 1, answered: 1, last_answer_statuses: { applied: 1 }, why },
+        });
+        expect(store().getReviewStatus(id)).toBe('reference');
+        expect(decisionRows(id)).toEqual([]);
+    });
+});

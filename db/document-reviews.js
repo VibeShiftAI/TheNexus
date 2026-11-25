@@ -57,10 +57,11 @@ const DELIVERABLE_COLUMNS = [
     // Media model (2026-10-16, docs/contracts/review-media-and-design-packages.md). Legacy rows are Markdown.
     ['media_type', "TEXT NOT NULL DEFAULT 'markdown'"],
     ['mime_type', "TEXT NOT NULL DEFAULT 'text/markdown'"],
-    // Review grounds (2026-11-25, task dcc2a7be, contract §15): JSON record of what was waiting on the document when
-    // its review was last requested with a ground in force ({ recorded_at, via, registration_id, recorded_by, grounds }).
-    // NULL on documents whose review was never requested that way. Whether a ground is in force now is computed by
-    // documentQuery, never read from this record alone.
+    // Review grounds (2026-11-25, task dcc2a7be, contract §15): JSON record of the grounds named at registration that
+    // held, the re-sort's recorded decisions and Robert's own requests ({ grounds, rejected, registration_id,
+    // revision_id, recorded_at, recorded_by }, server/services/document-review-grounds.js writeGroundRecord). NULL on
+    // documents nothing was recorded for. Whether a ground is in force now is computed by documentQuery, never read
+    // from this record alone.
     ['review_ground', 'TEXT'],
 ];
 

@@ -1638,8 +1638,11 @@ document last left the queue, the guards, the list split and counts (with the
 400s), the `review_resort` move and its way back through request-review (also
 as the earlier API made it, recorded only on the reopened retirement), a
 re-sort decision (in force on its version; a new version naming nothing kept
-waiting under the separate filter; lapsing after a decision) and the migration
-of a previous-release retirement table. The dashboard suites
+waiting under the separate filter; lapsing after a decision), the migration
+of a previous-release retirement table, and the re-sort script itself (plan
+checks, preview, a move applied once with no decision row and put back, the
+re-checks that keep a document waiting, a recorded decision, and the
+declared-decisions exception against a Praxis decision record). The dashboard suites
 `documents-index.test.mjs` and `ready-for-review.test.mjs` cover the default
 view, the grounds in each row, the Tagged, nothing waiting view and its
 address, the empty-state link between them, the bridge count and an API that
