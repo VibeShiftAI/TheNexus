@@ -1138,7 +1138,8 @@ autoloader logs the fake's refusal:
   emptied at 20:42:11 EST, just before the 20:42 runs
   (`praxis-local-model-selection-tests.txt`,
   `praxis-credit-preflight-tests.txt`), and was still empty after each of them
-  and when it was last read (see "Live state"), so they made no call either.
+  and at its last read, 21:06:47 EST, just before the scratch folder was
+  deleted (0 bytes, last written 20:42:11), so they made no call either.
 
 `ls --json` lists the models on disk and loads nothing. Praxis runs it in
 `readDownloadedModelInventory` (`src/llm/lmstudio-autoload.ts:294-302`). The fake
