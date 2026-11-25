@@ -100,6 +100,7 @@ import { useDraftWriter } from "@/hooks/use-draft-writer";
 import { useInlineSuggestions, InlineSuggestionControls, InlineSuggestionApplications, InlineCommentConversion } from "./inline-suggestions";
 import { DocumentMarkdown, type BlockRef } from "./document-markdown";
 import { DecisionCard, ReplacementDetail } from "./decision-card";
+import { ReviewRequirements } from "./review-requirements";
 import { DocumentChoices, StaleAnswersNotice } from "./document-choices";
 import { choicesView, unsendableDraftAnswers } from "@/lib/document-choices";
 import { OutgoingCard } from "./outgoing-card";
@@ -1541,6 +1542,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 </button>
             )}
             {finishPanel}
+            {data && <ReviewRequirements key={data.document.id} document={data.document} onRefresh={load} />}
         </div>
     );
 

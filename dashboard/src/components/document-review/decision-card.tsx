@@ -32,7 +32,6 @@ import {
 import { clearDecisionNoteDraft, readDecisionNoteDraft, writeDecisionNoteDraft, type DecisionNoteDraft } from "@/lib/decision-note-draft";
 import { CONFIRM_ON_THIS_MAC, confirmsOnThisMac } from "@/lib/local-operator-session";
 import { BlockingTasks } from "./blocking-tasks";
-import { ReviewRequirements } from "./review-requirements";
 import { DocumentStatusBadge } from "./deliverable-row";
 
 const DECISION_TEXT: Record<DecisionKind, { button: string; past: string; confirm: string }> = {
@@ -452,7 +451,6 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh, 
                 </div>
             )}
             <BlockingTasks tasks={data.blocking_tasks} />
-            <ReviewRequirements key={doc.id} document={doc} onRefresh={onRefresh} />
             {purpose && <p className="mt-1.5 text-xs text-slate-300" data-decision-purpose="">Purpose: {purpose}</p>}
             {status !== "reference" && (
                 <p className="mt-1 text-[11px] text-slate-500">

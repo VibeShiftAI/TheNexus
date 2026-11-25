@@ -4,6 +4,7 @@ import { createElement, act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { DeliverableRow } from '../document-review/deliverable-row.tsx';
 import { ReviewRequirements } from '../document-review/review-requirements.tsx';
+import { DocumentReviewPage } from '../document-review/document-review.tsx';
 import { entry, response, stubFetch } from './document-registry-fake.mjs';
 const waiting = { id: 'waiting-task', title: 'Implement the approved plan', status: 'planning', project_id: 'p1' };
 function mount(component, props) {
@@ -57,5 +58,42 @@ test('a failed save keeps the selection and exposes an error for retry', async (
     await click(t.container, 'Save review requirements');
     assert.match(t.container.querySelector('[role="alert"]').textContent, /Task is unavailable/);
     assert.equal(t.container.querySelector('input[type="checkbox"]').checked, true);
+  } finally { t.cleanup(); stub.restore(); }
+});
+
+test('the waiting document keeps decisions and comments ahead of its working task editor', async () => {
+  let doc = entry(1, { blocking_task_ids: [] });
+  const detail = '/api/documents/' + doc.id;
+  const stub = stubFetch((url, init) => {
+    if (url.pathname === detail) return response({
+      document: doc, revision: doc.current_revision, content: '# Plan', file_state: 'ok',
+      source: {}, review: null, review_status: 'needs_review', reviewable: { ok: true },
+    });
+    if (url.pathname.endsWith('/review-task-options')) return response({ tasks: [waiting] });
+    if (url.pathname === detail + '/request-review') {
+      doc = { ...doc, blocking_task_ids: JSON.parse(init.body).blocking_task_ids };
+      return response({ document: doc });
+    }
+    return response({ error: 'Unexpected request' }, 404);
+  });
+  const t = mount(DocumentReviewPage, { documentId: doc.id });
+  try {
+    await act(async () => { await new Promise(r => setTimeout(r, 0)); });
+    const panel = t.container.querySelector('[data-review-panel]');
+    const editor = panel.querySelector('[data-review-requirements]');
+    const trigger = editor.querySelector('button');
+    assert.equal(trigger.textContent.trim(), 'Edit waiting tasks');
+    assert.ok(!editor.closest('[data-decision-card]'), 'queue management sits outside Your decision');
+    assert.ok(panel.querySelector('#review-summary').compareDocumentPosition(editor) & Node.DOCUMENT_POSITION_FOLLOWING);
+    assert.ok(!trigger.classList.contains('border'));
+    await click(editor, 'Edit waiting tasks');
+    await act(async () => editor.querySelector('input[type="checkbox"]').click());
+    await click(editor, 'Save review requirements');
+    assert.deepEqual(stub.calls.filter(c => c.method !== 'GET').map(c => [c.path, c.body]), [
+      [detail + '/request-review', { blocking_task_ids: [waiting.id] }],
+    ]);
+    assert.equal(editor.querySelector('button').textContent.trim(), 'Edit waiting tasks');
+    await click(editor, 'Edit waiting tasks');
+    assert.equal(editor.querySelector('input[type="checkbox"]').checked, true, 'saved selection after refresh');
   } finally { t.cleanup(); stub.restore(); }
 });

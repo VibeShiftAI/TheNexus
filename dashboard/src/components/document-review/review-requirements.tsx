@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { getReviewTaskOptions, requestDocumentReview, type DocumentRecord, type DocumentBlockingTask } from "@/lib/document-review";
 
 /** Editing a review requirement never changes a task's execution status. */
@@ -43,7 +44,8 @@ export function ReviewRequirements({ document: doc, onRefresh }: {
     return (
         <div className="mt-2" data-review-requirements="">
             {!open ? (
-                <button type="button" onClick={() => void edit()} className={buttonStyle}>
+                <button type="button" onClick={() => void edit()} className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-200 max-lg:min-h-11">
+                    <ChevronRight size={12} aria-hidden="true" />
                     {doc.requires_review === false ? "Move to review queue" : "Edit waiting tasks"}
                 </button>
             ) : (
