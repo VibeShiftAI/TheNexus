@@ -1,0 +1,169 @@
+{
+  "observedAt": "2026-11-25T04:27:46.104Z",
+  "board": [
+    {
+      "id": "c0117b65-9ad7-4afa-90e6-c675b483ccc3",
+      "name": "TheNexus",
+      "tasks": [
+        {
+          "id": "81443b0e-84fd-4634-bb01-a51d5c5f0ef7",
+          "name": "Show what the local model is working on, by name, on the dashboard",
+          "status": "in_progress",
+          "project_id": "c0117b65-9ad7-4afa-90e6-c675b483ccc3",
+          "updated_at": "2026-11-25T04:18:39.334Z"
+        }
+      ]
+    }
+  ],
+  "dispatch": {
+    "localLlm": {
+      "worker": {
+        "paused": false,
+        "updatedAt": "2026-09-07T02:18:59.481Z"
+      },
+      "counts": {
+        "succeeded": 2641,
+        "queued": 299
+      },
+      "jobs": [
+        {
+          "id": "a989c888-32cb-4c43-9fc3-5ca78643ac4f",
+          "type": "ingest_item",
+          "status": "queued",
+          "attempts": 0,
+          "maxAttempts": 3,
+          "createdAt": "2026-11-25T03:03:59.936Z",
+          "updatedAt": "2026-11-25T03:03:59.936Z",
+          "priority": 50,
+          "payload": {
+            "run_id": "run_20261125_030053",
+            "item_hash": "81b51360eb6c5bae2d53bc83ddaae3a7934c6c124ecf8be97c854890298b7322"
+          }
+        },
+        {
+          "id": "4ee13c6e-1dae-431f-abe9-a6adaa881e7f",
+          "type": "ingest_item",
+          "status": "queued",
+          "attempts": 0,
+          "maxAttempts": 3,
+          "createdAt": "2026-11-25T03:03:59.946Z",
+          "updatedAt": "2026-11-25T03:03:59.946Z",
+          "priority": 50,
+          "payload": {
+            "run_id": "run_20261125_030053",
+            "item_hash": "79f9cb9c849cb835df9adb3b5eedc31bc48b9826248afb9e7c9f7f4c3118966d"
+          }
+        }
+      ]
+    },
+    "localLane": {
+      "mode": "overnight",
+      "open": true,
+      "window": "22:00-06:00 ET",
+      "nowEt": "23:27",
+      "inFlightLocalCalls": 0
+    },
+    "lmStudio": {
+      "reachable": true,
+      "models": [
+        {
+          "id": "text-embedding-nomic-embed-text-v1.5",
+          "state": "loaded",
+          "type": "embeddings"
+        },
+        {
+          "id": "google/gemma-4-31b-qat",
+          "state": "loaded",
+          "type": "vlm"
+        }
+      ],
+      "loadedCount": 2,
+      "lastActivityAt": "2026-11-25T04:27:46.041Z"
+    },
+    "executors": {
+      "runs": [
+        {
+          "taskId": "81443b0e-84fd-4634-bb01-a51d5c5f0ef7",
+          "executor": "codex",
+          "title": "Show what the local model is working on, by name, on the dashboard",
+          "kind": "task",
+          "phase": "thinking",
+          "status": "active",
+          "startedAt": "2026-11-25T04:18:03.216Z",
+          "updatedAt": "2026-11-25T04:18:05.449Z",
+          "model": "gpt-6.2-astra"
+        }
+      ],
+      "cliQueue": [],
+      "sessions": []
+    }
+  },
+  "queueRead": {
+    "activeRows": 299,
+    "dispatchSampleSize": 20,
+    "typeAndStatus": {
+      "conversation_evolve_sweep": {
+        "queued": 1
+      },
+      "ingest_item": {
+        "queued": 297
+      },
+      "ingestion_finalize_run": {
+        "queued": 1
+      }
+    }
+  },
+  "runHistory": {
+    "id": "run_20261125_030053",
+    "type": "ingest_item",
+    "statuses": {
+      "succeeded": 99,
+      "queued": 297
+    },
+    "updatedAt": "2026-11-25T04:27:45.564Z"
+  },
+  "manifest": {
+    "run_id": "run_20261125_030053",
+    "deduped_count": 396,
+    "item_job_count": 396,
+    "runningItems": []
+  },
+  "projection": {
+    "runs": [
+      {
+        "id": "ingest_item:run_20261125_030053",
+        "runId": "run_20261125_030053",
+        "type": "ingest_item",
+        "started": true,
+        "name": "Knowledge ingestion",
+        "queued": 298,
+        "running": 0,
+        "finished": 99,
+        "total": 396,
+        "allowedNow": true,
+        "waitReason": null,
+        "updatedAt": "2026-11-25T04:27:45.564Z",
+        "items": []
+      },
+      {
+        "id": "job:333c1665-bdeb-4fbe-b2a7-149b4c8d47bf",
+        "runId": null,
+        "type": "conversation_evolve_sweep",
+        "started": false,
+        "name": "Conversation review",
+        "queued": 1,
+        "running": 0,
+        "finished": null,
+        "total": null,
+        "allowedNow": true,
+        "waitReason": null,
+        "updatedAt": "2026-11-25T03:51:25.822Z",
+        "items": []
+      }
+    ],
+    "localWindowOpen": true,
+    "nextLocalRunId": "ingest_item:run_20261125_030053",
+    "directCallers": [],
+    "directCallsInFlight": 0
+  }
+}
