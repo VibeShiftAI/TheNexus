@@ -70,11 +70,27 @@ function initializeDocumentRelocations(db) {
         ON review_document_relocations(from_root);
     CREATE TRIGGER IF NOT EXISTS review_document_relocations_append_only
         BEFORE UPDATE ON review_document_relocations
-        BEGIN SELECT RAISE(ABORT, 'document relocations are append-only'); END;
-    CREATE TABLE IF NOT EXISTS review_document_asset_locations (
+        BEGIN SELECT RAISE(ABORT, 'document relocations are append-only'); END;`);
+    initializeAssetLocations(db);
+}
+
+function initializeAssetLocations(db) {
+    db.exec(`CREATE TABLE IF NOT EXISTS review_document_asset_locations (
         asset_id TEXT PRIMARY KEY REFERENCES review_document_revision_assets(id) ON DELETE CASCADE,
         path TEXT NOT NULL
     );`);
+}
+
+// Location updates bind canonical paths to the immutable per-asset identity.
+function setAssetLocations(db, documentId, revisionId, assets) {
+    if (!assets.length) return;
+    const locate = db.prepare(`INSERT INTO review_document_asset_locations (asset_id, path)
+        SELECT id, ? FROM review_document_revision_assets
+        WHERE document_id = ? AND revision_id = ? AND asset_key = ? AND content_hash = ?
+        ON CONFLICT(asset_id) DO UPDATE SET path = excluded.path WHERE path <> excluded.path`);
+    for (const asset of assets) {
+        locate.run(asset.path, documentId, revisionId, asset.asset_key, asset.content_hash);
+    }
 }
 
 /** LIKE pattern for every path strictly inside `root` (which carries no trailing separator). */
@@ -137,15 +153,7 @@ function createDocumentRelocationStore(db) {
                     WHERE id = ? AND path = ? AND current_revision_id = ?`)
                     .run(toPath, rootProjectId ?? doc.root_project_id ?? null, toKey, at, doc.id, fromPath, revisionId).changes;
                 if (changed !== 1) return { outcome: 'path_changed', document: this.getDocument(doc.id) };
-                if (assetLocations.length) {
-                    const locate = db.prepare(`INSERT INTO review_document_asset_locations (asset_id, path)
-                        SELECT id, ? FROM review_document_revision_assets
-                        WHERE document_id = ? AND revision_id = ? AND asset_key = ? AND content_hash = ?
-                        ON CONFLICT(asset_id) DO UPDATE SET path = excluded.path`);
-                    for (const asset of assetLocations) {
-                        locate.run(asset.path, doc.id, revisionId, asset.asset_key, asset.content_hash);
-                    }
-                }
+                setAssetLocations(db, doc.id, revisionId, assetLocations);
                 const relocation = {
                     id: randomUUID(), document_id: doc.id, from_path: fromPath, to_path: toPath, from_root: fromRoot, to_root: toRoot,
                     from_deliverable_key: fromKey, to_deliverable_key: toKey, revision_id: revisionId, content_hash: contentHash,
@@ -160,4 +168,4 @@ function createDocumentRelocationStore(db) {
     };
 }
 
-module.exports = { initializeDocumentRelocations, createDocumentRelocationStore, RELOCATION_REFUSALS, LOCATED_REVISION_ASSETS };
+module.exports = { initializeAssetLocations, setAssetLocations, initializeDocumentRelocations, createDocumentRelocationStore, RELOCATION_REFUSALS, LOCATED_REVISION_ASSETS };
