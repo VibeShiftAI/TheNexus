@@ -487,6 +487,40 @@ describe('the one-time re-sort ground (criterion 4)', () => {
         expect(named.json).toMatchObject({ review_ground: { outcome: 'waiting' }, retirement: { action: 'reopened_by_ground', source: 'review_resort' } });
     });
 
+    test('a put-back by the request-review of code from before recorded requests counts as his request until he decides', async () => {
+        const putBackAsBefore = (id, via) => store().transaction(() => {
+            // What the request-review route did before review grounds: back in the queue and the retirement reopened,
+            // with no request recorded in the ground record (the live API runs that code until it restarts).
+            store().updateDocument(id, { requires_review: true });
+            return store().reopenRetirement(id, 'local_user', via);
+        });
+        const waiting = await legacyWaiting();
+        const id = waiting.document.id;
+        const rt = store().retireOnGround({ target: store().getDocument(id), ground: resortGround('Nothing waits on it.') });
+        expect(putBackAsBefore(id, 'request_review')).toMatchObject({ id: rt.id, reopened_via: 'request_review' });
+        expect(store().getDocument(id).review_ground).toBeNull();
+        expect(store().getDocumentListRow(id)).toMatchObject({ ground_request: true, ground_in_force: true });
+        expect(await listIds('status=needs_review&ground=in_force')).toEqual([id]);
+        expect(await listIds('status=needs_review&ground=none')).toEqual([]);
+        expect((await countsOf()).grounds).toEqual({ needs_review: { in_force: 1, none: 0 } });
+        const page = await read(id);
+        expect(page.review_grounds).toEqual([{ type: 'operator_request', via: 'request_review', requested_at: store().listRetirements(id)[0].reopened_at,
+            requested_by: 'local_user', retirement_id: rt.id, summary: 'You put it in your review queue yourself.' }]);
+        // Asking again on the current code names the request once.
+        expect((await api('POST', `/api/documents/${id}/request-review`, {})).status).toBe(200);
+        expect((await read(id)).review_grounds.map(g => g.via)).toEqual(['request_review']);
+        // His decision after it answers the request, as it does a recorded one.
+        expect((await api('POST', `/api/documents/${id}/decisions`, { decision: 'approve', revision_id: waiting.revision.id }, operator)).status).toBe(201);
+        expect(store().getDocumentListRow(id)).toMatchObject({ ground_request: false, ground_in_force: false, review_status: 'approved' });
+        expect(decisionRows(id)).toHaveLength(1);
+        // A retirement reopened by a registration is not his request.
+        const other = await legacyWaiting('other.md', 'other');
+        store().retireOnGround({ target: store().getDocument(other.document.id), ground: resortGround('Nothing waits on it.') });
+        expect(putBackAsBefore(other.document.id, 'registration')).toMatchObject({ reopened_via: 'registration' });
+        expect(store().getDocumentListRow(other.document.id)).toMatchObject({ ground_request: false, ground_in_force: false });
+        expect(await listIds('status=needs_review&ground=none')).toEqual([other.document.id]);
+    });
+
     test('a decision the re-sort records from the brief keeps the document in the default view until Robert decides', async () => {
         const groundRecord = require('../services/document-review-grounds');
         const recordDecision = (id, revisionId, question) => store().transaction(() => groundRecord.writeGroundRecord(store(), id, { actorId: 'review_resort', add: [{

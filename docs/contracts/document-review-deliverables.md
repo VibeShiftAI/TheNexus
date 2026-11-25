@@ -1474,7 +1474,7 @@ A document is in Needs your review only while something is waiting on it:
 | `task` | an active task (not completed or archived) is on its waiting-task list (`blocking_task_ids`, §9) |
 | `decision` | decision items bound to its current version, at least one without an answer Robert has sent; an agent's suggested edits to its current version waiting for his choices; or a decision recorded by the re-sort (15.6) for its current version, until he records a decision after it |
 | `gated_action` | its `intended_action` is `send`, `publish` or `implement`, so his approval is what allows it |
-| `operator_request` | Robert asked to see it: a message of his cited by its saved reference, his own Move to review queue (request-review), or changes he requested on an earlier version; each counts until he records a decision after it |
+| `operator_request` | Robert asked to see it: a message of his cited by its saved reference, his own Move to review queue (request-review), or changes he requested on an earlier version; each counts until he records a decision after it. A Move to review queue on a retired document also counts through the retirement it reopened (`reopened_via: "request_review"`), since the API from before this section recorded that put-back only there |
 
 "Approve this as ready" on a finished report, a walkthrough, an evidence file
 or a sign-off on something already merged or live is not a ground. Whether a
@@ -1635,7 +1635,8 @@ and each kind of invalid ground (registered as reference with the reason, no
 decision row), a revision kept waiting, a same-bytes reopening by a ground, a
 retry and a caller naming nothing, the cutoff of grounds recorded before the
 document last left the queue, the guards, the list split and counts (with the
-400s), the `review_resort` move and its way back through request-review, a
+400s), the `review_resort` move and its way back through request-review (also
+as the earlier API made it, recorded only on the reopened retirement), a
 re-sort decision (in force on its version; a new version naming nothing kept
 waiting under the separate filter; lapsing after a decision) and the migration
 of a previous-release retirement table. The dashboard suites
@@ -1650,4 +1651,5 @@ database on 2026-11-25. The live :4000 serves the split, the outcomes and the
 new reasons only after the Nexus API restarts on the new code; until then it
 ignores `ground` (the page says so) and shows a moved document's retirement
 without its reason. A document the re-sort moved to Reference is out of the
-queue at once, on any code.
+queue at once, on any code, and one Robert puts back before the restart is
+in the default view after it, as his own request.

@@ -198,9 +198,16 @@ const RECORDED_DECISION_SQL = `CASE
     END`;
 /** Intended actions only Robert's approval allows. */
 const GATED_ACTION_SQL = `CASE WHEN d.intended_action IN ('send', 'publish', 'implement') THEN 1 ELSE 0 END`;
-/** Robert asked to see it: changes he requested on an earlier version, or a request of his recorded after the latest decision. */
+/**
+ * Robert asked to see it: changes he requested on an earlier version, or a request of his made after the latest
+ * decision. A request is recorded in the ground record, or it is a retirement he reopened with request-review
+ * (code from before recorded requests marks a put-back only there).
+ */
 const OPERATOR_REQUEST_SQL = `CASE
         WHEN ld.decision = 'request_changes' THEN 1
+        WHEN EXISTS (SELECT 1 FROM review_document_retirements rr
+            WHERE rr.document_id = d.id AND rr.reopened_via = 'request_review'
+            AND rr.reopened_at > COALESCE(ld.created_at, '')) THEN 1
         WHEN NOT COALESCE(json_valid(d.review_ground), 0) THEN 0
         ELSE EXISTS (SELECT 1 FROM json_each(d.review_ground, '$.grounds') g
             WHERE json_extract(g.value, '$.type') = 'operator_request'

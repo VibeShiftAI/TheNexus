@@ -180,6 +180,18 @@ function activeRequests(record, latest) {
     return recordGrounds(record).filter(g => g.type === 'operator_request' && typeof g.requested_at === 'string' && g.requested_at > after);
 }
 
+/**
+ * Robert's request-review put-backs that still count: retirements reopened with it after `latest` (the latest
+ * decision), newest first, as requests. Code from before recorded requests marks a put-back only on the retirement.
+ */
+function reopenedRequests(retirements, latest) {
+    const after = latest?.created_at || '';
+    return (Array.isArray(retirements) ? retirements : [])
+        .filter(r => r && r.reopened_via === 'request_review' && typeof r.reopened_at === 'string' && r.reopened_at > after)
+        .sort((a, b) => (a.reopened_at < b.reopened_at ? 1 : a.reopened_at > b.reopened_at ? -1 : 0))
+        .map(r => ({ type: 'operator_request', via: 'request_review', requested_at: r.reopened_at, requested_by: r.reopened_by || null, retirement_id: r.id }));
+}
+
 /** When a document last left the review queue: its latest decision or retirement (reopened ones included). */
 function groundCutoff(store, docId) {
     const times = [store.latestDecision(docId)?.created_at, ...store.listRetirements(docId).map(r => r.retired_at)];
@@ -271,6 +283,7 @@ module.exports = {
     checkOperatorMessage,
     checkNamedGrounds,
     activeRequests,
+    reopenedRequests,
     groundCutoff,
     currentNamedGrounds,
     recordedDecisions,

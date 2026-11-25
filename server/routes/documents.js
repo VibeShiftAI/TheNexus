@@ -1251,7 +1251,12 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (latest?.decision === 'request_changes') {
                 details.push({ type: 'operator_request', via: 'changes_requested', decision_id: latest.id, requested_at: latest.created_at, on_current: latest.revision_id === row.current_revision_id });
             }
-            details.push(...activeRequests(row.review_ground, latest));
+            const requests = activeRequests(row.review_ground, latest);
+            details.push(...requests);
+            // A put-back the older request-review marked only on the retirement it reopened. Like the ground record,
+            // which keeps one request-review request per document (the latest), name the newest such put-back.
+            const [putBack] = grounds.reopenedRequests(store().listRetirements(row.id), latest);
+            if (putBack && !requests.some(g => g.via === 'request_review')) details.push(putBack);
         }
         return details.map(g => ({ ...g, summary: grounds.groundSummary(g) }));
     }
