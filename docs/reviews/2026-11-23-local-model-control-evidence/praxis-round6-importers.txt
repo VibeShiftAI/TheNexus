@@ -1,0 +1,12 @@
+# 2026-11-24 19:48:24 EST; Praxis at bd19e926, 0 changed files
+test files naming one of those modules: 69
+names in the three lists: 90
+test files naming spoken-prose:
+  local_model_selection
+  spoken_prose
+  voice_prose_deadline
+naming files in none of the three lists:
+  lane_credit
+of those, the ones that name a module only outside an import line (line:name matched):
+  lane_credit: 103:llm/manager 
+    import lines naming one: 0

@@ -7,7 +7,7 @@
 # each site and each sweep match that is not a site.
 W=/Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a
 P=$W/Praxis; N=$W/TheNexus; C=$W/TheCortex
-PB=1fcf4b59; PH=cad6afb2; NB=bd02642895fe; NH=6e14bc87; CB=5fdb76a; CH=e611edc
+PB=1fcf4b59; PH=196a5375; NB=bd02642895fe; NH=6e14bc87; CB=5fdb76a; CH=892708c8
 cut200() { cut -c1-200; }
 at() { # repo rev pattern paths...
   local repo=$1 rev=$2 pat=$3; shift 3
@@ -23,7 +23,7 @@ site "P1 the one source: config.localLlmModel"
 at $P $PB 'localLlmModel: process\.env\.LOCAL_LLM_MODEL' src/config.ts
 at $P $PH 'localLlmModelFromEnv: string =|process\.env\.LOCAL_LLM_MODEL \|\||get localLlmModel|runtimeLocalModel\(\) \?\?|set localLlmModel|setRuntimeLocalModel' src/config.ts
 at $P $PH 'export function (initLocalModelSelection|syncLocalModelSelection)|setRuntimeLocalModel\(' src/llm/local-model-selection.ts
-site "P2 readers of config.localLlmModel outside the manager (same lines at both; each reads the getter at the call)"
+site "P2 readers of config.localLlmModel outside the manager (each reads the getter at the call; the README names the lines that moved)"
 at $P $PB 'config\.localLlmModel' src ':!src/config.ts' ':!src/llm/manager.ts' ':!src/llm/local-model-selection.ts' ':!src/llm/local-model-state.ts'
 echo "  at $PH:"
 at $P $PH 'config\.localLlmModel' src ':!src/config.ts' ':!src/llm/manager.ts' ':!src/llm/local-model-selection.ts' ':!src/llm/local-model-state.ts'
@@ -94,7 +94,7 @@ at $C $CB '^DEFAULT_(TEACHER_)?MODEL = "google|model: str = DEFAULT_|default=DEF
 echo "  at $CH:"
 at $C $CH '^DEFAULT_(TEACHER_)?MODEL = "google|model: str = DEFAULT_|model = harness\.teacher_model\(|harness\.teacher_model\(DEFAULT' $CP/evals
 site "C5 the reader every site above uses (new in local_model.py)"
-at $C $CH 'def local_model_or|/api/model-control/local-model/current|_last_answer, _last_answer_read = model, read' $CP/local_model.py
+at $C $CH 'def local_model_or|/api/model-control/local-model/current|def _read_after_asking|while _read_in_flight:|_last_answer = result\[0\]' $CP/local_model.py
 site "C6 the model registry's direct-path rows (no role selects them; roles reach the local model through the Praxis gateway)"
 at $C $CB 'gemma-local:|inkling-local:|model_name: "role:cortex' TheCortex/config/model_registry.yaml
 at $C $CH 'gemma-local:|inkling-local:|model_name: "role:cortex' TheCortex/config/model_registry.yaml

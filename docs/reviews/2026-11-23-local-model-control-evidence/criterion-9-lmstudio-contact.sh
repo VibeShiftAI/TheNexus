@@ -9,7 +9,10 @@
 #     call that sends a request to port 1234 (curl, fetch, urlopen), runs the
 #     lms CLI, or runs the read-back script (criterion-9-readback.sh, first run
 #     from scratch as criterion9-readback-final.sh; one listing request per
-#     run), with its time. Then, separately, every other Bash call whose text
+#     run), with its time. After review round 7 the read-back ran inside
+#     r7-final-readbacks.sh (copied beside this script), which runs
+#     criterion-9-readback.sh once, so a call that runs it counts as a send
+#     too. Then, separately, every other Bash call whose text
 #     names port 1234 (search patterns, guard settings, echoed headings), so a
 #     reader can check that none of them sends anything. A transcript can hold
 #     the same tool call more than once, so calls are counted once per tool
@@ -42,6 +45,7 @@ const sends = [
   /(fetch|urlopen|requests\.(get|post)|http\.(get|request))\(\s*['"`]https?:\/\/(127\.0\.0\.1|localhost):1234/,
   /(^|\n|;|&&|\|\||\$\(|\bthen\s|\bdo\s)\s*(\S*\/)?lms\s+(load|unload|ps|ls|get|server)\b/,
   /\bbash\s+[^|;&\n]*criterion-?9-?readback[\w-]*\.sh/,
+  /\bbash\s+[^|;&\n]*r7-final-readbacks\.sh/,
 ];
 const est = (ts) => (ts ? new Date(ts).toLocaleString('sv-SE', { timeZone: 'America/New_York' }) : 'time not recorded');
 const around = (cmd, at) => cmd.slice(Math.max(0, at - 50), at + 110).replace(/\s+/g, ' ');

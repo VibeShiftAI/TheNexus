@@ -1,0 +1,24 @@
+
+> praxis@0.1.0 test
+> NODE_ENV=test tsx scripts/run-tests.ts tests/credit_exhaustion_preflight.test.ts
+
+Running 1 of 889 suite(s): tests/credit_exhaustion_preflight.test.ts
+
+[CreditExhaustionPreflight] openrouter exhausted (status 402) — This request requires more credits — rerouted dispatch to the local model queue (job 2b0bb745-539b-40de-a751-0e7b013112c0, local model gemini-3.1-pro-preview)
+[2026-11-25T01:42:14.621Z] [WARN] [CreditExhaustionPreflight] openrouter exhausted (status 402) — This request requires more credits — rerouted dispatch to the local model queue (job 2b0bb745-539b-40de-a751-0e7b013112c0, local model gemini-3.1-pro-preview)
+[CreditExhaustionPreflight] openai exhausted (status ?) — 429 You have no credits remaining. Add credits to continue using the API — rerouted dispatch to the local model queue (job 1707b0e1-e658-44e7-9970-46fe164d43f6, local model gemini-3.1-pro-preview)
+[2026-11-25T01:42:14.621Z] [WARN] [CreditExhaustionPreflight] openai exhausted (status ?) — 429 You have no credits remaining. Add credits to continue using the API — rerouted dispatch to the local model queue (job 1707b0e1-e658-44e7-9970-46fe164d43f6, local model gemini-3.1-pro-preview)
+✔ isDispatchExhaustionSignal treats 402 and 429 as exhaustion, and other statuses as not (0.403084ms)
+✔ creditExhaustionPreflight reroutes a 402 hosted failure onto the local queue (0.851917ms)
+✔ creditExhaustionPreflight reroutes a 429 hosted failure onto the local queue (0.298917ms)
+✔ creditExhaustionPreflight leaves non-exhaustion failures alone (0.095667ms)
+✔ creditExhaustionPreflight never reroutes a route that is already local (0.083917ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 397.835959
+exit 0

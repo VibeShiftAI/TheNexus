@@ -3,7 +3,7 @@
 The review package in `../2026-11-23-local-model-control/` holds only the three
 review screenshots (registered revision `5a481277`). Everything else that backs
 the task is here. Test and log outputs are copied verbatim, so they can contain
-the products' own wording (including dashes in their log messages). Six files
+the products' own wording (including dashes in their log messages). Nine files
 are extracts rather than whole logs, each cut verbatim by
 `merged-main/praxis-full-suite-extract.sh` (the command, the "Running N of M"
 line, then the runner's summary and every failure with its detail; the passing
@@ -11,16 +11,21 @@ output is left out, and each extract says which lines):
 `merged-main/praxis-full-suite-summary-and-failures.txt` (from a 6.1 MB log),
 the three `merged-main/praxis-tests-*519530a9*-extract.txt` (from logs of 1.5
 to 1.6 MB), `merged-main/praxis-tests-merged-59cacac6-extract.txt` (from a
-2.0 MB log) and `merged-main/praxis-tests-merged-1bac2ea7-extract.txt` (from a
-2.3 MB log).
+2.0 MB log), `merged-main/praxis-tests-merged-1bac2ea7-extract.txt` (from a
+2.3 MB log), and `merged-main/praxis-tests-merged-1bac2ea7-a8caeb09-extract.txt`,
+`merged-main/praxis-tests-merged-1bac2ea7-bd19e926-extract.txt` and
+`merged-main/praxis-tests-merged-1bac2ea7-196a5375-extract.txt` (from logs of
+2.3 MB each; the first two were cut again from their logs at 20:13 EST and
+matched byte for byte, and the third was cut at 20:39:32 EST from the log its
+run finished writing at 20:38:22).
 
 Three repositories changed, each on its own task branch:
 
 | Repository | Baseline | Branch head | Main at the merged checks |
 | --- | --- | --- | --- |
-| TheNexus | `bd02642` | `6e14bc87`, plus evidence-only commits after it (`f8761e33`, `f011c4ee`, `1d74cad1`, `6c3e913f` and the one that adds this update) | `3189bb99`, `a2870083`, then `2a7952fc` |
-| Praxis | `1fcf4b59` | `cad6afb2` | `24c1abaa`, `4d076f91`, `613f66b6`, `fbce5c26`, `519530a9`, `59cacac6`, then `1bac2ea7` (conflicts) |
-| TheCortex | `5fdb76a` | `e611edc` | `3617672`, `b06ed4dc` (conflicts), then `17ee69ce` (the same conflict) |
+| TheNexus | `bd02642` | `6e14bc87`, plus evidence-only commits after it (`f8761e33`, `f011c4ee`, `1d74cad1`, `6c3e913f`, `c5b44405` and the one that adds this update) | `3189bb99`, `a2870083`, then `2a7952fc` |
+| Praxis | `1fcf4b59` | `196a5375` (round 7; round 6 ended at `bd19e926`, round 5 at `a8caeb09`, round 4 at `cad6afb2`) | `24c1abaa`, `4d076f91`, `613f66b6`, `fbce5c26`, `519530a9`, `59cacac6`, then `1bac2ea7` (conflicts) |
+| TheCortex | `5fdb76a` | `892708c8` (round 5; round 4 ended at `e611edc`) | `3617672`, `b06ed4dc` (conflicts), then `17ee69ce` (the same conflict) |
 
 The mains kept moving while the task ran. The last mains the branches merge
 with cleanly are TheNexus `2a7952fc` (main since 15:51:16 EST), Praxis
@@ -34,22 +39,28 @@ the conflicts resolved were built and tested outside every repository; see
 `2717b41c` landed TheCortex `17ee69ce`, which adds a script and two document
 lines that the branch does not touch; the TheCortex branch conflicts with it in
 the same file, and the same resolution passes the same tests (same section).
-TheNexus main is still `2a7952fc`. The times come from each shared checkout's
-reflog for `main`. A main that moves after the time given at the end of this
-README is not covered here.
+TheNexus main is still `2a7952fc`. After review round 5 the branch heads moved
+to Praxis `a8caeb09` and TheCortex `892708c8`, and both were checked again on
+the same mains: Praxis `1bac2ea7` and TheCortex `17ee69ce` (same section).
+After review round 6 the Praxis head moved to `bd19e926`, and after review
+round 7 to `196a5375`; each was checked again on Praxis `1bac2ea7` (same
+section). TheCortex and TheNexus code did not change in rounds 6 and 7. The
+times come from each shared checkout's reflog for `main`. A main
+that moves after the time given at the end of this README is not covered here.
 
 The task's commits, oldest first:
 
 | Repository | Commits |
 | --- | --- |
 | TheNexus | `fc23f07a`, `d93b3453`, `5d43f2c9`, `3770d86e`, `e1bfcc97` (round 1 and its evidence); `f2644c44`, `7f915704`, `09b75ae8` (the model row made at apply, the seed fix, the evidence update); `6e14bc87` (reasoning checked both ways) |
-| Praxis | `766635bc`, `ac0b13e0`, `90d44073`; `6f9fb79b` (switch findings held, local primary follows Model Control); `cad6afb2` (round 4, below) |
-| TheCortex | `42b67e2`, `ea37c44`, `0909b22`; `e611edc` (overlapping reads, below) |
+| Praxis | `766635bc`, `ac0b13e0`, `90d44073`; `6f9fb79b` (switch findings held, local primary follows Model Control); `cad6afb2` (round 4, below); `3d6760b1`, `a8caeb09` (round 5, below); `59161c6e`, `bd19e926` (round 6, below); `196a5375` (round 7, below) |
+| TheCortex | `42b67e2`, `ea37c44`, `0909b22`; `e611edc` (overlapping reads, below); `892708c8` (reads one at a time, round 5, below) |
 
 ## Precondition (criterion 1)
 
-`criterion-1-precondition.sh` (output `criterion-1-precondition.txt`, 17:12:04
-EST, read-only) finds the readiness task's commits by their trailer
+`criterion-1-precondition.sh` (output `criterion-1-precondition.txt`, 20:54:01
+EST, read-only; the same as the 17:12:04 output apart from its time and the
+three branch heads) finds the readiness task's commits by their trailer
 (`git log main --grep=9227d9b6`). For each one it asks git whether the commit is
 on main and under the task branch's head (`git merge-base --is-ancestor`). Then
 it runs the brief's own check as the brief writes it.
@@ -57,8 +68,8 @@ it runs the brief's own check as the brief writes it.
 | Repository | Readiness commits (task `9227d9b6`) | On main | Under the branch head |
 | --- | --- | --- | --- |
 | TheNexus | `9de7bed6` (its merge, 2026-11-23 22:47:28), `1104ec89`, `22d86d03` | all 3 (main `2a7952fc`) | no |
-| Praxis | `1fcf4b59` (its merge, 2026-11-23 22:48:04), `de1c5916`, `884135de`, `1a82f9e8`, `694c867a`, `0bc2c8fb` | all 6 (main `1bac2ea7`) | yes (`cad6afb2`) |
-| TheCortex | `5fdb76a`, `2d7c015` | both (main `17ee69ce`) | yes (`e611edc`) |
+| Praxis | `1fcf4b59` (its merge, 2026-11-23 22:48:04), `de1c5916`, `884135de`, `1a82f9e8`, `694c867a`, `0bc2c8fb` | all 6 (main `1bac2ea7`) | yes (`196a5375`) |
+| TheCortex | `5fdb76a`, `2d7c015` | both (main `17ee69ce`) | yes (`892708c8`) |
 
 The brief's check, `git -C /Volumes/Projects/Praxis grep -c
 'thinkingmachines/inkling-2-mini' main -- src/llm/local-model-capabilities.ts`,
@@ -89,8 +100,10 @@ combination broke one test, because main's seed adds an Inkling row;
 `git grep` on commits. It prints each site below as it was at the QA baseline,
 beside the line that does the work at the branch head, then the sweep that
 found the sites. Line numbers are the baselines' (`1fcf4b59`, `bd02642`,
-`5fdb76a`) under "Before" and the branch heads' (`cad6afb2`, `6e14bc87`,
-`e611edc`) under "Now".
+`5fdb76a`) under "Before" and the branch heads' (`196a5375`, `6e14bc87`,
+`892708c8`) under "Now" (output of 20:40:09 EST; against the 19:52:05 output
+for `bd19e926`, only two lines of `src/llm/lmstudio-autoload.ts` moved, each
+one down: the autoload model read, now `:678`, and a doc comment, now `:1092`).
 
 Two read-only checks of this machine back the claims about settings:
 - `criterion-2-env-names.sh` (output `criterion-2-env-names.txt`) counts, in the
@@ -133,39 +146,54 @@ getter each time it runs.
     `llm/credit-failover.ts:83`; `llm/lmstudio-autoload.ts:621`;
     `maintenance/fleet-preflight.ts:1416`; `orchestrator/qa-lessons.ts:1838`,
     `:1972`; `voice/spoken-prose.ts:114`.
-  - These are the same lines at both commits, except autoload's, which is now
-    `llm/lmstudio-autoload.ts:677`.
+  - These are the same lines at both commits, except three:
+    - autoload's is now `llm/lmstudio-autoload.ts:678`;
+    - the member-profile drain's is now `council/member-profile-updates.ts:215`.
+      Since round 5 it hands the extractor a function
+      (`model: () => config.localLlmModel`), which the extractor calls at each
+      extraction (`:59`), so an extractor made before a switch asks the model in
+      effect;
+    - spoken prose's is now `voice/spoken-prose.ts:121`. Since round 6 the same
+      call also passes the count of switches, read in the same synchronous step
+      as the model (`localModelSwitches: localModelSwitchCount()`, `:132`), so
+      the slot claim refuses the call if a switch takes effect before it reaches
+      LM Studio's slot.
   - Each reads the getter when it runs, so its next use after a switch gets the
     new model.
-  - Autoload's load target and the slot check (`claimLocalSlot`, `:1494`) both
-    take the model from `expectedLocalModel()` (`:676-677`).
+  - Autoload's load target and the slot check (`claimLocalSlot`, `:1512`) both
+    take the model from `expectedLocalModel()` (`:677-678`).
 - **P3, the LLM manager's local provider, local lanes and local fallback**
   (`src/llm/manager.ts`).
   - Before: `:294` gave the local provider the model as a value when the
     manager was built. `:764`, `:809`, `:915`, `:1097`, `:1168`, `:1323-1324`
     and `:1338` read `config.localLlmModel`.
-  - Now: the provider gets a function, `:317` (`() => config.localLlmModel`),
-    so it reads the model at each call. The other reads are now at `:831`,
-    `:876`, `:982`, `:1168`, `:1241`, `:1414-1415` and `:1429`.
+  - Now: the provider gets a function, `:338` (`() => config.localLlmModel`),
+    so it reads the model at each call. The other reads are now at:
+    - `:855`, `:900`, `:1006` and `:1278`;
+    - `:1199` and `:1205`, a role's local target and the local fallback (P6);
+    - `:1468`, the credit preflight's reroute. Since round 5 it reads the model
+      once, with the count of switches (`:1469`), for its request, its slot
+      claim and its usage report. At `cad6afb2` it read the model three times
+      (`:1414-1415`, `:1429`).
 - **P4, a local primary (`LLM_PRIMARY_PROVIDER=local`).**
   - Before: `manager.ts:302-308` set the primary's model to `LLM_PRIMARY_MODEL`.
-  - Now: `primaryModel()` (`:365-366`) returns `config.localLlmModel` when the
-    primary provider is local. `:332` still records `LLM_PRIMARY_MODEL` for any
+  - Now: `primaryModel()` (`:386-387`) returns `config.localLlmModel` when the
+    primary provider is local. `:353` still records `LLM_PRIMARY_MODEL` for any
     other provider.
   - On this machine the primary provider is not local.
 - **P5, `switchModel("local/<name>")`.**
   - Before: `manager.ts:693` set `activeModel` to the name, and local calls ran
     it.
-  - Now: `:760` still records the name, but local calls run
-    `config.localLlmModel`. The reply says so (`:750-751`: "local calls run
+  - Now: `:784` still records the name, but local calls run
+    `config.localLlmModel`. The reply says so (`:774-775`: "local calls run
     ..., the local model chosen under Model Control, not ...").
 - **P6, a role that resolves through `local_default`.**
   - Before: `manager.ts:1139` built the role's target from the name Nexus sent,
     the alias target's fixed model name.
   - Now: Nexus marks such a role `followsLocalModel` (TheNexus
     `server/services/model-control.js:373`). Praxis keeps the mark
-    (`manager.ts:1211-1212`) and runs `config.localLlmModel` for that role
-    (`:1164`). A streamed local primary does the same (`:1622`, `:1676`).
+    (`manager.ts:1248-1249`) and runs `config.localLlmModel` for that role
+    (`:1199`). A streamed local primary does the same (`:1686`, `:1742`).
   - The live board has 19 such roles (`criterion-2-pins.txt`).
 - **P7, the swarm and council local client (unchanged by this task).**
   - `src/swarm/engine.ts:148` takes `cfg.localLlmModel ?? cfg.llmPrimaryModel`
@@ -177,7 +205,7 @@ getter each time it runs.
     - A switch waits for a seat call that is in flight.
     - A seat call that still names the replaced model, after a switch that took
       effect while it waited, is refused (`switched_away`,
-      `llm/lmstudio-autoload.ts:1515-1517`).
+      `llm/lmstudio-autoload.ts:1541-1551`).
   - No preset in `src/` seats a local model: `council/moa.ts:179-194` and
     `council/problem-council.ts:69-70` seat CLI and free models.
 - **P8, trading read the environment itself.**
@@ -310,8 +338,11 @@ Paths are under `TheCortex/python/cortex/` unless named.
     - `referee.py:689`, `:708`, `:1167`;
     - `relevance_labels.py:302`, `:373`, `:449`, `:783`.
 - **C5, the reader (new, `local_model.py`).**
-  - `local_model_or` (`:94`) reads `GET /api/model-control/local-model/current`.
-  - It keeps the newest answer it got (`:112`), for use during an outage.
+  - `local_model_or` (`:142`) reads `GET /api/model-control/local-model/current`
+    through `_read_after_asking` (`:112`), which sends one read at a time. A
+    caller that asks while a read is in flight waits for it (`:118`), then
+    shares the next read, so the last answer to come back is the newest.
+  - It keeps that answer (`:136`), for use during an outage.
 - **C6, the model registry's direct rows.**
   - `TheCortex/config/model_registry.yaml:159` (`gemma-local`) and `:173`
     (`inkling-local`) use provider `lm_studio`. They are unchanged and unused:
@@ -404,11 +435,14 @@ have sent every call to the replaced model.
 - Reads are now numbered as they start. The last answer changes only for a read
   newer than the one it came from, as Praxis already does
   (`src/llm/local-model-selection.ts`, `newestReadActedOn`). Each call still
-  sends what its own read returned.
-- `cortex-local-model-tests.txt`: `tests/test_local_model_setting.py`, 23
-  passed. The new test makes two overlapping reads, the older one coming back
-  last, then an outage: Graphiti and the eval teacher keep the newer model.
-- `cortex-offline-tests.txt`: the 11 offline test files, 293 passed.
+  sends what its own read returned. Review round 5 found that numbering reads
+  as they start does not order Nexus's answers; `892708c8` replaced it (below).
+- At `e611edc`, `tests/test_local_model_setting.py`: 23 passed. The new test
+  made two overlapping reads, the older one coming back last, then an outage:
+  Graphiti and the eval teacher kept the newer model.
+- At `e611edc`, the 11 offline test files: 293 passed.
+- `cortex-local-model-tests.txt` and `cortex-offline-tests.txt` held these two
+  runs until `c5b44405`. They now hold the runs on `892708c8` (below).
 - Mutation Y, in a scratch copy, removes the read-order guard. Only the new test
   fails, 1 failed and 22 passed (`mutations/cortex-mutation-y.txt`, script and
   summary beside it).
@@ -465,10 +499,12 @@ Tests:
     (`mutations/praxis-mutation-z.sh`, `praxis-mutation-z-output.txt`,
     `praxis-mutation-z.txt`, `praxis-mutation-z-restored.txt`).
 
-The round-4 test runs on the branch below (the selection, nine-file, related and
+The round-4 test runs on the branch (the selection, nine-file, related and
 wider runs; first log lines 14:05:12 to 14:07:43 EST) started after the last
 edit to the seven committed files (14:04:38) and before the commit (14:09:43),
-so each ran exactly the committed code. The exceptions are named:
+so each ran exactly the committed code. Their copies are in this folder as of
+`c5b44405`; the files the results table below names now hold the round-5 runs
+on `a8caeb09` (next section). The exceptions are named:
 `praxis-wider-tests-before-fixture-fix.txt` ran at 14:00, before the fixture
 change; both `tsc` runs and the encoding check ran at the end, on the clean
 branch heads; the merged-tree runs used the committed diff. Mutations s1 to s7
@@ -476,6 +512,538 @@ ran at 13:54 on `6f9fb79b` plus a patch of six files
 (the four source files and the two test files), identical to
 `6f9fb79b..cad6afb2` for those files; the seventh file,
 `tests/quantized_tool_gate.test.ts`, is not part of their runs.
+
+## Changes since the 17:14 evidence update (`c5b44405`)
+
+### TheCortex `892708c8`
+
+Code review of `e611edc` found that numbering reads as they start does not
+order Nexus's answers. A read numbered second can reach Nexus first, before
+Praxis applies a switch, and win over a read numbered first that Nexus served
+after the switch; an outage then sends every direct call to the model the
+switch replaced. Nexus's answer carries nothing that orders it.
+
+- Reads now go out one at a time (`python/cortex/local_model.py`,
+  `_read_after_asking`, `:112-139`), so the last answer to come back is the
+  newest. A caller that asks while a read is in flight waits for it (`:118`),
+  then takes the next read, shared by every caller waiting when it starts
+  (`:120-122`). However many Graphiti calls ask at once, Nexus sees one request
+  at a time, and no caller queues behind other callers' reads. A read that
+  raises frees the slot for a waiting caller (the `finally` at `:129-138`).
+  `local_model_or` (`:142`) returns what it did before: the model the call's
+  own read named, else the last answer, else the environment fallback.
+- `tests/test_local_model_setting.py`, 23 cases before and 26 now: the
+  overlapping-read test is replaced by one where the second read would have been
+  served first, before the switch; three new cases cover callers sharing the
+  next read, an outage reaching every waiting caller, and a read that raises.
+- `cortex-892708c8-checks.sh` (output in `cortex-892708c8-checks-output.txt`)
+  checks that the worktree is at `892708c8` with no changes, then runs, through
+  `cortex-tests.sh`: the setting tests verbose, 26 passed
+  (`cortex-local-model-tests.txt`); the 11 offline files, 296 passed
+  (`cortex-offline-tests.txt`); the setting tests 25 times in a row, 26 passed
+  each time (`cortex-local-model-repeat.txt`), because these tests use threads.
+  No file in the worktree changed or appeared, and nothing under
+  `/Volumes/Projects/maintenance-mode-worktrees` changed.
+- Mutations R1 to R4 (`mutations/cortex-mutations-r.sh`, results and the diff
+  each made in `mutations/cortex-mutations-r.txt`), each in a scratch copy of
+  `892708c8`; the control run passes 26:
+  - R1, a caller sends its read while another is in flight: 4 fail.
+  - R2, a waiting caller takes the answer of a read that started before it
+    asked: 3 fail.
+  - R3, a read that raises leaves the in-flight mark set and wakes no one: 1
+    fails, the raising-read case.
+  - R4, a waiting caller sends its own read even when one it can share came
+    back: 2 fail.
+- Mutation Y is kept as the record of `e611edc`. The read-order guard it
+  removed is gone at `892708c8`.
+- Merged with TheCortex main `17ee69ce`: 328 passed (see "Merged with current
+  main").
+
+### Praxis `3d6760b1` and `a8caeb09` (round 5)
+
+Line numbers in this section are `a8caeb09`'s. Round 6 (next section) moved
+the slot claim's lines in `src/llm/lmstudio-autoload.ts` and changed how the
+refusal message tells its two cases apart; `manager.ts` and `providers.ts` did
+not move.
+
+The review of `cad6afb2` found two gaps in the round-4 fixes.
+
+1. The slot claim took its count of switches when the claim started. A call
+   that read Gemma before a switch, and was still in admission (LM Studio's
+   process check) when the switch took effect, reached the claim with no switch
+   "during its wait" and was answered by Gemma. The count is now taken where
+   each call reads its model:
+   - a local primary's attempt, `src/llm/manager.ts:505` (`tryPrimary`);
+   - a pinned call, at `chatVia`'s entry or from its caller
+     (`options.localModelSwitches`), `:1362`;
+   - a role resolved through local_default, in role resolution (`current()`,
+     `:1199`, and the local fallback, `:1205`), passed on by `completeRouted`
+     (`:1134`) and the stream candidates (`:1682`);
+   - each stream candidate when it is tried, `:1744`;
+   - the credit preflight reroute, `:1469`.
+
+   The local provider passes the count to the claim, and sets the key only when
+   the caller read one (`switchesReadBy`, `src/llm/providers.ts:300`, used at
+   `:338` and `:343`). The claim refuses the call when a switch numbered after
+   that count replaced its model (`src/llm/lmstudio-autoload.ts:1511`,
+   `:1525-1526`). The refusal says which case it was (`:1641-1649`): the switch
+   was recorded while the call waited for it, or it took effect after the call
+   read its model and before the call reached LM Studio's slot, so the call is
+   not sent.
+2. A local call made by work that a counted call started without waiting for it
+   (an event published from an autoload swap whose brief calls the local model)
+   was skipped by the counter while the first call's context lingered, so a
+   switch could take effect while it ran. In `trackLocalCall`
+   (`src/llm/local-lane-policy.ts:374-398`) a call made inside a counted call
+   that is still open now joins it and keeps it counted until the inner call
+   ends; one made after that call ended counts itself. `chatVia` counts every
+   local call through the same path (`manager.ts:1363`).
+
+Also in `3d6760b1`: the member-profile extractor reads the local model at each
+extraction (`src/council/member-profile-updates.ts:59`, given
+`() => config.localLlmModel` at `:215`), so an extraction made before a switch
+asks the model in effect.
+
+`a8caeb09` followed. On `3d6760b1` the local provider passed
+`localModelSwitches: undefined` to the claim when the caller gave none, which
+changed the wait object a provider's claim receives.
+`tests/local_inference_safety.test.ts` "the slot claim is given the caller's own
+deadline, fixed when the call enters the provider" compares that object
+exactly (a key set to `undefined` is not the same as no key there) and failed
+in the 40-file run on `3d6760b1`, 535/536
+(`praxis-round5-3d6760b1-sets-output.txt`). The test was not changed; the key
+is now set only when the caller read a count.
+
+Tests: nine new cases, eight in `tests/local_model_selection.test.ts` (37
+before, 45 now) and one in `tests/local_model_demand_callers.test.ts`.
+- Four send a call while a switch from Gemma to Inkling takes effect during the
+  call's admission: a pinned `chatVia`, `chat()` on a local primary,
+  `complete()` for a role resolved through local_default, and a streamed call
+  for such a role. Each is refused at the slot claim with the "after this call
+  read it" message. No request reaches the stand-in for LM Studio's server and
+  the fake loader records no call. The pinned call is deferred; the other three
+  are answered by the cascade or the next candidate.
+- One has the switch take effect after a role's model is read and before
+  `complete()` makes the call; the call is refused.
+- One unit case: a call that read its model before a switch is refused at the
+  claim even when the switch took effect before the claim began, and one that
+  read it after the switch is not.
+- Two cover the second gap: local work a counted call starts and leaves running
+  stays counted until it ends (joined while that call is open, counted on its
+  own once it has ended), and a local call such work makes holds a switch until
+  it ends and is counted once.
+- One (in `local_model_demand_callers`) shows that an extractor made before a
+  switch claims the slot for, and asks, the model in effect.
+
+The admission cases use the real local provider and the real slot claim
+(`assertLocalSlot`), reading the fake LM Studio listing and fake loader the
+suite already sets up, with two stand-ins: a chat server the test binds on a
+loopback port of its own, and an admission step that waits until the test opens
+it, where the real one awaits LM Studio's process check
+(`localProviderWithHeldAdmission` and `sendWhileSwitchTakesEffectInAdmission`
+in `tests/local_model_selection.test.ts`). Nexus's answer to the switch is held
+until the call has reached admission.
+
+Mutations (`mutations/praxis-mutations-round5.sh`, results and the diff each
+made in `mutations/praxis-mutations-round5.txt`), each in a scratch copy of
+`a8caeb09`, running the three suites the new cases are in
+(`local_model_selection`, `local_model_demand_callers`, `local_lane_policy`,
+64 tests) under the same guards. The control run passes 64/64, every guard log
+is empty in all thirteen runs, and each mutation fails only cases that cover
+the part it removes:
+
+| Mutation | What it removes | Failing cases |
+| --- | --- | --- |
+| n1 | the claim ignores the caller's count and takes its own when it starts | 6 |
+| n2 | the provider's `chat` does not pass the count to the claim | 4 |
+| n3 | the provider's `chatStream` does not pass the count to the claim | 1 |
+| n4 | a local primary's attempt does not take the count with its model | 1 |
+| n5 | `chatVia` does not pass the count to the provider | 3 |
+| n6 | `complete()` does not pass on the count read with the role's model | 1 |
+| n7 | `chatStream` does not pass the count to the provider | 1 |
+| n8 | role resolution does not take the count with the role's model | 1 |
+| m1 | a call made inside a counted call is not counted at all (the round-4 counter) | 2 |
+| m2 | a call made inside an open counted call joins it without holding it open | 5 |
+| m3 | `chatVia` does not count a call made inside a counted call (the round-4 `chatVia`) | 1 |
+| mp | the member-profile extractor reads the model once, when it is made | 1 |
+
+Runs, each under `praxis-files-guarded.sh` or `praxis-wider-run.sh`:
+- On `3d6760b1` (`praxis-round5-3d6760b1-sets.sh`, which printed that head;
+  output in `praxis-round5-3d6760b1-sets-output.txt`): the 40 related files,
+  535/536 (above); the more-related files, 130/130; the wider set, 473/473. The
+  per-run logs of these were replaced by the `a8caeb09` runs, which used the
+  same tags; the output file keeps their summary lines.
+- On `a8caeb09` (`praxis-round5-a8caeb09-sets.sh`, 18:34:28 to 18:35:25 EST,
+  head printed before and after; output in
+  `praxis-round5-a8caeb09-sets-output.txt`): the mutations above; the three
+  suites holding the new cases, 64/64; the 40 related files, 536/536
+  (`praxis-related-tests.txt`); the more-related files, 130/130
+  (`praxis-more-related-tests.txt`); the wider set, 473/473.
+- On `a8caeb09` at 18:37, `local_model_selection`, `local_model_primary` and
+  `quantized_tool_gate`
+  (`bash $S/praxis-files-guarded.sh $P sel3-r5 quantized_tool_gate local_model_selection local_model_primary`):
+  60/60 (`praxis-local-model-selection-tests.txt`).
+- On `a8caeb09` at 18:48:55 (`praxis-round5-rerun.sh`, output in
+  `praxis-round5-rerun-output.txt`; head `a8caeb09` with 0 changed files before
+  and after): the wider set again, 473/473 (`praxis-wider-tests.txt`), then
+  `praxis-chat-turn-steps-alone.sh` (see the `chat_turn_steps_legacy`
+  paragraph below).
+- The more-related run is the nine files of round 4 plus `lane_credit`
+  (`praxis-round5-more-related-names.txt`; the 40 related files are in
+  `praxis-round5-related-names.txt`). `praxis-round5-importers.sh` (output in
+  `praxis-round5-importers.txt`) lists the 68 test files whose text names a
+  module round 5 changed (it printed "importing", which is wrong for one file),
+  and `lane_credit` was the only one in none of the three lists.
+  - Corrected in round 6: this paragraph said `lane_credit` tests the credit
+    preflight reroute. It does not: it names `llm/manager.ts` only in a comment
+    (`tests/lane_credit.test.ts:103`) and imports none of the changed modules
+    (`praxis-round6-importers.txt`). It was run all the same. The reroute
+    through `chatVia` is exercised by `critic_deadline_routes`
+    ("deadline-scoped credit reroutes never leave delayed queue retries",
+    `tests/critic_deadline_routes.test.ts:159`, in the related list), and since
+    round 6 by a case of its own (next section).
+  - The wider run leaves out `maintenance_review_regressions`, as in round 4
+    (it makes its data dir in a shared folder).
+- `praxis-tsc.txt`: `npx tsc --noEmit` on the clean head `a8caeb09`, exit 0.
+
+What round 5 leaves as it was, or does not cover (the first and fifth items are
+fixed or covered in round 6, next section):
+- `voice/spoken-prose.ts` reads `config.localLlmModel` at `:114`, as the
+  argument to its default `chatVia`, which first awaits
+  `import("../llm/manager.js")` (`:109-112`) and only then calls the manager's
+  `chatVia`, where the count is taken. A switch that took effect during that
+  await would not be counted against the call. Fixed in round 6: the call now
+  passes the count read with the model (`spoken-prose.ts:132` at `bd19e926`).
+- Swarm seats claim the slot with no count (`src/swarm/engine.ts:197`), so the
+  claim takes its own when it starts, as every call did before round 5.
+- Calls that name a model explicitly (the eval and credit routes, scoped routes
+  and swarm presets) do not follow the setting; criterion 2's table lists them.
+- A call made inside an open counted call is counted as part of that call, not
+  as a call of its own (`localCallsInFlight` counts it once); a switch still
+  waits for it.
+- The credit preflight reroute's count has no case of its own; it goes to the
+  claim through the same provider path that n2 checks. (This item also said
+  "`lane_credit` passes", as if that suite tested the reroute; it does not, see
+  above.) Round 6 adds the case, and mutation s4 shows it fails without the
+  count.
+- Forked work that inherits a lane grant does so as before; round 5 changed
+  only what is counted.
+- Praxis numbers its own reads of the setting as they start
+  (`src/llm/local-model-selection.ts:221-222`, `:415`, `:442-443`), the scheme
+  `892708c8` replaced in TheCortex. A read served before a choice can win over an
+  older read served after it. The read Nexus asks for once a choice is saved
+  (`src/routes/ops.ts:162`) starts after the choice and is acted on, and Praxis
+  reads again every 60 s (`LOCAL_MODEL_RESYNC_MS`, `:141`), so Praxis takes the
+  new setting at its next successful read. Unchanged in round 5.
+
+### Praxis `59161c6e` and `bd19e926` (round 6)
+
+The review of `a8caeb09` raised five items. Line numbers in this section are
+`bd19e926`'s. Round 7 (next section) moved lines in
+`src/llm/lmstudio-autoload.ts` (one down after its imports, five down after the
+slot claim's lookup) and in `tests/local_model_selection.test.ts`.
+
+1. Spoken prose read the local model where its own `chatVia` is called, but
+   left the count of switches to the manager. Its default `chatVia` awaits
+   `import("../llm/manager.js")` before calling the manager
+   (`src/voice/spoken-prose.ts:110-113`), so a switch that took effect during
+   that await was not counted against the call, and the call went to the model
+   the switch replaced. Round 5 listed this as left as it was.
+2. The drain's change in `3d6760b1` (the member-profile extractor given the
+   model as a function, `src/council/member-profile-updates.ts:215`) had no
+   test of its own: the round-5 case builds the extractor directly, not through
+   the drain. (In the four suites of the round-6 mutations, putting the plain
+   string back fails only the new drain case; see s2.)
+3. Two places that read the count with the model had no case of their own: the
+   streamed role candidate (`chatStream` keeps the count read with the role's
+   model, `src/llm/manager.ts:1744`) and the credit preflight reroute
+   (`:1468-1469`).
+4. The refusal named the wrong switch and could pick the wrong case. It named
+   the model in effect when it was written, not the model that replaced the
+   call's, and it said the call "waited for the switch" whenever any switch was
+   being recorded when the call reached the claim. A call that read Gemma
+   before a switch to Inkling took effect, and reached the claim while a second
+   switch to Qwen was being recorded, was told it waited for the switch to Qwen.
+   Gemma was replaced by Inkling, before the claim began.
+5. The test helper `primaryForTest` put back the manager's provider and not its
+   model. `chat()`'s fallback makes the rung that answered the session's
+   primary, model included, when no explicit primary is configured
+   (`src/llm/manager.ts:691-715`), so a test whose `chat()` fell back could
+   leave the next test a different primary model.
+
+The fixes (`59161c6e`; `bd19e926` only corrects a test comment):
+- 1: the call now passes the count, read in the same synchronous step as the
+  model (`spoken-prose.ts:121` reads the model, `:132` passes
+  `localModelSwitches: localModelSwitchCount()`; the options type at `:34`).
+  The manager's `chatVia` uses a count its caller passes
+  (`manager.ts:1362`), so the slot claim refuses the call when a switch took
+  effect during the await.
+- 2 and 3: no code change. Each gets a test (below).
+- 4: each switch records which model replaced the old one
+  (`src/llm/local-model-state.ts:29`, `:102`). The claim's refusal
+  (`src/llm/lmstudio-autoload.ts:1537-1546`, type at `:1398-1407`) returns
+  `replacedBy`, that model, and `duringWait`, true only when the switch was
+  numbered after the count taken when the claim began (`switchesAtClaim`,
+  `:1524`). `assertLocalSlot` (`:1659-1671`) names `replacedBy` (`:1663`)
+  and picks the message on `duringWait` (`:1665`).
+- 5: `primaryForTest` restores the model as well
+  (`tests/local_model_selection.test.ts:1290-1298`), and the suite ends with a
+  check that the manager's provider and model are what they were before the
+  suite (`:1300-1313`).
+
+Tests: five new cases. `tests/local_model_selection.test.ts` has 49 (45 at
+`a8caeb09`), and `tests/member_profile_updates.test.ts` one more.
+- Two switches (item 4, `:1613`). Inkling takes effect, then a switch to Qwen is
+  held in the middle of being recorded, and a call that read Gemma reaches the
+  claim. The claim returns `replacedBy` Inkling and `duringWait` false, the
+  message is the "after this call read it" one naming Inkling, Qwen is in effect
+  at the end, and the fake loader records no call.
+- Spoken prose (item 1, `:1651`). `composeSpokenProse` runs with a `chatVia`
+  that has the switch to Inkling take effect before it calls the manager's
+  `chatVia`: the call names Gemma, the slot claim refuses it with the "after
+  this call read it" message, the stand-in for LM Studio's server receives
+  nothing, spoken prose returns null, and nothing is loaded.
+- The stream candidate (item 3, `:1680`). The role resolves to Gemma through
+  local_default, and Nexus's answer to the switch to Inkling is released while
+  the role is resolved. A check inside the test confirms that the local
+  provider's `chatStream` is entered with Gemma named and Inkling in effect.
+  The call is refused, nothing reaches the stand-in server, nothing is loaded,
+  and the next candidate streams the reply.
+- The credit reroute (item 3, `:1730`). A pinned hosted call fails with status
+  402, and the reroute's local call reads Gemma before the switch takes effect
+  during its admission. It is refused at the claim, nothing reaches the
+  stand-in server, nothing is loaded, and the caller gets the hosted 402.
+- The drain (item 2, `tests/member_profile_updates.test.ts:184`). Two jobs; the
+  loopback server standing in for LM Studio switches the local model when it
+  answers the first. The second job's request names the new model.
+
+Two existing cases compare the claim's refusal object exactly; their expected
+objects gained the two new fields (`:929`, `duringWait` true; `:1273`,
+`duringWait` false). Two shared helpers gained an optional parameter that only
+the new credit reroute case passes (`googleFails` in
+`localProviderWithHeldAdmission`, `providers` in
+`sendWhileSwitchTakesEffectInAdmission`). Nothing else in an existing case
+changed.
+
+Mutations (`mutations/praxis-mutations-round6.sh`, results and the diff each
+made in `mutations/praxis-mutations-round6.txt`). The round-4 script
+`praxis-mutations-s.sh` used the names s1 to s7 for other mutations. Each runs
+in a scratch copy of `bd19e926` on the four suites holding the new cases
+(`local_model_selection`, `member_profile_updates`, `spoken_prose`,
+`local_model_demand_callers`, 83 tests) under the same guards. In every run the
+LM Studio guard caught one request, `member_profile_updates`'s POST to its own
+dead port 1, as in every run of that suite; the other guards caught nothing.
+
+| Mutation | What it removes | Failing cases |
+| --- | --- | --- |
+| control | nothing | 0 of 83 |
+| s1 | spoken prose passes no count | 1, the spoken prose case |
+| s2 | the drain gives its extractor the model as a plain string | 1, the drain case |
+| s3 | `chatStream` takes a new count for the role's candidate | 1, the stream candidate case |
+| s4 | the credit reroute passes no count | 1, the credit reroute case |
+| s5 | the refusal names the model in effect | 1, the two-switch case |
+| s6 | the refusal says "waited" whenever a switch was being recorded on arrival (the `a8caeb09` rule) | 1, the two-switch case |
+| s7 | `duringWait` is judged against the caller's count instead of the count when the claim began | 10: every case that expects the "after this call read it" message or `duringWait` false (under s7 every refusal says "waited") |
+| s8 | `primaryForTest` restores the provider only (the round-5 helper) | 0 (see below) |
+| control, primary variables unset | nothing | 0 |
+| s8, primary variables unset | as s8 | 0 |
+
+s8 fails nothing in that script, and the two extra runs show why. This shell
+exports `LLM_PRIMARY_PROVIDER` and `LLM_PRIMARY_MODEL` (checked by name), and
+with an explicit primary `chat()`'s fallback leaves the primary alone. Test runs
+do not load Praxis's `.env` (`src/env.ts`), so with those two unset the
+fallback does make the answering rung the primary. But a test run reads no
+model registry, so the Antigravity rung's model resolves to
+`antigravity-default` (`src/llm/antigravity-provider.ts:24`, `:32-34`), which
+is also the model the manager starts with. The model the old helper left behind
+equals the one it replaced, so nothing can see it.
+`mutations/praxis-mutation-s8-registry.sh` (output
+`mutations/praxis-mutation-s8-registry.txt`; its run logs were written from
+19:43:58 to 19:48:33 EST) gives each run
+a test data folder holding a model registry that lists one Gemini model for the
+Antigravity lane, with the two variables unset, and bounds each run with a
+270 s alarm:
+- as committed, the whole suite: 49/49;
+- as committed, only the two tests the leak passes between (the `chat()` and
+  `complete()` admission cases, `:1439` and `:1448`): 2/2;
+- the old helper, the same two tests: the `complete()` case fails ("answered",
+  `:1452`), and so does the suite's closing check ("the manager's primary is as
+  it was before the suite");
+- the old helper, the whole suite: 40 pass, the `complete()` case fails, and the
+  next test (`:1460`) never reports, so the alarm ends the run (exit 142). The
+  script found five processes left in its scratch copy and stopped them by PID.
+
+Runs on `bd19e926`, each under `praxis-files-guarded.sh` or
+`praxis-wider-run.sh`. The whole outputs these runs wrote under the names in
+"Final results" were replaced by round 7's runs of the same sets on `196a5375`
+(next section); `praxis-round6-sets-output.txt` keeps round 6's summary lines.
+- `praxis-round6-sets.sh` (19:51:37 to 19:52:22 EST, output
+  `praxis-round6-sets-output.txt`; it stops unless the worktree is clean at
+  `bd19e926`, and prints the head before and after):
+  - `local_model_selection`, `local_model_demand_callers`, `local_lane_policy`:
+    68/68;
+  - the 40 related files: 541/541;
+  - the more-related files: 130/130;
+  - the wider set: 473/473. Its guards caught 6
+    openrouter requests and 6 CLI runs, which is what `chat_turn_steps_legacy`
+    makes when it runs alone on `a8caeb09` and on `cad6afb2`
+    (`praxis-chat-turn-steps-alone-output.txt`); the wider runs on `a8caeb09`
+    caught 3 and 3;
+  - `npx tsc --noEmit`: exit 0.
+- At 19:57 EST, `local_model_selection`, `local_model_primary` and
+  `quantized_tool_gate`, 64/64, and `credit_exhaustion_preflight`, 5/5.
+  That last suite is in none of the lists and names none of the changed modules;
+  it ran because this README discusses the preflight. It was read after the run
+  rather than before: it builds its queue in a temp folder and makes no
+  request, and every guard log of the run is empty.
+- `praxis-round6-importers.sh` (output `praxis-round6-importers.txt`) lists the
+  69 test files whose text names a module round 5 or round 6 changed, spoken
+  prose included (`local_model_selection`, `spoken_prose`,
+  `voice_prose_deadline`). Every one is in one of the three lists except
+  `lane_credit`, which names `llm/manager.ts` only in a comment and runs in the
+  more-related set.
+- Merged with Praxis main `1bac2ea7`: see "Merged with current main".
+
+What round 6 leaves as it was: everything in round 5's list other than its
+first and fifth items. In particular, swarm seats still claim the slot with no
+count (`src/swarm/engine.ts:197`), and Praxis still numbers its own reads of the
+setting as they start.
+
+### Praxis `196a5375` (round 7)
+
+The review of `bd19e926` found no defect in the source. It raised one test
+weakness and two minor items, and round 7 fixes all three. The review ran in a
+subagent that read the diff and the code; the one command it ran was
+`node --version`, which starts nothing and contacts nothing. Line numbers in
+this section are `196a5375`'s.
+
+1. The suite's closing check could not see a leaked model. It compares the
+   manager's provider and model with their values before the suite. But this
+   shell exports `LLM_PRIMARY_PROVIDER` and `LLM_PRIMARY_MODEL`, which config
+   reads at start-up (`src/config.ts:342-343`), and with an explicit primary
+   `chat()`'s fallback leaves the primary alone. Without a model registry the
+   fallback's model is also the manager's initial one (round 6, s8). So the
+   check passed with the round-5 helper too, and its comment claimed more than
+   it showed.
+2. `primaryForTest` put back the provider and the model but not the manager's
+   cache epoch, which the fallback moves on (`src/llm/manager.ts:709`, `:714`;
+   the field at `:300`).
+3. The slot claim matched a replaced model by its exact spelling. Each switch
+   is recorded under the spelling in effect when it took effect, and the records
+   are deduplicated by key (`noteLocalModelSwitch`,
+   `src/llm/local-model-state.ts:98`, given `localModelKey` by
+   `src/llm/local-model-selection.ts:271`). Nexus can name the model in effect
+   by its models row's spelling (the tests use
+   `thinkingmachines/inkling-2-mini@q4_k_m`), and Praxis takes it without
+   counting a switch. Take a call that read `thinkingmachines/inkling-2-mini`,
+   after which Nexus respelled it and a switch then replaced it. That call was
+   not refused: the record named the row spelling, so the claim fell through to
+   the slot check, which answers `{ ok: true }` for a name that is neither the
+   model in effect nor the waiting one. The call would have gone to LM Studio
+   naming the replaced model.
+
+The fixes (`196a5375`):
+- 1: a new test, "primaryForTest puts back the primary chat()'s fallback moved,
+  model and cache epoch included, whatever the environment sets"
+  (`tests/local_model_selection.test.ts:1492`).
+  - It clears `config.llmPrimaryProvider` and `config.llmPrimaryModel` for its
+    own length and restores them after (`:1496-1502`), so the fallback moves the
+    primary in any shell.
+  - It starts the manager's model at a name no rung answers with
+    (`model-before-this-test`, `:1507`), so the model the fallback chooses
+    differs from it whatever the registry holds.
+  - A subtest runs `chat()` on a local primary that the slot claim refuses and
+    the first cascade rung answers (round 6's admission helper, `:1513-1518`).
+    Inside it, the provider is no longer `local`, the model is no longer the
+    start name, and the cache epoch has moved on (`:1521-1523`).
+  - After the subtest, whose `primaryForTest` restores what it saved when the
+    subtest ends, the provider, the model and the epoch are back (`:1524-1528`).
+  - The closing check is unchanged. Its comment now says what it cannot show
+    and names this test (`:1342-1349`).
+- 2: `primaryForTest` saves and restores `cacheEpoch` as well (`:1331-1340`).
+- 3: the claim compares keys (`src/llm/lmstudio-autoload.ts:1541-1543`;
+  `localModelKey` is imported at `:153` from
+  `src/llm/local-model-capabilities.ts:82`, a module with no imports).
+  - The guard in front of the lookup stays exact. A call naming exactly the
+    model in effect, or the waiting model, keeps its own path as before.
+  - The new test "a call that read the model in effect is refused at the slot
+    claim when a switch replaces that model under a spelling Nexus gave it
+    after the read" (`tests/local_model_selection.test.ts:1143`) runs this
+    sequence:
+    - Inkling takes effect, and the call reads Inkling and the count.
+    - Nexus respells Inkling, which is not a switch.
+    - A switch to Gemma replaces it and is recorded under the row spelling.
+  - The claim refuses that call (`switched_away`, `heldBy` the row spelling,
+    `replacedBy` Gemma, `duringWait` false). It does not refuse a call naming
+    Gemma, the model in effect, under another spelling. The fake loader records
+    no call.
+
+Tests: two new tests and one subtest. `tests/local_model_selection.test.ts`
+has 52 as the runner counts them (49 at `bd19e926`), the subtest included.
+Apart from `primaryForTest`, a shared helper that now restores one more field,
+and the closing check's comment, no existing test changed.
+
+Mutations (`mutations/praxis-mutations-round7.sh`, 20:33:18 to 20:33:41 EST;
+results and the diff each made in `mutations/praxis-mutations-round7.txt`, and
+each mutation's whole run in `mutations/praxis-mutation-r7-k1.txt` to
+`-k3.txt`). The earlier `mutations/praxis-mutation-k.txt` is Praxis K in the
+table under "Mutations", a different mutation. Each runs in a scratch copy of
+`196a5375` on
+`local_model_selection`, `lmstudio_autoload` and `local_model_demand_callers`
+(125 tests) under the same guards. Every guard log was empty in every run, and
+in each run the fake `lms` refused one `ls --json`, from `lmstudio_autoload`'s
+"failed embedding recovery" test (shown in each run's log).
+
+| Mutation | What it removes | Failing tests |
+| --- | --- | --- |
+| control | nothing | 0 of 125 |
+| k1 | the claim matches the replaced model by its spelling (the `bd19e926` lookup) | 1, the respelling test: the claim answers `{ ok: true }` where the refusal was expected |
+| k2 | `primaryForTest` does not restore the model | 1, the primary-restore test: the model is `antigravity-default`, not `model-before-this-test` |
+| k3 | `primaryForTest` does not restore the cache epoch | 1, the primary-restore test: the epoch is 2, not 1 |
+| control, primary variables unset | nothing (`LLM_PRIMARY_PROVIDER` and `LLM_PRIMARY_MODEL` unset) | 0 of 125 |
+
+k2 fails in this shell, which exports both primary variables; round 6's s8
+failed nothing in the same shell. The new test is what sees the model the old
+helper left behind.
+
+Before the commit, at 20:30:51 EST, `local_model_selection` ran alone on the
+working tree under `praxis-files-guarded.sh`: 52/52
+(`praxis-round7-precommit-selection-run.txt`; its guard logs, the
+`*-r7-selection.log` names in the guard scan, are empty). Its `[LmAutoload]`
+lines come from the suite's fake catalog and fake loader. `npx tsc --noEmit` on
+the working tree then exited 0.
+
+Runs on `196a5375`, each under `praxis-files-guarded.sh` or
+`praxis-wider-run.sh`:
+- `praxis-round7-sets.sh` (20:34:33 to 20:35:15 EST, output
+  `praxis-round7-sets-output.txt`; it stops unless the worktree is clean at
+  `196a5375`, and prints the head before and after):
+  - `local_model_selection`, `local_model_demand_callers`, `local_lane_policy`:
+    71/71 (68 at `bd19e926`, plus the two new tests and the subtest);
+  - the 40 related files: 544/544 (`praxis-related-tests.txt`);
+  - the more-related files: 130/130 (`praxis-more-related-tests.txt`);
+  - the wider set: 473/473 (`praxis-wider-tests.txt`); its guards caught the
+    same 6 openrouter requests and 6 CLI runs as on `bd19e926`;
+  - `npx tsc --noEmit`: exit 0 (`praxis-tsc.txt`).
+- At 20:42 EST, `local_model_selection`, `local_model_primary` and
+  `quantized_tool_gate`, 67/67 (`praxis-local-model-selection-tests.txt`), and
+  `credit_exhaustion_preflight`, 5/5 (`praxis-credit-preflight-tests.txt`).
+  Every guard log of both runs is empty, and the fake `lms`'s fixed log was
+  emptied before them and still empty after.
+- Round 7 changed one source module, `src/llm/lmstudio-autoload.ts`, which
+  round 6 changed too. Every test file that names it is in one of the three
+  lists (`praxis-round6-importers.txt`, whose pattern includes
+  `lmstudio-autoload`). Every Praxis test file the task changed ran in these
+  sets on `196a5375`: `local_model_demand_callers`, `local_model_primary`,
+  `local_model_selection`, `member_profile_updates`, `quantized_tool_gate` and
+  `webhook_routes_inventory`.
+- Merged with Praxis main `1bac2ea7`: see "Merged with current main".
+
+What round 7 leaves as it was: everything round 6 left. The slot check itself
+(`slotCheckApplies`, `src/llm/lmstudio-autoload.ts:1575-1582`) still compares
+exact names, as it did at the baseline, so a call naming the model in effect by
+another spelling is not checked against the slot. Only the switched-away lookup
+compares keys.
 
 ## Final results on the branch heads
 
@@ -509,9 +1077,16 @@ deleted, `guards/guard-logs-scan.py` listed every guard log in it, with its line
 count and any line naming port 1234: 153 logs, no such line
 (`guards/guard-logs-scan.txt`). The same scan of the second scratch folder, made
 for the `1bac2ea7` checks, found 11 logs and no such line
-(`guards/guard-logs-scan-1bac2ea7.txt`). Neither scan covers the fake `lms`'s
-own log (see below). The files in `guards/` are byte-identical to the ones the
-scripts ran from that folder (checked with `cmp` before it was deleted). To
+(`guards/guard-logs-scan-1bac2ea7.txt`). The third folder held the round-5 to
+round-7 runs and their merged checks; its scan, at 20:56:57 EST after the last
+guarded run, found 132 logs and no such line
+(`guards/guard-logs-scan-rounds5-7.txt`). The round-5 to round-7 mutation
+scripts (and the s8 registry script) write one log per guard and empty it
+before each run, so that scan saw only the last mutation run's logs; the counts
+for every mutation run are printed in the mutation outputs. No scan covers the
+fake `lms`'s own log (see below). The files in `guards/` are byte-identical to
+the ones the scripts ran from each folder (checked with `cmp` before each was
+deleted; for the third, `guards/guards-cmp-rounds5-7.txt`). To
 rerun a script, first copy the contents of `guards/` into the scratch folder it
 names (`/Volumes/Projects/.scratch-fa032fc0`). Git records the eight shims,
 `fake-lms` and `praxis-files-guarded.sh` as executable (mode 100755) from the
@@ -549,9 +1124,24 @@ autoloader logs the fake's refusal:
   the rerun, logged at the same `lmstudio_autoload` test (line 6646 of its
   whole log). The other is from the stopped first run, whose log ends before
   that suite's output. The plain-main run made none.
+- In the third (rounds 5 to 7) the merged scripts empty the fixed file before
+  each run and copy it after. The merged run of each head made one call,
+  `ls --json` (`merged-main/praxis-tests-merged-1bac2ea7-a8caeb09-fake-lms.txt`,
+  `merged-main/praxis-tests-merged-1bac2ea7-bd19e926-fake-lms.txt`,
+  `merged-main/praxis-tests-merged-1bac2ea7-196a5375-fake-lms.txt`), and the
+  plain-main runs none; the merged outputs print both counts.
+  `praxis-wider-run.sh` empties the fixed file at its start and prints its
+  count: 0 in the wider runs on `a8caeb09`, `bd19e926` and `196a5375`. The
+  40-file runs on all three heads show the one refused `ls --json` in their
+  logs, as above. In round 6 the fixed file was emptied at 19:54:03 EST and was
+  still empty at 20:11:15, so the 19:57 runs made no call. In round 7 it was
+  emptied at 20:42:11 EST, just before the 20:42 runs
+  (`praxis-local-model-selection-tests.txt`,
+  `praxis-credit-preflight-tests.txt`), and was still empty after each of them
+  and when it was last read (see "Live state"), so they made no call either.
 
 `ls --json` lists the models on disk and loads nothing. Praxis runs it in
-`readDownloadedModelInventory` (`src/llm/lmstudio-autoload.ts:293-301`). The fake
+`readDownloadedModelInventory` (`src/llm/lmstudio-autoload.ts:294-302`). The fake
 answers every call with exit 1 and never runs the real `lms`, and the `lms` shim
 first on `PATH` does the same. LM Studio's own log shows no model loaded after
 the 11:51:59 unload (see "Live state").
@@ -560,25 +1150,29 @@ the 11:51:59 unload (see "Live state").
 | --- | --- | --- |
 | `nexus-local-model-selection-tests.txt` | TheNexus `server/__tests__/local-model-selection.test.js` | 17/17 |
 | `nexus-related-server-tests.txt` | 23 TheNexus server suites around model control, model rows, Studio, astro and the auth mounts, keyless | 268/268 |
-| `dashboard-tsc.txt` | `npx tsc --noEmit` in `dashboard/`, at the end on the clean head `6e14bc87` (14:49 EST) | exit 0 |
+| `dashboard-tsc.txt` | `npx tsc --noEmit` in `dashboard/`, at the end on the head `c5b44405` with nothing changed outside `docs/reviews` (20:54 EST, after review round 7; the commits after `6e14bc87` change only `docs/reviews`) | exit 0 |
 | `dashboard-local-model-tests.txt` | `local-model-chooser`, `chat-model-control`, `fast-refresh-boundaries` | 23/23 |
 | `dashboard-full-suite.txt` | dashboard `npm test` | 1460/1463 (see the failures below) |
 | `dashboard-document-review-rerun.txt` | `document-review.test.mjs` alone | 21/21 |
 | `dashboard-baseline-failing-tests.txt` | the two pre-existing failures on baseline `bd02642` | both fail there too |
-| `praxis-local-model-selection-tests.txt` | Praxis `local_model_selection`, `local_model_primary` and `quantized_tool_gate` | 52/52 |
-| `praxis-related-tests.txt` | 40 Praxis test files around the local lane, the LLM manager, autoload, the local worker, the ops routes and the route inventory | 527/527 |
-| `praxis-more-related-tests.txt` | the 9 other Praxis test files that name a changed symbol (`cli-concurrency`, `LOCAL_LLM_MODEL` and the like) | 111/111 |
-| `praxis-wider-tests.txt` | the 40 other Praxis test files that import the LLM manager, the local model state or the output-room wrapper (`praxis-wider-test-list.txt`, less `maintenance_review_regressions`, which makes its data dir in a shared folder); runner `praxis-wider-run.sh` | 473/473 |
-| `praxis-tsc.txt` | `npx tsc --noEmit` in Praxis, at the end on the clean head `cad6afb2` (14:49 EST) | exit 0 |
-| `praxis-lmstudio-guard.txt`, `praxis-fake-lms-calls.txt`, `praxis-cli-shims-related.txt` | what the guards caught in the 40-file run | 1 POST to port 1 from `member_profile_updates.test.ts` (its own dead URL, pre-existing); 1 `lms ls --json` refused by the fake `lms`, shown in the run log (`praxis-fake-lms-calls.txt` is empty for the reason given above the table); 3 `--version` calls (`claude`, `codex`, `agy`); the network and live-port guards refused nothing |
+| `praxis-local-model-selection-tests.txt` | Praxis `local_model_selection`, `local_model_primary` and `quantized_tool_gate`, on `196a5375` (20:42 EST) | 67/67 |
+| `praxis-related-tests.txt` | 40 Praxis test files around the local lane, the LLM manager, autoload, the local worker, the ops routes and the route inventory (`praxis-round5-related-names.txt`), on `196a5375` (`praxis-round7-sets.sh`) | 544/544 |
+| `praxis-more-related-tests.txt` | the 9 other Praxis test files that name a changed symbol (`cli-concurrency`, `LOCAL_LLM_MODEL` and the like), plus `lane_credit` since round 5 (`praxis-round5-more-related-names.txt`), on `196a5375` (`praxis-round7-sets.sh`) | 130/130 |
+| `praxis-wider-tests.txt` | the 40 other Praxis test files that import the LLM manager, the local model state or the output-room wrapper (`praxis-wider-test-list.txt`, less `maintenance_review_regressions`, which makes its data dir in a shared folder); runner `praxis-wider-run.sh`, on `196a5375` (`praxis-round7-sets.sh`) | 473/473 |
+| `praxis-credit-preflight-tests.txt` | `credit_exhaustion_preflight`, on `196a5375` (20:42 EST; see round 6) | 5/5 |
+| `praxis-tsc.txt` | `npx tsc --noEmit` in Praxis, on the clean head `196a5375` (20:35 EST, `praxis-round7-sets.sh`) | exit 0 |
+| `praxis-chat-turn-steps-alone-output.txt` | `chat_turn_steps_legacy` alone, twice on `a8caeb09` and twice on `cad6afb2` (`praxis-chat-turn-steps-alone.sh`) | 2/2 each time; 6 CLI runs and 6 requests refused each time |
+| `praxis-lmstudio-guard.txt`, `praxis-fake-lms-calls.txt`, `praxis-cli-shims-related.txt` | what the guards caught in the 40-file run on `196a5375` | 1 POST to port 1 from `member_profile_updates.test.ts` (its own dead URL, pre-existing); 1 `lms ls --json` refused by the fake `lms`, shown in the run log (`praxis-fake-lms-calls.txt` is empty for the reason given above the table); 3 `--version` calls (`claude`, `codex`, `agy`); the network and live-port guards refused nothing |
 | `praxis-encoding-scan.txt` | `npm run check:encoding` over the Praxis files changed | see `encoding-and-dash-scans.txt` |
-| `cortex-offline-tests.txt` | 11 TheCortex test files (listed in `merged-main/merged-main-check.sh`) | 293 passed |
-| `cortex-local-model-tests.txt` | TheCortex `tests/test_local_model_setting.py`, verbose | 23 passed |
+| `cortex-offline-tests.txt` | 11 TheCortex test files (listed in `merged-main/merged-main-check.sh`), on `892708c8` | 296 passed |
+| `cortex-local-model-tests.txt` | TheCortex `tests/test_local_model_setting.py`, verbose, on `892708c8` | 26 passed |
+| `cortex-local-model-repeat.txt` | the same file 25 times in a row, on `892708c8` | 26 passed each time |
 | `encoding-and-dash-scans.txt`, made by `final-scans.sh` | UTF-8 scans of every file changed in each repository, and em dashes in added lines | see the file; summary at the end of this README |
 
-In the runs behind `praxis-local-model-selection-tests.txt` (3 files, 52 tests)
-and `praxis-more-related-tests.txt` (9 files, 111 tests) every guard log is
-empty, and neither run's log shows a refused `lms` call. In the wider run the guards caught only the pre-existing
+In the runs behind `praxis-local-model-selection-tests.txt` (3 files, 67 tests),
+`praxis-more-related-tests.txt` (10 files, 130 tests) and
+`praxis-credit-preflight-tests.txt` (1 file, 5 tests) every guard log is
+empty, and no run's log shows a refused `lms` call. In the wider run the guards caught only the pre-existing
 `chat_turn_steps_legacy` calls described below (`praxis-cli-shims-wider.txt`,
 `praxis-net-guard-wider.txt`).
 
@@ -1111,6 +1705,91 @@ TheCortex check on the new main, under the same guards:
   run wrote no file in the copy, and nothing in
   `/Volumes/Projects/maintenance-mode-worktrees` changed.
 
+### After review rounds 5 to 7: TheCortex `892708c8`, Praxis `a8caeb09`, `bd19e926` and `196a5375`
+
+The mains did not move after these checks above: Praxis `1bac2ea7`, TheCortex
+`17ee69ce`, TheNexus `2a7952fc`. Each new head was checked on them the same way,
+in scratch copies outside every repository, under the same guards.
+- TheCortex `892708c8` on `17ee69ce` (`cortex-merged-17ee69ce-892708c8.sh`,
+  output beside it, 18:46:44 to 18:46:57 EST):
+  - the conflict is the same single hunk in `conftest.py`, and its union
+    resolution is identical to the one built for `e611edc`;
+  - the copy matches the merge-tree's tree except in `conftest.py` (2987 files,
+    no extra file). Against the copy built the same way for `e611edc`,
+    `diff -rq` finds only the two files round 5 changed (`local_model.py` and
+    `test_local_model_setting.py`), and the link to TheCortex's `.env` that the
+    script makes in the new copy before its tests run, as
+    `cortex-merged-17ee69ce.sh` did;
+  - the same 12 test files: 328 passed
+    (`cortex-tests-merged-17ee69ce-892708c8.txt`; 325 before, plus round 5's
+    three new cases). The run wrote no file in the copy, and nothing in
+    `/Volumes/Projects/maintenance-mode-worktrees` changed.
+- Praxis `a8caeb09` on `1bac2ea7` (`praxis-merged-1bac2ea7-a8caeb09.sh`, output
+  beside it, 18:51:17 to 18:53:31 EST):
+  - the same two conflicting files, one hunk each. `local-lane-policy.ts` is as
+    before. In `manager.ts` round 5 dropped the branch's
+    `insideCountedLocalCall` import, so one hunk is left in that import list:
+    main's `runHeldLocalLaneCall` against the branch's `trackLocalCall`. The
+    union resolution removes only the marker lines;
+  - the copy matches the merge-tree's tree except the two resolved files (6773
+    files, no extra file), and `tsc` exits 0
+    (`praxis-tsc-merged-1bac2ea7-a8caeb09.txt`);
+  - the same 179 suites (`praxis-suites179-merged-a8caeb09.txt`): the round-5
+    sets add none, their two trading suites are not on main, and
+    `maintenance_review_regressions` is left out as before. 2583 tests, 2564
+    pass, 10 fail (`praxis-tests-merged-1bac2ea7-a8caeb09-extract.txt`), the
+    same ten as in the `1bac2ea7` check. On plain `1bac2ea7` the same six suites
+    give 212 tests, 202 pass, and the same ten fail
+    (`praxis-failing-suites-plain-main-1bac2ea7-a8caeb09.txt`);
+  - the guards caught what they caught in the `1bac2ea7` check
+    (`praxis-tests-merged-1bac2ea7-a8caeb09-*.txt`,
+    `praxis-failing-suites-plain-main-1bac2ea7-a8caeb09-*.txt`).
+- Praxis `bd19e926` on `1bac2ea7` (`praxis-merged-1bac2ea7-bd19e926.sh`, output
+  beside it, 19:52:22 to 19:54:33 EST). Round 6 changed none of the files main
+  changed since the merge-base:
+  - the conflict hunks and their resolution are byte for byte those of the
+    `a8caeb09` check (the two outputs differ there only in the copy's name);
+  - the copy matches the merge-tree's tree except the two resolved files (6773
+    files, no extra file), and `tsc` exits 0
+    (`praxis-tsc-merged-1bac2ea7-bd19e926.txt`);
+  - the same 179 suites (`praxis-suites179-merged-bd19e926.txt`, identical to
+    the `a8caeb09` list): 2588 tests (round 6's five new cases more), 2569
+    pass, and the same ten fail
+    (`praxis-tests-merged-1bac2ea7-bd19e926-extract.txt`). On plain `1bac2ea7`:
+    212 tests, 202 pass, the same ten fail
+    (`praxis-failing-suites-plain-main-1bac2ea7-bd19e926.txt`);
+  - the guards caught the same entries as in the `a8caeb09` check, process ids
+    and the copy's path aside (`praxis-tests-merged-1bac2ea7-bd19e926-*.txt`):
+    2 refused requests to port 1 (`member_profile_updates`'s POST and
+    `run_model_dispatch_state`'s `GET /api/v0/models`), 6 openrouter requests,
+    9 CLI shim calls, 1 connection to `mixed.test`, and 1 `ls --json` refused by
+    the fake `lms`. On plain main, the `run_model_dispatch_state` request and
+    the `mixed.test` connection only
+    (`praxis-failing-suites-plain-main-1bac2ea7-bd19e926-*.txt`);
+  - neither TheNexus copy had a `nexus.db`, neither run wrote a file in it, and
+    nothing in `/Volumes/Projects/maintenance-mode-worktrees` changed.
+- Praxis `196a5375` (round 7) on `1bac2ea7` (`praxis-merged-1bac2ea7-196a5375.sh`,
+  output beside it, 20:36:44 to 20:38:57 EST). Round 7 changed
+  `src/llm/lmstudio-autoload.ts` and `tests/local_model_selection.test.ts`,
+  neither of which main changed since the merge-base:
+  - the conflict hunks and their resolution are byte for byte those of the
+    `bd19e926` check, the copy's name aside (56 lines of each output compared);
+  - the copy matches the merge-tree's tree except the two resolved files (6773
+    files, no extra file), and `tsc` exits 0
+    (`praxis-tsc-merged-1bac2ea7-196a5375.txt`);
+  - the same 179 suites (`praxis-suites179-merged-196a5375.txt`, identical to
+    the `bd19e926` list): 2591 tests (round 7's two new tests and one subtest
+    more), 2572 pass, and the same ten fail, by name
+    (`praxis-tests-merged-1bac2ea7-196a5375-extract.txt`). On plain `1bac2ea7`:
+    212 tests, 202 pass, the same ten fail
+    (`praxis-failing-suites-plain-main-1bac2ea7-196a5375.txt`);
+  - every guard log holds the same lines as in the `bd19e926` check once the
+    leading process id and the copy's path are removed
+    (`praxis-tests-merged-1bac2ea7-196a5375-*.txt`,
+    `praxis-failing-suites-plain-main-1bac2ea7-196a5375-*.txt`);
+  - neither TheNexus copy had a `nexus.db`, neither run wrote a file in it, and
+    nothing in `/Volumes/Projects/maintenance-mode-worktrees` changed.
+
 ## Mutations (`mutations/`)
 
 Each mutation was applied in a scratch copy, never in a worktree, one at a time,
@@ -1164,6 +1843,16 @@ Scripts: `praxis-mutations-ef.sh`, `praxis-mutation-g.sh`,
 `../nexus-round3-checks.sh` (X) and `cortex-mutation-y.sh`. The four TheCortex
 edits A to D are described in the table, each a single replacement asserted to
 match exactly once.
+
+Rounds 5 to 7 have their tables in their own sections: Praxis n1 to n8, m1 to
+m3 and mp (`praxis-mutations-round5.sh`, round 5); TheCortex R1 to R4
+(`cortex-mutations-r.sh`, TheCortex `892708c8`); Praxis s1 to s8 of round 6
+with the registry runs for s8 (`praxis-mutations-round6.sh`,
+`praxis-mutation-s8-registry.sh`, round 6); and Praxis k1 to k3 of round 7
+(`praxis-mutations-round7.sh`, round 7). The round-6 names s1 to s8 are not
+the round-4 s1 to s7 in the table above, and k1 to k3 are not Praxis K. The
+four mutation scripts print the diff each mutation made before its result; the
+s8 registry script names the line it removes and checks that it is gone.
 
 ## Real-browser check (isolated stack)
 
@@ -1235,9 +1924,11 @@ match exactly once.
   before the browser check.
 - `criterion-9-live-readback.txt`: the round-1 read-back (10:59 EST).
 - `criterion-9-final-readback.txt`, made by `criterion-9-readback.sh`: the
-  read-only read-back at the end of the task, 16:41:22 EST, after the last test
-  run. Apart from its clock times it is line for line the same as the 13:00,
-  14:39, 14:51, 15:52 and 16:14 read-backs before it.
+  read-only read-back at the end of the task, 20:54:04 EST, after the last test
+  run (20:42, round 7). It ran inside `r7-final-readbacks.sh`, after the
+  precondition check and the dashboard tsc. Apart from its clock times it is
+  line for line the same as the 13:00, 14:39, 14:51, 15:52, 16:14, 16:41 and
+  20:07 read-backs before it.
   - The live `local_default` alias is still Gemma 4 31B QAT
     (`google/gemma-4-31b-qat`); the alias row was last updated 2026-06-03.
   - The live database has no `local_model_switches` table and no
@@ -1266,34 +1957,42 @@ match exactly once.
     their first findings heading.
 
 This task loaded no model, unloaded none, called no local chat model and
-restarted no service. Its only contact with LM Studio was ten listing requests
-(`GET /api/v1/models`), and a listing loads nothing:
+restarted no service. Its only contact with LM Studio was twelve listing
+requests (`GET /api/v1/models`), and a listing loads nothing:
 - 07:54 and 08:26 EST, to read the real listing's shape before writing the fake;
-- one in each read-back, at 11:00, 12:46, 13:00, 14:39, 14:51, 15:52, 16:14 and
-  16:41 EST.
+- one in each read-back, at 11:00, 12:46, 13:00, 14:39, 14:51, 15:52, 16:14,
+  16:41, 20:07 and 20:54 EST.
 
 `criterion-9-lmstudio-contact.sh` (output `criterion-9-lmstudio-contact.txt`,
-17:02:36 EST, read-only) checks this from both sides, from this run's first
-start (21:39:35 EST on 2026-11-23) on:
-- LM Studio's own server log has eleven `GET /api/v1/models` requests in that
-  time. Ten are the ones above, each within a second of the tool call that sent
-  it. The eleventh, at 21:47:18 EST on 2026-11-23, came while this run's session
-  was idle (its longest pause, 21:40:38 to 07:42:09), so another client sent it.
-  The six `GET /v1/models` requests fall in the same pause.
-- In the session transcript and its six subagents' transcripts, 10 Bash calls
-  send to LM Studio: the ten above. The 20 other Bash calls whose text names
-  port 1234 (19 in the session, 1 in one subagent) are search patterns and
-  scans; the file lists each one.
+21:01:28 EST, read-only, after the last read-back) checks this from both sides,
+from this run's first start (21:39:35 EST on 2026-11-23) on:
+- LM Studio's own server log has thirteen `GET /api/v1/models` requests in that
+  time. Twelve are the ones above. Eleven came within a second of the tool call
+  that sent them; the 20:54:04 one came four seconds after its call (20:54:00),
+  which ran the precondition check and the dashboard tsc first. The thirteenth,
+  at 21:47:18 EST on 2026-11-23, came while this run's session was idle (its
+  longest pause, 21:40:38 to 07:42:09), so another client sent it. The six
+  `GET /v1/models` requests fall in the same pause.
+- In the session transcript and its ten subagents' transcripts, 12 Bash calls
+  send to LM Studio: the twelve above. The 21 other Bash calls whose text names
+  port 1234 (20 in the session, 1 in one subagent) are search patterns and
+  scans; the file lists each one. The 20:54 read-back ran inside the scratch
+  script `r7-final-readbacks.sh` (copied here), whose name the script's first
+  patterns do not match, so after round 7 the contact script also counts a call
+  that runs it; without that pattern the transcript side found eleven sends
+  and missed this one.
 - The `GET /api/v0/models` polls and every `POST` (chat completions and
   embeddings) come from other clients. No Bash call of this run sends one, and
   its test runs could not reach port 1234 (next paragraph).
 
 In every test run the guards refused LM Studio's port, 1234: the network guard
 and the LM Studio guard in the Praxis and TheNexus runs, the live-port guard as
-well in round 4, and TheCortex's offline guards with every service URL on port
+well in the Praxis runs from round 4 on, and TheCortex's offline guards with
+every service URL on port
 1. The 153 guard logs in the first scratch folder, scanned before it was
-deleted, and the 11 in the second show no request to port 1234
-(`guards/guard-logs-scan.txt`, `guards/guard-logs-scan-1bac2ea7.txt`). The fake
+deleted, the 11 in the second and the 132 in the third show no request to port
+1234 (`guards/guard-logs-scan.txt`, `guards/guard-logs-scan-1bac2ea7.txt`,
+`guards/guard-logs-scan-rounds5-7.txt`). The fake
 `lms`, which those scans do not cover, refused only `lms ls --json` listing calls
 wherever its calls were printed (see "Final results on the branch heads").
 
@@ -1310,7 +2009,7 @@ wherever its calls were printed (see "Final results on the branch heads").
   passed in the earlier full run and passes alone.
 - Praxis `voice_prose_deadline.test.ts:29` failed once in round 1. It checks the
   HTTP close 20 ms after a rejection. It passes alone and in the final related
-  run (`praxis-related-tests.txt`, 40 files, 527/527).
+  run (`praxis-related-tests.txt`, 40 files, 544/544 on `196a5375`).
 - Praxis `tts_provider.test.ts` "local deadline covers both waiting for headers
   and stalled response bodies" failed once in the full run, under load, and
   passes alone (35/35).
@@ -1417,6 +2116,15 @@ CLIs record three launches, not four, and the missing one is the `codex` QA
 review with `gpt-5.6-sol` at `medium`. The suite passed in the round-4 full run
 on `4d076f91`.
 
+The same ten fail on the merged trees of the round-5 head `a8caeb09`, the
+round-6 head `bd19e926` and the round-7 head `196a5375`, and each time the same
+six suites fail the same ten on plain `1bac2ea7`
+(`praxis-failing-suites-plain-main-1bac2ea7-a8caeb09.txt`,
+`praxis-failing-suites-plain-main-1bac2ea7-bd19e926.txt`,
+`praxis-failing-suites-plain-main-1bac2ea7-196a5375.txt`; see the merged
+section). No failure in any run on the branch heads themselves: every Praxis
+run listed under rounds 6 and 7 passes in full.
+
 ## Round-1 records kept
 
 - `praxis-related-tests-earlier-run.txt`: 35 files, 470/470 at 09:18.
@@ -1428,9 +2136,10 @@ on `4d076f91`.
 
 `final-scans.sh` writes `encoding-and-dash-scans.txt` and
 `praxis-encoding-scan.txt`. At the end of the task:
-- UTF-8 (fatal decoder, BOM, U+FFFD): no problems in 316 TheNexus files (324
-  changed or added against `bd02642`, 8 PNGs skipped), 12 TheCortex files and 17
-  Praxis files. Praxis's own `npm run check:encoding` passes on the same 17.
+- UTF-8 (fatal decoder, BOM, U+FFFD): no problems in 397 TheNexus files (405
+  changed or added against `bd02642`, 8 PNGs skipped), 12 TheCortex files and 21
+  Praxis files (`1fcf4b59..196a5375`). Praxis's own `npm run check:encoding`
+  passes on the same 21.
 - Em dashes in added lines: 0 in Praxis, 0 in TheCortex, 0 in the TheNexus code,
   docs and scripts this task wrote. The verbatim outputs in this folder carry
   the products' own log wording.
@@ -1438,15 +2147,16 @@ on `4d076f91`.
 - The registered package: the three PNGs hash to the registered values, the
   folder has no uncommitted change, and it holds the three PNGs and
   `local-model-control.design.json`. The same readiness request as
-  `document-readiness-final.json`, made again at 17:01:47 EST
-  (`document-readiness-recheck.json`), reports revision `5a481277` ready, with
-  all three required screens servable and each screen's content hash equal to
-  the file's.
+  `document-readiness-final.json`, made again at 20:59:01 EST
+  (`document-readiness-recheck.json`; apart from `checked_at` the same as the
+  17:01:47 and 20:14:11 rechecks it replaces), reports revision `5a481277` ready, with all
+  three required screens servable and each screen's content hash equal to the
+  file's.
 
 ## Last check of the mains
 
-At 17:13:38 EST the mains were TheNexus `2a7952fc` (since 15:51:16), Praxis
+At 21:02:33 EST the mains were TheNexus `2a7952fc` (since 15:51:16), Praxis
 `1bac2ea7` (since 16:22:26) and TheCortex `17ee69ce` (since 17:04:50), read
 from each shared checkout's reflog for `main` with `git --no-optional-locks`.
-The Praxis and TheCortex task worktrees were clean at `cad6afb2` and
-`e611edc`.
+The Praxis and TheCortex task worktrees were clean at `196a5375` and
+`892708c8`.

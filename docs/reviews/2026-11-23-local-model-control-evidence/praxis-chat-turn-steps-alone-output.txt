@@ -1,0 +1,62 @@
+# 2026-11-24 18:49:10 EST; new = /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis at a8caeb09, old = /Volumes/Projects/.scratch-fa032fc0/praxis-cad6afb2-alone (git archive cad6afb2)
+== ctsl5-new-1 in /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis: chat_turn_steps_legacy
+ℹ tests 2 ℹ pass 2 ℹ fail 0 ℹ cancelled 0 exit 0 
+   CLI shim calls: 6; network guard refusals: 6; LM Studio guard: 0; live-port guard: 0
+     shim: agy -p You are the reasoning router for Praxis, an autonomous agent. Classify the us :: 
+     shim: agy -p You are the reasoning router for Praxis, an autonomous agent. Classify the us :: 
+     shim: claude --print --permission-mode bypassPermissions --output-format stream-json --verbos :: 
+     shim: claude --print --permission-mode bypassPermissions --output-format stream-json --verbos :: 
+     shim: codex exec --json --skip-git-repo-check -c sandbox_mode="read-only" -c approval_policy :: 
+     shim: codex exec --json --skip-git-repo-check -c sandbox_mode="read-only" -c approval_policy :: 
+     net: 56534 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 56534 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 56534 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 56534 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 56534 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 56534 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+== ctsl5-new-2 in /Volumes/Projects/.praxis-worktrees/fa032fc0-7472-4406-b6cb-d4671b72a28a/Praxis: chat_turn_steps_legacy
+ℹ tests 2 ℹ pass 2 ℹ fail 0 ℹ cancelled 0 exit 0 
+   CLI shim calls: 6; network guard refusals: 6; LM Studio guard: 0; live-port guard: 0
+     shim: agy -p You are the reasoning router for Praxis, an autonomous agent. Classify the us :: 
+     shim: agy -p You are the reasoning router for Praxis, an autonomous agent. Classify the us :: 
+     shim: claude --print --permission-mode bypassPermissions --output-format stream-json --verbos :: 
+     shim: claude --print --permission-mode bypassPermissions --output-format stream-json --verbos :: 
+     shim: codex exec --json --skip-git-repo-check -c sandbox_mode="read-only" -c approval_policy :: 
+     shim: codex exec --json --skip-git-repo-check -c sandbox_mode="read-only" -c approval_policy :: 
+     net: 56892 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 56892 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 56892 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 56892 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 56892 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 56892 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+== ctsl5-old-1 in /Volumes/Projects/.scratch-fa032fc0/praxis-cad6afb2-alone: chat_turn_steps_legacy
+ℹ tests 2 ℹ pass 2 ℹ fail 0 ℹ cancelled 0 exit 0 
+   CLI shim calls: 6; network guard refusals: 6; LM Studio guard: 0; live-port guard: 0
+     shim: agy -p You are the reasoning router for Praxis, an autonomous agent. Classify the us :: 
+     shim: agy -p You are the reasoning router for Praxis, an autonomous agent. Classify the us :: 
+     shim: claude --print --permission-mode bypassPermissions --output-format stream-json --verbos :: 
+     shim: claude --print --permission-mode bypassPermissions --output-format stream-json --verbos :: 
+     shim: codex exec --json --skip-git-repo-check -c sandbox_mode="read-only" -c approval_policy :: 
+     shim: codex exec --json --skip-git-repo-check -c sandbox_mode="read-only" -c approval_policy :: 
+     net: 57112 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 57112 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 57112 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 57112 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 57112 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 57112 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+== ctsl5-old-2 in /Volumes/Projects/.scratch-fa032fc0/praxis-cad6afb2-alone: chat_turn_steps_legacy
+ℹ tests 2 ℹ pass 2 ℹ fail 0 ℹ cancelled 0 exit 0 
+   CLI shim calls: 6; network guard refusals: 6; LM Studio guard: 0; live-port guard: 0
+     shim: agy -p You are the reasoning router for Praxis, an autonomous agent. Classify the us :: 
+     shim: agy -p You are the reasoning router for Praxis, an autonomous agent. Classify the us :: 
+     shim: claude --print --permission-mode bypassPermissions --output-format stream-json --verbos :: 
+     shim: claude --print --permission-mode bypassPermissions --output-format stream-json --verbos :: 
+     shim: codex exec --json --skip-git-repo-check -c sandbox_mode="read-only" -c approval_policy :: 
+     shim: codex exec --json --skip-git-repo-check -c sandbox_mode="read-only" -c approval_policy :: 
+     net: 57341 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 57341 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 57341 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 57341 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 57341 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+     net: 57341 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+# 2026-11-24 18:49:26 EST

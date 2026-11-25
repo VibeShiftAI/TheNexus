@@ -1,0 +1,6 @@
+65113 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+65113 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+65113 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+65113 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+65113 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 
+65113 https.request openrouter.ai:443/api/v1/chat/completions (non-loopback host openrouter.ai) :: 

@@ -34,6 +34,9 @@ echo "files: $(echo $FILES | wc -w | tr -d ' ')"
   LIVE_PORTS_FILE=$S/live-ports-$TAG.txt LIVE_PORT_GUARD_LOG=$S/live-port-guard-$TAG.log \
   NODE_OPTIONS="--import=file://$S/lmstudio-guard.mjs --import=file://$S/net-guard.mjs --import=file://$S/live-port-guard.mjs" \
   npm test -- $FILES > $S/praxis-$TAG-run.txt 2>&1; echo "exit $?" >> $S/praxis-$TAG-run.txt)
+# The shims append to one fixed file, which the next guarded run empties; keep
+# this run's copy under its tag (added in round 5).
+cp $S/cli-shims.log $S/cli-shims-$TAG.log
 grep -E "^ℹ (tests|suites|pass|fail|cancelled|skipped)|^exit" $S/praxis-$TAG-run.txt
 grep -E "^✖ " $S/praxis-$TAG-run.txt | grep -v "failing tests" | sed 's/ ([0-9.]*ms)$//' | sort -u | head -30
 echo "guards: lmstudio=$(wc -l < $S/lmstudio-guard-$TAG.log | tr -d ' ') fake-lms=$(wc -l < $S/lms-calls.log | tr -d ' ') net=$(cat $S/net-guard-$TAG.log 2>/dev/null | wc -l | tr -d ' ') live-port=$(wc -l < $S/live-port-guard-$TAG.log | tr -d ' ') cli-shims=$(wc -l < $S/cli-shims.log | tr -d ' ')"

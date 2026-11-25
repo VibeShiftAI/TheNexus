@@ -1,0 +1,99 @@
+# 2026-11-24 18:46:44 EST
+== TheCortex: main pinned at 17ee69cebb5c1403dbef27929d19963134e8bec8, branch 892708c8df06133e9b545962ac82575ec7eea9c0, base 5fdb76a
+files the branch changed since e611edc: TheCortex/python/cortex/local_model.py TheCortex/tests/test_local_model_setting.py 
+of them changed by main since the base: 
+main now: 17ee69ce; merge-base of the pinned main and the branch: 5fdb76a2
+files main changed since 17ee69cebb5c1403dbef27929d19963134e8bec8: 0; of them changed by the branch too: 
+merge-tree exit 1 (0 = merges without conflict, 1 = conflicts); tree bcad7ccb5f387ec92926d0aad99e62df8fe8c99d
+CONFLICT (content): Merge conflict in TheCortex/conftest.py
+-- TheCortex/conftest.py: 1 conflict hunk(s), as git merge-file --diff3 shows them:
+   (line 18)
+   <<<<<<< main
+   import pytest
+   
+   ||||||| base
+   =======
+   import pytest
+   
+   
+   def _nexus_not_read_in_unit_tests(url, timeout):
+       raise ConnectionError("unit tests do not read the live Nexus local-model setting")
+   
+   
+   @pytest.fixture(autouse=True)
+   def local_model_setting_offline(monkeypatch):
+       """Keep every test off the live Nexus local-model setting.
+   
+       cortex.local_model asks Nexus which local model is in effect; a test that
+       reached the live API would depend on whatever Robert chose. With this, the
+       callers take their fallback; tests of the setting itself swap in their own
+       fake reader. cortex is imported only when a test runs, by which time the
+       package root below is on sys.path.
+       """
+       import cortex.local_model as local_model
+   
+       monkeypatch.setattr(local_model, "_fetch", _nexus_not_read_in_unit_tests)
+       monkeypatch.setattr(local_model, "_last_answer", None)
+       local_model._fallback_reported.clear()
+       yield
+       local_model._fallback_reported.clear()
+   
+   
+   >>>>>>> branch
+   resolved with git merge-file --union. Against the marked file the resolution removes 6 line(s), 2 of them not a marker line, and adds 0
+merged-cortex8 against the merge-tree's tree: 2987 files compared; differing: TheCortex/conftest.py ; extra files in the copy: 0
+== the same for e611edc, the head the 17ee69ce check tested
+main now: 17ee69ce; merge-base of the pinned main and the branch: 5fdb76a2
+files main changed since 17ee69cebb5c1403dbef27929d19963134e8bec8: 0; of them changed by the branch too: 
+merge-tree exit 1 (0 = merges without conflict, 1 = conflicts); tree 0a575990be21801c91786a5012758d4f03f590d8
+CONFLICT (content): Merge conflict in TheCortex/conftest.py
+-- TheCortex/conftest.py: 1 conflict hunk(s), as git merge-file --diff3 shows them:
+   (line 18)
+   <<<<<<< main
+   import pytest
+   
+   ||||||| base
+   =======
+   import pytest
+   
+   
+   def _nexus_not_read_in_unit_tests(url, timeout):
+       raise ConnectionError("unit tests do not read the live Nexus local-model setting")
+   
+   
+   @pytest.fixture(autouse=True)
+   def local_model_setting_offline(monkeypatch):
+       """Keep every test off the live Nexus local-model setting.
+   
+       cortex.local_model asks Nexus which local model is in effect; a test that
+       reached the live API would depend on whatever Robert chose. With this, the
+       callers take their fallback; tests of the setting itself swap in their own
+       fake reader. cortex is imported only when a test runs, by which time the
+       package root below is on sys.path.
+       """
+       import cortex.local_model as local_model
+   
+       monkeypatch.setattr(local_model, "_fetch", _nexus_not_read_in_unit_tests)
+       monkeypatch.setattr(local_model, "_last_answer", None)
+       local_model._fallback_reported.clear()
+       yield
+       local_model._fallback_reported.clear()
+   
+   
+   >>>>>>> branch
+   resolved with git merge-file --union. Against the marked file the resolution removes 6 line(s), 2 of them not a marker line, and adds 0
+merged-cortex8-e611edc against the merge-tree's tree: 2987 files compared; differing: TheCortex/conftest.py ; extra files in the copy: 0
+resolved conftest.py: identical in the two copies
+the copy for 892708c8 against the copy for e611edc, diff -rq:
+Only in merged-cortex8/TheCortex: .env
+Files merged-cortex8-e611edc/TheCortex/python/cortex/local_model.py and merged-cortex8/TheCortex/python/cortex/local_model.py differ
+Files merged-cortex8-e611edc/TheCortex/tests/test_local_model_setting.py and merged-cortex8/TheCortex/tests/test_local_model_setting.py differ
+(end of diff)
+  /Volumes/Projects/TheCortex/TheCortex/venv/lib/python3.13/site-packages/graphiti_core/driver/search_interface/search_interface.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+328 passed, 1 warning in 3.87s
+exit=0
+TheCortex files with failures on the resolved merged tree:  
+files written in the merged copy since its test run started: 0
+entries in /Volumes/Projects/maintenance-mode-worktrees changed since this script started: 0
+# 2026-11-24 18:46:57 EST
+== done

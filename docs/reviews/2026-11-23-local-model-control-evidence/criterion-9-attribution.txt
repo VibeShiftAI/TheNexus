@@ -1,5 +1,5 @@
 # Criterion 9 attribution: the TheCortex restart (11:50 ET) and the Gemma unload (11:51:59 ET), 2026-11-24
-# Made 2026-11-24 13:01:33 EST by a read-only script; no service contacted. Times: praxis.log and the chat transcript are UTC (Z), LM Studio's log is local (EST = UTC-5).
+# Made 2026-11-24 20:54:05 EST by a read-only script; no service contacted. Times: praxis.log and the chat transcript are UTC (Z), LM Studio's log is local (EST = UTC-5).
 
 ## 1. Robert's live Praxis chat session (Claude CLI transcript 57a8c2d7-8e58-4e59-9b45-31960039090f.jsonl, cwd /Volumes/Projects)
 Robert's two turns, the agent's kill and unload commands with their results, and its reply. Bridge tokens redacted.

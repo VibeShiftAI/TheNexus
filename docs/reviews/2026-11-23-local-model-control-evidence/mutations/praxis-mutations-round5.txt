@@ -1,0 +1,210 @@
+Praxis under test: a8caeb0943e83bfeac10671cc019f59a499c8277 (scratch copy /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r5)
+== control: no mutation
+   result: ℹ tests 64 ℹ pass 64 ℹ fail 0 ℹ cancelled 0 exit 0 
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== n1: the slot claim ignores the count the caller read and takes its own when it starts
+   src/llm/lmstudio-autoload.ts @@ -1508,7 +1508,7 @@
+   src/llm/lmstudio-autoload.ts    // call must find in the slot: Nexus's Studio jobs already name the new one
+   src/llm/lmstudio-autoload.ts    // while Praxis waits for the answer. Wait for it (one request to Nexus,
+   src/llm/lmstudio-autoload.ts    // llm/local-model-selection.ts tryApply) within this caller's deadline.
+   src/llm/lmstudio-autoload.ts -  const switchesBefore = wait.localModelSwitches ?? localModelSwitchCount();
+   src/llm/lmstudio-autoload.ts +  const switchesBefore = localModelSwitchCount();
+   src/llm/lmstudio-autoload.ts    for (let switching = localModelApplyInProgress(); switching; switching = localModelApplyInProgress()) {
+   src/llm/lmstudio-autoload.ts      if ((await settleWithin(switching, wait)) === "expired") return { ok: false, reason: "deadline" };
+   src/llm/lmstudio-autoload.ts    }
+   result: ℹ tests 64 ℹ pass 58 ℹ fail 6 ℹ cancelled 0 exit 1 
+   ✖ a call that read its model before a switch is refused at the slot claim even when the switch took effect before the claim began; one that read it after the switch is not
+   ✖ a pinned local call that read Gemma before a switch took effect during its admission is deferred at the slot claim: Gemma does not answer and nothing is loaded
+   ✖ a streamed call for a role resolved through local_default that read Gemma before a switch took effect during its admission is refused at the slot claim and streamed by the next candidate, not by Gemma
+   ✖ a switch that takes effect after a role's model is read and before complete() makes the call refuses the call: the count of switches is read with the role's model
+   ✖ chat() on a local primary that read Gemma before a switch took effect during its admission is refused at the slot claim and answered by the cascade, not by Gemma
+   ✖ complete() for a role resolved through local_default that read Gemma before a switch took effect during its admission is refused at the slot claim and escalated, not answered by Gemma
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== n2: the local provider's chat does not pass the count on to the claim
+   src/llm/providers.ts @@ -335,7 +335,7 @@
+   src/llm/providers.ts        const enteredAt = Date.now();
+   src/llm/providers.ts        await admit();
+   src/llm/providers.ts        options?.assertBatchWindowOpen?.();
+   src/llm/providers.ts -      await claimSlot(params.model, { deadlineAt: localCallDeadline(options, enteredAt), ...switchesReadBy(options) });
+   src/llm/providers.ts +      await claimSlot(params.model, { deadlineAt: localCallDeadline(options, enteredAt) });
+   src/llm/providers.ts        return provider.chat(withLocalReasoningEffort(params, configured()), withRemainingTimeout(options, enteredAt));
+   src/llm/providers.ts      },
+   src/llm/providers.ts      chatStream: async (params, options) => {
+   result: ℹ tests 64 ℹ pass 60 ℹ fail 4 ℹ cancelled 0 exit 1 
+   ✖ a pinned local call that read Gemma before a switch took effect during its admission is deferred at the slot claim: Gemma does not answer and nothing is loaded
+   ✖ a switch that takes effect after a role's model is read and before complete() makes the call refuses the call: the count of switches is read with the role's model
+   ✖ chat() on a local primary that read Gemma before a switch took effect during its admission is refused at the slot claim and answered by the cascade, not by Gemma
+   ✖ complete() for a role resolved through local_default that read Gemma before a switch took effect during its admission is refused at the slot claim and escalated, not answered by Gemma
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== n3: the local provider's chatStream does not pass the count on to the claim
+   src/llm/providers.ts @@ -340,7 +340,7 @@
+   src/llm/providers.ts      },
+   src/llm/providers.ts      chatStream: async (params, options) => {
+   src/llm/providers.ts        await admit();
+   src/llm/providers.ts -      await claimSlot(params.model, switchesReadBy(options));
+   src/llm/providers.ts +      await claimSlot(params.model, {});
+   src/llm/providers.ts        return provider.chatStream(withLocalReasoningEffort(params, configured()), options);
+   src/llm/providers.ts      },
+   src/llm/providers.ts    };
+   result: ℹ tests 64 ℹ pass 63 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ a streamed call for a role resolved through local_default that read Gemma before a switch took effect during its admission is refused at the slot claim and streamed by the next candidate, not by Gemma
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== n4: a local primary's attempt does not take the count with its model
+   src/llm/manager.ts @@ -502,7 +502,7 @@
+   src/llm/manager.ts          let targetModel = this.modelFor(this.activeProvider, this.primaryModel());
+   src/llm/manager.ts          // Read with the model: a switch of local model that replaces it from
+   src/llm/manager.ts          // here on refuses the attempt at the slot claim (llm/lmstudio-autoload.ts).
+   src/llm/manager.ts -        const switchesRead = this.activeProvider === "local" ? { localModelSwitches: localModelSwitchCount() } : {};
+   src/llm/manager.ts +        const switchesRead = {};
+   src/llm/manager.ts          if (options?.tier === "fast" && this.activeProvider === "google") {
+   src/llm/manager.ts            targetModel = this.geminiModel(undefined, "flash");
+   src/llm/manager.ts          }
+   result: ℹ tests 64 ℹ pass 63 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ chat() on a local primary that read Gemma before a switch took effect during its admission is refused at the slot claim and answered by the cascade, not by Gemma
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== n5: chatVia does not pass the count on to the provider
+   src/llm/manager.ts @@ -1360,7 +1360,7 @@
+   src/llm/manager.ts        // passed the count it read then, from there, else from here, the same
+   src/llm/manager.ts        // step as a caller that read the model to call this.
+   src/llm/manager.ts        const localModelSwitches = options?.localModelSwitches ?? localModelSwitchCount();
+   src/llm/manager.ts -      return trackLocalCall(() => this.sendPinnedCall(provider, providerName, model, params, options, assertBatchWindowOpen, { localModelSwitches }));
+   src/llm/manager.ts +      return trackLocalCall(() => this.sendPinnedCall(provider, providerName, model, params, options, assertBatchWindowOpen, {}));
+   src/llm/manager.ts      }
+   src/llm/manager.ts      return this.sendPinnedCall(provider, providerName, model, params, options, assertBatchWindowOpen, {});
+   src/llm/manager.ts    }
+   result: ℹ tests 64 ℹ pass 61 ℹ fail 3 ℹ cancelled 0 exit 1 
+   ✖ a pinned local call that read Gemma before a switch took effect during its admission is deferred at the slot claim: Gemma does not answer and nothing is loaded
+   ✖ a switch that takes effect after a role's model is read and before complete() makes the call refuses the call: the count of switches is read with the role's model
+   ✖ complete() for a role resolved through local_default that read Gemma before a switch took effect during its admission is refused at the slot claim and escalated, not answered by Gemma
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== n6: complete() does not pass on the count read with the role's model, so chatVia takes it on entry
+   src/llm/manager.ts @@ -1130,8 +1130,6 @@
+   src/llm/manager.ts          deadlineAt: options.deadlineAt,
+   src/llm/manager.ts          timeoutMs: options.timeoutMs,
+   src/llm/manager.ts          requireNoTools: options.requireNoTools,
+   src/llm/manager.ts -        // When the role's local model was read, not when chatVia is reached.
+   src/llm/manager.ts -        ...(resolved.localModelSwitches === undefined ? {} : { localModelSwitches: resolved.localModelSwitches }),
+   src/llm/manager.ts        });
+   src/llm/manager.ts      } catch (err) {
+   src/llm/manager.ts        assertCompletionDeadline(options.deadlineAt);
+   result: ℹ tests 64 ℹ pass 63 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ a switch that takes effect after a role's model is read and before complete() makes the call refuses the call: the count of switches is read with the role's model
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== n7: chatStream does not pass the count on to the provider
+   src/llm/manager.ts @@ -1775,7 +1775,7 @@
+   src/llm/manager.ts                model,
+   src/llm/manager.ts                stream: true,
+   src/llm/manager.ts              } as OpenAI.ChatCompletionCreateParamsStreaming,
+   src/llm/manager.ts -            { cacheNamespaceSeed: this.cacheNamespaceSeed(pname, model), ...switchesRead },
+   src/llm/manager.ts +            { cacheNamespaceSeed: this.cacheNamespaceSeed(pname, model) },
+   src/llm/manager.ts            );
+   src/llm/manager.ts  
+   src/llm/manager.ts            // We have a stream object. Probe the first chunk so that "404 model
+   result: ℹ tests 64 ℹ pass 63 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ a streamed call for a role resolved through local_default that read Gemma before a switch took effect during its admission is refused at the slot claim and streamed by the next candidate, not by Gemma
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== n8: role resolution does not take the count with the role's model
+   src/llm/manager.ts @@ -1196,7 +1196,7 @@
+   src/llm/manager.ts      const current = (target: RoleTarget): RoleTarget =>
+   src/llm/manager.ts        target.provider !== "local"
+   src/llm/manager.ts          ? target
+   src/llm/manager.ts -        : { ...target, ...(target.followsLocalModel ? { model: config.localLlmModel } : {}), localModelSwitches: localModelSwitchCount() };
+   src/llm/manager.ts +        : { ...target, ...(target.followsLocalModel ? { model: config.localLlmModel } : {}) };
+   src/llm/manager.ts      const cached = this.roleTargetCache.get(cacheKey);
+   src/llm/manager.ts      if (cached && Date.now() - cached.at < 60_000) return current(cached.target);
+   src/llm/manager.ts  
+   result: ℹ tests 64 ℹ pass 63 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ a switch that takes effect after a role's model is read and before complete() makes the call refuses the call: the count of switches is read with the role's model
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== m1: a call made inside a counted call is not counted at all (the round-4 counter)
+   src/llm/local-lane-policy.ts @@ -372,15 +372,7 @@
+   src/llm/local-lane-policy.ts   * later), `run` is counted as a call of its own.
+   src/llm/local-lane-policy.ts   */
+   src/llm/local-lane-policy.ts  export async function trackLocalCall<T>(run: () => Promise<T>): Promise<T> {
+   src/llm/local-lane-policy.ts -  const outer = countedCall.getStore();
+   src/llm/local-lane-policy.ts -  if (outer && outer.open > 0) {
+   src/llm/local-lane-policy.ts -    outer.open += 1;
+   src/llm/local-lane-policy.ts -    try {
+   src/llm/local-lane-policy.ts -      return await run();
+   src/llm/local-lane-policy.ts -    } finally {
+   src/llm/local-lane-policy.ts -      endCountedRun(outer);
+   src/llm/local-lane-policy.ts -    }
+   src/llm/local-lane-policy.ts -  }
+   src/llm/local-lane-policy.ts +  if (countedCall.getStore()) return run();
+   src/llm/local-lane-policy.ts    const call: CountedCall = { open: 1 };
+   src/llm/local-lane-policy.ts    inFlight += 1;
+   src/llm/local-lane-policy.ts    try {
+   result: ℹ tests 64 ℹ pass 62 ℹ fail 2 ℹ cancelled 0 exit 1 
+   ✖ a local call that work inside a counted call starts and leaves running holds a switch until it ends, though the call that started it has returned, and is counted once
+   ✖ local work a counted call starts and leaves running stays counted until it ends: joined while that call is open, counted on its own once it has ended
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== m2: a call made inside an open counted call joins it without holding it open
+   src/llm/local-lane-policy.ts @@ -374,7 +374,6 @@
+   src/llm/local-lane-policy.ts  export async function trackLocalCall<T>(run: () => Promise<T>): Promise<T> {
+   src/llm/local-lane-policy.ts    const outer = countedCall.getStore();
+   src/llm/local-lane-policy.ts    if (outer && outer.open > 0) {
+   src/llm/local-lane-policy.ts -    outer.open += 1;
+   src/llm/local-lane-policy.ts      try {
+   src/llm/local-lane-policy.ts        return await run();
+   src/llm/local-lane-policy.ts      } finally {
+   result: ℹ tests 64 ℹ pass 59 ℹ fail 5 ℹ cancelled 0 exit 1 
+   ✖ a local call that work inside a counted call starts and leaves running holds a switch until it ends, though the call that started it has returned, and is counted once
+   ✖ a pinned local call is local work from the moment it is made: a switch chosen while it waits for a slot waits for it, and the call is counted once
+   ✖ a pinned local call that finds LM Studio's slot empty stays local work through the reload and its retry, so a switch chosen meanwhile waits for it
+   ✖ chat() on a local primary that finds LM Studio's slot empty is one local call through the reload and its retry: a switch chosen meanwhile waits, and the retry goes to the model the reload loaded
+   ✖ local work a counted call starts and leaves running stays counted until it ends: joined while that call is open, counted on its own once it has ended
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== m3: chatVia does not count a local call made inside a counted call (the round-4 chatVia)
+   src/llm/local-lane-policy.ts @@ -359,6 +359,10 @@
+   src/llm/local-lane-policy.ts   * trackLocalCall.
+   src/llm/local-lane-policy.ts   */
+   src/llm/local-lane-policy.ts  const countedCall = new AsyncLocalStorage<CountedCall>();
+   src/llm/local-lane-policy.ts +
+   src/llm/local-lane-policy.ts +export function insideCountedLocalCall(): boolean {
+   src/llm/local-lane-policy.ts +  return countedCall.getStore() !== undefined;
+   src/llm/local-lane-policy.ts +}
+   src/llm/local-lane-policy.ts  
+   src/llm/local-lane-policy.ts  export function localCallsInFlight(): number {
+   src/llm/local-lane-policy.ts    return inFlight;
+   src/llm/manager.ts @@ -19,6 +19,7 @@
+   src/llm/manager.ts  import { assertLocalSlot, ensureLocalModelLoaded, isNoModelLoadedError } from "./lmstudio-autoload.js";
+   src/llm/manager.ts  import { LocalInferenceDeferredError } from "./local-inference-safety.js";
+   src/llm/manager.ts  import { localModelSwitchCount, waitingLocalModel } from "./local-model-state.js";
+   src/llm/manager.ts +import { insideCountedLocalCall } from "./local-lane-policy.js";
+   src/llm/manager.ts  import { creditExhaustionPreflight } from "./credit-exhaustion-preflight.js";
+   src/llm/manager.ts  import { LlmRole } from "./roles.js";
+   src/llm/manager.ts  import { defaultFreeModel } from "./openrouter-free.js";
+   src/llm/manager.ts @@ -1360,6 +1361,7 @@
+   src/llm/manager.ts        // passed the count it read then, from there, else from here, the same
+   src/llm/manager.ts        // step as a caller that read the model to call this.
+   src/llm/manager.ts        const localModelSwitches = options?.localModelSwitches ?? localModelSwitchCount();
+   src/llm/manager.ts +      if (insideCountedLocalCall()) return this.sendPinnedCall(provider, providerName, model, params, options, assertBatchWindowOpen, { localModelSwitches });
+   src/llm/manager.ts        return trackLocalCall(() => this.sendPinnedCall(provider, providerName, model, params, options, assertBatchWindowOpen, { localModelSwitches }));
+   src/llm/manager.ts      }
+   src/llm/manager.ts      return this.sendPinnedCall(provider, providerName, model, params, options, assertBatchWindowOpen, {});
+   result: ℹ tests 64 ℹ pass 63 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ a local call that work inside a counted call starts and leaves running holds a switch until it ends, though the call that started it has returned, and is counted once
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== mp: the member-profile extractor reads the model once, when it is made
+   src/council/member-profile-updates.ts @@ -49,14 +49,15 @@
+   src/council/member-profile-updates.ts    const base = new URL(endpoint.endsWith('/') ? endpoint : `${endpoint}/`);
+   src/council/member-profile-updates.ts    if (!['http:', 'https:'].includes(base.protocol) || !['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname) || base.username || base.password) throw new Error('Profile extraction requires a loopback endpoint');
+   src/council/member-profile-updates.ts    const modelNow = typeof modelSetting === 'function' ? modelSetting : () => modelSetting;
+   src/council/member-profile-updates.ts -  if (!modelNow().trim()) throw new Error('Profile extraction requires a configured model');
+   src/council/member-profile-updates.ts +  const madeWith = modelNow();
+   src/council/member-profile-updates.ts +  if (!madeWith.trim()) throw new Error('Profile extraction requires a configured model');
+   src/council/member-profile-updates.ts    return async source => {
+   src/council/member-profile-updates.ts      if (!source.response.trim() || source.response.length > PROFILE_RESPONSE_LIMIT) throw new Error('response_size_limit');
+   src/council/member-profile-updates.ts      // Read at each extraction, so an extractor made before a switch of local
+   src/council/member-profile-updates.ts      // model asks the model in effect. The slot claim below starts in this same
+   src/council/member-profile-updates.ts      // step (nothing awaits before it), so the count of switches it takes is
+   src/council/member-profile-updates.ts      // the count at this read (llm/lmstudio-autoload.ts claimLocalSlot).
+   src/council/member-profile-updates.ts -    const model = modelNow();
+   src/council/member-profile-updates.ts +    const model = madeWith;
+   src/council/member-profile-updates.ts      const controller = new AbortController(); const started = Date.now();
+   src/council/member-profile-updates.ts      let timer: ReturnType<typeof setTimeout> | undefined;
+   src/council/member-profile-updates.ts      try {
+   result: ℹ tests 64 ℹ pass 63 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ the member-profile extractor reads the model at each extraction: one made before a switch of local model claims the slot for, and asks, the model in effect
+   guards: lmstudio=0 net=0 live-port=0 cli-shims=0
+== scratch copy left at /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r5 for inspection; deleted with the scratch folder

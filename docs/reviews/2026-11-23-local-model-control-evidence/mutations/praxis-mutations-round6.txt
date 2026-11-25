@@ -1,0 +1,139 @@
+Praxis under test: bd19e926a16509bd213f49c20f4c95bed95a43e9 (scratch copy /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r6)
+suites: tests/local_model_selection.test.ts tests/member_profile_updates.test.ts tests/spoken_prose.test.ts tests/local_model_demand_callers.test.ts
+== control: no mutation
+   result: ℹ tests 83 ℹ pass 83 ℹ fail 0 ℹ cancelled 0 exit 0 
+   guards: lmstudio=1 net=0 live-port=0 cli-shims=0
+== s1: spoken prose does not pass the count of switches it read with the model
+   src/voice/spoken-prose.ts @@ -129,7 +129,7 @@
+   src/voice/spoken-prose.ts          reasoning_effort: "none" as OpenAI.ChatCompletionCreateParamsNonStreaming["reasoning_effort"],
+   src/voice/spoken-prose.ts          max_tokens: 2048,
+   src/voice/spoken-prose.ts          temperature: 0.8,
+   src/voice/spoken-prose.ts -      }, { caller: "voice.prose", requireNoTools: true, deadlineAt, localModelSwitches: localModelSwitchCount() });
+   src/voice/spoken-prose.ts +      }, { caller: "voice.prose", requireNoTools: true, deadlineAt });
+   src/voice/spoken-prose.ts      })();
+   src/voice/spoken-prose.ts      const result = await Promise.race([
+   src/voice/spoken-prose.ts        completion,
+   result: ℹ tests 83 ℹ pass 82 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ spoken prose reads the local model and the count of switches in one step: a switch that takes effect before its call reaches the manager refuses the call at the slot claim, Gemma does not answer and nothing is loaded
+   guards: lmstudio=1 net=0 live-port=0 cli-shims=0
+== s2: the member-profile drain gives its extractor the model read once, as a plain string
+   src/council/member-profile-updates.ts @@ -212,7 +212,7 @@
+   src/council/member-profile-updates.ts            const lane = evaluateLocalLane();
+   src/council/member-profile-updates.ts            // Counted once per wait, when the job first defers, not on every hourly re-check.
+   src/council/member-profile-updates.ts            if (!lane.allow) { if (previous?.reason !== 'local_lane_closed') noteLocalLaneDeferral('member-profile', lane); throw new Error('local_lane_closed'); }
+   src/council/member-profile-updates.ts -          extract = localProfileExtractor({ endpoint: config.localLlmUrl, model: () => config.localLlmModel });
+   src/council/member-profile-updates.ts +          extract = localProfileExtractor({ endpoint: config.localLlmUrl, model: config.localLlmModel });
+   src/council/member-profile-updates.ts          }
+   src/council/member-profile-updates.ts          candidates = validateProfileCandidates(await extract(source), source.response);
+   src/council/member-profile-updates.ts        }
+   result: ℹ tests 83 ℹ pass 82 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ a drain asks each job the local model in effect when that job is extracted, so a switch between two jobs reaches the second
+   guards: lmstudio=1 net=0 live-port=0 cli-shims=0
+== s3: chatStream takes a fresh count for every local candidate, the role's included
+   src/llm/manager.ts @@ -1741,7 +1741,7 @@
+   src/llm/manager.ts          // that replaces it before the claim refuses the call.
+   src/llm/manager.ts          const model = followsLocalModel ? config.localLlmModel : listedModel;
+   src/llm/manager.ts          const switchesRead =
+   src/llm/manager.ts -          pname !== "local" ? {} : { localModelSwitches: followsLocalModel || resolvedSwitches === undefined ? localModelSwitchCount() : resolvedSwitches };
+   src/llm/manager.ts +          pname !== "local" ? {} : { localModelSwitches: localModelSwitchCount() };
+   src/llm/manager.ts          const provider = this.providers.get(pname);
+   src/llm/manager.ts          if (!provider) continue;
+   src/llm/manager.ts  
+   result: ℹ tests 83 ℹ pass 82 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ a switch that takes effect after a role's model is read and before chatStream tries it refuses the call: the stream's role candidate keeps the count of switches read with the role's model
+   guards: lmstudio=1 net=0 live-port=0 cli-shims=0
+== s4: the credit reroute does not pass the count read with its model
+   src/llm/manager.ts @@ -1471,7 +1471,7 @@
+   src/llm/manager.ts              assertCompletionDeadline(options?.deadlineAt);
+   src/llm/manager.ts              result = await localProvider.chat(
+   src/llm/manager.ts                { ...params, model: localModel } as OpenAI.ChatCompletionCreateParamsNonStreaming,
+   src/llm/manager.ts -              { cacheNamespaceSeed: this.cacheNamespaceSeed("local", localModel), deadlineAt: options?.deadlineAt, timeoutMs: options?.timeoutMs, requireNoTools: options?.requireNoTools, abortAtDeadline: options?.abortAtDeadline, localModelSwitches },
+   src/llm/manager.ts +              { cacheNamespaceSeed: this.cacheNamespaceSeed("local", localModel), deadlineAt: options?.deadlineAt, timeoutMs: options?.timeoutMs, requireNoTools: options?.requireNoTools, abortAtDeadline: options?.abortAtDeadline },
+   src/llm/manager.ts              );
+   src/llm/manager.ts              queue.markSucceeded(
+   src/llm/manager.ts                job.id,
+   result: ℹ tests 83 ℹ pass 82 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ a hosted pin rerouted to the local model when its credits ran out, whose local call read Gemma before a switch took effect during its admission, is refused at the slot claim: Gemma does not answer, nothing is loaded, and the hosted failure stands
+   guards: lmstudio=1 net=0 live-port=0 cli-shims=0
+== s5: the refusal names the model in effect, not the one the switch that replaced the call's model made
+   src/llm/lmstudio-autoload.ts @@ -1660,7 +1660,7 @@
+   src/llm/lmstudio-autoload.ts      // The claim says which switch replaced the model and whether it took
+   src/llm/lmstudio-autoload.ts      // effect during the claim's wait: another switch being recorded when the
+   src/llm/lmstudio-autoload.ts      // call arrived may be a later one, not the one that replaced its model.
+   src/llm/lmstudio-autoload.ts -    const chosen = claim.replacedBy ?? expectedLocalModel() ?? "the chosen model";
+   src/llm/lmstudio-autoload.ts +    const chosen = expectedLocalModel() ?? "the chosen model";
+   src/llm/lmstudio-autoload.ts      throw new LocalInferenceDeferredError(
+   src/llm/lmstudio-autoload.ts        claim.duringWait
+   src/llm/lmstudio-autoload.ts          ? `${requestedModel} stopped being the local model while this call waited for the switch to ${chosen} ` +
+   result: ℹ tests 83 ℹ pass 82 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ a call that read Gemma before the switch to Inkling took effect, and reaches the slot claim while a second switch to Qwen is being recorded, is refused for the switch that replaced Gemma: the refusal names Inkling and says the switch came before the claim
+   guards: lmstudio=1 net=0 live-port=0 cli-shims=0
+== s6: the refusal says the call waited whenever a switch was being recorded when it arrived (the a8caeb09 rule)
+   src/llm/lmstudio-autoload.ts @@ -1654,6 +1654,7 @@
+   src/llm/lmstudio-autoload.ts    deps: AutoloadDeps = {},
+   src/llm/lmstudio-autoload.ts    wait: SlotClaimWait = {},
+   src/llm/lmstudio-autoload.ts  ): Promise<void> {
+   src/llm/lmstudio-autoload.ts +  const waitedForSwitch = localModelApplyInProgress() !== null;
+   src/llm/lmstudio-autoload.ts    const claim = await claimLocalSlot(trigger, requestedModel, deps, wait);
+   src/llm/lmstudio-autoload.ts    if (claim.ok) return;
+   src/llm/lmstudio-autoload.ts    if (claim.reason === "switched_away") {
+   src/llm/lmstudio-autoload.ts @@ -1662,7 +1663,7 @@
+   src/llm/lmstudio-autoload.ts      // call arrived may be a later one, not the one that replaced its model.
+   src/llm/lmstudio-autoload.ts      const chosen = claim.replacedBy ?? expectedLocalModel() ?? "the chosen model";
+   src/llm/lmstudio-autoload.ts      throw new LocalInferenceDeferredError(
+   src/llm/lmstudio-autoload.ts -      claim.duringWait
+   src/llm/lmstudio-autoload.ts +      waitedForSwitch
+   src/llm/lmstudio-autoload.ts          ? `${requestedModel} stopped being the local model while this call waited for the switch to ${chosen} ` +
+   src/llm/lmstudio-autoload.ts              "to be recorded, so the call is not sent to LM Studio"
+   src/llm/lmstudio-autoload.ts          : `${requestedModel} stopped being the local model after this call read it: the switch to ${chosen} took effect ` +
+   result: ℹ tests 83 ℹ pass 82 ℹ fail 1 ℹ cancelled 0 exit 1 
+   ✖ a call that read Gemma before the switch to Inkling took effect, and reaches the slot claim while a second switch to Qwen is being recorded, is refused for the switch that replaced Gemma: the refusal names Inkling and says the switch came before the claim
+   guards: lmstudio=1 net=0 live-port=0 cli-shims=0
+== s7: the claim decides duringWait from the caller's count instead of the count when the claim began
+   src/llm/lmstudio-autoload.ts @@ -1542,7 +1542,7 @@
+   src/llm/lmstudio-autoload.ts          heldBy: replaced.model,
+   src/llm/lmstudio-autoload.ts          reason: "switched_away",
+   src/llm/lmstudio-autoload.ts          ...(replaced.by === undefined ? {} : { replacedBy: replaced.by }),
+   src/llm/lmstudio-autoload.ts -        duringWait: (replaced.seq ?? 0) > switchesAtClaim,
+   src/llm/lmstudio-autoload.ts +        duringWait: (replaced.seq ?? 0) > switchesBefore,
+   src/llm/lmstudio-autoload.ts        };
+   src/llm/lmstudio-autoload.ts      }
+   src/llm/lmstudio-autoload.ts    }
+   result: ℹ tests 83 ℹ pass 73 ℹ fail 10 ℹ cancelled 0 exit 1 
+   ✖ a call that read Gemma before the switch to Inkling took effect, and reaches the slot claim while a second switch to Qwen is being recorded, is refused for the switch that replaced Gemma: the refusal names Inkling and says the switch came before the claim
+   ✖ a call that read its model before a switch is refused at the slot claim even when the switch took effect before the claim began; one that read it after the switch is not
+   ✖ a hosted pin rerouted to the local model when its credits ran out, whose local call read Gemma before a switch took effect during its admission, is refused at the slot claim: Gemma does not answer, nothing is loaded, and the hosted failure stands
+   ✖ a pinned local call that read Gemma before a switch took effect during its admission is deferred at the slot claim: Gemma does not answer and nothing is loaded
+   ✖ a streamed call for a role resolved through local_default that read Gemma before a switch took effect during its admission is refused at the slot claim and streamed by the next candidate, not by Gemma
+   ✖ a switch that takes effect after a role's model is read and before chatStream tries it refuses the call: the stream's role candidate keeps the count of switches read with the role's model
+   ✖ a switch that takes effect after a role's model is read and before complete() makes the call refuses the call: the count of switches is read with the role's model
+   ✖ chat() on a local primary that read Gemma before a switch took effect during its admission is refused at the slot claim and answered by the cascade, not by Gemma
+   ✖ complete() for a role resolved through local_default that read Gemma before a switch took effect during its admission is refused at the slot claim and escalated, not answered by Gemma
+   ✖ spoken prose reads the local model and the count of switches in one step: a switch that takes effect before its call reaches the manager refuses the call at the slot claim, Gemma does not answer and nothing is loaded
+   guards: lmstudio=1 net=0 live-port=0 cli-shims=0
+== s8: primaryForTest restores the manager's provider only (the round-5 helper), environment as in every run
+   tests/local_model_selection.test.ts @@ -1293,7 +1293,6 @@
+   tests/local_model_selection.test.ts    manager.activeProvider = name;
+   tests/local_model_selection.test.ts    t.after(() => {
+   tests/local_model_selection.test.ts      manager.activeProvider = before.provider;
+   tests/local_model_selection.test.ts -    manager.activeModel = before.model;
+   tests/local_model_selection.test.ts    });
+   tests/local_model_selection.test.ts  }
+   tests/local_model_selection.test.ts  
+   result: ℹ tests 83 ℹ pass 83 ℹ fail 0 ℹ cancelled 0 exit 0 
+   guards: lmstudio=1 net=0 live-port=0 cli-shims=0
+== control-no-primary: no mutation, LLM_PRIMARY_PROVIDER and LLM_PRIMARY_MODEL unset
+   result: ℹ tests 83 ℹ pass 83 ℹ fail 0 ℹ cancelled 0 exit 0 
+   guards: lmstudio=1 net=0 live-port=0 cli-shims=0
+== s8-no-primary: primaryForTest restores the provider only, LLM_PRIMARY_PROVIDER and LLM_PRIMARY_MODEL unset
+   tests/local_model_selection.test.ts @@ -1293,7 +1293,6 @@
+   tests/local_model_selection.test.ts    manager.activeProvider = name;
+   tests/local_model_selection.test.ts    t.after(() => {
+   tests/local_model_selection.test.ts      manager.activeProvider = before.provider;
+   tests/local_model_selection.test.ts -    manager.activeModel = before.model;
+   tests/local_model_selection.test.ts    });
+   tests/local_model_selection.test.ts  }
+   tests/local_model_selection.test.ts  
+   result: ℹ tests 83 ℹ pass 83 ℹ fail 0 ℹ cancelled 0 exit 0 
+   guards: lmstudio=1 net=0 live-port=0 cli-shims=0
+== scratch copy left at /Volumes/Projects/.scratch-fa032fc0/praxis-mut-r6 for inspection; deleted with the scratch folder
