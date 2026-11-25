@@ -1,0 +1,70 @@
+{
+  "document_id": "110e234c-c84f-430a-b9b2-a753d0792d08",
+  "title": "Gay I Club: a streamlined site built around what members asked for",
+  "revision_id": "4350a061-d8bd-4ae9-8473-78d1a82cce3f",
+  "content_hash": "72dc9f2365fe321f43890d9ce76bb82c794d58e6e0e719c3caf7cb0bca8eaff7",
+  "total": 19,
+  "items": [
+    {
+      "id": "D8",
+      "question": "A demo slot on every meeting?",
+      "recommendation": "Yes.",
+      "options": [
+        {
+          "id": "yes",
+          "label": "Yes",
+          "action": "Add This month's demo to the meeting page."
+        },
+        {
+          "id": "no",
+          "label": "No",
+          "action": "No demo slot."
+        }
+      ]
+    },
+    {
+      "id": "D9",
+      "question": "Photos and screenshots in posts?",
+      "recommendation": "Later stage.",
+      "options": [
+        {
+          "id": "later",
+          "label": "Later",
+          "action": "Ship posts without uploads first."
+        },
+        {
+          "id": "now",
+          "label": "First version",
+          "action": "Include uploads in the first posts stage."
+        },
+        {
+          "id": "never",
+          "label": "Not needed",
+          "action": "Drop uploads."
+        }
+      ]
+    },
+    {
+      "id": "D10",
+      "question": "Remove the Robot Showcase?",
+      "recommendation": "Remove; keep the artwork files.",
+      "options": [
+        {
+          "id": "remove",
+          "label": "Remove",
+          "action": "Remove the page and menu entry."
+        },
+        {
+          "id": "footer",
+          "label": "Footer link only",
+          "action": "Keep the page, linked from the footer."
+        },
+        {
+          "id": "keep",
+          "label": "Keep",
+          "action": "Leave as is."
+        }
+      ]
+    }
+  ]
+}
