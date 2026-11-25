@@ -381,6 +381,98 @@ describe('revisions, replays and guards', () => {
         expect(decisionRows(id)).toEqual([]);
     });
 
+    test('a new registration of the same bytes moved to Reference brings it back when a ground holds that it does not name', async () => {
+        // The QA repair round's sequence: an ungrounded request for review, then its unchanged bytes declared for sending,
+        // with no review_ground field.
+        const file = writeFile('mail.md', V1);
+        const first = await register(file, { key: 'mail' });
+        expect(first.json.review_ground.outcome).toBe('reference');
+        const id = first.json.document.id;
+        const send = await register(file, { key: 'mail', intended_action: 'send' });
+        expect(send.status).toBe(200);
+        expect(send.json).toMatchObject({
+            duplicate: false,
+            document: { requires_review: true, intended_action: 'send' },
+            receipt: { review_status: 'needs_review' },
+            review_ground: { outcome: 'waiting', named: [], held: [], rejected: [], in_force: [{ type: 'gated_action', intended_action: 'send' }] },
+            retirement: { action: 'reopened_by_ground', id: first.json.retirement.id, state: 'reopened', reopened_via: 'registration', source: 'no_review_ground' },
+        });
+        const page = await read(id);
+        expect(page).toMatchObject({ review_status: 'needs_review', ground_in_force: true, retirement: null });
+        expect(page.review_grounds).toEqual([expect.objectContaining({ type: 'gated_action', intended_action: 'send', summary: 'Your approval is what allows it to be sent.' })]);
+        expect(await listIds('status=needs_review&ground=in_force')).toEqual([id]);
+        // Retrying it returns the same receipt and changes nothing.
+        const retried = await register(file, { key: 'mail', intended_action: 'send' });
+        expect(retried.json).toMatchObject({ duplicate: true, receipt: { id: send.json.receipt.id, review_status: 'needs_review' }, review_ground: { outcome: 'waiting' } });
+        expect(store().listRetirements(id)).toHaveLength(1);
+        expect(decisionRows(id)).toEqual([]);
+
+        // An active task added to its waiting-task list, or decision items declared on the unchanged version, bring it
+        // back the same way.
+        const plan = writeFile('plan.md', V1);
+        const planFirst = await register(plan, { key: 'plan' });
+        expect(planFirst.json.review_ground.outcome).toBe('reference');
+        const waitedOn = await register(plan, { key: 'plan', blocking_task_ids: [WAITER_TASK] });
+        expect(waitedOn.json).toMatchObject({
+            duplicate: false,
+            review_ground: { outcome: 'waiting', named: [], held: [], in_force: [{ type: 'task', task_ids: [WAITER_TASK] }] },
+            retirement: { action: 'reopened_by_ground', id: planFirst.json.retirement.id, state: 'reopened' },
+        });
+        expect(await read(planFirst.json.document.id)).toMatchObject({ review_status: 'needs_review', ground_in_force: true, review_grounds: [{ type: 'task', task_ids: [WAITER_TASK] }] });
+        // Decision items are metadata, outside the fingerprint that makes a registration a retry, so this one returns the
+        // first receipt; the decision it declares still brings the document back.
+        const choice = writeFile('choice.md', V2);
+        const choiceFirst = await register(choice, { key: 'choice' });
+        expect(choiceFirst.json.review_ground.outcome).toBe('reference');
+        const asked = await register(choice, { key: 'choice', metadata: { decision_items: DECISION_ITEMS } });
+        expect(asked.json).toMatchObject({
+            duplicate: true, receipt: { id: choiceFirst.json.receipt.id, review_status: 'needs_review' },
+            review_ground: { outcome: 'waiting', named: [], held: [], in_force: [{ type: 'decision', source: 'declared', decision_ids: ['launch-date'] }] },
+            retirement: { action: 'reopened_by_ground', id: choiceFirst.json.retirement.id, state: 'reopened' },
+        });
+        expect(await read(choiceFirst.json.document.id)).toMatchObject({ review_status: 'needs_review', ground_in_force: true, review_grounds: [{ type: 'decision', source: 'declared', decision_ids: ['launch-date'] }] });
+        for (const doc of [planFirst, choiceFirst]) expect(decisionRows(doc.json.document.id)).toEqual([]);
+    });
+
+    test('a replay of the registration from before a move never brings it back, even when a ground it did not name holds; a new one does', async () => {
+        // Like the open task audit the re-sort moved: its declared decisions were answered outside the Nexus, which still
+        // reads them as open. A byte-identical retry returns its first receipt and must not undo the move (contract §13).
+        const file = writeFile('audit.md', V1);
+        const first = await register(file, { key: 'audit', metadata: { decision_items: DECISION_ITEMS } });
+        expect(first.json.review_ground).toMatchObject({ outcome: 'waiting', named: [], in_force: [{ type: 'decision', source: 'declared' }] });
+        const id = first.json.document.id;
+        const rt = store().retireOnGround({ target: store().getDocument(id), ground: { type: 'review_resort', message_ref: 'nexus://conversation/c/message/m', task_id: RESORT_TASK, finding: 'Every choice in it was answered in chat.' } });
+        expect(rt).toMatchObject({ trigger: 'review_resort' });
+        const replay = await register(file, { key: 'audit', metadata: { decision_items: DECISION_ITEMS } });
+        expect(replay.json).toMatchObject({
+            duplicate: true, receipt: { id: first.json.receipt.id, review_status: 'reference' },
+            review_ground: { outcome: 'reference', held: [] }, retirement: { action: 'kept', id: rt.id, state: 'retired', source: 'review_resort' },
+        });
+        expect(praxisAcceptsReference(replay.json)).toBe(true);
+        expect(store().getReviewStatus(id)).toBe('reference');
+        // Nor after a read captured newer bytes: the replay makes its own bytes current again, and their decision items
+        // are the ones the registration it repeats declared.
+        fs.writeFileSync(file, V2);
+        await read(id);
+        expect(store().getDocument(id).current_revision_id).not.toBe(first.json.revision.id);
+        fs.writeFileSync(file, V1);
+        const later = await register(file, { key: 'audit', metadata: { decision_items: DECISION_ITEMS } });
+        expect(later.json).toMatchObject({ duplicate: true, receipt: { id: first.json.receipt.id }, review_ground: { outcome: 'reference' }, retirement: { action: 'kept', id: rt.id } });
+        expect(store().getDocument(id).current_revision_id).toBe(first.json.revision.id);
+        expect(store().getReviewStatus(id)).toBe('reference');
+        // A new declaration of the same bytes asking for review is not a replay: the decision it declares is open and it
+        // would be sent, so the document is back in the queue.
+        const again = await register(file, { key: 'audit', intended_action: 'send', metadata: { decision_items: DECISION_ITEMS } });
+        expect(again.json).toMatchObject({
+            duplicate: false,
+            review_ground: { outcome: 'waiting', held: [], in_force: [{ type: 'decision', source: 'declared' }, { type: 'gated_action', intended_action: 'send' }] },
+            retirement: { action: 'reopened_by_ground', id: rt.id, state: 'reopened', reopened_via: 'registration', source: 'review_resort' },
+        });
+        expect(store().getReviewStatus(id)).toBe('needs_review');
+        expect(store().listRetirements(id)).toHaveLength(1);
+        expect(decisionRows(id)).toEqual([]);
+    });
+
     test('a ground recorded before the document last left the queue does not keep a later revision waiting', async () => {
         const file = writeFile('brief.md', V1);
         const first = await register(file, { blocking_task_ids: [LATER_TASK], review_ground: { type: 'task' } });

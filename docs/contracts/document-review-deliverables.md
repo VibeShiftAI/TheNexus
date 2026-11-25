@@ -1528,8 +1528,16 @@ A registration that asks for review without a ground in force is never
 refused and never silently accepted: it is registered as reference, the
 response carries the retirement (`retirement.action: "retired"`) and
 `message` says why and what to name. A later registration of the same bytes
-naming a ground that holds puts it back (`retirement.action:
-"reopened_by_ground"`), and so does request-review (§13.5).
+under which a ground holds puts it back (`retirement.action:
+"reopened_by_ground"`): a ground it names (unless it is the registration that
+moved it), or one that holds without being named, such as the send it now
+declares, an active task added to its waiting-task list or decision items it
+declares. A retry that changes nothing returns its first receipt and leaves
+the document in Reference (§13: a replay never undoes a retirement), even when
+a read has captured newer bytes since. Decision items are metadata, outside the
+fingerprint that makes a registration a retry, so a retry that declares them
+on these bytes for the first time puts it back. Request-review puts it back
+too (§13.5).
 
 ### 15.4 Lists, counts and reads
 
@@ -1607,7 +1615,9 @@ text of a review, which Nexus holds no structured answer for, so 15.1 alone
 reads them as open. Such a document moves only when that is its sole ground in
 force and the Praxis decision record the plan names, read at run time, is for
 that document and its current version and holds an answer to every declared
-item.
+item. The Nexus still reads those items as open, so a new registration of
+such a document's bytes asking for review brings it back (15.3); a retry of
+its earlier registration does not.
 
 The run on 2026-11-25 (live at 16:56:51Z, after a backup at
 `/Volumes/Projects/TheNexus/backups/nexus-2026-11-25-before-reviews-resort.db`)
@@ -1632,8 +1642,12 @@ receipt check. Announcing reference-only documents in chat is Praxis's side.
 `server/__tests__/document-review-grounds.test.js` covers each of the four
 grounds stored and returned by the read, a registration with no ground field
 and each kind of invalid ground (registered as reference with the reason, no
-decision row), a revision kept waiting, a same-bytes reopening by a ground, a
-retry and a caller naming nothing, the cutoff of grounds recorded before the
+decision row), a revision kept waiting, a same-bytes reopening by a ground,
+named or not (a send declared, an active task added to the waiting-task list,
+decision items declared), a retry and a caller naming nothing, a retry of a
+moved document's earlier registration that leaves it in Reference (also after
+a read captured newer bytes) while a new declaration brings it back, the
+cutoff of grounds recorded before the
 document last left the queue, the guards, the list split and counts (with the
 400s), the `review_resort` move and its way back through request-review (also
 as the earlier API made it, recorded only on the reopened retirement), a

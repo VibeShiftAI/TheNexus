@@ -719,7 +719,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             : action === 'reopened_by_registration'
                 ? 'This registration delivered new bytes for review. The document is back in the queue and the retirement is recorded as reopened.'
                 : action === 'reopened_by_ground'
-                    ? 'This registration named something waiting on the document that holds (contract §15). The document is back in the queue and the retirement is recorded as reopened.'
+                    ? 'Something is waiting on the document under this registration (contract §15), whether it named it or not. The document is back in the queue and the retirement is recorded as reopened.'
                     : 'The document is back in the queue and the retirement is recorded as reopened.';
         return { action, message, ...retirementView(rt) };
     }
@@ -1203,7 +1203,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
 
     /** The buckets in which a document can be waiting for review (queuePosition's rule). */
     const WAITING_GROUND_BUCKETS = new Set(['needs_review', 'changes_requested', 'in_progress']);
-    /** Retirements that only said nothing was waiting: a registration naming a ground that holds may reopen them. */
+    /** Retirements that only said nothing was waiting: a registration under which a ground holds reopens them. */
     const NOTHING_WAITING_TRIGGERS = new Set(['no_review_ground', 'review_resort']);
 
     function listBucket(row) {
@@ -1316,10 +1316,11 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
      * writeDeclared's transaction once the revision, its decision items and the registration are recorded, and before the
      * names it carries are applied (they apply only once it is waiting). A ground that does not hold is reported with its
      * reason; with none in force the document is registered as reference through the retirement record (ground
-     * `no_review_ground`), unless it was already waiting under a recorded ground or a guard keeps it waiting.
+     * `no_review_ground`), unless it was already waiting under a recorded ground or a guard keeps it waiting. The
+     * same bytes of a document moved to Reference because nothing was waiting come back once a ground holds.
      * Returns { view, retirement } (retirement only when this changed it).
      */
-    function settleRegistrationGround({ docId, v, registration, revisionId, duplicate, before, operatorMessages, actorId }) {
+    function settleRegistrationGround({ docId, v, registration, revisionId, duplicate, firstDecisionItems, before, operatorMessages, actorId }) {
         const named = v.namedGrounds || { entries: [], rejected: [] };
         const latest = store().latestDecision(docId);
         const current = store().getDocument(docId);
@@ -1332,9 +1333,11 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (check.ok) held.push({ type: 'operator_request', via: 'chat', message_ref: entry.message_ref, requested_at: check.requested_at });
             else rejected.push({ type: 'operator_request', reason: check.reason });
         }
+        // The grounds that hold on it under this registration, named or not, whatever its review status.
+        const holding = groundDetails(store().getDocumentListRow(docId));
         const checked = grounds.checkNamedGrounds(
             named.entries.filter(e => e.type !== 'operator_request'),
-            groundDetails(store().getDocumentListRow(docId)),
+            holding,
             new Set(declared?.answerable ? declared.items.map(item => item.id) : []),
         );
         held.push(...checked.held);
@@ -1346,8 +1349,16 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
 
         let retirement = null;
         const open = store().findOpenRetirement(docId);
-        if (!current.requires_review && held.length && open && NOTHING_WAITING_TRIGGERS.has(open.trigger) && open.registration_id !== registration.id) {
-            // The same bytes as a document moved to Reference because nothing was waiting, now with a ground that holds.
+        // The same bytes as a document moved to Reference because nothing was waiting, registered again with something
+        // waiting now. A ground this registration named that holds brings it back, unless this is the registration that
+        // moved it. So does one that holds unnamed (its intended send, publish or implement, an active task on its
+        // waiting-task list, open decision items, an agent review waiting for his choices) under a new registration,
+        // and so do decision items this registration declares on these bytes for the first time: they are metadata,
+        // outside the fingerprint that makes a registration a retry, so a retry can carry them. A retry that changes
+        // nothing returns its first receipt and must not undo the move (contract §13).
+        const namedHolds = held.length > 0 && open?.registration_id !== registration.id;
+        const unnamedHolds = !duplicate ? holding.length > 0 : firstDecisionItems && holding.some(g => g.type === 'decision');
+        if (!current.requires_review && open && NOTHING_WAITING_TRIGGERS.has(open.trigger) && (namedHolds || unnamedHolds)) {
             store().updateDocument(docId, { requires_review: true });
             retirement = retirementEffect('reopened_by_ground', store().reopenRetirement(docId, actorId, 'registration'));
         }
@@ -1468,6 +1479,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             }
             const { revision, created: revisionCreated } = recordRevision(doc, read, resolved.mtime);
             if (doc.current_revision_id !== revision.id) store().setCurrentRevision(doc.id, revision.id);
+            // Decision items declared on these bytes for the first time can bring back a document moved to Reference (§15).
+            const firstDecisionItems = decisionItems.declaresDecisionItems(v.metadata) && store().getDecisionDefinitions(revision.id) === undefined;
             bindDecisionItems(doc, v.metadata, revision.id);
             if (outgoing && store().getOutgoing(doc.id)?.invalidated_at !== outgoing.invalidated_at) {
                 throw conflict('outgoing_unsent', 'The withdrawal would invalidate an unsent outgoing message');
@@ -1511,7 +1524,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             // the names below, which retire what they name only once this document is itself waiting.
             let reviewGround = null;
             if (v.requiresReview) {
-                const settled = settleRegistrationGround({ docId: doc.id, v, registration, revisionId: revision.id, duplicate, before, operatorMessages, actorId });
+                const settled = settleRegistrationGround({ docId: doc.id, v, registration, revisionId: revision.id, duplicate, firstDecisionItems, before, operatorMessages, actorId });
                 reviewGround = settled.view;
                 if (settled.retirement) retirement = settled.retirement;
             }
