@@ -47,7 +47,7 @@ function createLocalModelWorkReader({
           // Forward Praxis's per-run projection and observed callers without
           // recomputing eligibility or expanding titles onto every queued job.
           return { worker: queue.worker, counts: queue.counts ?? {}, jobs: queue.jobs,
-            runs: queue.runs, directCallers: queue.directCallers, directCallsInFlight: queue.directCallsInFlight,
+            runs: queue.runs, jobNames: queue.jobNames, directCallers: queue.directCallers, directCallsInFlight: queue.directCallsInFlight,
             localWindowOpen: queue.localWindowOpen, nextLocalRunId: queue.nextLocalRunId };
         }),
         Promise.resolve().then(readEvidence),

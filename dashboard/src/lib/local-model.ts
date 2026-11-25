@@ -6,7 +6,7 @@
  */
 import type { LocalModelChoiceResult, LocalModelHandling, LocalModelPanel, LocalModelSwitch, LocalWorkItem } from "@/lib/model-control";
 import { readableJobName } from "./local-activity";
-export { describeLocalActivity, queueSourceTitle, readableJobName } from "./local-activity";
+export { describeLocalActivity, describeQueuedJob } from "./local-activity";
 export type { LocalActivityQueue, LocalActivityRun, LocalStudioState, DescribedLocalRun } from "./local-activity";
 
 /** The Socket.IO event Nexus sends when the setting, a switch or Studio local work changes (server/services/local-model-selection.js, EVENT). */

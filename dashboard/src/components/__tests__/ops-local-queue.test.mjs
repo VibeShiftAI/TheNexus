@@ -59,6 +59,17 @@ test('unknown native counts are unavailable and a missing source is not an empty
   assert.equal(container.querySelector('[data-worker-toggle]').disabled, true);
 });
 
+test('Ops uses the run projection and keeps the queued finalizer’s own operator name', async t => {
+  const finalizer = job('finish', 60, { type: 'ingestion_finalize_run', payload: { run_id: 'r' } });
+  const value = snapshot([finalizer]);
+  value.background.jobNames = { ingestion_finalize_run: 'Finalize knowledge ingestion' };
+  value.background.runs = [{ id: 'ingest:r', runId: 'r', type: 'ingest_item', name: 'Knowledge ingestion',
+    finished: 38, total: 38, started: true, running: 0, queued: 1, allowedNow: true, items: [] }];
+  const { container } = await mount(t, () => ok(value));
+  assert.match(container.textContent, /Knowledge ingestion.*38 of 38 finished.*Between items/);
+  assert.match(container.querySelector('[data-job-id="finish"]').textContent, /Finalize knowledge ingestion/);
+});
+
 test('refreshes live data and preserves the previous snapshot with a visible stale error', async t => {
   let fail = false;
   let value = snapshot();

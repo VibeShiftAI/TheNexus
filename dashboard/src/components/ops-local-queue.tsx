@@ -6,7 +6,7 @@ import { PauseCircle, PlayCircle, RefreshCw } from "lucide-react";
 import { useLiveRefetch } from "@/components/live-board-state";
 import { authFetch } from "@/lib/nexus/shared";
 import { getLocalModelWork, type LocalLlmJob, type LocalModelWork } from "@/lib/nexus/local-llm";
-import { describeLocalActivity, queueSourceTitle, readableJobName } from "@/lib/local-model";
+import { describeLocalActivity, describeQueuedJob } from "@/lib/local-model";
 
 function age(iso: string) {
   const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 60_000));
@@ -87,7 +87,6 @@ export function OpsLocalQueue({ refreshKey = 0 }: { refreshKey?: number }) {
   const scheduled = queued.filter(isFuture).sort((a, b) => (a.scheduledFor ?? "").localeCompare(b.scheduledFor ?? "") || compareJobs(a, b));
   const models = work?.lmStudio.models ?? [];
   const activity = describeLocalActivity(background, work?.lmStudio);
-  const jobNames = new Map(activity.runs.map(run => [run.type, run.name]));
   const activeItems = new Map(activity.runs.flatMap(run => run.items.map(item => [item.id, item.description] as const)));
   const queueKnown = work?.lmStudio.available && models.every(model => model.queued !== null);
   const waitingRequests = models.reduce((sum, model) => sum + (model.queued ?? 0), 0);
@@ -168,7 +167,7 @@ export function OpsLocalQueue({ refreshKey = 0 }: { refreshKey?: number }) {
                 return <div key={String(heading)}><h5 className="mb-1 text-[11px] font-semibold text-slate-400">{String(heading)}</h5><ol className="space-y-1">
                   {rows.map((job, index) => <li key={job.id} data-job-id={job.id} className="rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2">
                     <div className="flex items-start gap-2"><span className="w-6 shrink-0 text-[11px] text-slate-500">{heading === "Waiting" ? `#${index + 1}` : "•"}</span><div className="min-w-0 flex-1">
-                      <p className="break-words text-xs text-slate-200">{activeItems.get(job.id) ?? [jobNames.get(job.type) || readableJobName(job.type), queueSourceTitle(job) || "Source title not reported"].join(" · ")}</p>
+                      <p className="break-words text-xs text-slate-200">{activeItems.get(job.id) ?? describeQueuedJob(job, background?.jobNames)}</p>
                       <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-500"><span>Priority {job.priority}</span>{heading !== "Running" && <span>{heading === "Scheduled" ? `Starts ${new Date(job.scheduledFor!).toLocaleString()}` : `Queued ${age(job.createdAt)}`}</span>}<span>Attempt {job.attempts}/{job.maxAttempts}</span></p>
                       <span title={job.id} className="font-mono text-[9px] text-slate-600">{job.id}</span>
                     </div></div>

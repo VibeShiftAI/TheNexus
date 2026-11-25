@@ -46,6 +46,7 @@ export interface LocalActivityQueue {
   directCallers?: string[];
   directCallsInFlight?: number;
   nextLocalRunId?: string | null;
+  jobNames?: Record<string, string>;
 }
 
 export interface LocalStudioState {
@@ -63,14 +64,29 @@ export function readableJobName(type?: string) {
 }
 
 /** Older producers carried a title on the job, or only a hash. A hash isn't a title. */
-export function queueSourceTitle(job: LocalActivityJob): string | null {
+function queueSourceTitle(job: LocalActivityJob): string | null {
   const payload = job.payload;
   if (!payload) return null;
   const nested = payload.item && typeof payload.item === 'object' ? (payload.item as Record<string, unknown>).title : null;
-  for (const title of [payload.title, nested, payload.name, payload.source]) {
+  for (const title of [payload.source_title, payload.title, nested, payload.name, payload.source]) {
     if (typeof title === 'string' && title.trim()) return title.trim();
   }
   return null;
+}
+
+/** Management rows retain the queue's item order and its prompt preview. */
+export function describeQueuedJob(job: LocalActivityJob, names?: Record<string, string>) {
+  const name = job.type ? names?.[job.type] : null;
+  const label = typeof name === 'string' && name.trim() ? name : readableJobName(job.type);
+  const title = queueSourceTitle(job);
+  if (title) return `${label} · ${title}`;
+  const source = job.payload?.url;
+  const caller = job.payload?.caller;
+  const prompt = job.payload?.prompt ?? job.payload?.input;
+  const preview = typeof prompt === 'string' ? prompt.trim().replace(/\s+/g, ' ').slice(0, 200) : '';
+  const detail = typeof source === 'string' && source.trim() ? source
+    : typeof caller === 'string' && caller.trim() ? `Caller · ${caller}` : preview && `Prompt · ${preview}`;
+  return [label, 'Source title not reported', detail].filter(Boolean).join(' · ');
 }
 
 function legacyRuns(jobs: LocalActivityJob[]): LocalActivityRun[] {
