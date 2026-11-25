@@ -44,7 +44,11 @@ function createLocalModelWorkReader({
           if (!queue || !Array.isArray(queue.jobs) || typeof queue.worker?.paused !== 'boolean') {
             throw new Error('Invalid background queue');
           }
-          return { worker: queue.worker, counts: queue.counts ?? {}, jobs: queue.jobs };
+          // Forward Praxis's per-run projection and observed callers without
+          // recomputing eligibility or expanding titles onto every queued job.
+          return { worker: queue.worker, counts: queue.counts ?? {}, jobs: queue.jobs,
+            runs: queue.runs, directCallers: queue.directCallers, directCallsInFlight: queue.directCallsInFlight,
+            localWindowOpen: queue.localWindowOpen, nextLocalRunId: queue.nextLocalRunId };
         }),
         Promise.resolve().then(readEvidence),
       ]);

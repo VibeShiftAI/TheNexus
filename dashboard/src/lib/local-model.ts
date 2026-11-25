@@ -5,6 +5,9 @@
  * exports components only and stays a Fast Refresh boundary.
  */
 import type { LocalModelChoiceResult, LocalModelHandling, LocalModelPanel, LocalModelSwitch, LocalWorkItem } from "@/lib/model-control";
+import { readableJobName } from "./local-activity";
+export { describeLocalActivity, queueSourceTitle, readableJobName } from "./local-activity";
+export type { LocalActivityQueue, LocalActivityRun, LocalStudioState, DescribedLocalRun } from "./local-activity";
 
 /** The Socket.IO event Nexus sends when the setting, a switch or Studio local work changes (server/services/local-model-selection.js, EVENT). */
 export const LOCAL_MODEL_EVENT = "model-control:local-model";
@@ -56,7 +59,10 @@ export function formatWhen(iso: string | null | undefined): string {
 export function describeWork(item: LocalWorkItem): string {
     const since = item.since ? `, since ${formatWhen(item.since)}` : "";
     if (item.kind === "studio_job") return `${item.label} (Studio job in Nexus${since})`;
-    if (item.kind === "local_job") return `${item.label} (Praxis local job${since})`;
+    if (item.kind === "local_job") {
+        const name = item.label.includes("_") ? readableJobName(item.label) : item.label;
+        return `${name} (Praxis local job${since})`;
+    }
     return `${item.label} in Praxis`;
 }
 

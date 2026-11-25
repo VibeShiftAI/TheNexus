@@ -6,6 +6,7 @@ import { PauseCircle, PlayCircle, RefreshCw } from "lucide-react";
 import { useLiveRefetch } from "@/components/live-board-state";
 import { authFetch } from "@/lib/nexus/shared";
 import { getLocalModelWork, type LocalLlmJob, type LocalModelWork } from "@/lib/nexus/local-llm";
+import { describeLocalActivity, queueSourceTitle, readableJobName } from "@/lib/local-model";
 
 function age(iso: string) {
   const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 60_000));
@@ -14,15 +15,6 @@ function age(iso: string) {
   if (minutes < 60) return `${minutes}m`;
   if (minutes < 1440) return `${Math.floor(minutes / 60)}h`;
   return `${Math.floor(minutes / 1440)}d`;
-}
-
-function label(job: LocalLlmJob) {
-  const payload = job.payload ?? {};
-  const item = payload.item && typeof payload.item === "object" ? payload.item as Record<string, unknown> : {};
-  for (const candidate of [payload.title, item.title, payload.name, payload.source, payload.url, payload.caller, payload.prompt, payload.input]) {
-    if (typeof candidate === "string" && candidate.trim()) return candidate.replace(/\s+/g, " ").trim().slice(0, 200);
-  }
-  return job.type.replace(/_/g, " ");
 }
 
 // Match LocalLlmQueueStore.compareRunnableJobs: lower priority first, then
@@ -94,6 +86,9 @@ export function OpsLocalQueue({ refreshKey = 0 }: { refreshKey?: number }) {
   const waiting = queued.filter(job => !isFuture(job)).sort(compareJobs);
   const scheduled = queued.filter(isFuture).sort((a, b) => (a.scheduledFor ?? "").localeCompare(b.scheduledFor ?? "") || compareJobs(a, b));
   const models = work?.lmStudio.models ?? [];
+  const activity = describeLocalActivity(background, work?.lmStudio);
+  const jobNames = new Map(activity.runs.map(run => [run.type, run.name]));
+  const activeItems = new Map(activity.runs.flatMap(run => run.items.map(item => [item.id, item.description] as const)));
   const queueKnown = work?.lmStudio.available && models.every(model => model.queued !== null);
   const waitingRequests = models.reduce((sum, model) => sum + (model.queued ?? 0), 0);
   const batch = work?.evidence?.batch;
@@ -115,6 +110,7 @@ export function OpsLocalQueue({ refreshKey = 0 }: { refreshKey?: number }) {
       {work && <>
         <div className="mb-4">
           <h4 className="mb-2 text-xs font-semibold text-slate-300">Model requests · all callers</h4>
+          {activity.direct && <p className="mb-2 text-xs text-cyan-300">{activity.direct}</p>}
           {!work.lmStudio.available ? <p role="status" className="text-xs text-amber-300">{work.lmStudio.error}</p> : models.length === 0 ? <p className="text-xs text-slate-500">No models loaded in LM Studio.</p> : (
             <ul className="space-y-2">
               {models.map(model => <li key={model.id} data-model-id={model.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-800 bg-slate-950/50 px-3 py-2">
@@ -161,7 +157,9 @@ export function OpsLocalQueue({ refreshKey = 0 }: { refreshKey?: number }) {
             </button>
           </div>
           {actionError && <p role="alert" className="mb-2 text-xs text-amber-300">{actionError}</p>}
-          {paused && <p className="mb-2 text-xs text-amber-300">Worker paused{background?.worker?.pauseReason ? `: ${background.worker.pauseReason}` : ""}. Waiting jobs will remain queued.</p>}
+          {background?.runs?.length ? <ul className="mb-3 space-y-1 text-xs text-slate-300">
+            {activity.runs.map(run => <li key={run.id}>{run.summary} · {run.counts}</li>)}
+          </ul> : paused && <p className="mb-2 text-xs text-amber-300">{activity.summary}</p>}
           {!background?.available ? <p role="status" className="text-xs text-amber-300">{background?.error}</p> : running.length + waiting.length + scheduled.length === 0 ? <p className="py-3 text-xs text-slate-500">No background jobs waiting or running.</p> : (
             <div className="max-h-96 space-y-3 overflow-y-auto pr-1">
               {[["Running", running], ["Waiting", waiting], ["Scheduled", scheduled]].map(([heading, group]) => {
@@ -170,8 +168,8 @@ export function OpsLocalQueue({ refreshKey = 0 }: { refreshKey?: number }) {
                 return <div key={String(heading)}><h5 className="mb-1 text-[11px] font-semibold text-slate-400">{String(heading)}</h5><ol className="space-y-1">
                   {rows.map((job, index) => <li key={job.id} data-job-id={job.id} className="rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2">
                     <div className="flex items-start gap-2"><span className="w-6 shrink-0 text-[11px] text-slate-500">{heading === "Waiting" ? `#${index + 1}` : "•"}</span><div className="min-w-0 flex-1">
-                      <p className="break-words text-xs text-slate-200">{label(job)}</p>
-                      <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-500"><span>{job.type.replace(/_/g, " ")}</span><span>Priority {job.priority}</span><span>{heading === "Running" ? `Running ${age(job.startedAt ?? job.updatedAt)}` : heading === "Scheduled" ? `Starts ${new Date(job.scheduledFor!).toLocaleString()}` : `Queued ${age(job.createdAt)}`}</span><span>Attempt {job.attempts}/{job.maxAttempts}</span>{job.executionLane === "spillover" && <span>CLI spillover</span>}</p>
+                      <p className="break-words text-xs text-slate-200">{activeItems.get(job.id) ?? [jobNames.get(job.type) || readableJobName(job.type), queueSourceTitle(job) || "Source title not reported"].join(" · ")}</p>
+                      <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-500"><span>Priority {job.priority}</span>{heading !== "Running" && <span>{heading === "Scheduled" ? `Starts ${new Date(job.scheduledFor!).toLocaleString()}` : `Queued ${age(job.createdAt)}`}</span>}<span>Attempt {job.attempts}/{job.maxAttempts}</span></p>
                       <span title={job.id} className="font-mono text-[9px] text-slate-600">{job.id}</span>
                     </div></div>
                   </li>)}

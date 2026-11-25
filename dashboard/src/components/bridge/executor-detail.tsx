@@ -158,7 +158,6 @@ function agoShort(iso: string, now: number) {
 function LocalLlmDetail({ state, now }: { state: DispatchStateResponse; now: number }) {
   const worker = state.localLlm?.worker;
   const counts = state.localLlm?.counts;
-  const jobs = state.localLlm?.jobs ?? [];
   const lm = state.lmStudio;
   const memory = state.system?.memory;
   const activity = describeLocalActivity(state.localLlm, lm, now);
@@ -253,33 +252,6 @@ function LocalLlmDetail({ state, now }: { state: DispatchStateResponse; now: num
           </p>
         ) : null}
       </section>
-      )}
-      {jobs.length > 0 && (
-        <details>
-          <summary className="mb-1.5 cursor-pointer text-[10px] font-semibold uppercase tracking-wider text-slate-500">Queue job diagnostics</summary>
-          <div className="space-y-1">
-            {jobs.slice(0, 10).map((j, i) => (
-              <div
-                key={j.id ?? i}
-                className="flex items-center gap-2 rounded-md border border-slate-800 bg-slate-900/50 px-2.5 py-1.5 text-[11px]"
-              >
-                <span className="min-w-0 flex-1 truncate text-slate-300">{j.type ?? "job"}</span>
-                <span
-                  className={`shrink-0 text-[10px] uppercase ${
-                    j.status === "running" ? "text-cyan-300" : j.status === "failed" ? "text-red-300" : "text-slate-500"
-                  }`}
-                >
-                  {j.status}
-                </span>
-                {j.attempts != null && (
-                  <span className="shrink-0 text-[10px] tabular-nums text-slate-600">
-                    try {j.attempts}/{j.maxAttempts ?? "—"}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </details>
       )}
       <Link href="/ops" className="inline-flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300">
         open full ops console <ArrowUpRight size={12} />

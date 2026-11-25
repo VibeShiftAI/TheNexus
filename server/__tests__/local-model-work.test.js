@@ -4,6 +4,13 @@ const createLocalModelWorkReader = options => createReader({ readEvidence: async
 const model = { identifier: 'gemma', displayName: 'Gemma', type: 'llm', status: 'generating', queued: 3, parallel: 4 };
 const queue = { worker: { paused: false }, counts: { queued: 25 }, jobs: Array.from({ length: 25 }, (_, i) => ({ id: `job-${i}`, status: 'queued' })) };
 
+test('the Ops work feed forwards the same run progress, eligibility and direct attribution as dispatch', async () => {
+  const runs = [{ id: 'overnight', name: 'Knowledge ingestion', finished: 90, total: 396, allowedNow: true, items: [] }];
+  const read = createLocalModelWorkReader({ exec: async () => ({ stdout: '[]' }),
+    readQueue: async () => ({ ...queue, runs, directCallers: ['gateway.reader'], localWindowOpen: true }) });
+  expect((await read()).background).toMatchObject({ runs, directCallers: ['gateway.reader'], localWindowOpen: true });
+});
+
 test('reads the real model queue for direct callers and retains every background job', async () => {
   const exec = jest.fn(async () => ({ stdout: JSON.stringify([model]) }));
   const readQueue = jest.fn(async () => queue);

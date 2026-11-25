@@ -1,4 +1,5 @@
 import { API_URL, authFetch } from './shared';
+import type { LocalActivityQueue } from '../local-model';
 
 // ═══════════════════════════════════════════════════════════════
 // LOCAL LLM QUEUE API
@@ -25,7 +26,7 @@ export interface LocalLlmJob {
     error?: string;
 }
 
-export interface LocalLlmQueueState {
+export interface LocalLlmQueueState extends LocalActivityQueue {
     worker: {
         paused: boolean;
         pauseReason?: string;
@@ -43,12 +44,11 @@ export interface LocalModelWork {
         error?: string;
         models: { id: string; name: string; type: string | null; status: string | null; queued: number | null }[];
     };
-    background: {
+    background: Omit<LocalLlmQueueState, 'worker'> & {
         available: boolean;
         error?: string;
         worker: LocalLlmQueueState['worker'] | null;
         counts: Record<string, number>;
-        jobs: LocalLlmJob[];
     };
     evidence?: {
         available: boolean;

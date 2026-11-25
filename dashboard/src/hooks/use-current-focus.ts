@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBoardState } from './use-board-state';
-import { useDispatchState } from './use-dispatch-state';
+import { dispatchStateIsFresh, useDispatchState } from './use-dispatch-state';
 import { useLiveBoardState } from '@/components/live-board-state';
 import { deriveCurrentFocus, type FocusRequest } from '@/lib/current-focus';
 
@@ -31,7 +31,11 @@ export function useCurrentFocus(requests: FocusRequest[], inputError: string | n
   // snapshots. The feed status tells the derivation when `dispatch.state` is a
   // frozen last-good snapshot rather than a current read.
   const view = useMemo(
-    () => deriveCurrentFocus({ projects: board.projects, state: dispatch.state, requests, events: live.recentEvents, now: Date.now(), feed: { available: !dispatch.error, snapshotAt: dispatch.updatedAt } }),
+    () => {
+      const now = Date.now();
+      return deriveCurrentFocus({ projects: board.projects, state: dispatch.state, requests, events: live.recentEvents, now,
+        feed: { available: !dispatch.error, localAvailable: dispatchStateIsFresh(dispatch, now), snapshotAt: dispatch.updatedAt } });
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [board.projects, dispatch.state, dispatch.error, dispatch.updatedAt, requests, live.recentEvents, tick],
   );

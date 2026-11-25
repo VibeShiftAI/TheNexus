@@ -1,5 +1,6 @@
 import type { BoardProject, BoardTask } from './task-board';
 import { getBoardLaneId } from './task-board';
+import { describeLocalActivity, type LocalActivityQueue, type LocalStudioState } from './local-model';
 
 export type FocusStatus = 'running' | 'queued' | 'quota' | 'awaiting_input' | 'blocked' | 'unconfirmed';
 /**
@@ -17,6 +18,7 @@ export interface FocusLifecycle {
   run: 'active' | 'completed' | 'failed' | null; runPhase: string | null; runAt: string | null;
 }
 export interface FocusItem {
+  source?: 'local-queue';
   id: string; taskId: string | null; title: string; purpose: string | null;
   projectId: string | null; projectName: string; status: FocusStatus; stage: string;
   action: string | null; executor: string | null; model: string | null;
@@ -41,7 +43,8 @@ export interface FocusState {
     usageWaits?: {available:boolean; items:FocusWait[]};
   };
   cron?: {key:string; label:string; running:boolean; lastRun:string|null}[];
-  localLlm?: {jobs?: {id?:string;type?:string;status?:string;updatedAt?:string}[]; counts?:Record<string,number>};
+  localLlm?: LocalActivityQueue;
+  lmStudio?: LocalStudioState;
 }
 export interface FocusRequest {id:string; taskId?:string; question:string; requestedAt:string; resolution?:unknown}
 export interface FocusEvent {type:string; taskId?:string; at:string; progress?:{taskId:string;executor:string;phase:string;message?:string;at:string}}
@@ -67,7 +70,7 @@ const clock=(v?:string|null)=>timestamp(v)?new Date(v as string).toISOString().s
  * failing, `state` is the last good snapshot and `snapshotAt` is when it was
  * taken; the derivation then withholds live sub-phase claims from it.
  */
-export interface FocusFeed { available: boolean; snapshotAt: string | null }
+export interface FocusFeed { available: boolean; localAvailable?: boolean; snapshotAt: string | null }
 
 export function deriveCurrentFocus({projects, state, requests=[], events=[], now=Date.now(), feed}: {
   projects:BoardProject[]|null; state:FocusState|null; requests?:FocusRequest[]; events?:FocusEvent[]; now?:number; feed?:FocusFeed;
@@ -200,10 +203,19 @@ export function deriveCurrentFocus({projects, state, requests=[], events=[], now
   }
   // cron.running means the schedule is enabled, not that its callback is in
   // flight (Praxis cron-registry). Never turn enabled timers into live work.
-  for(const [index,job] of (state?.localLlm?.jobs??[]).entries()) if(job.status==='running'||job.status==='queued') {
-    const id=`local-${job.id??index}`;
-    rows.set(id,{...make(id,job.type??'Local model job'),taskId:null,projectId:null,projectName:'Background activity',status:job.status==='running'?'running':'queued',stage:job.status==='running'?'Running':'Queued',action:null,executor:'Local LLM',updatedAt:job.updatedAt??null,
-      evidence:{phase:none('The local queue reports job state only, not a sub-phase.'),model:none('The local queue does not report which model serves this job.')}});
+  const queueDelayed = feed?.available === false || feed?.localAvailable === false;
+  const queueObservedAt = queueDelayed ? timestamp(feed?.snapshotAt) : now;
+  for (const run of describeLocalActivity(state?.localLlm, state?.lmStudio, queueObservedAt).runs) {
+    const id = `local-${run.id}`;
+    const active = run.status === 'running' || run.status === 'draining';
+    rows.set(id, { ...make(id, run.name), source: 'local-queue', taskId: null, projectId: null, projectName: 'Background activity',
+      status: queueDelayed ? 'unconfirmed' : active ? 'running' : 'queued',
+      stage: queueDelayed ? 'Queue signal delayed' : run.state || 'Running', purpose: run.progress,
+      action: [run.counts, ...run.items.map(item => item.description)].join('\n'),
+      updatedAt: run.updatedAt ?? null, model: run.model, executor: 'Praxis queue',
+      evidence: { phase: none('Praxis reports queue state.'), model: run.model
+        ? { value: run.model, source: 'LM Studio', at: run.updatedAt ?? null, reason: null }
+        : none('See each running item for its serving lane.') } });
   }
   const groups=new Map<string,FocusView['groups'][number]>();
   for(const row of rows.values()) {

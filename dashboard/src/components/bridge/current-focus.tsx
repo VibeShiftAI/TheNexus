@@ -20,19 +20,19 @@ function FocusRow({item}:{item:FocusItem}) {
         {item.taskId ? <Link href={`/task/${encodeURIComponent(item.taskId)}`} className="break-words text-sm font-semibold text-slate-100 hover:text-cyan-200">{item.title}</Link> : <h4 className="break-words text-sm font-semibold text-slate-100">{item.title}</h4>}
         {item.purpose && <p className="mt-1 line-clamp-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-400">{item.purpose}</p>}
       </div>
-      <span className={`rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${colors[item.status]}`}>{stateLabels[item.status]}</span>
+      <span className={`rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${colors[item.status]}`}>{item.source === 'local-queue' && item.status === 'unconfirmed' ? 'Last reported' : stateLabels[item.status]}</span>
     </div>
     <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
       <span className={item.status==='running'?'text-cyan-300':'text-slate-300'}>{item.stage}</span>
       <span className="text-slate-500">{item.executor??'Executor not reported'}</span>
-      <span className="break-all text-slate-500" title={item.evidence.model.reason??undefined}>{item.model??`Model not reported: ${item.evidence.model.reason??'no reason recorded'}`}{item.model && item.evidence.model.source && item.evidence.model.source!=='run' && <span data-focus-model-source className="text-slate-600"> · {item.evidence.model.source}</span>}</span>
+      {item.source !== 'local-queue' && <span className="break-all text-slate-500" title={item.evidence.model.reason??undefined}>{item.model??`Model not reported: ${item.evidence.model.reason??'no reason recorded'}`}{item.model && item.evidence.model.source && item.evidence.model.source!=='run' && <span data-focus-model-source className="text-slate-600"> · {item.evidence.model.source}</span>}</span>}
     </div>
-    {item.status==='running' && !item.evidence.phase.value && <p data-focus-phase-reason className="mt-1 text-[11px] leading-relaxed text-slate-500">Sub-phase not evidenced: {item.evidence.phase.reason}</p>}
+    {item.source !== 'local-queue' && item.status==='running' && !item.evidence.phase.value && <p data-focus-phase-reason className="mt-1 text-[11px] leading-relaxed text-slate-500">Sub-phase not evidenced: {item.evidence.phase.reason}</p>}
     <p className="mt-1.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-300">{item.action??'No step detail reported yet.'}</p>
-    <p data-focus-lifecycle className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+    {item.source !== 'local-queue' && <p data-focus-lifecycle className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
       Last recorded: board {item.lifecycle.board??'status not reported'}{item.lifecycle.boardAt?` (${when(item.lifecycle.boardAt)})`:''}
       {item.lifecycle.run?` · run ${item.lifecycle.run}${item.lifecycle.runPhase&&item.lifecycle.runPhase!==item.lifecycle.run?`, phase ${stages[item.lifecycle.runPhase]??item.lifecycle.runPhase}`:''} (${when(item.lifecycle.runAt)})`:' · no run recorded'}
-    </p>
+    </p>}
     {item.conflicts.length>0 && <ul data-focus-conflicts className="mt-1.5 space-y-0.5 text-[11px] leading-relaxed text-amber-300">{item.conflicts.map(c=><li key={c}>Feeds disagree: {c}</li>)}</ul>}
     {item.resumeAt && <p className="mt-2 flex items-start gap-1.5 text-xs text-violet-300"><Clock3 size={12} className="mt-0.5 shrink-0"/><span>Scheduled resume: {when(item.resumeAt)}{Date.parse(item.resumeAt)<=Date.now()?' · time reached; execution not yet confirmed':''}</span></p>}
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/60 pt-2 text-[11px] text-slate-500">
