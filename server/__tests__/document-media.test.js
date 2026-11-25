@@ -148,6 +148,59 @@ test('the media model classifies paths, refuses unsupported types and reports ed
     expect(media.imageDimensions(png(3, 2))).toEqual({ width: 3, height: 2 });
 });
 
+test.each([['html', 'prototype'], ['svg', 'image']])('a standalone %s capture retains its exact primary bytes', async (extension, kind) => {
+    const bytes = Buffer.from(`\ufeff<${extension}></${extension}>\r\n`);
+    const file = write(`mockup.${extension}`, bytes);
+    const { revision, document } = (await api('POST', '/api/documents', declared(file, { kind }))).json;
+    const blob = require('../services/review-media').blobPath(sha(bytes));
+    expect(fs.existsSync(blob)).toBe(true);
+    expect(fs.readFileSync(blob)).toEqual(bytes);
+    fs.unlinkSync(file);
+    const pinned = `?revision=${revision.id}`;
+    expect((await api('GET', `/api/documents/${document.id}/readiness${pinned}`)).json)
+        .toMatchObject({ ready: true, checks: [{ asset_key: 'primary', source: 'blob', content_hash: sha(bytes) }] });
+    expect((await api('GET', `/api/documents/${document.id}/assets/primary${pinned}`)).json).toEqual(bytes);
+});
+
+test('an undeclared prototype keeps its normalized revision identity and its exact primary asset', async () => {
+    const bytes = Buffer.from('\ufeff<html></html>\r\n');
+    const file = write('legacy.html', bytes);
+    const { revision, document } = (await api('POST', '/api/documents', { path: file, project_id: PROJECT_ID, title: 'Legacy' })).json;
+    expect(revision.content_hash).toBe(sha('<html></html>\n'));
+    const pinned = `?revision=${revision.id}`;
+    const readiness = await api('GET', `/api/documents/${document.id}/readiness${pinned}`);
+    expect(readiness.json).toMatchObject({ ready: true, checks: [{ asset_key: 'primary', byte_length: bytes.length, content_hash: sha(bytes) }] });
+    expect((await api('GET', `/api/documents/${document.id}/assets/primary${pinned}`)).json).toEqual(bytes);
+});
+
+test('readiness and streaming refuse a same-size hash mismatch on disk or inside the blob store', async () => {
+    const bytes = Buffer.from('%PDF-1.7\noriginal');
+    const changed = Buffer.from('%PDF-1.7\nmodified');
+    const file = write('report.pdf', bytes);
+    const { revision, document } = (await api('POST', '/api/documents', declared(file, { kind: 'pdf' }))).json;
+    const blob = require('../services/review-media').blobPath(sha(bytes));
+    const pinned = `?revision=${revision.id}`;
+    fs.writeFileSync(file, changed);
+    fs.writeFileSync(blob, changed);
+    for (const removeBlob of [false, true]) {
+        if (removeBlob) fs.unlinkSync(blob);
+        expect((await api('GET', `/api/documents/${document.id}/readiness${pinned}`)).json)
+            .toMatchObject({ ready: false, checks: [{ asset_key: 'primary', required: true, status: 'changed' }] });
+        expect(await api('GET', `/api/documents/${document.id}/assets/primary${pinned}`))
+            .toMatchObject({ status: 409, json: { code: 'asset_changed' } });
+    }
+});
+
+test('capture refuses a member changed after hashing and never files those bytes under the old hash', () => {
+    const media = require('../services/review-media');
+    const bytes = Buffer.from('<svg>A</svg>');
+    const file = write('export/screen.svg', bytes);
+    const asset = { path: file, media_type: 'svg', asset_key: 'screen:cover', content_hash: sha(bytes), byte_length: bytes.length };
+    fs.writeFileSync(file, '<svg>B</svg>');
+    expect(() => media.storeAssets([asset])).toThrow('changed during capture');
+    expect(fs.existsSync(media.blobPath(asset.content_hash))).toBe(false);
+});
+
 test('an image registers as a binary revision, is copied into the blob store, streams with ranges and survives the file changing', async () => {
     const bytes = png(4, 4);
     const file = write('docs/qa/screen.png', bytes);
@@ -221,6 +274,24 @@ function designFixture({ directions = true, before = true, name = 'hwc09' } = {}
     const file = write(`docs/design/${name}.design.json`, JSON.stringify(manifest, null, 2));
     return { file, manifest, s1 };
 }
+
+test('a design manifest with a BOM and CRLF serves its exact primary bytes under the manifest hash', async () => {
+    const { file, manifest } = designFixture();
+    const bytes = Buffer.from('\ufeff' + JSON.stringify(manifest, null, 2).replace(/\n/g, '\r\n'));
+    fs.writeFileSync(file, bytes);
+    const { document, revision } = (await api('POST', '/api/documents', declared(file, { kind: 'design' }))).json;
+    const blob = require('../services/review-media').blobPath(sha(bytes));
+    expect(fs.readFileSync(blob)).toEqual(bytes);
+    fs.unlinkSync(file);
+    for (const route of ['raw', 'assets/primary']) {
+        const res = await nativeFetch(`${base}/api/documents/${document.id}/${route}?revision=${revision.id}`, {
+            headers: { 'x-test-user': 'local_user' },
+        });
+        expect(res.status).toBe(200);
+        expect(res.headers.get('x-document-revision')).toBe(revision.content_hash);
+        expect(Buffer.from(await res.arrayBuffer())).toEqual(bytes);
+    }
+});
 
 test('a design package registers its members as one revision with the contract package hash, serves them by asset key and reports readiness', async () => {
     const media = require('../services/review-media');

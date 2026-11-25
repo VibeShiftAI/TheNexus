@@ -95,13 +95,10 @@ function blobPath(hash) {
     return path.join(blobDirectory(), hash.slice(0, 2), hash);
 }
 
-/**
- * Keep `bytes` under their hash. Content-addressed, so a retry or a second
- * document with the same pixels costs nothing. Returns the stored path.
- */
+/** Atomically write a blob. Preserve a valid existing copy, including one written by another capture. */
 function storeBlob(hash, bytes) {
     const target = blobPath(hash);
-    if (fs.existsSync(target)) return target;
+    if (matchesAsset(target, { content_hash: hash })) return target;
     fs.mkdirSync(path.dirname(target), { recursive: true });
     const tmp = `${target}.${process.pid}.${Date.now()}.tmp`;
     fs.writeFileSync(tmp, bytes);
@@ -131,20 +128,26 @@ function hashFile(filePath) {
     }
 }
 
-/**
- * Where a revision asset's bytes can be read from right now: the blob store
- * when the bytes were copied, otherwise the registered file when it still
- * hashes to the recorded value. Null when neither holds.
- */
-function locateAssetBytes({ content_hash, path: filePath, byte_length }) {
-    if (content_hash && hasBlob(content_hash)) return { source: 'blob', path: blobPath(content_hash) };
-    if (!filePath) return null;
-    let stat;
-    try { stat = fs.statSync(filePath); } catch { return null; }
-    if (!stat.isFile()) return null;
-    if (typeof byte_length === 'number' && stat.size !== byte_length) return null;
-    const { hash } = hashFile(filePath);
-    return hash === content_hash ? { source: 'disk', path: filePath } : null;
+function matchesAsset(candidate, asset, canonical = false) {
+    if (!candidate) return false;
+    try {
+        const stat = fs.lstatSync(candidate);
+        if (!stat.isFile() || (typeof asset.byte_length === 'number' && stat.size !== asset.byte_length)) return false;
+        if (canonical && fs.realpathSync.native(candidate) !== candidate) return false;
+        return hashFile(candidate).hash === asset.content_hash;
+    } catch {
+        return false;
+    }
+}
+
+/** Look up verified bytes. A corrupt stored snapshot is reported as changed. */
+function locateAssetBytes(asset) {
+    if (hasBlob(asset.content_hash)) {
+        const stored = blobPath(asset.content_hash);
+        return matchesAsset(stored, asset) ? { source: 'blob', path: stored } : null;
+    }
+    if (matchesAsset(asset.landed_path, asset, true)) return { source: 'disk', path: asset.landed_path };
+    return matchesAsset(asset.path, asset) ? { source: 'disk', path: asset.path } : null;
 }
 
 // ── Image dimensions (headers only; enough for a readiness decode check) ──
@@ -426,14 +429,18 @@ function resolveDesignMembers(manifestCanonicalPath, root, members) {
     return { ok: true, assets };
 }
 
-/** Copy every binary member (and anything under the blob limit) into the blob store. */
+/** Keep eligible primary and member bytes under the hash observed during capture. */
 function storeAssets(assets) {
     for (const asset of assets) {
         const spec = MEDIA_TYPES[asset.media_type];
         if (!spec) continue;
         if (spec.blobLimit && asset.byte_length > spec.blobLimit) continue;
-        if (hasBlob(asset.content_hash)) continue;
-        storeBlob(asset.content_hash, fs.readFileSync(asset.path));
+        if (matchesAsset(blobPath(asset.content_hash), asset)) continue;
+        const bytes = fs.readFileSync(asset.path);
+        if (bytes.length !== asset.byte_length || sha256(bytes) !== asset.content_hash) {
+            throw Object.assign(new Error(`Asset ${asset.asset_key} changed during capture`), { status: 409, code: 'asset_changed' });
+        }
+        storeBlob(asset.content_hash, bytes);
     }
 }
 
@@ -452,7 +459,9 @@ function readinessOf(assets, { nowIso = new Date().toISOString() } = {}) {
         if (spec && asset.byte_length > spec.maxBytes) { check.status = 'too_large'; return check; }
         const located = locateAssetBytes(asset);
         if (!located) {
-            check.status = asset.path && fs.existsSync(asset.path) ? 'changed' : 'missing';
+            if (hasBlob(asset.content_hash) || (asset.path && fs.existsSync(asset.path)) || (asset.landed_path && fs.existsSync(asset.landed_path))) {
+                check.status = 'changed';
+            }
             return check;
         }
         if (asset.media_type === 'image') {

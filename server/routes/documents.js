@@ -840,9 +840,18 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         const hash = revisionHash(doc, read);
         const existing = store().findRevisionByHash(doc.id, hash);
         if (existing) return { revision: existing, created: false };
-        // Copy bytes a decision may be recorded against before the row exists, so a crash leaves a blob, never a dangling row.
-        if (read.binary) media.storeBlob(read.exactHash, fs.readFileSync(doc.path));
-        if (read.assets) media.storeAssets(read.assets);
+        // A legacy text revision keeps its normalized identity. A visual asset describes
+        // the actual file served, including a text prototype's BOM and line endings.
+        const visual = media.isVisualMedia(read.mediaType);
+        const primary = {
+            asset_key: 'primary', role: 'primary', path: doc.path, media_type: read.mediaType, mime_type: read.mimeType,
+            byte_length: exact || visual ? read.exactByteLength : read.byteLength,
+            content_hash: visual ? (read.manifestHash ?? read.exactHash) : hash,
+            label: path.basename(doc.path), order: -1, width: read.width ?? null, height: read.height ?? null,
+        };
+        const assets = [primary, ...(read.assets || [])];
+        // Store every visual primary and package member within its blob limit before recording the revision.
+        if (visual) media.storeAssets(assets);
         return store().transaction(() => {
             const revision = store().insertRevision({
                 document_id: doc.id, content_hash: hash, content: read.content,
@@ -851,14 +860,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 asset_count: (read.assets ? read.assets.length : 0) + 1, width: read.width ?? null, height: read.height ?? null,
                 manifest: read.manifest ? JSON.stringify(read.manifest) : null,
             });
-            if (!read.binary && read.exactContent !== read.content && read.mediaType !== 'design') store().insertRevisionExact(revision.id, read.exactContent);
-            const primary = {
-                asset_key: 'primary', role: 'primary', path: doc.path, media_type: read.mediaType, mime_type: read.mimeType,
-                byte_length: exact ? read.exactByteLength : read.byteLength,
-                content_hash: read.mediaType === 'design' ? read.manifestHash : hash,
-                label: path.basename(doc.path), order: -1, width: read.width ?? null, height: read.height ?? null,
-            };
-            store().insertRevisionAssets(revision.id, doc.id, [primary, ...(read.assets || [])]);
+            if (!read.binary && read.exactContent !== read.content) store().insertRevisionExact(revision.id, read.exactContent);
+            store().insertRevisionAssets(revision.id, doc.id, assets);
             return { revision, created: true };
         });
     }

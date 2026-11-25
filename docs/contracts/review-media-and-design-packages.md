@@ -50,12 +50,14 @@ bytes. Binary types are always identified by the exact bytes. Line counts are
 
 ### 1.1 Blob store
 
-Binary revisions are copied, content-addressed, into the review blob store on
-capture so a later edit or deletion of the file on disk never loses the bytes a
-decision was recorded against. Location: `NEXUS_REVIEW_BLOB_DIR`, default
+Capture copies the primary file of each visual review type (including standalone
+HTML, SVG and design manifests) and each package member into the review blob
+store under its exact byte hash. This lets a revision serve those bytes after
+its task worktree disappears. Location: `NEXUS_REVIEW_BLOB_DIR`, default
 `<repo>/data/review-blobs/<hash[0:2]>/<hash>`. A video above 512 MB is not
-copied; its route serves from disk and refuses with `409 asset_changed` when
-the bytes on disk no longer hash to the revision.
+copied. Its route reads the hash-verified landed or registered file and
+refuses with `409 asset_changed` when the bytes no longer match. Readiness and
+streaming verify the recorded SHA-256 for stored blobs as well.
 
 ### 1.2 Routes
 

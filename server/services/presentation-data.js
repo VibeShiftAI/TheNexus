@@ -76,9 +76,10 @@ function createPresentationData({ db, now = Date.now, readActivity = readPresent
             throw presentationError('asset_too_large', 413, 'The selected media exceeds the 128 MiB presentation limit.');
         }
         if (closed || reservedBytes + asset.byte_length > maxTotalAssetBytes) throw presentationError('capture_capacity', 429, 'Presentation media capacity is full. Stop an existing presentation first.');
-        // Review-media readiness includes image decoding. Its blob lookup alone does
-        // not hash blobs, so the copy below verifies every byte once more.
-        if (!media.readinessOf([asset]).ready) throw presentationError('asset_unavailable', 409, 'The selected registered media is not ready.');
+        // Keep a byte mismatch distinguishable from a missing or undecodable primary.
+        const readiness = media.readinessOf([asset]);
+        if (readiness.checks[0].status === 'changed') throw presentationError('revision_mismatch', 409, 'The registered media does not match the selected revision.');
+        if (!readiness.ready) throw presentationError('asset_unavailable', 409, 'The selected registered media is not ready.');
         const located = media.locateAssetBytes(asset);
         if (!located) throw presentationError('asset_unavailable', 409, 'The selected registered media is unavailable.');
         if (!captureDir) {
