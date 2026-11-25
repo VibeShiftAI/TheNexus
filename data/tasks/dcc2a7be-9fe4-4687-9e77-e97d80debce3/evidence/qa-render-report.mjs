@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+const directory = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(directory, '../../../..');
+const require = createRequire(path.join(root, 'dashboard/package.json'));
+const React = require('react');
+const { renderToStaticMarkup } = require('react-dom/server');
+const { JSDOM } = require('jsdom');
+const { default: Markdown } = await import(pathToFileURL(require.resolve('react-markdown')));
+const { default: remarkGfm } = await import(pathToFileURL(require.resolve('remark-gfm')));
+const text = fs.readFileSync(path.join(root, 'docs/reports/2026-11-25-reviews-resort.md'), 'utf8');
+const markup = renderToStaticMarkup(React.createElement(Markdown, { remarkPlugins: [remarkGfm] }, text));
+const document = new JSDOM(markup).window.document;
+fs.writeFileSync(path.join(directory, 'qa-report-render.html'), '<!doctype html><meta charset="utf-8"><title>QA report render</title>' + markup);
+console.log(JSON.stringify({ renderedWith: 'dashboard react-markdown and remark-gfm', title: document.querySelector('h1')?.textContent, tables: document.querySelectorAll('table').length, documentRows: document.querySelectorAll('tbody tr').length, headings: [...document.querySelectorAll('h2')].map(h => h.textContent), opening: [...document.body.children].slice(0, 4).map(n => n.textContent), links: [...document.querySelectorAll('a')].map(a => a.getAttribute('href')), replacementCharacters: [...document.body.textContent].filter(c => c === '\ufffd').length }));
