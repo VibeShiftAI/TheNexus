@@ -432,7 +432,8 @@ html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-be
 .dispatch-voices { height: 54px; min-height: 54px; margin: 6px 0 4px; align-content: start; overflow-y: auto; scrollbar-gutter: stable; }
 .dispatch-voice { max-width: 170px; min-width: 0; height: 21px; flex-shrink: 0; }
 .dispatch-voice > span:last-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.dispatch-local { height: 31px; align-self: center; max-width: 100%; white-space: nowrap; }
+.dispatch-local { min-height: 31px; align-self: center; max-width: 100%; }
+.dispatch-local > span:last-of-type { overflow-wrap: anywhere; }
 .dispatch-queue { height: 58px; min-height: 0; margin-top: 0; padding-top: 6px; align-content: start; overflow-y: auto; scrollbar-gutter: stable; }
 .dispatch-queue > span { padding: 3px 5px; }
 .dispatch-queue a { min-width: 0; height: 22px; white-space: nowrap; }
@@ -463,7 +464,7 @@ html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-be
    stays as the floor, the height the station had when every provider was one
    fixed pod. The wires are measured from the laid-out nodes (dispatch-map.tsx). */
 .dispatch-map-frame { container: dispatch-map / inline-size; flex-shrink: 0; }
-.dispatch-map { grid-template-columns: minmax(0,1.1fr) minmax(120px,1fr) minmax(0,1.1fr); grid-template-areas: 'council council council' 'left hub right' 'local local local' 'queue queue queue'; grid-template-rows: 100px auto 36px minmax(58px, auto); height: auto; min-height: 410px; max-height: none; overflow: visible; }
+.dispatch-map { grid-template-columns: minmax(0,1.1fr) minmax(120px,1fr) minmax(0,1.1fr); grid-template-areas: 'council council council' 'left hub right' 'local local local' 'queue queue queue'; grid-template-rows: 100px auto minmax(36px, auto) minmax(58px, auto); height: auto; min-height: 410px; max-height: none; overflow: visible; }
 .dispatch-wires { inset: 0; width: 100%; height: 100%; overflow: visible; }
 .dispatch-column { display: flex; flex-direction: column; gap: 10px; min-width: 0; align-self: start; padding-bottom: 8px; }
 .dispatch-column[data-side=left] { grid-area: left; }
@@ -529,7 +530,7 @@ html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-be
    side columns of the three-column grid fall under 125px (400 * 1.1 / 3.2 less
    the trunk gutter), too narrow for a run's model, role and phase to share a line. */
 @container dispatch-map (max-width: 399px) {
-  .dispatch-map { grid-template-columns: minmax(0,1fr); grid-template-areas: 'council' 'hub' 'left' 'right' 'local' 'queue'; grid-template-rows: 100px auto auto auto 36px minmax(58px, auto); }
+  .dispatch-map { grid-template-columns: minmax(0,1fr); grid-template-areas: 'council' 'hub' 'left' 'right' 'local' 'queue'; grid-template-rows: 100px auto auto auto minmax(36px, auto) minmax(58px, auto); }
   .dispatch-hub { max-width: 170px; }
   .dispatch-column { padding-bottom: 0; margin-top: 10px; }
   /* Stacked, the hub wire runs straight down through every provider's logo; the node has no text for it to cross. */

@@ -24,8 +24,9 @@ import { useBridgeActivity } from "./activity-provider";
 import { getBoardLaneId } from "@/lib/task-board";
 import { isDayWellUnderway } from "@/lib/day-underway";
 import { useCouncilSessions } from "@/hooks/use-council-sessions";
-import { useDispatchState } from "@/hooks/use-dispatch-state";
+import { dispatchStateIsFresh, useDispatchState } from "@/hooks/use-dispatch-state";
 import { deriveCliLane } from "@/lib/cli-lane";
+import { describeLocalActivity, type LocalActivityQueue, type LocalStudioState } from "@/lib/local-model";
 import type {
   AttemptStallState,
   CliConcurrencyState,
@@ -153,22 +154,8 @@ export interface DispatchStateResponse {
   };
   /** Permanent chat CLI sessions, keyed by backend (e.g. "claude-code"). */
   chatSessions?: Record<string, ChatSessionState>;
-  localLlm?: {
-    worker?: { paused?: boolean; pauseReason?: string };
-    counts?: Record<string, number>;
-    jobs?: { id?: string; type?: string; status?: string; attempts?: number; maxAttempts?: number; updatedAt?: string }[];
-  };
-  /**
-   * LM Studio live state (Praxis host-telemetry). Direct traffic — e.g.
-   * TheCortex embedding calls — bypasses the local queue, so residency and
-   * last-activity come from the server itself, not our job counts.
-   */
-  lmStudio?: {
-    reachable?: boolean;
-    models?: { id?: string; state?: string; type?: string }[];
-    loadedCount?: number;
-    lastActivityAt?: string | null;
-  };
+  localLlm?: LocalActivityQueue;
+  lmStudio?: LocalStudioState;
   /** Mac Studio host snapshot (Praxis runs on the box the models run on). */
   system?: {
     memory?: { totalBytes?: number; availBytes?: number; availPct?: number; swapUsedBytes?: number | null };
@@ -179,19 +166,6 @@ export interface DispatchStateResponse {
 export function fmtGb(bytes: number) {
   return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 }
-
-/**
- * LM Studio saw traffic within the last two minutes. Paired with an idle
- * queue this means a direct caller (TheCortex embeddings) is on the box —
- * the state that used to read as "idle".
- */
-export function lmStudioActive(lastActivityAt?: string | null) {
-  if (!lastActivityAt) return false;
-  const age = Date.now() - new Date(lastActivityAt).getTime();
-  return age >= 0 && age < 2 * 60_000;
-}
-
-
 
 /** Countdown to a cron nextRun, e.g. "in 3h 12m". */
 function inFmt(iso: string) {
@@ -222,7 +196,8 @@ export function DispatchStation() {
   const { activeItems, items, now: activityNow } = useBridgeActivity();
   // Deck-wide shared dispatch-state poller (see useDispatchState) — the crew
   // strip and task board read the same snapshot from one fetch loop.
-  const { state, error: err, updatedAt } = useDispatchState();
+  const dispatch = useDispatchState();
+  const { state } = dispatch;
   const [inspecting, setInspecting] = useState<ExecutorId | null>(null);
 
   // Count of board tasks in the Needs Attention lane (blocked / failed /
@@ -304,19 +279,19 @@ export function DispatchStation() {
   }, [councilSitting]);
 
   const today = state?.executors?.dispatchedToday;
-  const localCounts = state?.localLlm?.counts ?? {};
-  const localRunning = localCounts["running"] ?? 0;
-  const localQueued = localCounts["queued"] ?? 0;
-  const localPaused = Boolean(state?.localLlm?.worker?.paused);
-  const lmStudio = state?.lmStudio;
   const memory = state?.system?.memory;
 
   // A dispatch response can arrive after the activity provider's last tick.
   const now = Math.max(activityNow, Date.now());
+  const local = describeLocalActivity(state?.localLlm, state?.lmStudio, now);
   const { conversationId } = useCortex();
   const chat = useChatActivity(conversationId, now);
-  const available = !err && updatedAt != null && now >= Date.parse(updatedAt) && now - Date.parse(updatedAt) < 45_000;
+  const available = dispatchStateIsFresh(dispatch, now);
   const councilAvailable = councilUpdatedAt > 0 && now - councilUpdatedAt < 65_000;
+
+  const crewStatus = !councilAvailable && liveCouncil ? "Council signal delayed"
+    : !available ? "Dispatch signal delayed"
+    : local.busy ? local.summary : "crew standing by";
 
   const councilToday = useMemo(() => {
     if (!councilSessions) return 0;
@@ -354,7 +329,7 @@ export function DispatchStation() {
     <HudPanel
       icon={<Send size={16} />}
       title="OPS — DISPATCH"
-      activity={available && activeItems.length > 0 || councilAvailable && !!liveCouncil ? "active" : "idle"}
+      activity={(available && (activeItems.length > 0 || local.busy)) || (councilAvailable && !!liveCouncil) ? "active" : "idle"}
       accent={degraded ? "amber" : "cyan"}
       className="dispatch-station flex h-full flex-col"
       headerRight={
@@ -384,15 +359,7 @@ export function DispatchStation() {
             bench={benches?.benches.find(b => b.name === (liveCouncil?.metadata?.preset ?? benches.defaultPreset)) ?? null}
             memory={memory}
             council={liveCouncil}
-            local={{
-              running: localRunning,
-              queued: localQueued,
-              paused: localPaused,
-              // undefined = old Praxis payload without the field (say nothing);
-              // null = probe ran and LM Studio is unreachable.
-              resident: lmStudio ? (lmStudio.reachable ? (lmStudio.loadedCount ?? 0) : null) : undefined,
-              directActive: localRunning === 0 && lmStudioActive(lmStudio?.lastActivityAt),
-            }}
+            local={local}
             arbiter={arbiter}
             onSetArbiter={handleSetArbiter}
             onInspect={setInspecting}
@@ -429,7 +396,7 @@ export function DispatchStation() {
               </>
             ) : (
               <>
-                <span className="min-w-0 flex-1 truncate text-slate-500">{!councilAvailable && liveCouncil ? "Council signal delayed" : available ? "crew standing by" : "Dispatch signal delayed"}</span>
+                <span className="min-w-0 flex-1 truncate text-slate-500">{crewStatus}</span>
                 {lastCouncil && (
                   <Link href="/council" className="shrink-0 tabular-nums text-slate-500 transition-colors hover:text-slate-300">
                     {councilToday > 0 ? `${councilToday} council${councilToday === 1 ? "" : "s"} today · ` : ""}

@@ -3,7 +3,7 @@
  * the three CLI executors (live lane events off the shared live-board
  * context, with the run-registry
  * snapshot as fallback for runs that started before this page loaded),
- * the local LLM worker (queue counts), and anything the registry knows.
+ * the local LLM worker (grouped runs and direct activity), and anything the registry knows.
  *
  * Powers the main viewer's active-work readout and the synthesized "active
  * runs" rows on the Ops console, so activity is visible even when the
@@ -12,10 +12,11 @@
 "use client";
 
 import { activeModelName } from "@/lib/active-model";
+import { describeLocalActivity } from "@/lib/local-model";
 import { laneSupersededByRegistry } from "@/lib/crew-lanes";
 import { useEffect, useMemo, useState } from "react";
 import { useLiveBoardState } from "@/components/live-board-state";
-import { useDispatchState } from "./use-dispatch-state";
+import { dispatchStateIsFresh, useDispatchState } from "./use-dispatch-state";
 import type { ExecutorName } from "@praxis/contract";
 import type { ExecutorRun } from "@/components/bridge/dispatch-station";
 
@@ -51,7 +52,7 @@ export function useCrewActivity(): {
   const { recentEvents } = useLiveBoardState();
   // Deck-wide shared dispatch-state poller — one fetch loop no matter how
   // many components call this hook (main viewer, task board, Ops console).
-  const { state: dispatchState } = useDispatchState();
+  const { state: dispatchState, error, updatedAt } = useDispatchState();
   // Re-render periodically so settle timeouts and orphan-lane expiry take
   // effect visually; `tick` is a memo dependency so the fold really reruns.
   const [tick, setTick] = useState(0);
@@ -139,24 +140,15 @@ export function useCrewActivity(): {
       }
     }
 
-    // Local LLM worker
-    const counts = dispatchState?.localLlm?.counts ?? {};
-    const running = counts["running"] ?? 0;
-    const queued = counts["queued"] ?? 0;
-    const paused = Boolean(dispatchState?.localLlm?.worker?.paused);
+    const fresh = dispatchStateIsFresh({ error, updatedAt }, now);
+    const local = describeLocalActivity(dispatchState?.localLlm, dispatchState?.lmStudio, now);
     crew.push({
       id: "local-llm",
       label: "Local LLM",
-      state: running > 0 ? "active" : "idle",
-      detail: paused
-        ? "paused"
-        : running > 0
-        ? `${running} running${queued > 0 ? ` · ${queued} queued` : ""}`
-        : queued > 0
-        ? `${queued} queued`
-        : undefined,
+      state: fresh && local.busy ? "active" : "idle",
+      detail: fresh ? local.summary : "Dispatch signal delayed",
     });
 
     return { crew, sseRuns, dispatchedToday: dispatchState?.executors?.dispatchedToday };
-  }, [recentEvents, dispatchState, tick]);
+  }, [recentEvents, dispatchState, error, updatedAt, tick]);
 }

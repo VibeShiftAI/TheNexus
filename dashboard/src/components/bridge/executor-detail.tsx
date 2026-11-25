@@ -1,17 +1,19 @@
 /**
  * ExecutorDetailModal — drill-down popup for a crew member / dispatch lane.
- * Fetches a fresh dispatch-state snapshot on open and shows the runs, queue
+ * Refreshes shared dispatch telemetry on open and shows the runs, queue
  * and worker state for one executor (or the local LLM queue). Opened from
  * the Ops graphic (DispatchStation): a provider node or any of its run nodes.
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { dispatchStateIsFresh, useDispatchState } from "@/hooks/use-dispatch-state";
+import { describeLocalActivity } from "@/lib/local-model";
 import Link from "next/link";
 import { ArrowUpRight, Loader2, Send } from "lucide-react";
 import { taskActivityHref } from "@/lib/bridge-activity";
 import { HudModal, HudStat } from "@/components/bridge/hud";
-import { fmtGb, lmStudioActive, type DispatchStateResponse, type ExecutorRun } from "@/components/bridge/dispatch-station";
+import { fmtGb, type DispatchStateResponse, type ExecutorRun } from "@/components/bridge/dispatch-station";
 
 export type ExecutorId = string;
 
@@ -45,26 +47,11 @@ const RUN_TONE: Record<ExecutorRun["status"], string> = {
 };
 
 export function ExecutorDetailModal({ executor, onClose }: { executor: ExecutorId; onClose: () => void }) {
-  const [state, setState] = useState<DispatchStateResponse | null>(null);
-  const [err, setErr] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    fetch("/api/praxis/dispatch-state", { cache: "no-store" })
-      .then((res) => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
-      .then((data) => {
-        if (active) setState(data);
-      })
-      .catch(() => {
-        if (active) setErr(true);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const dispatch = useDispatchState();
+  const { state, error: err, refresh } = dispatch;
+  useEffect(() => { void refresh(); }, [refresh]);
+  const now = Date.now();
+  const available = dispatchStateIsFresh(dispatch, now);
 
   const runs = (state?.executors?.runs ?? []).filter((r) => r.executor === executor);
   const activeRuns = runs.filter((r) => r.status === "active");
@@ -78,14 +65,14 @@ export function ExecutorDetailModal({ executor, onClose }: { executor: ExecutorI
       accent="cyan"
       onClose={onClose}
     >
-      {err ? (
+      {err || (state && !available) ? (
         <p className="py-6 text-center text-xs text-slate-500">Dispatch telemetry unavailable.</p>
       ) : !state ? (
         <div className="flex items-center justify-center gap-2 py-6 text-xs text-slate-500">
           <Loader2 size={14} className="animate-spin text-cyan-400" /> Pulling telemetry…
         </div>
       ) : executor === "local-llm" ? (
-        <LocalLlmDetail state={state} />
+        <LocalLlmDetail state={state} now={now} />
       ) : (
         <div className="space-y-4">
           <section>
@@ -158,8 +145,9 @@ export function RunRow({ run }: { run: ExecutorRun }) {
 }
 
 /** "3m ago" for the LM Studio last-activity readout. */
-function agoShort(iso: string) {
-  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
+function agoShort(iso: string, now: number) {
+  const mins = Math.floor((now - Date.parse(iso)) / 60_000);
+  if (!Number.isFinite(mins) || mins < 0) return "time unreported";
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
   const hours = Math.floor(mins / 60);
@@ -167,23 +155,39 @@ function agoShort(iso: string) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function LocalLlmDetail({ state }: { state: DispatchStateResponse }) {
+function LocalLlmDetail({ state, now }: { state: DispatchStateResponse; now: number }) {
   const worker = state.localLlm?.worker;
-  const counts = state.localLlm?.counts ?? {};
+  const counts = state.localLlm?.counts;
   const jobs = state.localLlm?.jobs ?? [];
   const lm = state.lmStudio;
   const memory = state.system?.memory;
-  const directActive = (counts["running"] ?? 0) === 0 && lmStudioActive(lm?.lastActivityAt);
+  const activity = describeLocalActivity(state.localLlm, lm, now);
   return (
     <div className="space-y-4">
+      <section aria-label="Local model activity" className="space-y-2">
+        {activity.runs.length > 0 ? activity.runs.map(run => (
+          <div key={run.id} className="space-y-1 rounded-md border border-slate-800 bg-slate-900/50 px-3 py-2">
+            <h4 className="break-words text-xs font-semibold text-slate-200">{run.summary}</h4>
+            <p className="text-[11px] tabular-nums text-slate-400">{run.counts}</p>
+            {run.items.length > 0 && (
+              <ul aria-label={`Running items for ${run.name}`} className="space-y-1 border-t border-slate-800 pt-1">
+                {run.items.map(item => (
+                  <li key={item.id} className="break-words text-xs text-cyan-200">{item.description}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )) : <p className="text-xs text-slate-300">{activity.summary}</p>}
+        {activity.runs.length > 0 && activity.direct && <p className="text-xs text-cyan-200">{activity.direct}</p>}
+      </section>
       <div className="grid grid-cols-4 gap-2">
         <HudStat
           label="worker"
-          value={worker?.paused ? "paused" : "running"}
-          tone={worker?.paused ? "text-amber-300" : "text-emerald-300"}
+          value={worker?.paused == null ? "—" : worker.paused ? "paused" : "enabled"}
+          tone={worker?.paused == null ? "text-slate-500" : worker.paused ? "text-amber-300" : "text-emerald-300"}
         />
-        <HudStat label="running" value={counts["running"] ?? 0} tone="text-cyan-300" />
-        <HudStat label="queued" value={counts["queued"] ?? 0} />
+        <HudStat label="running" value={counts ? counts.running ?? 0 : "—"} tone="text-cyan-300" />
+        <HudStat label="queued" value={counts ? counts.queued ?? 0 : "—"} />
         <HudStat
           label="mem free"
           value={memory?.availBytes != null ? fmtGb(memory.availBytes) : "—"}
@@ -203,15 +207,14 @@ function LocalLlmDetail({ state }: { state: DispatchStateResponse }) {
           <h4 className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">LM Studio</h4>
           {lm?.lastActivityAt ? (
             <span
-              className={`text-[10px] tabular-nums ${directActive ? "text-cyan-300" : "text-slate-500"}`}
-              title="Last LM Studio server activity — includes direct traffic (e.g. TheCortex embeddings) that never touches this queue"
+              className={`text-[10px] tabular-nums ${activity.direct ? "text-cyan-300" : "text-slate-500"}`}
+              title="Last activity reported by the LM Studio server"
             >
-              activity {agoShort(lm.lastActivityAt)}
-              {directActive ? " · direct" : ""}
+              activity {agoShort(lm.lastActivityAt, now)}
             </span>
           ) : null}
         </div>
-        {!lm.reachable ? (
+        {lm.reachable === false ? (
           <p className="rounded-md border border-dashed border-amber-500/30 px-3 py-2.5 text-xs text-amber-300/80">
             LM Studio unreachable — resident-model telemetry unavailable.
           </p>
@@ -233,14 +236,14 @@ function LocalLlmDetail({ state }: { state: DispatchStateResponse }) {
                       : "border-slate-700 bg-slate-800/60 text-slate-500"
                   }`}
                 >
-                  {m.state === "loaded" ? "resident" : "unloaded"}
+                  {m.state === "loaded" ? "resident" : m.state || "state unreported"}
                 </span>
               </div>
             ))}
           </div>
         ) : (
           <p className="rounded-md border border-dashed border-slate-800 px-3 py-2.5 text-xs text-slate-500">
-            No models registered in LM Studio.
+            {lm.models ? "No models registered in LM Studio." : "Model inventory unavailable."}
           </p>
         )}
         {memory?.availBytes != null && memory.totalBytes != null ? (
@@ -251,13 +254,9 @@ function LocalLlmDetail({ state }: { state: DispatchStateResponse }) {
         ) : null}
       </section>
       )}
-      <section>
-        <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Jobs</h4>
-        {jobs.length === 0 ? (
-          <p className="rounded-md border border-dashed border-slate-800 px-3 py-2.5 text-xs text-slate-500">
-            Queue is quiet.
-          </p>
-        ) : (
+      {jobs.length > 0 && (
+        <details>
+          <summary className="mb-1.5 cursor-pointer text-[10px] font-semibold uppercase tracking-wider text-slate-500">Queue job diagnostics</summary>
           <div className="space-y-1">
             {jobs.slice(0, 10).map((j, i) => (
               <div
@@ -280,8 +279,8 @@ function LocalLlmDetail({ state }: { state: DispatchStateResponse }) {
               </div>
             ))}
           </div>
-        )}
-      </section>
+        </details>
+      )}
       <Link href="/ops" className="inline-flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300">
         open full ops console <ArrowUpRight size={12} />
       </Link>

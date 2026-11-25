@@ -17,6 +17,7 @@ import {
   type CouncilSessionSummary,
   type CouncilVoice,
 } from "@/lib/council";
+import { describeLocalActivity, type LocalActivityQueue, type LocalStudioState } from "@/lib/local-model";
 import type { ExecutorId } from "@/components/bridge/executor-detail";
 import type { ExecutorRun } from "@/components/bridge/dispatch-station";
 
@@ -112,6 +113,7 @@ export function CrewFlow({
   runs,
   council,
   local,
+  lmStudio,
   arbiter,
   onSetArbiter,
   onInspect,
@@ -119,15 +121,8 @@ export function CrewFlow({
   lanes: Partial<Record<string, CrewLaneView>>;
   runs: ExecutorRun[] | undefined;
   council: CouncilSessionSummary | null;
-  local: {
-    running: number;
-    queued: number;
-    paused: boolean;
-    /** LM Studio resident (loaded) models; null when LM Studio is unreachable. */
-    resident?: number | null;
-    /** LM Studio saw traffic recently while the queue is idle — a direct caller (TheCortex embeddings). */
-    directActive?: boolean;
-  };
+  local: LocalActivityQueue;
+  lmStudio?: LocalStudioState;
   /** Arbiter preference; null hides the badges (endpoint unavailable). */
   arbiter?: CouncilArbiterState | null;
   onSetArbiter?: (seat: ArbiterSeat) => void;
@@ -280,7 +275,8 @@ export function CrewFlow({
     }
   }
 
-  if (local.running > 0) {
+  const activity = describeLocalActivity(local, lmStudio);
+  if (activity.runs.some(run => run.items.some(item => item.usesLocal))) {
     edges.push({
       key: "local",
       path: edgePath(HUB, LOCAL),
@@ -293,37 +289,8 @@ export function CrewFlow({
   }
 
   const anyActive = edges.some((e) => e.flow || e.packet);
-  // Direct traffic (queue idle, LM Studio busy — TheCortex embeddings) lights
-  // the node like queue work does: the box IS working, just not for us.
-  const localBusy = local.running > 0 || Boolean(local.directActive);
-  const localColors = localBusy ? CYAN : IDLE;
-  // Visible caption stays short so it can't clip the left edge; the queue
-  // depth and residency live in the tooltip.
-  const localStatus = local.paused
-    ? "paused"
-    : local.running > 0
-      ? `${local.running} running`
-      : local.directActive
-        ? "direct traffic"
-        : local.resident === null
-          ? "LM Studio off"
-          : "quiet";
-  const localResidentTip =
-    local.resident === null ? "LM Studio unreachable" : local.resident != null ? `${local.resident} model(s) resident` : null;
-  const localTip = [
-    local.paused
-      ? "paused"
-      : local.running > 0
-        ? `${local.running} running${local.queued > 0 ? ` · ${local.queued} queued` : ""}`
-        : local.directActive
-          ? "direct traffic (bypasses the queue — e.g. TheCortex embeddings)"
-          : "quiet",
-    localResidentTip,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
-  return (
+  const localColors = activity.busy ? CYAN : IDLE;
+  const graph = (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Crew dispatch flow">
       <style>{`
         .hud-crew-flow { animation: hud-crew-flow 1.2s linear infinite; }
@@ -394,13 +361,13 @@ export function CrewFlow({
 
       {/* Local LLM satellite */}
       <g onClick={() => onInspect("local-llm")} className="cursor-pointer">
-        <title>{`Local LLM — ${localTip}`}</title>
+        <title>{`Local LLM — ${activity.summary}`}</title>
         <circle cx={LOCAL.x} cy={LOCAL.y} r="8" fill={localColors.fill} stroke={localColors.ring} strokeWidth="1.5" />
         <text x={LOCAL.x} y={LOCAL.y + 1} textAnchor="middle" dominantBaseline="middle" fontSize="9" fill={localColors.text}>
-          {localBusy ? "…" : "·"}
+          {activity.busy ? "…" : "·"}
         </text>
-        <text x={LOCAL.x} y={LOCAL.y + 21} textAnchor="middle" fontSize="10.5" fill={local.paused ? "#fbbf24" : localColors.text}>
-          Local LLM · {localStatus}
+        <text x={LOCAL.x} y={LOCAL.y + 21} textAnchor="middle" fontSize="10.5" fill={local.worker?.paused ? "#fbbf24" : localColors.text}>
+          Local LLM
         </text>
       </g>
 
@@ -494,5 +461,14 @@ export function CrewFlow({
         );
       })}
     </svg>
+  );
+  return (
+    <figure>
+      {graph}
+      <figcaption className="px-2 text-[11px] text-slate-400">
+        <button type="button" aria-haspopup="dialog" aria-label={`Inspect Local LLM: ${activity.summary}`}
+          className="text-left" onClick={() => onInspect("local-llm")}>{activity.summary}</button>
+      </figcaption>
+    </figure>
   );
 }

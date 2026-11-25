@@ -28,6 +28,12 @@ export interface DispatchStateSnapshot {
   updatedAt: string | null;
 }
 
+/** A stalled poll stops representing live work after two missed 20-second updates. */
+export function dispatchStateIsFresh(snapshot: Pick<DispatchStateSnapshot, "updatedAt" | "error">, now: number): boolean {
+  const age = now - Date.parse(snapshot.updatedAt ?? "");
+  return !snapshot.error && age >= 0 && age < 45_000;
+}
+
 let snapshot: DispatchStateSnapshot = { state: null, error: false, updatedAt: null };
 const subscribers = new Set<(s: DispatchStateSnapshot) => void>();
 let timer: ReturnType<typeof setInterval> | null = null;

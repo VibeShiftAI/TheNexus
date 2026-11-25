@@ -62,7 +62,7 @@ export interface DispatchMapProps {
   councilAvailable: boolean;
   bench?: CouncilBench | null;
   memory?: NonNullable<DispatchStateResponse["system"]>["memory"];
-  local: { running: number; queued: number; paused: boolean; resident?: number | null; directActive?: boolean };
+  local: { summary: string; busy: boolean };
   arbiter?: CouncilArbiterState | null;
   onSetArbiter?: (seat: ArbiterSeat) => void;
   onInspect: (id: ExecutorId) => void;
@@ -105,7 +105,8 @@ export function DispatchMap({ view, available, activeItems, recentItems, council
   const gate = view.gate;
   const mem = available && memory?.availPct != null ? Math.max(0, Math.min(100, memory.availPct)) : null;
   const working = available ? activeItems : [];
-  const localBusy = available && (local.running > 0 || local.directActive);
+  const localBusy = available && local.busy;
+  const localSummary = available ? local.summary : "Signal delayed";
   const councilBusy = Boolean(council);
   const running = available ? gate.active : null;
   const limit = available ? gate.limit : null;
@@ -279,9 +280,12 @@ export function DispatchMap({ view, available, activeItems, recentItems, council
         </button>
       </div>
 
-      <button type="button" className="dispatch-local" data-active={localBusy} style={colorStyle("#34d399")} onClick={() => onInspect("local-llm")} aria-label="Inspect Local LLM">
-        {providerLogo("local-llm") ? <ProviderLogo provider="local-llm" size={14} /> : <Cpu size={14} />}<span>Local LLM</span><span className="text-slate-400">{!available ? "Signal delayed" : local.paused ? "Queue paused" : local.running > 0 ? `${local.running} working` : local.directActive ? "Direct traffic" : local.resident === null ? "Offline" : local.resident != null ? `${local.resident} resident` : "Standing by"}</span>
-        {localBusy && <Sparkles size={11} className="module-breathe" />}
+      <button type="button" className="dispatch-local" data-active={localBusy} style={colorStyle("#34d399")}
+        onClick={() => onInspect("local-llm")} aria-haspopup="dialog" aria-label={`Inspect Local LLM: ${localSummary}`} title={localSummary}>
+        {providerLogo("local-llm") ? <ProviderLogo provider="local-llm" size={14} /> : <Cpu size={14} />}
+        <span className="shrink-0">Local LLM</span>
+        <span className="min-w-0 text-left text-slate-300">{localSummary}</span>
+        {localBusy && <Sparkles size={11} className="shrink-0 module-breathe" />}
       </button>
 
       <div className="dispatch-queue" aria-label="Dispatch queue">
