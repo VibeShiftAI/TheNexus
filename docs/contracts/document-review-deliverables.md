@@ -1360,6 +1360,13 @@ when that file:
    and a design package (its package hash) are already filed under the hash of
    their exact bytes.
 
+The same transaction records the landed path for each matching revision
+asset, including each design member resolved by its manifest key. A path
+is bound to the immutable asset row only when the landed bytes have the
+asset's recorded SHA-256. The asset route and readiness check can then use
+that path when the blob is absent, including for videos above the blob limit.
+The registered asset path remains available as capture provenance.
+
 The rule is the same for every document, declared or not. A legacy
 registration files its revisions under the hash of its line-normalized text
 (section 1), which a landed file with other line endings or without the byte

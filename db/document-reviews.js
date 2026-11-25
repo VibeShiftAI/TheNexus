@@ -41,7 +41,7 @@ const { createAgentReviewStore } = require('./document-agent-reviews');
 const { ACTIVE_TASK_SQL, WAITING_TASKS_FROM_SQL } = require('./document-review-blockers');
 const { initializeDocumentOutgoing, createDocumentOutgoingStore } = require('./document-outgoing');
 const { initializeDocumentRetirements, createDocumentRetirementStore } = require('./document-retirements');
-const { initializeDocumentRelocations, createDocumentRelocationStore } = require('./document-relocations');
+const { initializeDocumentRelocations, createDocumentRelocationStore, LOCATED_REVISION_ASSETS } = require('./document-relocations');
 const { hasOutstandingRequest } = require('../server/services/document-retirement-purpose');
 const { REVISION_KEY: DECISION_ITEMS_REVISION_KEY } = require('../server/services/document-decision-items');
 
@@ -867,10 +867,10 @@ function createDocumentReviewStore(db) {
             }
         },
         listRevisionAssets(revisionId) {
-            return many('SELECT * FROM review_document_revision_assets WHERE revision_id = ? ORDER BY "order" ASC, rowid ASC', revisionId);
+            return many(`${LOCATED_REVISION_ASSETS} WHERE a.revision_id = ? ORDER BY a."order", a.rowid`, revisionId);
         },
         getRevisionAsset(revisionId, assetKey) {
-            return one('SELECT * FROM review_document_revision_assets WHERE revision_id = ? AND asset_key = ?', revisionId, assetKey);
+            return one(`${LOCATED_REVISION_ASSETS} WHERE a.revision_id = ? AND a.asset_key = ?`, revisionId, assetKey);
         },
 
         // ── Edits (append-only) ─────────────────────────────────────────

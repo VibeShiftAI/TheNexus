@@ -3,6 +3,7 @@
 const fs = require('fs');
 const { createHash } = require('crypto');
 const media = require('../server/services/review-media');
+const { LOCATED_REVISION_ASSETS } = require('./document-relocations');
 const fail = (status, message, code) => Object.assign(new Error(message), { status, code });
 const parse = value => { try { return typeof value === 'string' ? JSON.parse(value) : value; } catch { return null; } };
 const fields = ['asset_key', 'role', 'media_type', 'mime_type', 'content_hash', 'byte_length', 'label', 'direction', 'appearance', 'viewport', 'state', 'before_asset_key', 'width', 'height', 'order'];
@@ -12,7 +13,7 @@ function revisionMedia(db, artifact) {
     if (!artifact.revision_id || !artifact.document_id) return null;
     const revision = db.prepare('SELECT * FROM review_document_revisions WHERE id = ? AND document_id = ?').get(artifact.revision_id, artifact.document_id);
     if (!revision || !media.isVisualMedia(revision.media_type)) return null;
-    const assets = db.prepare('SELECT * FROM review_document_revision_assets WHERE revision_id = ? AND document_id = ? ORDER BY "order", asset_key').all(revision.id, artifact.document_id)
+    const assets = db.prepare(`${LOCATED_REVISION_ASSETS} WHERE a.revision_id = ? AND a.document_id = ? ORDER BY a."order", a.asset_key`).all(revision.id, artifact.document_id)
         .filter(a => visible(a, revision.media_type));
     const manifest = parse(revision.manifest);
     const directions = revision.media_type === 'design' && Array.isArray(manifest?.directions)

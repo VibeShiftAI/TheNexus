@@ -111,7 +111,14 @@ function planDocumentRelocation({ store, doc, revision, fromRoot, toRoot, roots 
         const sameText = !read.binary && read.mediaType !== 'design' && read.content === revision.content;
         return leave('hash_mismatch', { toPath, landedHash, detail: sameText ? SAME_TEXT_DETAIL : null });
     }
-    return { action: 'move', toPath, landedHash, registeredHash, rootProjectId: resolved.root.projectId };
+    // A design revision is identified by its package hash; its primary asset
+    // is identified by the manifest's own hash. Member paths come from the
+    // same validated read, including canonical targets of in-project links.
+    const assetLocations = [
+        { asset_key: 'primary', path: toPath, content_hash: read.manifestHash ?? landedHash },
+        ...(read.assets || []),
+    ];
+    return { action: 'move', toPath, landedHash, registeredHash, rootProjectId: resolved.root.projectId, assetLocations };
 }
 
 function entry(doc, extra) {
@@ -171,7 +178,7 @@ async function relocateDocuments({ db, store, fromRoot, toRoot, source, taskId =
             const result = store.relocateDocument({
                 documentId: doc.id, fromPath: doc.path, toPath: plan.toPath, fromRoot: spelling, toRoot: toReal,
                 revisionId: doc.current_revision_id, contentHash: plan.landedHash, rootProjectId: plan.rootProjectId,
-                source, taskId, reason, actorId,
+                assetLocations: plan.assetLocations, source, taskId, reason, actorId,
             });
             if (result.outcome === 'relocated') {
                 relocated.push(entry(result.document, { ...base, from_deliverable_key: result.relocation.from_deliverable_key, to_deliverable_key: result.relocation.to_deliverable_key, relocation_id: result.relocation.id }));

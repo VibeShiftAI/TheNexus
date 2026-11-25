@@ -11,9 +11,9 @@
  * `relocateDocument` moves one registration from the worktree path to the
  * landed path. It is one compare-and-set in one immediate transaction: the
  * document must still be registered at the path the caller saw, on the
- * revision the caller hashed the landed file against. It changes only the
- * document's path, its root project and (for a `path:` key, which names the
- * path) its deliverable key. The document id, revisions, decisions, reviews,
+ * revision the caller hashed the landed file against. It moves the document's
+ * path, root project and path-based deliverable key, and records where each
+ * matching asset can now be read. The document id, revisions, decisions, reviews,
  * comments, drafts, replacements, retirements, review requirement and waiting
  * tasks are untouched, no revision is recorded, and an outgoing grant (bound to
  * the revision and its exact bytes, never the path) stays in force.
@@ -29,6 +29,10 @@
 const { randomUUID } = require('crypto');
 
 const now = () => new Date().toISOString();
+
+// Keep the original asset path as capture provenance. Only its disk fallback moves.
+const LOCATED_REVISION_ASSETS = `SELECT a.*, l.path AS landed_path FROM review_document_revision_assets a
+    LEFT JOIN review_document_asset_locations l ON l.asset_id = a.id`;
 
 /**
  * Why a registration was not moved by the store (the route adds the outcomes
@@ -66,7 +70,11 @@ function initializeDocumentRelocations(db) {
         ON review_document_relocations(from_root);
     CREATE TRIGGER IF NOT EXISTS review_document_relocations_append_only
         BEFORE UPDATE ON review_document_relocations
-        BEGIN SELECT RAISE(ABORT, 'document relocations are append-only'); END;`);
+        BEGIN SELECT RAISE(ABORT, 'document relocations are append-only'); END;
+    CREATE TABLE IF NOT EXISTS review_document_asset_locations (
+        asset_id TEXT PRIMARY KEY REFERENCES review_document_revision_assets(id) ON DELETE CASCADE,
+        path TEXT NOT NULL
+    );`);
 }
 
 /** LIKE pattern for every path strictly inside `root` (which carries no trailing separator). */
@@ -104,7 +112,7 @@ function createDocumentRelocationStore(db) {
          * second writer (another process on the same database) waits for this
          * one instead of moving the same row from a stale read.
          */
-        relocateDocument({ documentId, fromPath, toPath, fromRoot, toRoot, revisionId, contentHash, rootProjectId, source, taskId = null, reason = null, actorId }) {
+        relocateDocument({ documentId, fromPath, toPath, fromRoot, toRoot, revisionId, contentHash, rootProjectId, assetLocations = [], source, taskId = null, reason = null, actorId }) {
             return db.transaction(() => {
                 const doc = this.getDocument(documentId);
                 if (!doc) return { outcome: 'not_found', document: null };
@@ -129,6 +137,15 @@ function createDocumentRelocationStore(db) {
                     WHERE id = ? AND path = ? AND current_revision_id = ?`)
                     .run(toPath, rootProjectId ?? doc.root_project_id ?? null, toKey, at, doc.id, fromPath, revisionId).changes;
                 if (changed !== 1) return { outcome: 'path_changed', document: this.getDocument(doc.id) };
+                if (assetLocations.length) {
+                    const locate = db.prepare(`INSERT INTO review_document_asset_locations (asset_id, path)
+                        SELECT id, ? FROM review_document_revision_assets
+                        WHERE document_id = ? AND revision_id = ? AND asset_key = ? AND content_hash = ?
+                        ON CONFLICT(asset_id) DO UPDATE SET path = excluded.path`);
+                    for (const asset of assetLocations) {
+                        locate.run(asset.path, doc.id, revisionId, asset.asset_key, asset.content_hash);
+                    }
+                }
                 const relocation = {
                     id: randomUUID(), document_id: doc.id, from_path: fromPath, to_path: toPath, from_root: fromRoot, to_root: toRoot,
                     from_deliverable_key: fromKey, to_deliverable_key: toKey, revision_id: revisionId, content_hash: contentHash,
@@ -143,4 +160,4 @@ function createDocumentRelocationStore(db) {
     };
 }
 
-module.exports = { initializeDocumentRelocations, createDocumentRelocationStore, RELOCATION_REFUSALS };
+module.exports = { initializeDocumentRelocations, createDocumentRelocationStore, RELOCATION_REFUSALS, LOCATED_REVISION_ASSETS };

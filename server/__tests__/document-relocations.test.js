@@ -69,6 +69,7 @@ const count = (sql, ...params) => db.raw.prepare(sql).get(...params).n;
 beforeEach(async () => {
     workspace = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-relocations-')));
     process.env.NEXUS_DB_PATH = path.join(workspace, 'nexus.db');
+    process.env.NEXUS_REVIEW_BLOB_DIR = path.join(workspace, 'review-blobs');
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.resetModules();
     projectRoot = path.join(workspace, 'Praxis');
@@ -105,6 +106,7 @@ afterEach(async () => {
     db.raw.close();
     jest.restoreAllMocks();
     delete process.env.NEXUS_DB_PATH;
+    delete process.env.NEXUS_REVIEW_BLOB_DIR;
     jest.resetModules();
     fs.rmSync(workspace, { recursive: true, force: true });
 });
@@ -139,6 +141,57 @@ test('a landed document moves to the landed file and stays decidable after the w
     expect(decision.json.decision).toMatchObject({ revision_id: revision.id, content_hash: revision.content_hash });
     expect(count('SELECT COUNT(*) AS n FROM review_document_revisions WHERE document_id = ?', document.id)).toBe(1);
     expect(count('SELECT COUNT(*) AS n FROM review_documents')).toBe(1);
+});
+
+test('an HTML prototype, image and design screen stay servable and reviewable from their landed bytes after worktree removal', async () => {
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC', 'base64');
+    const cases = [
+        { kind: 'prototype', file: 'preview.html', bytes: '<main>Ready</main>', key: 'primary' },
+        { kind: 'image', file: 'poster.png', bytes: png, key: 'primary' },
+        { kind: 'design', file: 'flow.design.json', bytes: JSON.stringify({
+            format: 'nexus-design-package/1', title: 'Flow', screens: [{ id: 'home', title: 'Home', file: 'screens/home.png' }],
+        }), key: 'screen:home' },
+    ];
+    write(worktree, 'screens/home.png', png);
+    const registrations = [];
+    for (const item of cases) {
+        const file = write(worktree, item.file, item.bytes);
+        const response = await api('POST', '/api/documents', { ...declared(file, { key: item.file }), kind: item.kind });
+        expect(response.status).toBe(201);
+        registrations.push({ ...item, ...response.json });
+    }
+    land();
+    const moved = await relocate();
+    expect(moved.json.left).toEqual([]);
+    expect(moved.json.relocated).toHaveLength(cases.length);
+    git(projectRoot, 'worktree', 'remove', worktree);
+    // Exercise the exact, disk-only fallback independently of capture. This also
+    // models old missing blobs and the video size class deliberately kept on disk.
+    fs.rmSync(process.env.NEXUS_REVIEW_BLOB_DIR, { recursive: true, force: true });
+    for (const { document, revision, key, bytes, kind } of registrations) {
+        const url = `/api/documents/${document.id}`;
+        const pinned = `?revision=${revision.id}`;
+        const ready = await api('GET', url + '/readiness' + pinned);
+        expect(ready.json).toMatchObject({ ready: true, revision_id: revision.id, checks: [
+            expect.objectContaining({ asset_key: key, status: 'servable', source: 'disk' }),
+        ] });
+        const asset = await nativeFetch(base + url + '/assets/' + encodeURIComponent(key) + pinned, {
+            headers: { 'x-test-user': 'local_user' },
+        });
+        expect(asset.status).toBe(200);
+        expect(Buffer.from(await asset.arrayBuffer())).toEqual(kind === 'prototype' ? Buffer.from(bytes) : png);
+        const detail = await api('GET', url);
+        expect(detail.json).toMatchObject({ file_state: 'ok', reviewable: { ok: true }, readiness: { ready: true },
+            document: { current_revision_id: revision.id, requires_review: true } });
+    }
+    // Pin the old image, then replace its landed file with different bytes of the same length.
+    const poster = registrations.find(item => item.kind === 'image');
+    const edited = Buffer.from(png);
+    edited[edited.length - 1] ^= 1;
+    write(projectRoot, poster.file, edited);
+    fs.rmSync(process.env.NEXUS_REVIEW_BLOB_DIR, { recursive: true, force: true });
+    const pinnedUrl = `/api/documents/${poster.document.id}/readiness?revision=${poster.revision.id}`;
+    expect((await api('GET', pinnedUrl)).json).toMatchObject({ ready: false, checks: [{ asset_key: 'primary', status: 'changed' }] });
 });
 
 test('without the move, the same landing leaves the document undecidable once the worktree is removed', async () => {
