@@ -112,3 +112,6 @@ data/review-blobs/
 data/presentation-captures/
 # Whole texts of model inputs cut to fit a context window (server/services/context-window.js)
 data/model-inputs/
+# Chat attachments uploaded through the cockpit chat. Attachments committed before
+# this rule stay tracked; new uploads no longer show as untracked.
+data/chat-files/
