@@ -1,0 +1,158 @@
+  console.log
+    [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+  console.log
+    [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+  console.log
+    [Documents] request_changes recorded for 0cb2ba2c-d600-4cdc-a655-add6af25d3ec revision 778b26a8-2e11-4cf3-b4bc-d40480c4bff3 (authority=operator_credential, operator confirmation ref=c86dab01)
+
+      at log (server/routes/documents.js:1955:21)
+
+  console.log
+    [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+  console.log
+    [Documents] approve recorded for c46a7af5-f7f9-4ebd-9e90-390bfb87aa31 revision 7b7e0226-a4b2-474c-955b-76e0ef982e14 (authority=operator_credential, operator confirmation ref=67d6b947)
+
+      at log (server/routes/documents.js:1955:21)
+
+  console.log
+    [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+  console.log
+    [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+  console.log
+    [Documents] approve recorded for b751a663-a9d7-408b-ac37-c3beb255fe2b revision a3eb4e87-c6e4-469d-aa5a-707259ab7386 (authority=operator_credential, operator confirmation ref=c552f9de)
+
+      at log (server/routes/documents.js:1955:21)
+
+  console.log
+    [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+  console.log
+    [Documents] approve recorded for 364f4242-a08c-4a48-84e9-53e2f6cdadd0 revision 2e36e1de-1e12-4cf1-a9cd-5c15d39637e0 (authority=operator_credential, operator confirmation ref=3a93bf8e)
+
+      at log (server/routes/documents.js:1955:21)
+
+  console.log
+    [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+  console.log
+    [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+  console.log
+    [Documents] approve recorded for ca2556d2-8371-451e-b356-954ae2dd223c revision 0583ea59-6762-489b-9d81-9497ac4b1229 (authority=access_user)
+
+      at log (server/routes/documents.js:1955:21)
+
+  console.log
+    [Documents] request_changes recorded for ca2556d2-8371-451e-b356-954ae2dd223c revision 0583ea59-6762-489b-9d81-9497ac4b1229 (authority=operator_credential)
+
+      at log (server/routes/documents.js:1955:21)
+
+  console.log
+    [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+  console.log
+    [Documents] review 4467e7b0-5950-473f-aa9a-42f9459b5447 finished with approval delegated (authority=operator_credential, submission=8963425c-68b3-434d-a4ab-9b9f760292be, operator confirmation ref=d377d2cc)
+
+      at log (server/routes/documents.js:2834:36)
+
+  console.log
+    [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+  console.log
+    [DocumentOutgoing] approve_send recorded for 36f4f3f4-acdc-4705-bcf8-848a1fcebbe0 revision 31d2a4b9-fb50-4e57-b6ff-edee0ea74bd7 after operator confirmation ref=5b565883
+
+      at log (server/routes/document-outgoing.js:137:48)
+
+  console.log
+    [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+  console.log
+    [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+  console.log
+    [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+  console.log
+    [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+  console.log
+    [MailDraftReview] relaying approve_send for md_fixture version v1 after operator confirmation ref=a0295186
+
+      at log (server/routes/mail-draft-review.js:67:25)
+
+  console.log
+    [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at log (server/services/operator-access.js:111:29)
+
+PASS server/__tests__/operator-confirmation.test.js
+  confirmation broker
+    ✓ Access, operator-bearer and executor-bearer paths are never asked; a result that does not say its path is refused (316 ms)
+    ✓ a confirmation is single use and bound to the confirmed identity; time plays no part (9 ms)
+    ✓ one dialog at a time, and refusals never stop the next request from being asked (11 ms)
+    ✓ a dialog has no give-up time: it stays open until it is answered or its request ends (8 ms)
+    ✓ a client that goes away closes the dialog and is refused as aborted (7 ms)
+    ✓ a client that left before the dialog would open is refused as aborted without asking (7 ms)
+    ✓ a failing or unexpected dialog answer is unavailable, never a fallback (7 ms)
+    ✓ dialog text names the action from server values, removes invisible characters and says how much of a long body it shows (8 ms)
+    ✓ a request too long for the dialog keeps who asked, the warning and the Ref, and says exactly how much it leaves out (16 ms)
+    ✓ the osascript runner passes every server string as argv, defaults to Cancel and maps each outcome (7 ms)
+  document decisions through the local session
+    ✓ the stored session proof alone records nothing: declined and unavailable dialogs refuse, and forged confirmation fields are ignored (33 ms)
+    ✓ a confirmed decision records exactly once with the confirmed identity; repeating the request asks again (9 ms)
+    ✓ an idempotent retry of a confirmed decision answers from the record without asking or recording again (9 ms)
+    ✓ a document that changes on disk while the dialog is open is refused as stale; nothing is recorded (10 ms)
+    ✓ a decision from the desktop app session is asked the same way (the webview path at the server boundary) (9 ms)
+    ✓ while one dialog is open a second decision is refused as busy; only the confirmed one records (19 ms)
+    ✓ closing the request while the dialog is open closes it and records nothing (3026 ms)
+    ✓ Access sessions and the operator bearer are separate credentials: never asked, recorded as before (42 ms)
+  finishing a review through the local session
+    ✓ a plain finish (feedback only) stays click-free (17 ms)
+    ✓ the approve-after-changes grant asks once, names the grant, and is refused when a comment lands during the dialog (20 ms)
+  sending email through the local session
+    ✓ document outgoing: the stored proof alone is refused; a confirmed send approves exactly the reviewed envelope once (15 ms)
+    ✓ document outgoing: an edit that lands while the dialog is open makes the confirmation unusable (10 ms)
+    ✓ document outgoing: a send the store would refuse is refused before asking (12 ms)
+    ✓ Praxis mail: a draft with an HTML part says so in the dialog (8 ms)
+    ✓ Praxis mail: the dialog names recipient and subject from Praxis; declined relays nothing; confirmed relays exactly the confirmed version once (8 ms)
+    ✓ Praxis mail: a stale version is refused without asking, and edits stay click-free (8 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       26 passed, 26 total
+Snapshots:   0 total
+Time:        4.072 s
+Ran all test suites matching server/__tests__/operator-confirmation.test.js.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

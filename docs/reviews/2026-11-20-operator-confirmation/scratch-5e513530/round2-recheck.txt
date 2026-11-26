@@ -1,0 +1,45 @@
+Recheck run at 2026-11-21T00:45:42.308Z
+HEAD: 8cf041e98fdadfa26c96f6c3ad47f4ed6626704f
+Last commit: 8cf041e9 2026-11-20T16:47:33-05:00 Record the code review, its red/green run and the other operator routes
+git status entries: 20
+
+A. Robert's answers for this task as stored (hitl.db, opened read-only)
+  task-question-5e513530-1795215540039: requested 2026-11-20T22:59:12.596Z, resolved 2026-11-20T23:22:48.927Z, resolution {"resolvedAt":"2026-11-20T23:22:48.927Z","resolvedBy":"robert","freeText":"Ready"}
+  task-question-5e513530-1795220618318: requested 2026-11-21T00:23:56.537Z, resolved 2026-11-21T00:38:41.139Z, resolution {"resolvedAt":"2026-11-21T00:38:41.139Z","resolvedBy":"robert","freeText":"Ok complete the task then"}
+
+B. Source binding of each current live report (HEAD and sha256 of every file under test)
+  live-chrome-unattended.json: generated_at 2026-11-20T22:49:20.311Z; head same as HEAD now; files under test 15, current bytes match 15/15; answers_dialogs false; checks 120, passed 120
+  live-webview-unattended.json: generated_at 2026-11-20T22:52:00.132Z; head same as HEAD now; files under test 15, current bytes match 15/15; answers_dialogs false; checks 67, passed 67
+  live-chrome-attended.json: generated_at 2026-11-20T23:26:27.990Z; head same as HEAD now; files under test 15, current bytes match 15/15; answers_dialogs false; checks 166, passed 130
+  live-webview-attended.json: generated_at 2026-11-20T23:27:19.760Z; head same as HEAD now; files under test 15, current bytes match 15/15; answers_dialogs false; checks 87, passed 87
+  live-chrome-attended-2.json: generated_at 2026-11-20T23:29:29.206Z; head same as HEAD now; files under test 15, current bytes match 15/15; answers_dialogs false; checks 196, passed 196
+
+C. Evidence lines the report cites for criterion 5
+    live-webview-unattended.json:1413: "device": "mac-desktop",
+    live-webview-unattended.json:1414: "pin": "stand-in pin: the webview host this run started, in place of the desktop app code-signature check (not the desktop app)",
+    live-webview-unattended.json:1620: "summary": {
+    live-webview-unattended.json:1621: "steps": 5,
+    live-webview-unattended.json:1622: "dialogs": 4,
+    live-webview-unattended.json:1623: "dialog_endings": {
+    live-webview-unattended.json:1624: "none: the request ended and the broker closed the dialog": 4
+    live-webview-unattended.json:1625: },
+    live-webview-unattended.json:1626: "checks": 67,
+    live-webview-unattended.json:1627: "passed": 67,
+    live-webview-attended.json:1293: "idle_ms_at_end": 109,
+    live-webview-attended.json:1294: "outcome": "declined",
+    live-webview-attended.json:1633: "idle_ms_at_end": 85,
+    live-webview-attended.json:1634: "outcome": "confirmed",
+    live-webview-attended.json:1806: "device": "mac-desktop",
+    live-webview-attended.json:1807: "pin": "stand-in pin: the webview host this run started, in place of the desktop app code-signature check (not the desktop app)",
+    live-webview-attended.json:2060: "passed": 87,
+    live-chrome-attended-2.json:37: "answers_dialogs": false,
+    live-chrome-attended-2.json:4261: "device": "mac-chrome",
+    live-chrome-attended-2.json:4579: "passed": 196,
+    live-check.cjs:214: if (!device && CLIENT === 'webview' && host && peer.owner?.pid === host.pid
+    live-check.cjs:215: && String(peer.owner?.args || '').split(' ')[0] === hostBinary && peer.owner?.uid === Number(process.env.NEXUS_LOCAL_OPERATOR_UID)) {
+    live-check.cjs:216: device = 'mac-desktop';
+    live-check.cjs:217: pin = 'stand-in pin: the webview host this run started, in place of the desktop app code-signature check (not the desktop app)';
+    operator-confirmation.js:56: const NOT_ASKED = new Set(['access_session', 'operator_bearer', 'document_executor_bearer']);
+    operator-confirmation.js:160: const device = DEVICES[auth?.device] || 'a local application';
+    operator-confirmation.js:178: if (NOT_ASKED.has(auth?.via)) return { ok: true, required: false, ref: null, consume: () => true };
+    operator-confirmation.js:179: if (auth?.via !== 'local_session') return refusal('unverified');
