@@ -6,7 +6,8 @@ outside every repository. Its reports cite them there, and no other copy existed
 (UTC) task e1f0168d moved them into this folder, unchanged, so the evidence stays with the review it
 supports. The scratch folder was then removed.
 
-Where the reports cite them (the old paths in those reports now resolve here):
+Where the reports cite them. The reports still name the old scratch paths, which no longer exist; the files
+they name are the ones in this folder:
 
 | File | Cited by |
 | --- | --- |
